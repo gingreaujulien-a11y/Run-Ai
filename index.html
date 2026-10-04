@@ -79,6 +79,8 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
+    .session-end-btn { opacity: 0.35; pointer-events: none; }
+    body.started .session-end-btn { opacity: 1; pointer-events: auto; }
     body.running .pocket-btn { display: flex; }
     body.home #homeScreen { display: flex; }
     body.home #topBar, body.home #mainArea { display: none !important; }
@@ -225,6 +227,7 @@
       <button onclick="openCoachModal()" class="home-tile bg-purple-500/10 border-purple-500/40 text-purple-300"><span class="icon-slot" data-icon="cpu"></span><span>Coach IA & import PDF</span></button>
       <button onclick="openAudioModal()" class="home-tile bg-slate-800/60 border-slate-600 text-slate-200"><span class="icon-slot" data-icon="settings"></span><span>Voix & réglages</span></button>
       <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Mon objectif</span></button>
+      <button onclick="openSensorsModal()" class="home-tile bg-rose-500/10 border-rose-500/40 text-rose-300"><span class="text-2xl leading-none">⌚</span><span>Cardio, GPS & parcours</span></button>
       <button onclick="openValidationModal()" class="home-tile bg-teal-500/10 border-teal-500/40 text-teal-300"><span class="icon-slot" data-icon="check-circle"></span><span>Valider une séance</span></button>
     </div>
 
@@ -242,6 +245,7 @@
         <div id="displayModeLabel" class="text-[10px] uppercase tracking-widest font-bold mt-0.5 text-slate-500">Temps restant séance ⇄</div>
       </button>
       <div id="stageInfoLine" class="text-sm font-black text-sky-300 mt-2 tracking-wide hidden"></div>
+      <div id="liveMetrics" class="text-[12px] font-bold mt-1 hidden"></div>
       <div id="sessInfoLine" class="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mt-1">
         <span id="activeSessLabel" class="text-sky-400 font-bold">Semaine 1 • MARDI</span> • Pente <span id="activePenteLabel" class="text-white font-mono font-bold">1%</span>
       </div>
@@ -275,10 +279,15 @@
         🌙 <span>MODE POCHE</span>
       </button>
 
-      <button onclick="confirmRestart()" title="Recommencer la séance" class="w-full py-3 bg-slate-800/90 hover:bg-slate-700 active:scale-95 transition border border-slate-700 text-slate-300 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm">
+<div class="grid grid-cols-2 gap-3">
+      <button onclick="confirmRestart()" title="Recommencer la séance" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:scale-95 transition border border-slate-700 text-slate-300 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm">
         <span class="icon-slot" data-icon="rotate-ccw"></span>
         <span>RECOMMENCER</span>
       </button>
+      <button onclick="finishEarly()" title="Terminer et enregistrer" class="session-end-btn py-3 bg-teal-600/20 hover:bg-teal-600/30 active:scale-95 transition border border-teal-500/50 text-teal-200 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm">
+        <span class="icon-slot" data-icon="check-circle"></span><span>TERMINER</span>
+      </button>
+      </div>
     </div>
   </main>
 
@@ -599,7 +608,7 @@
 
   <!-- ==================== MODALE 5 : VALIDATION DU RESSENTI ==================== -->
   <div id="validationModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto custom-scroll">
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
           <span class="text-base font-bold text-white block">Valider la séance</span>
@@ -613,6 +622,7 @@
       <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
         <span id="valSessTitle" class="font-bold text-white text-sm block">Semaine 1 • Mardi</span>
         <span id="valSessDetails" class="text-[10px] text-slate-400 font-mono">Pente 1% • Durée 33.0'</span>
+        <span id="valSummary" class="block text-[10px] text-rose-300 font-mono mt-0.5 hidden"></span>
       </div>
 
       <div>
@@ -639,6 +649,19 @@
           <textarea id="valNoteInput" rows="3" placeholder="Écrivez ou touchez 🎙️ pour dicter votre ressenti..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
           <button type="button" id="btnDictation" onclick="toggleDictation()" class="shrink-0 px-3 rounded-xl font-bold text-[11px] border bg-teal-500/15 border-teal-500/40 text-teal-200">🎙️ Dicter</button>
         </div>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-purple-500/30 space-y-2">
+        <span class="text-[10px] text-purple-300 uppercase font-bold block">📸 Données de la montre (facultatif)</span>
+        <div id="valShots" class="flex flex-wrap gap-2"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px] text-center cursor-pointer">
+            ➕ Captures d'écran
+            <input type="file" accept="image/*" multiple class="hidden" onchange="addWatchShots(this)">
+          </label>
+          <button type="button" onclick="analyzeSessionWithAI()" class="py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-[11px]">🧠 Analyser ma séance</button>
+        </div>
+        <div id="valAnalysis" class="text-[11px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-lg p-2 hidden"></div>
       </div>
 
       <div class="pt-1">
@@ -734,6 +757,62 @@
         <button onclick="startFromCoachTip()" class="w-full py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30">C'EST PARTI !</button>
       </div>
       <button onclick="cancelCoachTip()" class="text-[11px] text-slate-400 font-semibold">Annuler</button>
+    </div>
+  </div>
+
+  <div id="sensorsModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 text-xs max-h-[92vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <span class="text-base font-bold text-white">⌚ Cardio, GPS & parcours</span>
+        <button onclick="closeSensorsModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><span class="icon-slot" data-icon="x"></span></button>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-rose-500/30 space-y-2">
+        <span class="font-bold text-rose-300 block">❤️ Cardio (montre ou ceinture Bluetooth)</span>
+        <p class="text-[10px] text-slate-400">Garmin : activez « Diffuser la fréquence cardiaque » sur la montre. Fonctionne aussi avec Polar, Coros, Suunto, ceintures et capteurs de foulée Bluetooth.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="connectHeartRate()" class="py-2 bg-rose-600 text-white font-bold rounded-lg text-[11px]">Connecter</button>
+          <button onclick="disconnectHeartRate()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Déconnecter</button>
+        </div>
+        <div id="btStatus" class="text-[10px] font-semibold text-slate-400">Aucun capteur connecté</div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] text-slate-300">FC max (alerte si trop haut)</span>
+          <input id="fcMaxInput" type="number" min="120" max="230" placeholder="ex. 190" class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center text-white font-bold">
+        </div>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-sky-500/30 space-y-2">
+        <span class="font-bold text-sky-300 block">📍 GPS du téléphone</span>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] text-slate-300">Utiliser le GPS</span>
+          <select id="gpsModeSelect" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold text-[11px]">
+            <option value="auto">Auto (séances extérieur)</option>
+            <option value="on">Toujours</option>
+            <option value="off">Jamais</option>
+          </select>
+        </div>
+        <label class="flex items-center justify-between text-[10px] text-slate-300">Conseils d'allure (accélère / ralentis)<input type="checkbox" id="chkPaceAdvice" class="accent-sky-500 w-4 h-4"></label>
+        <label class="flex items-center justify-between text-[10px] text-slate-300">Annoncer la VAP (vitesse ajustée à la pente)<input type="checkbox" id="chkAnnounceVap" class="accent-sky-500 w-4 h-4"></label>
+        <label class="flex items-center justify-between text-[10px] text-slate-300">Annoncer chaque kilomètre<input type="checkbox" id="chkKmAnnounce" class="accent-sky-500 w-4 h-4"></label>
+        <button onclick="testGps()" class="w-full py-2 bg-sky-500/20 border border-sky-500/40 text-sky-200 font-bold rounded-lg text-[11px]">Tester le GPS</button>
+        <div id="gpsStatus" class="text-[10px] font-semibold text-slate-400"></div>
+        <p class="text-[9px] text-slate-500">Le GPS ne fonctionne qu'écran allumé : utilisez le 🌙 mode poche plutôt que de verrouiller. Sur tapis, la VAP est calculée avec la pente réglée.</p>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-2">
+        <span class="font-bold text-emerald-300 block">🗺️ Parcours GPX</span>
+        <p class="text-[10px] text-slate-400">L'app vous situe sur le parcours et annonce les côtes 250 m avant (« montée de 5 % sur 1 km »), leur début et leur sommet.</p>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="py-2 bg-emerald-600 text-white font-bold rounded-lg text-[11px] text-center cursor-pointer">Importer un GPX
+            <input type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="hidden" onchange="importGpx(this)">
+          </label>
+          <button onclick="clearRoute()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Retirer</button>
+        </div>
+        <div id="gpxStatus" class="text-[10px] font-semibold text-slate-400"></div>
+        <div id="routeInfo" class="space-y-1.5"></div>
+      </div>
+
+      <button onclick="closeSensorsModal()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Enregistrer</button>
     </div>
   </div>
 
@@ -1163,7 +1242,7 @@
     let pendingUtterances = 0;
     const liveUtterances = [];
     let lastMediaSec = -1;
-    let lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, any: -1e15 };
+    let lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
     let displayMode = 'total';
     try { if (localStorage.getItem('tapis_display_mode') === 'segment') displayMode = 'segment'; } catch (e) {}
     let currentFilter = 'all';
@@ -1412,7 +1491,7 @@
         if (st.type === 'recupBloc' || st.type === 'recup') st.intensity = 'easy';
         else if (st.type !== 'palier') st.intensity = 'normal';
         else if (maxS === minS || v > avg) st.intensity = 'fast';
-        else if (v === minS) st.intensity = 'easy';
+        else if (v === minS && st.durationSec <= 180) st.intensity = 'easy'; // une vraie récup, pas un long palier tempo
         else st.intensity = 'normal';
         st.isPeak = st.type === 'palier' && maxS > minS && v === maxS;
       });
@@ -1423,6 +1502,8 @@
       timerState.currentStageIndex = 0;
       timerState.sessionStarted = false;
       timerState.finished = false;
+      timerState.endedEarly = false;
+      timerState.actualMs = 0;
       resetStageFlags();
       timerState.stageRemainingMs = stages.length ? stages[0].durationSec * 1000 : 0;
       recomputeTotalRemaining();
@@ -1449,6 +1530,7 @@
 
     function setRunningUI(running) {
       document.body.classList.toggle('running', running);
+      document.body.classList.toggle('started', !!timerState.sessionStarted && !timerState.finished);
       ['topBar', 'appFooter', 'sessInfoLine'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.toggle('hidden', running);
@@ -1480,6 +1562,7 @@
 
       const curStage = timerState.stages[timerState.currentStageIndex];
       updatePocketTime();
+      updateLiveMetrics();
       const infoLine = document.getElementById('stageInfoLine');
       if (infoLine) {
         const show = timerState.sessionStarted && !timerState.finished && !!curStage;
@@ -1824,6 +1907,12 @@
           if (i === 0) set.add(stagePhrase(st, 'label'));
           else { set.add(stagePhrase(st, 'prep')); set.add(stagePhrase(st, 'goS')); goExtras(st).forEach(x => set.add(x)); }
         });
+        if (appData.audioSettings.encouragements !== false && timerState.stages.some(st => st.durationSec >= 150)) {
+          currentCoachLongTips(p.lang).forEach(x => set.add(x));
+          t.tips.forEach(x => set.add(x));
+          t.tipsEnd.forEach(x => set.add(x));
+        }
+        gpsPieces().forEach(x => set.add(x));
         if (appData.audioSettings.encouragements !== false) {
           set.add(t.sessionHalf);
           const fe = lastFeeling();
@@ -2469,6 +2558,24 @@
         end: "Terminé ! Bravo, belle séance.",
         count: { 3: "Trois.", 2: "Deux.", 1: "Un." },
         dec: ',',
+        paceUp: "Tu es un peu en dessous, accélère légèrement.", paceDown: "Tu vas un peu vite, ralentis légèrement.",
+        paceOk: "Allure parfaite, continue comme ça.", climbEffort: "En montée, garde l'effort plutôt que la vitesse.",
+        climbStart: "Début de la montée, raccourcis la foulée.", descentStart: "Descente, relâche-toi et laisse rouler.",
+        climbTop: "Sommet ! Relance progressivement.", hrHigh: "Ton cardio est très haut, relâche un peu.",
+        tips: [
+          "Pense à ta cadence : petits pas rapides.",
+          "Regarde loin devant, nuque détendue.",
+          "Respire par le ventre et expire bien à fond.",
+          "Mains souples, comme si tu tenais une chips.",
+          "Vérifie tes épaules : basses et relâchées.",
+          "Pose le pied sous ton centre de gravité.",
+          "Reste dans ta bulle, une minute après l'autre.",
+          "Si tu as soif, bois quelques gorgées."
+        ],
+        tipsEnd: [
+          "Dernière partie de séance : reste concentré sur ta technique.",
+          "La fatigue arrive, garde une foulée propre."
+        ],
         lastBloc: "Dernier bloc, on donne tout !", lastRep: "Dernière répétition !", twoReps: "Plus que deux répétitions.",
         peak: "C'est le sommet, profites-en !", sessionHalf: "Tu as fait la moitié de la séance, bravo !",
         feel: {
@@ -2531,6 +2638,24 @@
         end: "Finished! Well done, great session.",
         count: { 3: "Three.", 2: "Two.", 1: "One." },
         dec: '.',
+        paceUp: "You're a little slow, pick it up slightly.", paceDown: "You're a bit fast, ease off slightly.",
+        paceOk: "Perfect pace, keep it up.", climbEffort: "On the climb, hold the effort rather than the speed.",
+        climbStart: "Climb starting, shorten your stride.", descentStart: "Downhill, relax and let it roll.",
+        climbTop: "Top of the hill! Build back up gradually.", hrHigh: "Your heart rate is very high, ease off a little.",
+        tips: [
+          "Think about cadence: quick, short steps.",
+          "Look far ahead, keep your neck relaxed.",
+          "Breathe from your belly and exhale fully.",
+          "Soft hands, as if holding a crisp.",
+          "Check your shoulders: low and relaxed.",
+          "Land with your foot under your hips.",
+          "Stay in your bubble, one minute at a time.",
+          "If you're thirsty, take a few sips."
+        ],
+        tipsEnd: [
+          "Last part of the session: focus on your form.",
+          "Fatigue is coming, keep your stride clean."
+        ],
         lastBloc: "Last block, give it everything!", lastRep: "Last repetition!", twoReps: "Two repetitions left.",
         peak: "This is the peak, enjoy it!", sessionHalf: "You're halfway through the session, well done!",
         feel: {
@@ -2609,6 +2734,11 @@
       const t = VT();
       // En côte, on mélange des conseils de technique aux encouragements
       if (kind === 'fast' && (getActiveSession().pente || 0) >= 3) return t.fast.concat(t.hill);
+      if (kind === 'tip') {
+        const personal = currentCoachLongTips();
+        const done = timerState.totalSessionMs ? 1 - timerState.totalRemainingMs / timerState.totalSessionMs : 0;
+        return personal.concat(t.tips, done > 0.66 ? t.tipsEnd : []);
+      }
       return t[kind] || [];
     }
     function pickNoRepeat(kind) {
@@ -2633,6 +2763,12 @@
       } else if (st.intensity === 'easy') {
         if (st.durationSec >= 20) p.push({ t: 7000, kind: 'easy' });
         if (st.durationSec >= 120) p.push({ t: 0.6 * d, kind: 'easy' });
+      }
+      // Segments longs : conseils de coach réguliers (environ toutes les 90 s)
+      if (st.durationSec >= 150) {
+        for (let x = 45000; x < d - 30000; x += 90000) {
+          if (!p.some(q => Math.abs(q.t - x) < 20000)) p.push({ t: x, kind: 'tip' });
+        }
       }
       return p.sort((a, b) => a.t - b.t);
     }
@@ -2774,7 +2910,11 @@
       if (aiVoiceActive() && !aiVoiceReadyForSession()) {
         showToast(aiPrep.error ? "Voix IA indisponible : voix du téléphone utilisée" : "Voix IA en préparation… voix du téléphone en attendant");
       }
-      if (fresh) lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, any: -1e15 };
+      if (fresh) {
+        lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
+        resetRunData();
+      }
+      if (gpsWanted()) startGps();
       speak(startPieces(cur, fresh), { chime: true });
 
       if (appData.audioSettings.keepAlive) {
@@ -2823,6 +2963,7 @@
     }
 
     function resetTimer() {
+      stopGps();
       reloadChrono();
       showToast("Chronomètre réinitialisé");
     }
@@ -2892,7 +3033,7 @@
         } else if (elapsedMs >= pt.t) {
           const halfApplies = halfAlertApplies(curStage);
           const okWindow = remMs > 9500 && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
-          const cooldown = { fast: 40000, push: 25000, easy: 40000 }[pt.kind] || 40000;
+          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: 60000 }[pt.kind] || 40000;
           const now = Date.now();
           if (elapsedMs > pt.t + 4000 || (!okWindow && remMs <= 9500) ||
               now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < 10000) {
@@ -2925,6 +3066,8 @@
           speak(VT().count[n] || String(n), { chime: n === 3 });
         }
       }
+
+      sensorAnnouncements(curStage, elapsedMs, remMs);
 
       // Moitié de la séance
       if (!timerState.sessionHalfDone && timerState.totalSessionMs > 0) {
@@ -2980,6 +3123,11 @@
 
     function handleSessionCompletion() {
       exitPocketMode();
+      timerState.actualMs = timerState.endedEarly
+        ? Math.max(0, timerState.totalSessionMs - timerState.totalRemainingMs)
+        : timerState.totalSessionMs;
+      timerState.runSummary = runSummary();
+      stopGps();
       pauseTimer({ cancelSpeech: false });
       timerState.finished = true;
       timerState.stageRemainingMs = 0;
@@ -3233,8 +3381,21 @@
       const totalMin = computeSessionTotalMin(sess);
 
       document.getElementById('valSessTitle').textContent = formatSessTitle(sess);
-      document.getElementById('valSessDetails').textContent = `Pente ${sess.pente}% • Durée ${totalMin.toFixed(1)}' • ${sess.type === 'tapis' ? 'Tapis' : 'Extérieur'}`;
+      const actual = valActualMinutes();
+      const early = timerState.finished && timerState.endedEarly;
+      document.getElementById('valSessDetails').textContent = early
+        ? `Arrêtée à ${actual.toFixed(1)}' sur ${totalMin.toFixed(1)}' prévues • Pente ${sess.pente}%`
+        : `Pente ${sess.pente}% • Durée ${totalMin.toFixed(1)}' • ${sess.type === 'tapis' ? 'Tapis' : 'Extérieur'}`;
+      const sum = timerState.finished ? (timerState.runSummary || {}) : {};
+      const sumEl = document.getElementById('valSummary');
+      sumEl.textContent = summaryText(sum);
+      sumEl.classList.toggle('hidden', !summaryText(sum));
       document.getElementById('valNoteInput').value = '';
+      valShots = [];
+      lastAnalysis = '';
+      renderValShots();
+      document.getElementById('valAnalysis').classList.add('hidden');
+      document.getElementById('valAnalysis').innerHTML = '';
 
       selectFeeling('green');
       document.getElementById('validationModal').classList.remove('hidden');
@@ -3259,8 +3420,11 @@
 
     function confirmValidation() {
       const sess = getActiveSession();
-      const totalMin = computeSessionTotalMin(sess);
-      const detailStr = describeSessionProgram(sess);
+      const plannedMin = computeSessionTotalMin(sess);
+      const early = timerState.finished && timerState.endedEarly;
+      const totalMin = timerState.finished ? Math.round(valActualMinutes() * 10) / 10 : plannedMin;
+      const detailStr = describeSessionProgram(sess) + (early ? ` — arrêtée à ${totalMin.toFixed(1)}' sur ${plannedMin.toFixed(1)}'` : '');
+      const summary = timerState.finished ? (timerState.runSummary || {}) : {};
 
       const newEntry = {
         id: "hist_" + Date.now(),
@@ -3271,7 +3435,11 @@
         feeling: selectedValidationFeeling,
         note: document.getElementById('valNoteInput').value.trim() || 'Séance complétée',
         isVal: true,
-        details: detailStr
+        details: detailStr,
+        plannedMin: Math.round(plannedMin * 10) / 10,
+        endedEarly: !!early,
+        summary,
+        analysis: lastAnalysis || ''
       };
 
       appData.history.unshift(newEntry);
@@ -3321,7 +3489,9 @@
           duration: h.durationMin,
           feeling: h.feeling,
           note: h.note,
-          details: h.details
+          details: h.details,
+          summary: h.summary,
+          analysis: h.analysis
         });
       });
 
@@ -3407,6 +3577,8 @@
           <td colspan="6" class="p-2.5 text-[10px] space-y-1">
             <div class="text-slate-300 font-mono"><strong class="text-sky-400">Programme :</strong> ${item.details}</div>
             <div class="text-slate-400"><strong class="text-amber-400">Note :</strong> ${item.note || 'Aucune'}</div>
+            ${summaryText(item.summary) ? `<div class="text-slate-300"><strong class="text-rose-300">Capteurs :</strong> ${summaryText(item.summary)}</div>` : ''}
+            ${item.analysis ? `<div class="text-slate-300 leading-relaxed mt-1 p-2 rounded-lg bg-purple-950/30 border border-purple-800/40"><strong class="text-purple-300">🧠 Analyse du coach</strong><br>${mdLite(item.analysis)}</div>` : ''}
           </td>
         `;
         tbody.appendChild(trDetail);
@@ -4023,6 +4195,16 @@
       return (appData.coachTips && appData.coachTips[sig]) || '';
     }
 
+    function currentCoachLongTips(lang) {
+      const sess = getActiveSession();
+      const prev = appData.audioSettings.voiceLang;
+      if (lang) appData.audioSettings.voiceLang = lang;
+      const sig = coachTipSignature(sess);
+      appData.audioSettings.voiceLang = prev;
+      const l = appData.coachLongTips && appData.coachLongTips[sig];
+      return Array.isArray(l) ? l : [];
+    }
+
     async function prefetchCoachTip() {
       if (appData.audioSettings.coachTip === false || !getGeminiKey()) return null;
       const sess = getActiveSession();
@@ -4039,12 +4221,25 @@ Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant
 Séance : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; durée ${Math.round(computeSessionTotalMin(sess))} min ; distance ≈ ${computeSessionDistanceKm(sess).toFixed(1)} km ; pente ${sess.pente} %${sess.notes ? ` ; notes du plan : ${sess.notes}` : ''}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Dernières séances :
-${hist}`;
+${hist}
+Ajoute aussi 6 conseils très courts (12 mots maximum chacun, même langue, même style parlé) à dire PENDANT les longs segments de CETTE séance : adaptés aux vitesses, à la pente, aux blocs, au ressenti récent et à l'objectif (gestion de l'effort, technique, respiration, mental, hydratation).
+Réponds uniquement en JSON : {"conseil": "...", "conseils_course": ["...", "..."]}`;
 
       const p = (async () => {
         try {
-          const txt = (await geminiText([{ text: prompt }])).replace(/[*#_`]/g, '').replace(/\s+/g, ' ').trim();
+          const raw = await geminiText([{ text: prompt }], { json: true });
+          let txt = '', list = [];
+          try {
+            const j = parseJsonLoose(raw);
+            txt = String(j.conseil || j.tip || '');
+            list = (Array.isArray(j.conseils_course) ? j.conseils_course : []).map(x => String(x).replace(/[*#_`]/g, '').trim()).filter(x => x && x.length < 140).slice(0, 8);
+          } catch (e) { txt = raw; }
+          txt = txt.replace(/[*#_`]/g, '').replace(/\s+/g, ' ').trim();
           if (!txt) return null;
+          if (!appData.coachLongTips || typeof appData.coachLongTips !== 'object') appData.coachLongTips = {};
+          appData.coachLongTips[sig] = list;
+          const lk = Object.keys(appData.coachLongTips);
+          if (lk.length > 30) lk.slice(0, lk.length - 30).forEach(k => delete appData.coachLongTips[k]);
           appData.coachTips[sig] = txt;
           const keys = Object.keys(appData.coachTips);
           if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete appData.coachTips[k]);
@@ -4377,6 +4572,7 @@ Réponds uniquement avec le JSON.`;
         else if (left === 2 && st.totalReps >= 3) out.push(t.twoReps);
       }
       if (st.isPeak && st.repIndex === 1 && appData.audioSettings.encouragements !== false) out.push(t.peak); // une fois par bloc
+      if (treadmillVapWanted()) out.push(stageVapText(st));
       return out;
     }
     function goPieces(st) { return [stagePhrase(st, 'goS'), ...goExtras(st)]; }
@@ -4693,6 +4889,614 @@ Réponds uniquement avec le JSON.`;
       }).join('');
     }
 
+    // ==================== DONNÉES DE COURSE (cardio, GPS, parcours) ====================
+    const runData = {
+      hr: null, hrAt: 0, hrSamples: [],
+      rsc: null,
+      gps: { watchId: null, last: null, win: [], distKm: 0, speedKmh: null, acc: null, err: '' },
+      route: { idx: 0, progressKm: null, offRoute: false, grade: null, flags: {} },
+      kmAnnounced: 0, lastPaceAt: -1e15, lastPaceOkAt: -1e15, lastHrAt: -1e15, lastVapAt: -1e15
+    };
+    function resetRunData() {
+      runData.hrSamples = [];
+      runData.gps.distKm = 0;
+      runData.gps.win = [];
+      runData.gps.last = null;
+      runData.route.idx = 0;
+      runData.route.progressKm = null;
+      runData.route.flags = {};
+      runData.kmAnnounced = 0;
+      runData.lastPaceAt = runData.lastPaceOkAt = runData.lastHrAt = runData.lastVapAt = -1e15;
+    }
+    function sensors() {
+      if (!appData.sensors || typeof appData.sensors !== 'object') appData.sensors = {};
+      const s = appData.sensors;
+      if (!s.gpsMode) s.gpsMode = 'auto';
+      if (s.paceAdvice === undefined) s.paceAdvice = true;
+      if (s.announceVap === undefined) s.announceVap = true;
+      if (s.kmAnnounce === undefined) s.kmAnnounce = true;
+      return s;
+    }
+    function gpsWanted() {
+      const s = sensors();
+      return s.gpsMode === 'on' || (s.gpsMode === 'auto' && getActiveSession().type === 'exterieur');
+    }
+
+    // Vitesse ajustée à la pente (coût énergétique de Minetti)
+    function minettiCost(g) {
+      g = Math.max(-0.45, Math.min(0.45, g));
+      return 155.4 * g ** 5 - 30.4 * g ** 4 - 43.3 * g ** 3 + 46.3 * g ** 2 + 19.5 * g + 3.6;
+    }
+    function vapKmh(speed, gradePct) {
+      return speed * minettiCost((gradePct || 0) / 100) / 3.6;
+    }
+    function roundHalf(v) { return Math.round(v * 2) / 2; }
+
+    // ---------- Cardio Bluetooth (montre en diffusion FC, ceinture) ----------
+    let btDevice = null, btRetries = 0;
+    function setBtStatus(t, err = false) {
+      const el = document.getElementById('btStatus');
+      if (el) { el.textContent = t; el.className = `text-[10px] font-semibold ${err ? 'text-rose-400' : 'text-emerald-300'}`; }
+    }
+    async function connectHeartRate() {
+      if (!navigator.bluetooth) {
+        setBtStatus("Bluetooth indisponible : utilisez Chrome sur Android avec l'app ouverte en https", true);
+        return;
+      }
+      try {
+        const dev = await navigator.bluetooth.requestDevice({
+          filters: [{ services: ['heart_rate'] }],
+          optionalServices: ['running_speed_and_cadence', 'battery_service']
+        });
+        btDevice = dev;
+        btRetries = 0;
+        dev.addEventListener('gattserverdisconnected', onBtDisconnect);
+        await btSubscribe(dev);
+      } catch (e) {
+        if (e && e.name !== 'NotFoundError') setBtStatus(`Connexion impossible : ${e.message || e}`, true);
+      }
+    }
+    async function btSubscribe(dev) {
+      setBtStatus(`Connexion à ${dev.name || 'capteur'}…`);
+      const server = await dev.gatt.connect();
+      const svc = await server.getPrimaryService('heart_rate');
+      const ch = await svc.getCharacteristic('heart_rate_measurement');
+      await ch.startNotifications();
+      ch.addEventListener('characteristicvaluechanged', e => {
+        const v = e.target.value;
+        const flags = v.getUint8(0);
+        onHeartRate(flags & 1 ? v.getUint16(1, true) : v.getUint8(1));
+      });
+      try {
+        const rs = await server.getPrimaryService('running_speed_and_cadence');
+        const rc = await rs.getCharacteristic('rsc_measurement');
+        await rc.startNotifications();
+        rc.addEventListener('characteristicvaluechanged', e => {
+          const v = e.target.value;
+          runData.rsc = { speed: v.getUint16(1, true) / 256 * 3.6, cad: v.getUint8(3), at: Date.now() };
+        });
+      } catch (e) {}
+      setBtStatus(`✓ Connecté : ${dev.name || 'capteur cardio'}`);
+    }
+    async function onBtDisconnect() {
+      runData.hr = null;
+      updateLiveMetrics();
+      if (!btDevice || btRetries >= 5) { setBtStatus('Capteur déconnecté', true); return; }
+      btRetries++;
+      setBtStatus(`Capteur déconnecté, reconnexion (${btRetries}/5)…`, true);
+      await sleep(2000);
+      try { await btSubscribe(btDevice); btRetries = 0; } catch (e) { onBtDisconnect(); }
+    }
+    function disconnectHeartRate() {
+      const d = btDevice;
+      btDevice = null;
+      try { d && d.gatt.connected && d.gatt.disconnect(); } catch (e) {}
+      runData.hr = null;
+      setBtStatus('Aucun capteur connecté');
+      updateLiveMetrics();
+    }
+    function onHeartRate(hr) {
+      if (!hr || hr < 30 || hr > 240) return;
+      runData.hr = hr;
+      runData.hrAt = Date.now();
+      if (timerState.isRunning) {
+        const last = runData.hrSamples[runData.hrSamples.length - 1];
+        if (!last || Date.now() - last.t >= 1000) runData.hrSamples.push({ t: Date.now(), hr });
+      }
+      updateLiveMetrics();
+    }
+
+    // ---------- GPS du téléphone ----------
+    function haversineM(a, b) {
+      const R = 6371000, toR = Math.PI / 180;
+      const dLat = (b.lat - a.lat) * toR, dLon = (b.lon - a.lon) * toR;
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    }
+    function startGps() {
+      const g = runData.gps;
+      if (!navigator.geolocation || g.watchId !== null) return;
+      g.err = '';
+      g.watchId = navigator.geolocation.watchPosition(onGpsPos, err => {
+        g.err = err.code === 1 ? 'Localisation refusée' : 'Signal GPS indisponible';
+        updateLiveMetrics();
+      }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+    }
+    function stopGps() {
+      const g = runData.gps;
+      if (g.watchId !== null) { try { navigator.geolocation.clearWatch(g.watchId); } catch (e) {} }
+      g.watchId = null;
+    }
+    function onGpsPos(pos) {
+      const g = runData.gps;
+      const c = pos.coords;
+      const p = { t: pos.timestamp || Date.now(), lat: c.latitude, lon: c.longitude, acc: c.accuracy };
+      g.acc = c.accuracy;
+      g.err = '';
+      if (c.accuracy > 35) { updateLiveMetrics(); return; }
+      if (g.last && timerState.isRunning) {
+        const d = haversineM(g.last, p);
+        const dt = (p.t - g.last.t) / 1000;
+        if (dt > 0 && d / dt < 9) g.distKm += d / 1000;
+      }
+      g.last = p;
+      g.win.push(p);
+      while (g.win.length && p.t - g.win[0].t > 20000) g.win.shift();
+      // Vitesse lissée : vitesse fournie par le GPS si disponible, sinon distance sur 20 s
+      let v = null;
+      if (c.speed !== null && c.speed !== undefined && c.speed >= 0) v = c.speed * 3.6;
+      else if (g.win.length >= 2) {
+        let d = 0;
+        for (let i = 1; i < g.win.length; i++) d += haversineM(g.win[i - 1], g.win[i]);
+        const dt = (g.win[g.win.length - 1].t - g.win[0].t) / 1000;
+        if (dt >= 5) v = d / dt * 3.6;
+      }
+      if (v !== null) g.speedKmh = g.speedKmh === null ? v : g.speedKmh * 0.75 + v * 0.25;
+      if (appData.route) updateRouteProgress(p);
+      updateLiveMetrics();
+    }
+
+    // ---------- Parcours GPX ----------
+    function setGpxStatus(t, err = false) {
+      const el = document.getElementById('gpxStatus');
+      if (el) { el.textContent = t; el.className = `text-[10px] font-semibold ${err ? 'text-rose-400' : 'text-sky-300'}`; }
+    }
+    function importGpx(input) {
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const route = parseGpx(String(r.result), file.name.replace(/\.gpx$/i, ''));
+          appData.route = route;
+          saveAppData();
+          renderRouteInfo();
+          setGpxStatus(`✓ Parcours chargé : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m`);
+          if (aiVoiceActive()) prepareAIVoice();
+        } catch (e) {
+          setGpxStatus(`⚠ ${e.message || 'Fichier GPX illisible'}`, true);
+        }
+      };
+      r.readAsText(file);
+    }
+    function clearRoute() {
+      appData.route = null;
+      saveAppData();
+      renderRouteInfo();
+      setGpxStatus('Aucun parcours chargé');
+    }
+    function parseGpx(xml, name) {
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      let nodes = Array.from(doc.getElementsByTagName('trkpt'));
+      if (!nodes.length) nodes = Array.from(doc.getElementsByTagName('rtept'));
+      if (nodes.length < 2) throw new Error("Aucun point de parcours dans ce fichier");
+      const raw = nodes.map(n => {
+        const e = n.getElementsByTagName('ele')[0];
+        return { lat: parseFloat(n.getAttribute('lat')), lon: parseFloat(n.getAttribute('lon')), ele: e ? parseFloat(e.textContent) : NaN };
+      }).filter(p => isFinite(p.lat) && isFinite(p.lon));
+      const hasEle = raw.some(p => isFinite(p.ele));
+      raw.forEach(p => { if (!isFinite(p.ele)) p.ele = 0; });
+      // Lissage de l'altitude
+      const sm = raw.map((p, i) => {
+        let s = 0, n = 0;
+        for (let k = Math.max(0, i - 3); k <= Math.min(raw.length - 1, i + 3); k++) { s += raw[k].ele; n++; }
+        return s / n;
+      });
+      let cum = 0;
+      const pts = raw.map((p, i) => {
+        if (i) cum += haversineM(raw[i - 1], p) / 1000;
+        return { lat: p.lat, lon: p.lon, ele: sm[i], cum };
+      });
+      const totalKm = cum;
+      // Profil rééchantillonné tous les 50 m
+      const step = 0.05, prof = [];
+      let j = 0;
+      for (let d = 0; d <= totalKm + 1e-9; d += step) {
+        while (j < pts.length - 2 && pts[j + 1].cum < d) j++;
+        const a = pts[j], b = pts[Math.min(j + 1, pts.length - 1)];
+        const f = b.cum > a.cum ? (d - a.cum) / (b.cum - a.cum) : 0;
+        prof.push(a.ele + (b.ele - a.ele) * Math.max(0, Math.min(1, f)));
+      }
+      let gain = 0, loss = 0;
+      for (let i = 1; i < prof.length; i++) { const dd = prof[i] - prof[i - 1]; if (dd > 0) gain += dd; else loss -= dd; }
+      // Pente sur 200 m glissants (en %)
+      const gr = prof.map((_, i) => {
+        const a = Math.max(0, i - 2), b = Math.min(prof.length - 1, i + 2);
+        return b > a ? (prof[b] - prof[a]) / ((b - a) * step * 1000) * 100 : 0;
+      });
+      // Montées et descentes marquées (≥ 3 % sur au moins 300 m)
+      const climbs = [];
+      const scan = (sign) => {
+        let s = -1;
+        for (let i = 0; i <= gr.length; i++) {
+          const on = i < gr.length && sign * gr[i] >= 3;
+          if (on && s < 0) s = i;
+          if (!on && s >= 0) {
+            const len = (i - 1 - s) * step;
+            if (len >= 0.3) {
+              const grade = (prof[i - 1] - prof[s]) / (len * 1000) * 100;
+              if (sign * grade >= 2.5) climbs.push({ type: sign > 0 ? 'up' : 'down', startKm: s * step, lenKm: len, grade: Math.round(Math.abs(grade)) });
+            }
+            s = -1;
+          }
+        }
+      };
+      if (hasEle) { scan(1); scan(-1); }
+      climbs.sort((a, b) => a.startKm - b.startKm);
+      // Points allégés pour le suivi de position
+      const maxPts = 1500;
+      const keep = pts.length > maxPts ? pts.filter((_, i) => i % Math.ceil(pts.length / maxPts) === 0 || i === pts.length - 1) : pts;
+      return {
+        name: name || 'Parcours',
+        totalKm, gainM: gain, lossM: loss, hasEle,
+        pts: keep.map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6), +p.cum.toFixed(4), Math.round(p.ele)]),
+        gr: gr.map(v => Math.round(v * 10) / 10),
+        prof: prof.map(v => Math.round(v)),
+        climbs
+      };
+    }
+    function routeGradeAt(km) {
+      const r = appData.route;
+      if (!r || !r.gr || !r.gr.length) return null;
+      return r.gr[Math.max(0, Math.min(r.gr.length - 1, Math.round(km / 0.05)))];
+    }
+    function updateRouteProgress(p) {
+      const r = appData.route, st = runData.route;
+      if (!r || !r.pts.length) return;
+      const pts = r.pts;
+      const scanRange = (a, b) => {
+        let best = -1, bd = Infinity;
+        for (let i = Math.max(0, a); i < Math.min(pts.length, b); i++) {
+          const d = haversineM(p, { lat: pts[i][0], lon: pts[i][1] });
+          if (d < bd) { bd = d; best = i; }
+        }
+        return [best, bd];
+      };
+      let [i, d] = scanRange(st.idx - 10, st.idx + 200);
+      if (d > 80) [i, d] = scanRange(0, pts.length);
+      st.offRoute = d > 80;
+      if (!st.offRoute) {
+        st.idx = i;
+        st.progressKm = pts[i][2];
+        st.grade = routeGradeAt(st.progressKm);
+      }
+    }
+
+    // ---------- Textes d'annonces liés au parcours / GPS ----------
+    function fmtDistSpeech(km) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      if (km < 0.95) return `${Math.round(km * 10) * 100} ${en ? 'metres' : 'mètres'}`;
+      const v = (Math.round(km * 10) / 10).toString().replace('.', en ? '.' : ',');
+      return `${v} ${en ? (v === '1' ? 'kilometre' : 'kilometres') : (v === '1' ? 'kilomètre' : 'kilomètres')}`;
+    }
+    function climbAheadText(c) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      if (en) return `In 250 metres, ${c.type === 'up' ? 'climb' : 'descent'} of ${c.grade} percent over ${fmtDistSpeech(c.lenKm)}.`;
+      return `Dans 250 mètres, ${c.type === 'up' ? 'montée' : 'descente'} de ${c.grade} % sur ${fmtDistSpeech(c.lenKm)}.`;
+    }
+    function kmText(n) {
+      return appData.audioSettings.voiceLang === 'en' ? `Kilometre ${n}.` : `Kilomètre ${n}.`;
+    }
+    function vapText(v) {
+      const s = formatSpeed(roundHalf(v));
+      return appData.audioSettings.voiceLang === 'en' ? `Grade adjusted speed ${s}.` : `Allure ajustée à la pente : ${s.replace('.', ',')}.`;
+    }
+    function stageVapText(st) {
+      const v = vapKmh(parseFloat(st.speed) || 0, getActiveSession().pente || 0);
+      const s = formatSpeed(Math.round(v * 10) / 10);
+      return appData.audioSettings.voiceLang === 'en' ? `Flat equivalent ${s}.` : `Équivalent plat : ${s.replace('.', ',')}.`;
+    }
+    function treadmillVapWanted() {
+      const sess = getActiveSession();
+      return sensors().announceVap && sess.type !== 'exterieur' && Math.abs(sess.pente || 0) >= 1;
+    }
+    // Toutes les phrases « GPS / parcours » possibles pour cette séance (préparées en voix IA)
+    function gpsPieces() {
+      const out = [];
+      const t = VT();
+      if (treadmillVapWanted()) timerState.stages.forEach(st => { if (st.type === 'palier') out.push(stageVapText(st)); });
+      if (!gpsWanted()) return out;
+      if (sensors().paceAdvice) out.push(t.paceUp, t.paceDown, t.paceOk, t.climbEffort);
+      if (sensors().kmAnnounce) {
+        const est = Math.max(computeSessionDistanceKm(getActiveSession()), appData.route ? appData.route.totalKm : 0);
+        for (let n = 1; n <= Math.min(60, Math.ceil(est) + 2); n++) out.push(kmText(n));
+      }
+      if (sensors().announceVap) {
+        const sp = timerState.stages.map(s => parseFloat(s.speed) || 0);
+        const lo = Math.max(5, Math.floor(Math.min(...sp) - 2)), hi = Math.min(25, Math.ceil(Math.max(...sp) + 2));
+        for (let v = lo; v <= hi; v += 0.5) out.push(vapText(v));
+      }
+      if (appData.route) {
+        appData.route.climbs.forEach(c => out.push(climbAheadText(c)));
+        if (appData.route.climbs.length) out.push(t.climbStart, t.descentStart, t.climbTop);
+      }
+      if (sensors().fcMax) out.push(t.hrHigh);
+      return out;
+    }
+
+    // Annonces en direct basées sur les capteurs (appelé à chaque tick)
+    function sensorAnnouncements(cur, elapsedMs, remMs) {
+      if (!cur || isSpeaking() || remMs < 9500 || elapsedMs < 6000) return;
+      const now = Date.now();
+      const t = VT();
+      const s = sensors();
+      const g = runData.gps;
+      // Kilomètres parcourus
+      if (gpsWanted() && s.kmAnnounce && g.distKm >= runData.kmAnnounced + 1) {
+        runData.kmAnnounced = Math.floor(g.distKm);
+        speak([kmText(runData.kmAnnounced)]);
+        return;
+      }
+      // Parcours : ce qui arrive
+      const rt = runData.route;
+      if (appData.route && rt.progressKm !== null && !rt.offRoute) {
+        for (let i = 0; i < appData.route.climbs.length; i++) {
+          const c = appData.route.climbs[i];
+          const f = rt.flags[i] || (rt.flags[i] = {});
+          if (!f.ahead && rt.progressKm >= c.startKm - 0.27 && rt.progressKm < c.startKm) { f.ahead = true; speak([climbAheadText(c)]); return; }
+          if (!f.start && rt.progressKm >= c.startKm && rt.progressKm < c.startKm + 0.2) { f.start = f.ahead = true; speak([c.type === 'up' ? t.climbStart : t.descentStart]); return; }
+          if (c.type === 'up' && !f.top && rt.progressKm >= c.startKm + c.lenKm && rt.progressKm < c.startKm + c.lenKm + 0.2) { f.top = true; speak([t.climbTop]); return; }
+        }
+      }
+      // Cardio trop haut
+      if (s.fcMax && runData.hr && now - runData.hrAt < 5000 && now - runData.lastHrAt > 90000) {
+        const lim = cur.intensity === 'fast' ? 0.97 : 0.92;
+        if (runData.hr >= s.fcMax * lim) { runData.lastHrAt = now; speak([t.hrHigh]); return; }
+      }
+      // Allure : faut-il ajuster ?
+      if (gpsWanted() && s.paceAdvice && cur.type === 'palier' && g.speedKmh !== null && elapsedMs > 20000 && now - runData.lastPaceAt > 40000) {
+        const grade = rt.grade !== null && !rt.offRoute ? rt.grade : 0;
+        const eff = vapKmh(g.speedKmh, grade);
+        const diff = eff - (parseFloat(cur.speed) || 0);
+        // Même consigne que la précédente : on espace davantage pour ne pas harceler
+        const say = msg => {
+          if (msg === runData.lastPaceMsg && now - runData.lastPaceAt < 80000) return false;
+          runData.lastPaceAt = now; runData.lastPaceMsg = msg; speak([msg]); return true;
+        };
+        if (grade >= 4 && diff < -0.7) { if (say(t.climbEffort)) return; }
+        else if (diff < -0.7) { if (say(t.paceUp)) return; }
+        else if (diff > 0.7) { if (say(t.paceDown)) return; }
+        if (now - runData.lastPaceOkAt > 150000) { runData.lastPaceAt = runData.lastPaceOkAt = now; speak([t.paceOk]); return; }
+      }
+      // VAP à voix haute (extérieur) toutes les 2 min sur les segments longs
+      if (gpsWanted() && s.announceVap && g.speedKmh !== null && cur.durationSec >= 120 && now - runData.lastVapAt > 120000 && elapsedMs > 30000) {
+        runData.lastVapAt = now;
+        const grade = rt.grade !== null && !rt.offRoute ? rt.grade : 0;
+        speak([vapText(vapKmh(g.speedKmh, grade))]);
+      }
+    }
+
+    // ---------- Affichage en direct ----------
+    function updateLiveMetrics() {
+      const box = document.getElementById('liveMetrics');
+      if (!box) return;
+      const parts = [];
+      const now = Date.now();
+      if (runData.hr && now - runData.hrAt < 8000) parts.push(`<span class="text-rose-300">❤️ ${runData.hr}</span>`);
+      const sess = getActiveSession();
+      const cur = timerState.stages[timerState.currentStageIndex];
+      if (gpsWanted() && timerState.sessionStarted) {
+        const g = runData.gps;
+        if (g.err) parts.push(`<span class="text-amber-300">📍 ${g.err}</span>`);
+        else if (g.speedKmh === null) parts.push(`<span class="text-slate-400">📍 recherche GPS…</span>`);
+        else {
+          parts.push(`<span class="text-sky-300">📍 ${formatSpeed(Math.round(g.speedKmh * 10) / 10)} km/h • ${g.distKm.toFixed(2)} km</span>`);
+          const rt = runData.route;
+          const grade = appData.route && rt.progressKm !== null && !rt.offRoute ? rt.grade : 0;
+          if (grade) parts.push(`<span class="text-violet-300">VAP ${formatSpeed(Math.round(vapKmh(g.speedKmh, grade) * 10) / 10)}</span>`);
+        }
+        if (appData.route && runData.route.progressKm !== null) {
+          const rt = runData.route;
+          parts.push(rt.offRoute ? `<span class="text-amber-300">🗺️ hors parcours</span>`
+            : `<span class="text-emerald-300">🗺️ ${rt.progressKm.toFixed(1)}/${appData.route.totalKm.toFixed(1)} km${rt.grade ? ` • ${rt.grade > 0 ? '+' : ''}${Math.round(rt.grade)}%` : ''}</span>`);
+        }
+      } else if (cur && cur.type === 'palier' && sess.type !== 'exterieur' && Math.abs(sess.pente || 0) >= 1) {
+        parts.push(`<span class="text-violet-300">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, sess.pente) * 10) / 10)}</span>`);
+      }
+      box.innerHTML = parts.join('<span class="text-slate-600"> • </span>');
+      box.classList.toggle('hidden', !parts.length || !timerState.sessionStarted);
+    }
+
+    function runSummary() {
+      const out = {};
+      const hs = runData.hrSamples.map(x => x.hr);
+      if (hs.length >= 10) {
+        out.hrAvg = Math.round(hs.reduce((a, b) => a + b, 0) / hs.length);
+        out.hrMax = Math.max(...hs);
+      }
+      if (gpsWanted() && runData.gps.distKm > 0.05) {
+        out.distKm = Math.round(runData.gps.distKm * 100) / 100;
+        const min = (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
+        if (min > 1) out.avgKmh = Math.round(out.distKm / (min / 60) * 10) / 10;
+      }
+      return out;
+    }
+    function summaryText(sum) {
+      if (!sum) return '';
+      const p = [];
+      if (sum.distKm) p.push(`${sum.distKm} km`);
+      if (sum.avgKmh) p.push(`moy. ${formatSpeed(sum.avgKmh)} km/h`);
+      if (sum.hrAvg) p.push(`FC moy ${sum.hrAvg} / max ${sum.hrMax}`);
+      return p.join(' • ');
+    }
+
+    // ---------- Modale « Capteurs & parcours » ----------
+    function openSensorsModal() {
+      const s = sensors();
+      document.getElementById('gpsModeSelect').value = s.gpsMode;
+      document.getElementById('chkPaceAdvice').checked = !!s.paceAdvice;
+      document.getElementById('chkAnnounceVap').checked = !!s.announceVap;
+      document.getElementById('chkKmAnnounce').checked = !!s.kmAnnounce;
+      document.getElementById('fcMaxInput').value = s.fcMax || '';
+      if (!btDevice) setBtStatus(navigator.bluetooth ? 'Aucun capteur connecté' : "Bluetooth indisponible sur ce navigateur (Chrome Android + https requis)", !navigator.bluetooth);
+      renderRouteInfo();
+      document.getElementById('sensorsModal').classList.remove('hidden');
+      refreshAllIcons();
+    }
+    function closeSensorsModal() {
+      saveSensorsFromUI();
+      document.getElementById('sensorsModal').classList.add('hidden');
+      if (aiVoiceActive()) prepareAIVoice();
+    }
+    function saveSensorsFromUI() {
+      const s = sensors();
+      s.gpsMode = document.getElementById('gpsModeSelect').value || 'auto';
+      s.paceAdvice = document.getElementById('chkPaceAdvice').checked;
+      s.announceVap = document.getElementById('chkAnnounceVap').checked;
+      s.kmAnnounce = document.getElementById('chkKmAnnounce').checked;
+      const fc = parseInt(document.getElementById('fcMaxInput').value);
+      s.fcMax = fc >= 120 && fc <= 230 ? fc : null;
+      saveAppData();
+    }
+    async function testGps() {
+      if (!navigator.geolocation) { setGpsTestStatus('GPS indisponible', true); return; }
+      setGpsTestStatus('Recherche de la position…');
+      navigator.geolocation.getCurrentPosition(
+        p => setGpsTestStatus(`✓ Position trouvée (précision ${Math.round(p.coords.accuracy)} m)`),
+        e => setGpsTestStatus(e.code === 1 ? 'Localisation refusée : autorisez-la pour ce site' : 'Signal GPS indisponible', true),
+        { enableHighAccuracy: true, timeout: 20000 });
+    }
+    function setGpsTestStatus(t, err = false) {
+      const el = document.getElementById('gpsStatus');
+      if (el) { el.textContent = t; el.className = `text-[10px] font-semibold ${err ? 'text-rose-400' : 'text-sky-300'}`; }
+    }
+    function renderRouteInfo() {
+      const box = document.getElementById('routeInfo');
+      if (!box) return;
+      const r = appData.route;
+      if (!r) { box.innerHTML = '<span class="text-slate-500 text-[10px]">Aucun parcours chargé.</span>'; return; }
+      const W = 300, H = 70;
+      const prof = r.prof || [];
+      const min = Math.min(...prof), max = Math.max(...prof);
+      const span = Math.max(10, max - min);
+      const pt = (i, v) => `${(i / Math.max(1, prof.length - 1) * W).toFixed(1)},${(H - (v - min) / span * (H - 6) - 3).toFixed(1)}`;
+      const poly = prof.map((v, i) => pt(i, v)).join(' ');
+      const climbsSvg = r.climbs.filter(c => c.type === 'up').map(c => {
+        const x1 = c.startKm / r.totalKm * W, x2 = (c.startKm + c.lenKm) / r.totalKm * W;
+        return `<rect x="${x1.toFixed(1)}" y="0" width="${Math.max(1, x2 - x1).toFixed(1)}" height="${H}" fill="rgba(244,63,94,0.15)"></rect>`;
+      }).join('');
+      box.innerHTML = `
+        <div class="text-[11px] font-bold text-white">${r.name.replace(/</g, '&lt;')} — ${r.totalKm.toFixed(1)} km • D+ ${Math.round(r.gainM)} m • D- ${Math.round(r.lossM)} m</div>
+        ${r.hasEle ? `<svg viewBox="0 0 ${W} ${H}" class="w-full h-16 bg-slate-950 rounded-lg border border-slate-800" preserveAspectRatio="none">${climbsSvg}
+          <polyline points="${poly}" fill="none" stroke="#38bdf8" stroke-width="1.5"></polyline></svg>` : '<div class="text-[10px] text-amber-300">Pas d\'altitude dans ce fichier : pas d\'annonce de pente.</div>'}
+        <div class="text-[10px] text-slate-300 space-y-0.5">${r.climbs.length ? r.climbs.map(c =>
+          `<div>${c.type === 'up' ? '⛰️ Montée' : '↘️ Descente'} au km ${c.startKm.toFixed(1)} : ${c.grade}% sur ${c.lenKm < 1 ? Math.round(c.lenKm * 1000) + ' m' : c.lenKm.toFixed(1) + ' km'}</div>`).join('')
+          : '<div class="text-slate-500">Aucune côte marquée (≥ 3 %).</div>'}</div>`;
+    }
+
+    // ==================== FIN ANTICIPÉE ====================
+    function finishEarly() {
+      if (!timerState.sessionStarted || timerState.finished) return;
+      if (!confirm("Terminer la séance maintenant ? Elle sera enregistrée avec le temps réellement couru.")) return;
+      if (timerState.isRunning) tickTimerClock();
+      timerState.endedEarly = true;
+      handleSessionCompletion();
+    }
+
+    // ==================== ANALYSE IA DES DONNÉES DE LA MONTRE ====================
+    let valShots = [];
+    let lastAnalysis = '';
+    function resizeImageFile(file, maxSide = 1400) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * k);
+          c.height = Math.round(img.height * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image illisible')); };
+        img.src = url;
+      });
+    }
+    async function addWatchShots(input) {
+      const files = Array.from(input.files || []).slice(0, 6 - valShots.length);
+      input.value = '';
+      for (const f of files) {
+        try { valShots.push(await resizeImageFile(f)); } catch (e) { showToast(e.message); }
+      }
+      renderValShots();
+    }
+    function removeValShot(i) { valShots.splice(i, 1); renderValShots(); }
+    function renderValShots() {
+      const box = document.getElementById('valShots');
+      box.innerHTML = valShots.map((d, i) => `
+        <div class="relative">
+          <img src="${d}" class="w-16 h-16 object-cover rounded-lg border border-slate-700">
+          <button type="button" onclick="removeValShot(${i})" class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold">✕</button>
+        </div>`).join('');
+    }
+    function mdLite(t) {
+      return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+        .replace(/^#+\s*(.+)$/gm, '<strong class="text-sky-300">$1</strong>')
+        .replace(/^\s*[-*]\s+/gm, '• ')
+        .replace(/\n/g, '<br>');
+    }
+    async function analyzeSessionWithAI() {
+      const out = document.getElementById('valAnalysis');
+      if (!getGeminiKey()) { out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'analyse.</span>'; out.classList.remove('hidden'); return; }
+      const sess = getActiveSession();
+      const plannedMin = computeSessionTotalMin(sess);
+      const actualMin = valActualMinutes();
+      const sum = timerState.runSummary || runSummary();
+      const hist = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.summary ? ` ; ${summaryText(h.summary)}` : ''}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter((s, i) => i !== appData.activeSessionIndex).slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
+      const g = appData.goal || {};
+      const feelLbl = { green: 'bon', yellow: 'moyen', red: 'dur' }[selectedValidationFeeling] || selectedValidationFeeling;
+      const prompt = `Tu es un coach de course à pied expert. Analyse la séance que je viens de faire${valShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
+Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h.
+Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Séances précédentes :
+${hist}
+Prochaines séances du plan :
+${next}
+Réponds en français, en tutoyant, 230 mots maximum, avec exactement ces rubriques (titre en gras puis 1 à 3 phrases) :
+**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive… si visibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
+Si une donnée manque, dis-le simplement sans inventer.`;
+      out.classList.remove('hidden');
+      out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
+      try {
+        const parts = valShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
+        parts.push({ text: prompt });
+        lastAnalysis = await geminiText(parts);
+        out.innerHTML = mdLite(lastAnalysis);
+      } catch (e) {
+        out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
+      }
+    }
+    function valActualMinutes() {
+      if (timerState.finished && timerState.actualMs) return timerState.actualMs / 60000;
+      if (timerState.sessionStarted && timerState.totalSessionMs) return (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
+      return computeSessionTotalMin(getActiveSession());
+    }
+
     // ==================== MODE POCHE ====================
     let pocketHold = null;
     function enterPocketMode() {
@@ -4820,49 +5624,69 @@ Réponds uniquement avec le JSON.`;
       if (!dictation) return;
       try { dictation.stop(); } catch (e) {}
     }
+    // Dictée : une phrase à la fois, relancée automatiquement jusqu'à « Arrêter »
+    // (évite les doublons de texte de la reconnaissance vocale sur Android)
     async function toggleDictation() {
-      if (dictation) { stopDictation(); return; }
+      if (dictation) { dictation.userStop = true; stopDictation(); return; }
       cancelSpeech();
       const field = document.getElementById('valNoteInput');
-      const base = field.value.trim();
-      const join = t => [base, t].filter(Boolean).join(base && t ? ' ' : '');
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (SR) {
+      if (SR && !dictationForceRecorder) { startSpeechDictation(SR, field); return; }
+      startRecorderDictation(field);
+    }
+    let dictationForceRecorder = false;
+    function startSpeechDictation(SR, field) {
+      const state = { userStop: false, committed: field.value.trim(), rec: null, failed: false };
+      const appendText = (base, t) => (base && t) ? `${base}${/[.!?]$/.test(base) ? ' ' : ', '}${t}` : (base || t);
+      const startOne = () => {
         const rec = new SR();
         rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
-        rec.continuous = true;
+        rec.continuous = false;
         rec.interimResults = true;
-        let finalText = '';
+        rec.maxAlternatives = 1;
+        let phrase = '';
         rec.onresult = ev => {
-          let interim = '';
-          for (let i = ev.resultIndex; i < ev.results.length; i++) {
-            if (ev.results[i].isFinal) finalText += ev.results[i][0].transcript + ' ';
-            else interim += ev.results[i][0].transcript;
+          let fin = '', interim = '';
+          for (let i = 0; i < ev.results.length; i++) {
+            const tr = ev.results[i][0].transcript;
+            if (ev.results[i].isFinal) fin = tr; else interim = tr;
           }
-          field.value = join((finalText + interim).trim());
+          phrase = (fin || interim).trim();
+          field.value = appendText(state.committed, phrase);
         };
         rec.onerror = ev => {
-          if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') showToast("Micro refusé : autorisez-le dans le navigateur");
-          else if (ev.error !== 'no-speech' && ev.error !== 'aborted') showToast(`Dictée interrompue (${ev.error})`);
+          if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+          state.failed = true;
+          if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') showToast("Micro refusé : autorisez-le pour ce site dans Chrome");
+          else if (ev.error === 'network' && getGeminiKey()) {
+            showToast("Dictée Google indisponible : passage en enregistrement + transcription IA");
+            dictationForceRecorder = true;
+          } else showToast(`Dictée interrompue (${ev.error})`);
         };
+        let ended = false;
         rec.onend = () => {
+          if (ended) return; // certains navigateurs signalent la fin deux fois
+          ended = true;
+          if (phrase) state.committed = appendText(state.committed, capFirst(phrase));
+          field.value = state.committed;
+          if (!state.userStop && !state.failed) { try { startOne(); return; } catch (e) {} }
           dictation = null;
           setDictBtn(false);
-          if (finalText.trim()) field.value = join(capFirst(finalText.trim()));
+          if (dictationForceRecorder && state.failed) startRecorderDictation(field);
         };
-        dictation = rec;
-        setDictBtn(true);
-        try { rec.start(); } catch (e) { dictation = null; setDictBtn(false); }
-        return;
-      }
-
-      // Repli : enregistrement audio puis transcription par Gemini
+        state.rec = rec;
+        try { rec.start(); } catch (e) { state.failed = true; rec.onend(); }
+      };
+      dictation = { stop: () => { state.userStop = true; try { state.rec && state.rec.stop(); } catch (e) {} }, set userStop(v) { state.userStop = v; } };
+      setDictBtn(true);
+      startOne();
+    }
+    async function startRecorderDictation(field) {
       if (!navigator.mediaDevices || !window.MediaRecorder) { showToast("Dictée non prise en charge sur ce navigateur"); return; }
       if (!getGeminiKey()) { showToast("Dictée indisponible : renseignez la clé Gemini"); return; }
       let stream;
       try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-      catch (e) { showToast("Micro refusé : autorisez-le dans le navigateur"); return; }
+      catch (e) { showToast("Micro refusé : autorisez-le pour ce site dans Chrome"); return; }
       const chunks = [];
       const mr = new MediaRecorder(stream);
       mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
@@ -4877,14 +5701,15 @@ Réponds uniquement avec le JSON.`;
             { inline_data: { mime_type: (blob.type || 'audio/webm').split(';')[0], data: b64 } },
             { text: "Transcris fidèlement ce commentaire de fin de séance de course à pied, sans rien ajouter. Réponds uniquement avec le texte transcrit." }
           ]);
-          field.value = join(txt.trim());
+          const base = field.value.trim();
+          field.value = [base, txt.trim()].filter(Boolean).join(' ');
         } catch (e) {
           showToast(`Transcription impossible : ${e.message || e}`);
         }
         setDictBtn(false);
       };
-      dictation = mr;
-      setDictBtn(true);
+      dictation = { stop: () => { try { mr.state !== 'inactive' && mr.stop(); } catch (e) {} }, userStop: true };
+      setDictBtn(true, '⏹ Arrêter (enreg.)');
       mr.start();
     }
 
