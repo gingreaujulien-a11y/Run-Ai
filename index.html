@@ -835,7 +835,7 @@
         </div>
         <label class="flex items-center justify-between text-[10px] text-slate-300">Conseils d'allure (accélère / ralentis)<input type="checkbox" id="chkPaceAdvice" class="accent-sky-500 w-4 h-4"></label>
         <label class="flex items-center justify-between text-[10px] text-slate-300">Annoncer la VAP (vitesse ajustée à la pente)<input type="checkbox" id="chkAnnounceVap" class="accent-sky-500 w-4 h-4"></label>
-        <label class="flex items-center justify-between text-[10px] text-slate-300">Annoncer chaque kilomètre<input type="checkbox" id="chkKmAnnounce" class="accent-sky-500 w-4 h-4"></label>
+        <label class="flex items-center justify-between text-[10px] text-slate-300">Bilan à chaque km (vitesse, cardio, rythme, forme)<input type="checkbox" id="chkKmAnnounce" class="accent-sky-500 w-4 h-4"></label>
         <button onclick="testGps()" class="w-full py-2 bg-sky-500/20 border border-sky-500/40 text-sky-200 font-bold rounded-lg text-[11px]">Tester le GPS</button>
         <div id="gpsStatus" class="text-[10px] font-semibold text-slate-400"></div>
         <p class="text-[9px] text-slate-500">Le GPS ne fonctionne qu'écran allumé : utilisez le 🌙 mode poche plutôt que de verrouiller. Sur tapis, la VAP est calculée avec la pente réglée.</p>
@@ -945,10 +945,10 @@
             <input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Rappels boire / manger (séances longues)</span>
+            <span class="text-[11px] font-bold text-slate-300">Rappels boire (chaque km) / manger (45 min)</span>
             <input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
           </div>
-          <p class="text-[9px] text-slate-400">Au-delà de 40 min : boire toutes les 20 min. Au-delà de 75 min : un gel vers 45 min puis toutes les 40 min.</p>
+          <p class="text-[9px] text-slate-400">Boire à chaque kilomètre (annoncé avec le bilan du km) et manger toutes les 45 min.</p>
         </div>
 
         <!-- Voix IA Gemini -->
@@ -2012,7 +2012,7 @@
         gpsPieces().forEach(x => set.add(x));
         if (fuelRemindersOn()) {
           const pl = fuelPlanForMinutes(timerState.totalSessionMs / 60000);
-          if (pl.some(x => x.kind === 'drink')) t.drink.forEach(x => set.add(x));
+          t.drink.forEach(x => set.add(x)); // utilisé écran verrouillé (km estimés)
           if (pl.some(x => x.kind === 'fuel')) t.fuel.forEach(x => set.add(x));
         }
         if (appData.audioSettings.encouragements !== false) {
@@ -2658,27 +2658,26 @@
         dec: ',',
         paceUp: "Tu es un peu en dessous, accélère légèrement.", paceDown: "Tu vas un peu vite, ralentis légèrement.",
         paceOk: "Allure parfaite, continue comme ça.", climbEffort: "En montée, garde l'effort plutôt que la vitesse.",
-        drink: ["Pense à boire quelques gorgées d'eau.", "Petit rappel hydratation : bois un peu, sans attendre la soif."],
-        fuel: ["C'est le moment de prendre un gel ou une pâte de fruits, avec quelques gorgées d'eau."],
+        drink: ["Pense à boire quelques gorgées.", "Hydratation : bois un peu.", "Petite gorgée d'eau."],
+        fuel: ["C'est le moment de manger : un gel ou une pâte de fruits, avec un peu d'eau."],
         turnSoonR: "Dans 100 mètres, tourne à droite.", turnSoonL: "Dans 100 mètres, tourne à gauche.",
         turnNowR: "Tourne à droite.", turnNowL: "Tourne à gauche.",
         sharpSoonR: "Dans 100 mètres, virage serré à droite.", sharpSoonL: "Dans 100 mètres, virage serré à gauche.",
         sharpNowR: "Virage serré à droite.", sharpNowL: "Virage serré à gauche.",
         offRoute: "Attention, tu t'éloignes du parcours.", backOnRoute: "C'est bon, tu es de retour sur le parcours.",
-        climbStart: "Début de la montée, raccourcis la foulée.", descentStart: "Descente, relâche-toi et laisse rouler.",
+        climbStart: "Début de la montée, garde un effort régulier.", descentStart: "Descente, laisse rouler sans forcer.",
         climbTop: "Sommet ! Relance progressivement.", hrHigh: "Ton cardio est très haut, relâche un peu.",
         tips: [
-          "Pense à ta cadence : petits pas rapides.",
-          "Regarde loin devant, nuque détendue.",
-          "Respire par le ventre et expire bien à fond.",
-          "Mains souples, comme si tu tenais une chips.",
-          "Vérifie tes épaules : basses et relâchées.",
-          "Pose le pied sous ton centre de gravité.",
-          "Reste dans ta bulle, une minute après l'autre."
+          "Reste dans ta bulle, une minute après l'autre.",
+          "Garde une allure régulière, c'est elle qui fait la séance.",
+          "Écoute tes sensations : l'effort doit rester contrôlé.",
+          "Pense à ton objectif, chaque séance t'en rapproche.",
+          "Gère ton énergie, la fin de séance se prépare maintenant.",
+          "Tu es exactement là où tu dois être, continue."
         ],
         tipsEnd: [
-          "Dernière partie de séance : reste concentré sur ta technique.",
-          "La fatigue arrive, garde une foulée propre."
+          "Dernière partie de séance : reste concentré, c'est là que tu progresses.",
+          "La fatigue arrive, tiens le rythme, tu y es presque."
         ],
         lastBloc: "Dernier bloc, on donne tout !", lastRep: "Dernière répétition !", twoReps: "Plus que deux répétitions.",
         peak: "C'est le sommet, profites-en !", sessionHalf: "Tu as fait la moitié de la séance, bravo !",
@@ -2700,10 +2699,8 @@
           "Allez, on lâche rien !",
           "Belle foulée, continue comme ça !",
           "Reste solide, tu gères !",
-          "Relâche les épaules, ça passe !",
           "Super, garde cette allure !",
           "Accroche-toi, c'est du bon boulot !",
-          "Appuis légers, regard droit devant !",
           "Respire en rythme, tu es dans le bon tempo !",
           "C'est exactement l'allure qu'il faut, continue !"
         ],
@@ -2715,15 +2712,15 @@
           "Encore un petit peu, tu y es presque !"
         ],
         hill: [
-          "Petits pas, et pousse avec les bras !",
-          "Garde le buste droit, la côte passe !",
-          "Raccourcis la foulée, reste régulier !"
+          "Belle côte, garde l'effort régulier !",
+          "La montée passe, ne force pas sur la vitesse !",
+          "Tiens l'effort, le sommet approche !"
         ],
         easy: [
           "On récupère, souffle un coup.",
           "Respire profondément, laisse redescendre le cœur.",
-          "Détends les bras, profite de ce moment.",
-          "Relâche les épaules et respire tranquillement.",
+          "Profite de ce moment pour récupérer.",
+          "Laisse le cœur redescendre tranquillement.",
           "Profite de la récup pour bien respirer.",
           "Une petite gorgée d'eau si besoin.",
           "Récupère bien, la suite arrive."
@@ -2744,27 +2741,26 @@
         dec: '.',
         paceUp: "You're a little slow, pick it up slightly.", paceDown: "You're a bit fast, ease off slightly.",
         paceOk: "Perfect pace, keep it up.", climbEffort: "On the climb, hold the effort rather than the speed.",
-        drink: ["Time to drink a few sips of water.", "Hydration reminder: drink a little, before you get thirsty."],
-        fuel: ["Time to take a gel or some chews, with a few sips of water."],
+        drink: ["Take a few sips of water.", "Hydration: drink a little.", "Small sip of water."],
+        fuel: ["Time to eat: a gel or some chews, with a little water."],
         turnSoonR: "In 100 metres, turn right.", turnSoonL: "In 100 metres, turn left.",
         turnNowR: "Turn right.", turnNowL: "Turn left.",
         sharpSoonR: "In 100 metres, sharp right turn.", sharpSoonL: "In 100 metres, sharp left turn.",
         sharpNowR: "Sharp right.", sharpNowL: "Sharp left.",
         offRoute: "Careful, you're leaving the route.", backOnRoute: "Good, you're back on the route.",
-        climbStart: "Climb starting, shorten your stride.", descentStart: "Downhill, relax and let it roll.",
+        climbStart: "Climb starting, keep a steady effort.", descentStart: "Downhill, let it roll without forcing.",
         climbTop: "Top of the hill! Build back up gradually.", hrHigh: "Your heart rate is very high, ease off a little.",
         tips: [
-          "Think about cadence: quick, short steps.",
-          "Look far ahead, keep your neck relaxed.",
-          "Breathe from your belly and exhale fully.",
-          "Soft hands, as if holding a crisp.",
-          "Check your shoulders: low and relaxed.",
-          "Land with your foot under your hips.",
-          "Stay in your bubble, one minute at a time."
+          "Stay in your bubble, one minute at a time.",
+          "Keep a steady pace, that's what makes the session.",
+          "Listen to your body: the effort should stay controlled.",
+          "Think of your goal, every session brings you closer.",
+          "Manage your energy, the end of the session starts now.",
+          "You're exactly where you need to be, keep going."
         ],
         tipsEnd: [
-          "Last part of the session: focus on your form.",
-          "Fatigue is coming, keep your stride clean."
+          "Last part of the session: stay focused, this is where you improve.",
+          "Fatigue is coming, hold the pace, you're nearly there."
         ],
         lastBloc: "Last block, give it everything!", lastRep: "Last repetition!", twoReps: "Two repetitions left.",
         peak: "This is the peak, enjoy it!", sessionHalf: "You're halfway through the session, well done!",
@@ -2786,10 +2782,8 @@
           "Come on, don't give up now!",
           "Great stride, keep it going!",
           "Stay strong, you've got this!",
-          "Relax your shoulders and push through!",
           "Excellent, hold this pace!",
           "Hang in there, great work!",
-          "Light feet, eyes forward!",
           "Breathe in rhythm, you're right on pace!"
         ],
         push: [
@@ -2800,18 +2794,18 @@
           "A little bit more, you've nearly got it!"
         ],
         hill: [
-          "Short steps, drive with your arms!",
-          "Keep your chest up, you've got this hill!",
-          "Shorten your stride and stay steady!"
+          "Nice hill, keep the effort steady!",
+          "The climb will pass, don't chase the speed!",
+          "Hold the effort, the top is coming!"
         ],
         easy: [
           "Time to recover, take a breath.",
-          "Relax your shoulders and breathe easy.",
+          "Let your heart rate come down gently.",
           "Use this recovery to breathe deeply.",
           "Grab a sip of water if you need it.",
           "Recover well, the next one is coming.",
           "Breathe deeply and let your heart rate settle.",
-          "Relax your arms and enjoy this moment."
+          "Enjoy this moment to recover."
         ],
         styles: {
           coach: "energetic and motivating sports coach, natural and warm tone",
@@ -2874,9 +2868,9 @@
         if (st.durationSec >= 20) p.push({ t: 7000, kind: 'easy' });
         if (st.durationSec >= 120) p.push({ t: 0.6 * d, kind: 'easy' });
       }
-      // Segments longs : conseils de coach réguliers (environ toutes les 90 s)
-      if (st.durationSec >= 150) {
-        for (let x = 45000; x < d - 30000; x += 90000) {
+      // Segments longs : un conseil du coach toutes les 5 min (première à 2 min)
+      if (st.durationSec >= 180) {
+        for (let x = 120000; x < d - 30000; x += 300000) {
           if (!p.some(q => Math.abs(q.t - x) < 20000)) p.push({ t: x, kind: 'tip' });
         }
       }
@@ -3023,6 +3017,7 @@
       if (fresh) {
         lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
         resetRunData();
+        timerState.hrModel = buildHrModel();
       }
       if (gpsWanted()) startGps();
       speak(startPieces(cur, fresh), { chime: true });
@@ -3178,6 +3173,7 @@
       }
 
       routeNavAnnouncements();
+      checkKmSummary(remMs);
       sensorAnnouncements(curStage, elapsedMs, remMs);
 
       sampleTrack();
@@ -4299,7 +4295,7 @@
     let coachTipFetching = null;
 
     function coachTipSignature(sess) {
-      return JSON.stringify([appData.audioSettings.voiceLang || 'fr', sess.id, sess.semaine, sess.dateISO, sess.pente, sess.chauffe, sess.recup,
+      return JSON.stringify(['v2', appData.audioSettings.voiceLang || 'fr', sess.id, sess.semaine, sess.dateISO, sess.pente, sess.chauffe, sess.recup,
         sess.repet, sess.nbBlocs, sess.recupBloc, sess.vitRecupBloc, (sess.pyramide || []).map(p => [p.speed, round2(p.duration)])]);
     }
 
@@ -4362,12 +4358,12 @@
       const hist = (appData.history || []).slice(0, 4).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
       const g = appData.goal || {};
       const prompt = `Tu es un coach de course à pied bienveillant et précis. Donne UN conseil personnalisé pour la séance de tapis ci-dessous, qui sera lu à voix haute juste avant de commencer.
-Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant'} ; 2 ou 3 phrases courtes, 45 mots maximum ; style parlé et naturel ; pas d'emoji, pas de liste, pas de markdown ; les vitesses sont en km/h mais n'écris pas « km/h » ; donne un conseil concret (gestion de l'allure, posture, respiration, hydratation, ressenti récent)${fuelPlanText(sess) ? ` ; rappelle en quelques mots le plan d'hydratation/alimentation prévu : ${fuelPlanText(sess).replace(/[💧🍬]/g, '')}` : ''}.
+Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant'} ; 2 ou 3 phrases courtes, 45 mots maximum ; style parlé et naturel ; pas d'emoji, pas de liste, pas de markdown ; les vitesses sont en km/h mais n'écris pas « km/h » ; donne un conseil concret (gestion de l'allure et de l'effort, mental, hydratation, ressenti récent ; pas de conseil de posture ni de technique)${fuelPlanText(sess) ? ` ; rappelle en quelques mots le plan d'hydratation/alimentation prévu : ${fuelPlanText(sess).replace(/[💧🍬]/g, '')}` : ''}.
 Séance : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; durée ${Math.round(computeSessionTotalMin(sess))} min ; distance ≈ ${computeSessionDistanceKm(sess).toFixed(1)} km ; pente ${sess.pente} %${sess.notes ? ` ; notes du plan : ${sess.notes}` : ''}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Dernières séances :
 ${hist}
-Ajoute aussi 6 conseils très courts (12 mots maximum chacun, même langue, même style parlé) à dire PENDANT les longs segments de CETTE séance : adaptés aux vitesses, à la pente, aux blocs, au ressenti récent et à l'objectif (gestion de l'effort, technique, respiration, mental, hydratation).
+Ajoute aussi 6 conseils très courts (12 mots maximum chacun, même langue, même style parlé) à dire PENDANT les longs segments de CETTE séance : adaptés aux vitesses, à la pente, aux blocs, au ressenti récent et à l'objectif (gestion de l'effort et de l'allure, mental, objectif, ressenti ; JAMAIS de conseil de posture, de technique ni d'hydratation).
 Réponds uniquement en JSON : {"conseil": "...", "conseils_course": ["...", "..."]}`;
 
       const p = (async () => {
@@ -4872,6 +4868,21 @@ Réponds uniquement avec le JSON.`;
         const at = p.at / 1000 - doneBefore - nowElapsed;
         if (at > 0) ev.push({ t: at, pieces: [pickNoRepeat(p.kind)], fixed: false, kind: p.kind });
       });
+      // Écran verrouillé : « bois » à chaque km estimé d'après les vitesses prévues
+      if (fuelRemindersOn() && !opts.noDrink) {
+        let d = kmDistanceNow(), tt = 0, next = Math.floor(d) + 1;
+        for (let i = idx; i < stages.length; i++) {
+          const v = parseFloat(stages[i].speed) || 0;
+          let left = i === idx ? timerState.stageRemainingMs / 1000 : stages[i].durationSec;
+          while (v > 0 && d + v * left / 3600 >= next) {
+            const dt = (next - d) / v * 3600;
+            tt += dt; left -= dt; d = next;
+            ev.push({ t: tt, pieces: [pickNoRepeat('drink')], fixed: false, kind: 'drink' });
+            next++;
+          }
+          d += v * left / 3600; tt += left;
+        }
+      }
 
       // Placement sans chevauchement : les annonces à heure fixe d'abord, les autres se décalent (4 s max) ou sautent
       const placed = [];
@@ -5091,6 +5102,10 @@ Réponds uniquement avec le JSON.`;
     function resetRunData() {
       runData.hrSamples = [];
       runData.track = [];
+      runData.kmStartAt = 0;
+      runData.kmStartIdx = 0;
+      runData.kmStartEle = null;
+      runData.kmPending = null;
       runData.lastSampleAt = 0;
       runData.tmKm = 0;
       runData.gps.alt = null;
@@ -5554,10 +5569,6 @@ Réponds uniquement avec le JSON.`;
       if (treadmillVapWanted()) timerState.stages.forEach(st => { if (st.type === 'palier') out.push(stageVapText(st)); });
       if (!gpsWanted()) return out;
       if (sensors().paceAdvice) out.push(t.paceUp, t.paceDown, t.paceOk, t.climbEffort);
-      if (sensors().kmAnnounce) {
-        const est = Math.max(computeSessionDistanceKm(getActiveSession()), activeRoute() ? activeRoute().totalKm : 0);
-        for (let n = 1; n <= Math.min(60, Math.ceil(est) + 2); n++) out.push(kmText(n));
-      }
       if (sensors().announceVap) {
         const sp = timerState.stages.map(s => parseFloat(s.speed) || 0);
         const lo = Math.max(5, Math.floor(Math.min(...sp) - 2)), hi = Math.min(25, Math.ceil(Math.max(...sp) + 2));
@@ -5580,12 +5591,6 @@ Réponds uniquement avec le JSON.`;
       const t = VT();
       const s = sensors();
       const g = runData.gps;
-      // Kilomètres parcourus
-      if (gpsWanted() && s.kmAnnounce && g.distKm >= runData.kmAnnounced + 1) {
-        runData.kmAnnounced = Math.floor(g.distKm);
-        speak([kmText(runData.kmAnnounced)]);
-        return;
-      }
       // Parcours : ce qui arrive
       const rt = runData.route;
       if (activeRoute() && rt.progressKm !== null && !rt.offRoute) {
@@ -5906,23 +5911,136 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       }
     }
 
+    // ==================== BILAN À CHAQUE KILOMÈTRE ====================
+    // Modèle « cardio attendu selon la vitesse », appris sur les séances enregistrées (régression simple)
+    function buildHrModel() {
+      const xs = [], ys = [];
+      (appData.history || []).slice(0, 8).forEach(h => (h.track || []).forEach((r, i) => {
+        if (i >= 36 && r[1] && r[2]) { xs.push(r[2]); ys.push(r[1]); } // on ignore les 3 premières minutes
+      }));
+      if (xs.length < 60) return null;
+      const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+      const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+      let sxx = 0, sxy = 0;
+      xs.forEach((x, i) => { sxx += (x - mx) * (x - mx); sxy += (x - mx) * (ys[i] - my); });
+      let b = sxx / xs.length > 0.6 ? sxy / sxx : 6; // peu d'écart de vitesses : pente typique
+      b = Math.min(12, Math.max(3, b));
+      return { a: my - b * mx, b, n: xs.length };
+    }
+
+    function kmDistanceNow() {
+      return gpsWanted() ? (runData.gps.distKm || 0) : (runData.tmKm || 0);
+    }
+    function measuredSpeed() {
+      // Vitesse vraiment mesurée (GPS ou capteur de foulée) ; sur tapis sans capteur, la vitesse est celle réglée
+      return gpsWanted() || (runData.rsc && Date.now() - runData.rsc.at < 8000);
+    }
+
+    function checkKmSummary(remMs) {
+      if (!sensors().kmAnnounce && !fuelRemindersOn()) return;
+      const now = Date.now();
+      if (!runData.kmStartAt) { runData.kmStartAt = now; runData.kmStartIdx = runData.track.length; runData.kmStartEle = currentEle(); }
+      const dist = kmDistanceNow();
+      if (dist >= runData.kmAnnounced + 1) {
+        const n = Math.floor(dist);
+        const count = n - runData.kmAnnounced;
+        const secs = Math.max(30, (now - runData.kmStartAt) / 1000);
+        const avgKmh = count / (secs / 3600);
+        const hrs = runData.hrSamples.filter(x => x.t >= runData.kmStartAt).map(x => x.hr);
+        const hr = hrs.length >= 5 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null;
+        const samples = runData.track.slice(runData.kmStartIdx);
+        const tg = samples.map(r => parseFloat((timerState.stages[r[3]] || {}).speed) || 0).filter(Boolean);
+        const target = tg.length ? tg.reduce((a, b) => a + b, 0) / tg.length : (parseFloat((timerState.stages[timerState.currentStageIndex] || {}).speed) || 0);
+        const e1 = currentEle();
+        const grade = (runData.kmStartEle !== null && e1 !== null) ? (e1 - runData.kmStartEle) / (10 * count) : 0;
+        runData.kmPending = { n, avgKmh, hr, target, grade, measured: measuredSpeed(), at: now };
+        runData.kmAnnounced = n;
+        runData.kmStartAt = now;
+        runData.kmStartIdx = runData.track.length;
+        runData.kmStartEle = e1;
+      }
+      const p = runData.kmPending;
+      if (!p) return;
+      // On parle hors compte à rebours ; on n'attend pas plus de 40 s
+      if ((remMs > 8500 && !isSpeaking()) || now - p.at > 40000) {
+        runData.kmPending = null;
+        speakLive(kmSummaryText(p));
+      }
+    }
+
+    function currentEle() {
+      const r = activeRoute();
+      if (r && runData.route.progressKm !== null && !runData.route.offRoute && r.prof && r.prof.length) {
+        return r.prof[Math.max(0, Math.min(r.prof.length - 1, Math.round(runData.route.progressKm / 0.05)))];
+      }
+      return runData.gps.alt !== null && runData.gps.alt !== undefined ? runData.gps.alt : null;
+    }
+
+    function kmSummaryText(p) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      const sp = v => formatSpeed(Math.round(v * 10) / 10).replace('.', en ? '.' : ',');
+      const parts = [];
+      if (sensors().kmAnnounce) {
+        parts.push(en ? `Kilometre ${p.n}: average ${sp(p.avgKmh)}${p.hr ? `, heart rate ${p.hr}` : ''}.`
+                      : `Kilomètre ${p.n} : moyenne ${sp(p.avgKmh)}${p.hr ? `, cardio ${p.hr}` : ''}.`);
+        // Rythme (seulement si la vitesse est vraiment mesurée)
+        if (p.measured && p.target) {
+          const eff = vapKmh(p.avgKmh, p.grade || 0);
+          const diff = eff - p.target;
+          if (Math.abs(diff) <= 0.4) parts.push(en ? "You're right on pace." : "Tu es pile dans le rythme.");
+          else if (diff < 0) parts.push((p.grade || 0) >= 3
+            ? (en ? "Slightly under target, normal on this climb." : "Un peu en dessous, c'est normal avec cette montée.")
+            : (en ? `A bit below target pace, aim for ${sp(p.target)}.` : `Un peu en dessous du rythme prévu, vise ${sp(p.target)}.`));
+          else parts.push(en ? "A bit faster than planned, keep some margin." : "Un peu plus rapide que prévu, garde de la marge.");
+        }
+        // Forme : cardio comparé à celui habituel pour cette vitesse
+        if (p.hr) {
+          const m = timerState.hrModel;
+          const eff = vapKmh(p.avgKmh, p.grade || 0);
+          if (m) {
+            const d = p.hr - (m.a + m.b * eff);
+            if (d <= -4) parts.push(en ? "Low heart rate for this pace: you're in good shape!" : "Cardio bas pour cette allure : tu es en forme !");
+            else if (d >= 5) parts.push(en ? "Heart rate a bit high for this pace, you seem tired today, manage your effort." : "Cardio un peu haut pour cette allure, tu sembles moins en forme aujourd'hui, gère ton effort.");
+            else parts.push(en ? "Normal heart rate for this pace, good form." : "Cardio normal pour cette allure, bonne forme.");
+          } else if (sensors().fcMax) {
+            const r = p.hr / sensors().fcMax;
+            if (r >= 0.9) parts.push(en ? "Heart rate high, stay careful." : "Cardio élevé, reste vigilant.");
+            else if (r <= 0.8) parts.push(en ? "Heart rate under control." : "Cardio bien maîtrisé.");
+          }
+        }
+      }
+      if (fuelRemindersOn()) parts.push(pickNoRepeat('drink'));
+      return parts.join(' ');
+    }
+
+    // Annonce dont le texte change à chaque fois (chiffres) : voix IA générée sur le moment (Flash-Lite), sinon voix du téléphone
+    async function speakLive(text) {
+      if (tl.active || !text) return;
+      if (aiVoiceActive()) {
+        const k = aiClipKey(text);
+        if (!aiClips.has(k)) {
+          try {
+            const clip = await Promise.race([aiFetchClip(text), sleep(7000).then(() => null)]);
+            if (clip) aiClips.set(k, clip);
+          } catch (e) {}
+        }
+        if (aiClips.has(k)) { speak([text]); return; }
+      }
+      if (!tl.active) systemSpeak(text);
+    }
+
     // ==================== HYDRATATION & ALIMENTATION ====================
     // Repères classiques : boire toutes les ~20 min au-delà de 40 min d'effort ; un gel vers 45 min puis toutes les 40 min au-delà de 75 min
+    // Manger toutes les 45 min (boire : à chaque kilomètre, avec le bilan du km)
     function fuelPlanForMinutes(totalMin) {
       const plan = [];
-      if (totalMin >= 75) for (let m = 45; m <= totalMin - 10; m += 40) plan.push({ atMin: m, kind: 'fuel' });
-      if (totalMin >= 40) for (let m = 20; m <= totalMin - 8; m += 20) {
-        if (!plan.some(p => Math.abs(p.atMin - m) < 6)) plan.push({ atMin: m, kind: 'drink' });
-      }
-      return plan.sort((a, b) => a.atMin - b.atMin);
+      for (let m = 45; m <= totalMin - 5; m += 45) plan.push({ atMin: m, kind: 'fuel' });
+      return plan;
     }
     function fuelPlanText(sess) {
       const total = computeSessionTotalMin(sess);
-      const plan = fuelPlanForMinutes(total);
-      if (!plan.length) return '';
-      const drinks = plan.filter(p => p.kind === 'drink').map(p => `${p.atMin}'`);
-      const fuels = plan.filter(p => p.kind === 'fuel').map(p => `${p.atMin}'`);
-      return [drinks.length ? `💧 boire à ${drinks.join(', ')}` : '', fuels.length ? `🍬 gel à ${fuels.join(', ')}` : ''].filter(Boolean).join(' • ');
+      const fuels = fuelPlanForMinutes(total).map(p => `${p.atMin}'`);
+      return ['💧 boire à chaque km', fuels.length ? `🍬 manger à ${fuels.join(', ')}` : ''].filter(Boolean).join(' • ');
     }
     function fuelRemindersOn() { return appData.audioSettings.fuelReminders !== false; }
     function buildFuelSchedule() {
@@ -6094,7 +6212,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
         recomputeTotalRemaining();
         buildFuelSchedule();
         if (stages[0]) rows.push({ t: 0, pieces: startPieces(stages[0], true) });
-        buildAnnouncementTimeline({ estimate: true, withFuel: true }).forEach(p => rows.push({ t: p.t0, pieces: p.e.pieces }));
+        buildAnnouncementTimeline({ estimate: true, withFuel: true, noDrink: true }).forEach(p => rows.push({ t: p.t0, pieces: p.e.pieces }));
       } finally {
         timerState.currentStageIndex = saved.idx;
         timerState.stageRemainingMs = saved.rem;
@@ -6121,8 +6239,16 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       const outdoor = getActiveSession().type === 'exterieur' || sensors().gpsMode === 'on';
       const r = activeRoute();
       const t = VT();
+      // Bilan de chaque km (calculé en direct pendant la course)
+      if (sensors().kmAnnounce || fuelRemindersOn()) for (let n = 1; n <= totalKm; n++) {
+        const tm = timeAtKm(n);
+        if (tm === null) continue;
+        const bits = [];
+        if (sensors().kmAnnounce) bits.push(`Kilomètre ${n} : moyenne du km${sensors().btId || runData.hr ? ', cardio moyen' : ''}, rythme et forme (chiffres réels annoncés en direct).`);
+        if (fuelRemindersOn()) bits.push(pickNoRepeat('drink'));
+        rows.push({ t: tm, pieces: [bits.join(' ')], gps: true, live: true });
+      }
       if (outdoor && sensors().gpsMode !== 'off') {
-        if (sensors().kmAnnounce) for (let n = 1; n <= totalKm; n++) { const tm = timeAtKm(n); if (tm !== null) rows.push({ t: tm, pieces: [kmText(n)], gps: true }); }
         if (r) {
           (r.turns || []).forEach(tu => {
             const a = timeAtKm(tu.km - 0.1), b = timeAtKm(tu.km - 0.015);
