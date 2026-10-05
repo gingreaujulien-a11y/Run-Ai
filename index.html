@@ -215,7 +215,9 @@
       <div class="text-[10px] uppercase tracking-widest font-bold text-sky-300">Séance chargée</div>
       <div id="homeSessTitle" class="text-lg font-black text-white"></div>
       <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
+      <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeSessDesc" class="text-[11px] text-slate-300"></div>
+      <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">LANCER LA SÉANCE</span>
       </button>
@@ -423,6 +425,7 @@
         </div>
       </div>
 
+      <button onclick="openScriptModal()" class="w-full mt-2 py-2.5 bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/50 text-purple-100 font-bold rounded-xl text-xs">🧪 Tester les annonces de la séance (script)</button>
       <div class="pt-3 border-t border-slate-800 flex gap-2">
         <button onclick="saveActiveSessionConfig()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
           Enregistrer & Charger
@@ -648,6 +651,7 @@
         <span id="valSessDetails" class="text-[10px] text-slate-400 font-mono">Pente 1% • Durée 33.0'</span>
         <span id="valSummary" class="block text-[10px] text-rose-300 font-mono mt-0.5 hidden"></span>
       </div>
+      <div id="valRunData"></div>
 
       <div>
         <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1.5 text-center">Ressenti de l'effort :</label>
@@ -807,7 +811,7 @@
 
       <div class="bg-slate-950 p-2.5 rounded-xl border border-rose-500/30 space-y-2">
         <span class="font-bold text-rose-300 block">❤️ Cardio (montre ou ceinture Bluetooth)</span>
-        <p class="text-[10px] text-slate-400">Garmin : activez « Diffuser la fréquence cardiaque » sur la montre. Fonctionne aussi avec Polar, Coros, Suunto, ceintures et capteurs de foulée Bluetooth.</p>
+        <p class="text-[10px] text-slate-400">Garmin : activez « Diffuser la fréquence cardiaque », ou mieux « Diffuser pendant l'activité » (la montre émet alors dès que vous lancez une course). Une fois autorisée, la montre se reconnecte seule à l'ouverture de l'app quand le navigateur le permet. Fonctionne aussi avec Polar, Coros, Suunto, ceintures et capteurs de foulée Bluetooth.</p>
         <div class="grid grid-cols-2 gap-2">
           <button onclick="connectHeartRate()" class="py-2 bg-rose-600 text-white font-bold rounded-lg text-[11px]">Connecter</button>
           <button onclick="disconnectHeartRate()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Déconnecter</button>
@@ -840,6 +844,24 @@
       <p class="text-[10px] text-slate-400">🗺️ Le parcours GPX s'importe maintenant dans les paramètres de chaque séance.</p>
 
       <button onclick="closeSensorsModal()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Enregistrer</button>
+    </div>
+  </div>
+
+  <div id="scriptModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md p-4 shadow-2xl flex flex-col gap-3" style="max-height:92vh">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <span class="text-base font-bold text-white block">🧪 Script de la séance</span>
+          <span id="scriptInfo" class="text-[10px] text-slate-400"></span>
+        </div>
+        <button onclick="closeScriptModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><span class="icon-slot" data-icon="x"></span></button>
+      </div>
+      <p class="text-[10px] text-slate-400">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
+      <div id="scriptList" class="flex-1 overflow-y-auto custom-scroll pr-1 min-h-0"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button id="scriptPlayBtn" onclick="playAllScript()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs">▶ Tout écouter</button>
+        <button onclick="closeScriptModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-xs">Fermer</button>
+      </div>
     </div>
   </div>
 
@@ -894,6 +916,16 @@
           📲 Ajouter l'application à l'écran d'accueil
         </button>
 
+        <!-- Stockage & consommation -->
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-300">💾 Stockage & 💶 consommation IA</span>
+            <button onclick="computeStorageUsage(); renderUsageInfo()" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-bold">Calculer</button>
+          </div>
+          <div id="storageInfo" class="text-[10px] text-slate-400 whitespace-pre-line"></div>
+          <div id="usageInfo" class="text-[10px] text-slate-400 whitespace-pre-line"></div>
+        </div>
+
         <!-- Langue + encouragements -->
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between gap-2">
@@ -912,6 +944,11 @@
             <span class="text-[11px] font-bold text-slate-300">Conseil du coach avant la séance</span>
             <input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
           </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-300">Rappels boire / manger (séances longues)</span>
+            <input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
+          </div>
+          <p class="text-[9px] text-slate-400">Au-delà de 40 min : boire toutes les 20 min. Au-delà de 75 min : un gel vers 45 min puis toutes les 40 min.</p>
         </div>
 
         <!-- Voix IA Gemini -->
@@ -1331,6 +1368,7 @@
 
       // Voix IA : chargement du cache et génération des annonces manquantes
       setTimeout(prepareSessionVoice, 800);
+      setTimeout(() => btAutoReconnect(), 1500);
       setTimeout(downloadAllPreviews, 4000);
 
       // Chiffre central : appui simple = vitesse ⇄ cardio ; double appui = segment suivant
@@ -1354,7 +1392,7 @@
       armAutoFullscreen();
       document.addEventListener('visibilitychange', onVisibilityForTimeline);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') armAutoFullscreen();
+        if (document.visibilityState === 'visible') { armAutoFullscreen(); btAutoReconnect(); }
         if (document.visibilityState === 'visible' && timerState.isRunning) acquireWakeLock();
       });
 
@@ -1534,6 +1572,7 @@
       });
       timerState.totalSessionMs = stages.reduce((a, st) => a + st.durationSec * 1000, 0);
       timerState.sessionHalfDone = false;
+      buildFuelSchedule();
 
       timerState.stages = stages;
       timerState.currentStageIndex = 0;
@@ -1971,6 +2010,11 @@
           t.tipsEnd.forEach(x => set.add(x));
         }
         gpsPieces().forEach(x => set.add(x));
+        if (fuelRemindersOn()) {
+          const pl = fuelPlanForMinutes(timerState.totalSessionMs / 60000);
+          if (pl.some(x => x.kind === 'drink')) t.drink.forEach(x => set.add(x));
+          if (pl.some(x => x.kind === 'fuel')) t.fuel.forEach(x => set.add(x));
+        }
         if (appData.audioSettings.encouragements !== false) {
           set.add(t.sessionHalf);
           const fe = lastFeeling();
@@ -2373,7 +2417,9 @@
               break;
             }
             try { localStorage.setItem('tapis_ai_tts_model', m.id); } catch (e) {}
-            return parseAudioPayload(b64ToBytes(inline.data), inline.mimeType || inline.mime_type, opts.trim !== false);
+            const parsed = parseAudioPayload(b64ToBytes(inline.data), inline.mimeType || inline.mime_type, opts.trim !== false);
+            trackTtsUsage(m.id, parsed.pcm.length / parsed.sr);
+            return parsed;
           }
 
           const msg = (json && json.error && json.error.message) || `Erreur ${resp.status}`;
@@ -2612,6 +2658,8 @@
         dec: ',',
         paceUp: "Tu es un peu en dessous, accélère légèrement.", paceDown: "Tu vas un peu vite, ralentis légèrement.",
         paceOk: "Allure parfaite, continue comme ça.", climbEffort: "En montée, garde l'effort plutôt que la vitesse.",
+        drink: ["Pense à boire quelques gorgées d'eau.", "Petit rappel hydratation : bois un peu, sans attendre la soif."],
+        fuel: ["C'est le moment de prendre un gel ou une pâte de fruits, avec quelques gorgées d'eau."],
         turnSoonR: "Dans 100 mètres, tourne à droite.", turnSoonL: "Dans 100 mètres, tourne à gauche.",
         turnNowR: "Tourne à droite.", turnNowL: "Tourne à gauche.",
         sharpSoonR: "Dans 100 mètres, virage serré à droite.", sharpSoonL: "Dans 100 mètres, virage serré à gauche.",
@@ -2626,8 +2674,7 @@
           "Mains souples, comme si tu tenais une chips.",
           "Vérifie tes épaules : basses et relâchées.",
           "Pose le pied sous ton centre de gravité.",
-          "Reste dans ta bulle, une minute après l'autre.",
-          "Si tu as soif, bois quelques gorgées."
+          "Reste dans ta bulle, une minute après l'autre."
         ],
         tipsEnd: [
           "Dernière partie de séance : reste concentré sur ta technique.",
@@ -2697,6 +2744,8 @@
         dec: '.',
         paceUp: "You're a little slow, pick it up slightly.", paceDown: "You're a bit fast, ease off slightly.",
         paceOk: "Perfect pace, keep it up.", climbEffort: "On the climb, hold the effort rather than the speed.",
+        drink: ["Time to drink a few sips of water.", "Hydration reminder: drink a little, before you get thirsty."],
+        fuel: ["Time to take a gel or some chews, with a few sips of water."],
         turnSoonR: "In 100 metres, turn right.", turnSoonL: "In 100 metres, turn left.",
         turnNowR: "Turn right.", turnNowL: "Turn left.",
         sharpSoonR: "In 100 metres, sharp right turn.", sharpSoonL: "In 100 metres, sharp left turn.",
@@ -2711,8 +2760,7 @@
           "Soft hands, as if holding a crisp.",
           "Check your shoulders: low and relaxed.",
           "Land with your foot under your hips.",
-          "Stay in your bubble, one minute at a time.",
-          "If you're thirsty, take a few sips."
+          "Stay in your bubble, one minute at a time."
         ],
         tipsEnd: [
           "Last part of the session: focus on your form.",
@@ -3132,6 +3180,9 @@
       routeNavAnnouncements();
       sensorAnnouncements(curStage, elapsedMs, remMs);
 
+      sampleTrack();
+      fuelAnnouncements(remMs, elapsedMs);
+
       // Moitié de la séance
       if (!timerState.sessionHalfDone && timerState.totalSessionMs > 0) {
         const sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
@@ -3190,6 +3241,8 @@
         ? Math.max(0, timerState.totalSessionMs - timerState.totalRemainingMs)
         : timerState.totalSessionMs;
       timerState.runSummary = runSummary();
+      timerState.runTrack = compactTrack(runData.track);
+      timerState.runSeg = segmentStats(runData.track, timerState.stages);
       stopGps();
       pauseTimer({ cancelSpeech: false });
       timerState.finished = true;
@@ -3463,6 +3516,7 @@
       const sumEl = document.getElementById('valSummary');
       sumEl.textContent = summaryText(sum);
       sumEl.classList.toggle('hidden', !summaryText(sum));
+      document.getElementById('valRunData').innerHTML = timerState.finished ? runDataBlockHtml(timerState.runTrack, timerState.runSeg) : '';
       document.getElementById('valNoteInput').value = '';
       valShots = [];
       lastAnalysis = '';
@@ -3512,6 +3566,8 @@
         plannedMin: Math.round(plannedMin * 10) / 10,
         endedEarly: !!early,
         summary,
+        track: timerState.finished ? (timerState.runTrack || []) : [],
+        seg: timerState.finished ? (timerState.runSeg || []) : [],
         analysis: lastAnalysis || ''
       };
 
@@ -3564,6 +3620,8 @@
           note: h.note,
           details: h.details,
           summary: h.summary,
+          track: h.track,
+          seg: h.seg,
           analysis: h.analysis
         });
       });
@@ -3651,7 +3709,9 @@
             <div class="text-slate-300 font-mono"><strong class="text-sky-400">Programme :</strong> ${item.details}</div>
             <div class="text-slate-400"><strong class="text-amber-400">Note :</strong> ${item.note || 'Aucune'}</div>
             ${summaryText(item.summary) ? `<div class="text-slate-300"><strong class="text-rose-300">Capteurs :</strong> ${summaryText(item.summary)}</div>` : ''}
+            ${isVal ? runDataBlockHtml(item.track, item.seg) : ''}
             ${item.analysis ? `<div class="text-slate-300 leading-relaxed mt-1 p-2 rounded-lg bg-purple-950/30 border border-purple-800/40"><strong class="text-purple-300">🧠 Analyse du coach</strong><br>${mdLite(item.analysis)}</div>` : ''}
+            ${isVal ? `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="mt-1 px-3 py-1.5 rounded-lg bg-purple-600 text-white font-bold text-[10px]">🧠 ${item.analysis ? 'Refaire l\'analyse IA' : 'Analyser par l\'IA'}</button>` : ''}
           </td>
         `;
         tbody.appendChild(trDetail);
@@ -4050,6 +4110,8 @@
       document.getElementById('voiceLangSelect').value = s.voiceLang === 'en' ? 'en' : 'fr';
       document.getElementById('chkEncouragements').checked = s.encouragements !== false;
       document.getElementById('chkCoachTip').checked = s.coachTip !== false;
+      document.getElementById('chkFuel').checked = s.fuelReminders !== false;
+      renderUsageInfo();
       document.getElementById('aiKeyInput').value = getGeminiKey();
       const aiSel = document.getElementById('aiVoiceSelect');
       if (!aiSel.options.length) {
@@ -4094,6 +4156,7 @@
       s.voiceLang = document.getElementById('voiceLangSelect').value === 'en' ? 'en' : 'fr';
       s.encouragements = document.getElementById('chkEncouragements').checked;
       s.coachTip = document.getElementById('chkCoachTip').checked;
+      s.fuelReminders = document.getElementById('chkFuel').checked;
       s.aiVoiceName = document.getElementById('aiVoiceSelect').value || 'Puck';
       s.aiStyle = document.getElementById('aiStyleSelect').value || 'coach';
       s.aiModel = document.getElementById('aiModelSelect').value || '';
@@ -4203,6 +4266,7 @@
             const txt = ((((json || {}).candidates || [])[0] || {}).content?.parts || []).map(p => p.text || '').join('').trim();
             if (!txt) { lastErr = "Réponse vide"; break; }
             try { localStorage.setItem(`tapis_ai_text_model_${tier}`, model); } catch (e) {}
+            trackTextUsage(json && json.usageMetadata);
             return txt;
           }
           const msg = (json && json.error && json.error.message) || `Erreur ${resp.status}`;
@@ -4298,7 +4362,7 @@
       const hist = (appData.history || []).slice(0, 4).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
       const g = appData.goal || {};
       const prompt = `Tu es un coach de course à pied bienveillant et précis. Donne UN conseil personnalisé pour la séance de tapis ci-dessous, qui sera lu à voix haute juste avant de commencer.
-Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant'} ; 2 ou 3 phrases courtes, 45 mots maximum ; style parlé et naturel ; pas d'emoji, pas de liste, pas de markdown ; les vitesses sont en km/h mais n'écris pas « km/h » ; donne un conseil concret (gestion de l'allure, posture, respiration, hydratation, ressenti récent).
+Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant'} ; 2 ou 3 phrases courtes, 45 mots maximum ; style parlé et naturel ; pas d'emoji, pas de liste, pas de markdown ; les vitesses sont en km/h mais n'écris pas « km/h » ; donne un conseil concret (gestion de l'allure, posture, respiration, hydratation, ressenti récent)${fuelPlanText(sess) ? ` ; rappelle en quelques mots le plan d'hydratation/alimentation prévu : ${fuelPlanText(sess).replace(/[💧🍬]/g, '')}` : ''}.
 Séance : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; durée ${Math.round(computeSessionTotalMin(sess))} min ; distance ≈ ${computeSessionDistanceKm(sess).toFixed(1)} km ; pente ${sess.pente} %${sess.notes ? ` ; notes du plan : ${sess.notes}` : ''}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Dernières séances :
@@ -4775,7 +4839,7 @@ Réponds uniquement avec le JSON.`;
     }
 
     // Liste de toutes les annonces restantes, avec leur heure (en s à partir de maintenant)
-    function buildAnnouncementTimeline() {
+    function buildAnnouncementTimeline(opts = {}) {
       const ev = [];
       const stages = timerState.stages;
       const idx = timerState.currentStageIndex;
@@ -4804,10 +4868,18 @@ Réponds uniquement avec le JSON.`;
       }
       ev.push({ t: t0, pieces: [t.end], fixed: true });
       if (enc && !timerState.sessionHalfDone && sessionHalfAt > 0) ev.push({ t: sessionHalfAt, pieces: [t.sessionHalf], fixed: false });
+      (timerState.fuelPlan || []).filter(p => !p.done).forEach(p => {
+        const at = p.at / 1000 - doneBefore - nowElapsed;
+        if (at > 0) ev.push({ t: at, pieces: [pickNoRepeat(p.kind)], fixed: false, kind: p.kind });
+      });
 
       // Placement sans chevauchement : les annonces à heure fixe d'abord, les autres se décalent (4 s max) ou sautent
       const placed = [];
-      const dur = e => { const b = tlBufferFor(e.pieces); return b ? b.duration : 0; };
+      const dur = e => {
+        const b = tlBufferFor(e.pieces);
+        if (b) return b.duration;
+        return opts.estimate ? e.pieces.join(' ').length * 0.068 / (parseFloat(appData.audioSettings.aiRate) || 0.9) + 0.3 : 0;
+      };
       const overlaps = (a0, a1) => placed.find(p => a0 < p.t1 + 0.25 && a1 > p.t0 - 0.25);
       ev.filter(e => e.fixed).forEach(e => { const d = dur(e); if (d) placed.push({ t0: e.t, t1: e.t + d, e }); });
       ev.filter(e => !e.fixed).sort((a, b) => a.t - b.t).forEach(e => {
@@ -5013,10 +5085,15 @@ Réponds uniquement avec le JSON.`;
       rsc: null,
       gps: { watchId: null, last: null, win: [], distKm: 0, speedKmh: null, acc: null, err: '' },
       route: { idx: 0, progressKm: null, offRoute: false, grade: null, flags: {}, tflags: {}, offSince: 0, offWarned: false },
-      kmAnnounced: 0, lastPaceAt: -1e15, lastPaceOkAt: -1e15, lastHrAt: -1e15, lastVapAt: -1e15
+      kmAnnounced: 0, lastPaceAt: -1e15, lastPaceOkAt: -1e15, lastHrAt: -1e15, lastVapAt: -1e15,
+      track: [], lastSampleAt: 0, tmKm: 0
     };
     function resetRunData() {
       runData.hrSamples = [];
+      runData.track = [];
+      runData.lastSampleAt = 0;
+      runData.tmKm = 0;
+      runData.gps.alt = null;
       runData.gps.distKm = 0;
       runData.gps.win = [];
       runData.gps.last = null;
@@ -5055,6 +5132,74 @@ Réponds uniquement avec le JSON.`;
 
     // ---------- Cardio Bluetooth (montre en diffusion FC, ceinture) ----------
     let btDevice = null, btRetries = 0;
+    // ---------- Reconnexion automatique de la montre ----------
+    function rememberBtDevice(dev) {
+      const s = sensors();
+      s.btId = dev.id || '';
+      s.btName = dev.name || 'capteur cardio';
+      saveAppData();
+    }
+    function btConnected() { return !!(btDevice && btDevice.gatt && btDevice.gatt.connected); }
+
+    // Sans fenêtre de choix : utilise l'appareil déjà autorisé (si Chrome le permet)
+    let btAutoBusy = false;
+    async function btAutoReconnect(silent = true) {
+      if (btConnected() || btAutoBusy || !navigator.bluetooth || !navigator.bluetooth.getDevices) return false;
+      const s = sensors();
+      if (!s.btId && !s.btName) return false;
+      btAutoBusy = true;
+      try {
+        const list = await navigator.bluetooth.getDevices();
+        const dev = list.find(d => d.id === s.btId) || list.find(d => s.btName && d.name === s.btName);
+        if (!dev) return false;
+        if (!silent) setBtStatus(`Recherche de ${dev.name || 'la montre'}…`);
+        btDevice = dev;
+        btRetries = 0;
+        dev.removeEventListener('gattserverdisconnected', onBtDisconnect);
+        dev.addEventListener('gattserverdisconnected', onBtDisconnect);
+        // La montre doit émettre : on attend son signal quelques secondes si possible
+        if (dev.watchAdvertisements) {
+          const seen = new Promise(res => dev.addEventListener('advertisementreceived', () => res(true), { once: true }));
+          try { await dev.watchAdvertisements(); } catch (e) {}
+          await Promise.race([seen, sleep(6000)]);
+          try { dev.unwatchAdvertisements && dev.unwatchAdvertisements(); } catch (e) {}
+        }
+        await Promise.race([btSubscribe(dev), sleep(10000).then(() => { throw new Error('délai'); })]);
+        renderHrChip();
+        return true;
+      } catch (e) {
+        if (!silent) setBtStatus("Montre introuvable : activez la diffusion du cardio sur la montre", true);
+        return false;
+      } finally {
+        btAutoBusy = false;
+        renderHrChip();
+      }
+    }
+
+    // Bouton rapide de l'accueil : reconnexion automatique, sinon fenêtre de choix
+    async function quickHeartRate() {
+      if (btConnected()) { showToast(`❤️ ${btDevice.name || 'Cardio'} déjà connecté`); return; }
+      const chip = document.getElementById('homeHrChip');
+      if (chip) chip.textContent = '❤️ Connexion…';
+      const ok = await btAutoReconnect(false);
+      if (!ok) await connectHeartRate();
+      renderHrChip();
+    }
+
+    function renderHrChip() {
+      const chip = document.getElementById('homeHrChip');
+      if (!chip) return;
+      const s = sensors();
+      const known = !!(s.btId || s.btName);
+      if (btConnected()) {
+        chip.textContent = `❤️ ${btDevice.name || 'Cardio'} connecté${runData.hr ? ` • ${runData.hr} bpm` : ''}`;
+        chip.className = 'w-full py-2 rounded-xl text-[11px] font-bold border bg-emerald-500/15 border-emerald-500/50 text-emerald-200';
+      } else {
+        chip.textContent = known ? `❤️ Reconnecter ${s.btName || 'la montre'}` : '❤️ Connecter une montre / ceinture cardio';
+        chip.className = 'w-full py-2 rounded-xl text-[11px] font-bold border bg-rose-500/10 border-rose-500/40 text-rose-200';
+      }
+    }
+
     function setBtStatus(t, err = false) {
       const el = document.getElementById('btStatus');
       if (el) { el.textContent = t; el.className = `text-[10px] font-semibold ${err ? 'text-rose-400' : 'text-emerald-300'}`; }
@@ -5073,6 +5218,8 @@ Réponds uniquement avec le JSON.`;
         btRetries = 0;
         dev.addEventListener('gattserverdisconnected', onBtDisconnect);
         await btSubscribe(dev);
+        rememberBtDevice(dev);
+        renderHrChip();
       } catch (e) {
         if (e && e.name !== 'NotFoundError') setBtStatus(`Connexion impossible : ${e.message || e}`, true);
       }
@@ -5102,11 +5249,14 @@ Réponds uniquement avec le JSON.`;
     async function onBtDisconnect() {
       runData.hr = null;
       updateLiveMetrics();
-      if (!btDevice || btRetries >= 5) { setBtStatus('Capteur déconnecté', true); return; }
+      renderHrChip();
+      const maxTries = timerState.isRunning ? 60 : 5; // pendant la séance on insiste (toutes les 5 s)
+      if (!btDevice || btRetries >= maxTries) { setBtStatus('Capteur déconnecté', true); return; }
       btRetries++;
-      setBtStatus(`Capteur déconnecté, reconnexion (${btRetries}/5)…`, true);
-      await sleep(2000);
-      try { await btSubscribe(btDevice); btRetries = 0; } catch (e) { onBtDisconnect(); }
+      setBtStatus(`Capteur déconnecté, reconnexion (${btRetries})…`, true);
+      await sleep(timerState.isRunning ? 5000 : 2000);
+      if (!btDevice) return;
+      try { await btSubscribe(btDevice); btRetries = 0; renderHrChip(); } catch (e) { onBtDisconnect(); }
     }
     function disconnectHeartRate() {
       const d = btDevice;
@@ -5126,6 +5276,7 @@ Réponds uniquement avec le JSON.`;
       }
       updateLiveMetrics();
       if (bigDisplayMode === 'hr' && !timerState.isRunning) updateUIHeaderAndCircle();
+      if (document.body.classList.contains('home')) renderHrChip();
     }
 
     // ---------- GPS du téléphone ----------
@@ -5153,6 +5304,7 @@ Réponds uniquement avec le JSON.`;
       const g = runData.gps;
       const c = pos.coords;
       const p = { t: pos.timestamp || Date.now(), lat: c.latitude, lon: c.longitude, acc: c.accuracy };
+      if (c.altitude !== null && c.altitude !== undefined && isFinite(c.altitude)) g.alt = g.alt === null || g.alt === undefined ? c.altitude : g.alt * 0.8 + c.altitude * 0.2;
       g.acc = c.accuracy;
       g.err = '';
       if (c.accuracy > 35) { updateLiveMetrics(); return; }
@@ -5665,13 +5817,13 @@ Réponds uniquement avec le JSON.`;
       const prompt = `Tu es un coach de course à pied expert. Analyse la séance que je viens de faire${valShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h.
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
-Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Séances précédentes :
 ${hist}
 Prochaines séances du plan :
 ${next}
 Réponds en français, en tutoyant, 230 mots maximum, avec exactement ces rubriques (titre en gras puis 1 à 3 phrases) :
-**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive… si visibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
+**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive cardiaque, régularité par segment… si disponibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
 Si une donnée manque, dis-le simplement sans inventer.`;
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
@@ -5691,6 +5843,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     }
 
     // ==================== ANALYSE IA D'UNE SÉANCE DU SUIVI ====================
+    function openHistoryAnalysis(id, rawIdx) {
+      editHistoryItem(id, 'validated', rawIdx);
+      setTimeout(() => { const el = document.getElementById('editAnalysis'); if (el && el.parentElement) el.parentElement.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 150);
+    }
     let editShots = [];
     let editAnalysisPending = null;
     function renderEditShots() {
@@ -5729,13 +5885,13 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       const note = document.getElementById('editHistNote').value.trim();
       const prompt = `Tu es un coach de course à pied expert. Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
-Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Autres séances récentes :
 ${others}
 Prochaines séances du plan :
 ${next}
 Réponds en français, en tutoyant, 230 mots maximum, avec exactement ces rubriques (titre en gras puis 1 à 3 phrases) :
-**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive… si visibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
+**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive cardiaque, régularité par segment… si disponibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
 Si une donnée manque, dis-le simplement sans inventer.`;
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
@@ -5748,6 +5904,366 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
       }
+    }
+
+    // ==================== HYDRATATION & ALIMENTATION ====================
+    // Repères classiques : boire toutes les ~20 min au-delà de 40 min d'effort ; un gel vers 45 min puis toutes les 40 min au-delà de 75 min
+    function fuelPlanForMinutes(totalMin) {
+      const plan = [];
+      if (totalMin >= 75) for (let m = 45; m <= totalMin - 10; m += 40) plan.push({ atMin: m, kind: 'fuel' });
+      if (totalMin >= 40) for (let m = 20; m <= totalMin - 8; m += 20) {
+        if (!plan.some(p => Math.abs(p.atMin - m) < 6)) plan.push({ atMin: m, kind: 'drink' });
+      }
+      return plan.sort((a, b) => a.atMin - b.atMin);
+    }
+    function fuelPlanText(sess) {
+      const total = computeSessionTotalMin(sess);
+      const plan = fuelPlanForMinutes(total);
+      if (!plan.length) return '';
+      const drinks = plan.filter(p => p.kind === 'drink').map(p => `${p.atMin}'`);
+      const fuels = plan.filter(p => p.kind === 'fuel').map(p => `${p.atMin}'`);
+      return [drinks.length ? `💧 boire à ${drinks.join(', ')}` : '', fuels.length ? `🍬 gel à ${fuels.join(', ')}` : ''].filter(Boolean).join(' • ');
+    }
+    function fuelRemindersOn() { return appData.audioSettings.fuelReminders !== false; }
+    function buildFuelSchedule() {
+      const totalMin = timerState.totalSessionMs / 60000;
+      timerState.fuelPlan = fuelRemindersOn() ? fuelPlanForMinutes(totalMin).map(p => ({ at: p.atMin * 60000, kind: p.kind, done: false })) : [];
+    }
+    // Appelé à chaque tick : place le rappel dans un moment calme
+    function fuelAnnouncements(remMs, elapsedMs) {
+      const plan = timerState.fuelPlan || [];
+      const sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
+      for (const p of plan) {
+        if (p.done || sessEl < p.at) continue;
+        if (sessEl > p.at + 120000) { p.done = true; continue; }
+        if (remMs > 9500 && elapsedMs >= 4500 && !isSpeaking()) {
+          p.done = true;
+          speak([pickNoRepeat(p.kind)]);
+        }
+        return;
+      }
+    }
+
+    // ==================== ENREGISTREMENT DE LA SÉANCE (courbes) ====================
+    // Une mesure toutes les 5 s : [s, fc, vitesse, n° segment, altitude, km]
+    function sampleTrack() {
+      if (!timerState.isRunning) return;
+      const now = Date.now();
+      if (now - (runData.lastSampleAt || 0) < 5000) return;
+      const dt = runData.lastSampleAt ? Math.min(10, (now - runData.lastSampleAt) / 1000) : 5;
+      runData.lastSampleAt = now;
+      const st = timerState.stages[timerState.currentStageIndex];
+      const hr = runData.hr && now - runData.hrAt < 8000 ? runData.hr : null;
+      let kmh = null;
+      if (gpsWanted() && runData.gps.speedKmh !== null && runData.gps.last && now - runData.gps.last.t < 10000) kmh = runData.gps.speedKmh;
+      else if (runData.rsc && now - runData.rsc.at < 8000) kmh = runData.rsc.speed;
+      else if (st) kmh = parseFloat(st.speed) || null;
+      if (!gpsWanted() && kmh) runData.tmKm = (runData.tmKm || 0) + kmh * dt / 3600;
+      let ele = null;
+      const r = activeRoute();
+      if (r && runData.route.progressKm !== null && !runData.route.offRoute && r.prof && r.prof.length) {
+        ele = r.prof[Math.max(0, Math.min(r.prof.length - 1, Math.round(runData.route.progressKm / 0.05)))];
+      } else if (runData.gps.alt !== null && runData.gps.alt !== undefined) ele = runData.gps.alt;
+      const km = gpsWanted() ? runData.gps.distKm : (runData.tmKm || 0);
+      runData.track.push([runData.track.length * 5, hr, kmh !== null ? Math.round(kmh * 10) / 10 : null, timerState.currentStageIndex,
+        ele !== null ? Math.round(ele) : null, Math.round(km * 1000) / 1000]);
+    }
+    function compactTrack(track, max = 400) {
+      if (!track || track.length <= max) return track || [];
+      const step = Math.ceil(track.length / max);
+      return track.filter((_, i) => i % step === 0);
+    }
+    // Moyennes par segment
+    function segmentStats(track, stages) {
+      const by = {};
+      (track || []).forEach(r => {
+        const k = r[3];
+        const g = by[k] || (by[k] = { n: 0, hrS: 0, hrN: 0, hrMax: 0, vS: 0, vN: 0 });
+        g.n++;
+        if (r[1]) { g.hrS += r[1]; g.hrN++; g.hrMax = Math.max(g.hrMax, r[1]); }
+        if (r[2]) { g.vS += r[2]; g.vN++; }
+      });
+      return Object.keys(by).map(Number).sort((a, b) => a - b).map(k => {
+        const g = by[k], st = stages[k] || {};
+        return {
+          i: k,
+          name: st.type === 'palier' ? (st.nbBlocs > 1 ? `B${st.blocIndex} ` : '') + (st.totalReps > 1 ? `R${st.repIndex} ` : '') + `${formatSpeed(st.speed)}` :
+            st.type === 'chauffe' ? 'Échauff.' : st.type === 'recupBloc' ? 'Récup bloc' : st.type === 'recup' ? 'Retour calme' : `Seg ${k + 1}`,
+          target: parseFloat(st.speed) || null,
+          sec: g.n * 5,
+          avgKmh: g.vN ? Math.round(g.vS / g.vN * 10) / 10 : null,
+          avgHr: g.hrN ? Math.round(g.hrS / g.hrN) : null,
+          maxHr: g.hrMax ? Math.round(g.hrMax) : null
+        };
+      });
+    }
+    function segStatsText(seg) {
+      if (!seg || !seg.length) return '';
+      return seg.map(s => `${s.name}${s.target ? ` (cible ${formatSpeed(s.target)})` : ''} : ${Math.round(s.sec / 60 * 10) / 10} min${s.avgKmh ? `, vitesse moy ${formatSpeed(s.avgKmh)}` : ''}${s.avgHr ? `, FC moy ${s.avgHr} max ${s.maxHr}` : ''}`).join('\n');
+    }
+    // Dérive cardiaque : FC de la 2e moitié vs 1re moitié à vitesse comparable
+    function trackInsights(track) {
+      const hr = (track || []).filter(r => r[1]);
+      if (hr.length < 24) return '';
+      const half = Math.floor(hr.length / 2);
+      const avg = a => a.reduce((x, r) => x + r[1], 0) / a.length;
+      const avgV = a => { const v = a.filter(r => r[2]); return v.length ? v.reduce((x, r) => x + r[2], 0) / v.length : 0; };
+      const h1 = avg(hr.slice(0, half)), h2 = avg(hr.slice(half));
+      const v1 = avgV(hr.slice(0, half)), v2 = avgV(hr.slice(half));
+      const out = [`FC moyenne 1re moitié ${Math.round(h1)}, 2e moitié ${Math.round(h2)} (vitesses moyennes ${v1.toFixed(1)} puis ${v2.toFixed(1)})`];
+      const fcMax = sensors().fcMax;
+      if (fcMax) {
+        const z = [0, 0, 0, 0, 0];
+        hr.forEach(r => { const p = r[1] / fcMax; z[p < 0.6 ? 0 : p < 0.7 ? 1 : p < 0.8 ? 2 : p < 0.9 ? 3 : 4]++; });
+        out.push('Temps par zone (FC max ' + fcMax + ') : ' + z.map((n, i) => `Z${i + 1} ${Math.round(n / hr.length * 100)}%`).join(', '));
+      }
+      return out.join('. ');
+    }
+
+    // ---------- Graphiques ----------
+    function miniChart(points, opts) {
+      const W = 300, H = opts.h || 58;
+      const pts = points.filter(p => p[1] !== null && p[1] !== undefined);
+      if (pts.length < 2) return '';
+      const xs = points.map(p => p[0]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs) || 1;
+      let lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
+      if (opts.extra) opts.extra.forEach(v => { if (v !== null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+      if (hi - lo < (opts.minSpan || 5)) { const m = (hi + lo) / 2; lo = m - (opts.minSpan || 5) / 2; hi = m + (opts.minSpan || 5) / 2; }
+      const X = x => ((x - x0) / Math.max(1, x1 - x0) * W).toFixed(1);
+      const Y = v => (H - 4 - (v - lo) / (hi - lo) * (H - 10)).toFixed(1);
+      const line = pts.map(p => `${X(p[0])},${Y(p[1])}`).join(' ');
+      const area = opts.area ? `<polygon points="${X(pts[0][0])},${H} ${line} ${X(pts[pts.length - 1][0])},${H}" fill="${opts.color}" opacity="0.18"></polygon>` : '';
+      const target = opts.target ? `<polyline points="${opts.target.map(p => `${X(p[0])},${Y(p[1])}`).join(' ')}" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3"></polyline>` : '';
+      return `<div class="space-y-0.5">
+        <div class="flex justify-between text-[9px] font-bold"><span style="color:${opts.color}">${opts.label}</span><span class="text-slate-500">${Math.round(lo)}–${Math.round(hi)} ${opts.unit}</span></div>
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full h-14 bg-slate-950 rounded-lg border border-slate-800">${area}${target}
+          <polyline points="${line}" fill="none" stroke="${opts.color}" stroke-width="1.6" stroke-linejoin="round"></polyline></svg></div>`;
+    }
+    function runChartsHtml(track, seg) {
+      if (!track || track.length < 3) return '';
+      const t = r => r[0] / 60;
+      const hr = track.map(r => [t(r), r[1]]);
+      const sp = track.map(r => [t(r), r[2]]);
+      const tgt = seg && seg.length ? track.map(r => { const s = seg.find(x => x.i === r[3]); return [t(r), s ? s.target : null]; }).filter(p => p[1] !== null) : null;
+      const el = track.map(r => [t(r), r[4]]);
+      const charts = [
+        miniChart(hr, { label: '❤️ Fréquence cardiaque', unit: 'bpm', color: '#fb7185', minSpan: 20 }),
+        miniChart(sp, { label: '⚡ Vitesse (pointillés : cible)', unit: 'km/h', color: '#38bdf8', minSpan: 3, target: tgt, extra: tgt ? tgt.map(p => p[1]) : null }),
+        miniChart(el, { label: '⛰️ Profil', unit: 'm', color: '#34d399', minSpan: 10, area: true })
+      ].filter(Boolean).join('');
+      const totalMin = Math.round(track[track.length - 1][0] / 60);
+      return charts ? `${charts}<div class="text-[9px] text-slate-500 text-right">0 → ${totalMin} min</div>` : '';
+    }
+    function segTableHtml(seg) {
+      if (!seg || !seg.length) return '';
+      const rows = seg.map(s => `<tr class="border-t border-slate-800">
+        <td class="py-0.5 pr-1 text-slate-300">${s.name}</td>
+        <td class="text-right font-mono text-slate-400">${Math.floor(s.sec / 60)}'${String(s.sec % 60).padStart(2, '0')}</td>
+        <td class="text-right font-mono ${s.avgKmh && s.target && Math.abs(s.avgKmh - s.target) > 0.5 ? 'text-amber-300' : 'text-sky-300'}">${s.avgKmh ? formatSpeed(s.avgKmh) : '–'}</td>
+        <td class="text-right font-mono text-rose-300">${s.avgHr || '–'}</td>
+        <td class="text-right font-mono text-rose-400">${s.maxHr || '–'}</td></tr>`).join('');
+      return `<div class="max-h-48 overflow-y-auto custom-scroll"><table class="w-full text-[10px]">
+        <thead><tr class="text-slate-500 text-[9px] uppercase"><th class="text-left">Segment</th><th class="text-right">Durée</th><th class="text-right">km/h</th><th class="text-right">FC moy</th><th class="text-right">max</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+    function runDataBlockHtml(track, seg) {
+      const c = runChartsHtml(track, seg), tb = segTableHtml(seg);
+      if (!c && !tb) return '';
+      return `<details class="bg-slate-950 rounded-xl border border-slate-800 p-2" open>
+        <summary class="text-[10px] uppercase font-bold text-sky-300 cursor-pointer">📈 Courbes & moyennes par segment</summary>
+        <div class="space-y-2 mt-2">${c}${tb}</div></details>`;
+    }
+
+    // ==================== SCRIPT DE TEST DE LA SÉANCE ====================
+    // Simule la séance (et le déplacement sur le parcours GPX à la vitesse prévue) et liste chaque annonce avec son heure
+    let scriptRows = [];
+    let scriptPlaying = false;
+
+    function buildSessionScript() {
+      const saved = {
+        idx: timerState.currentStageIndex, rem: timerState.stageRemainingMs, tot: timerState.totalRemainingMs,
+        half: timerState.sessionHalfDone, flags: timerState.flags, fuel: timerState.fuelPlan
+      };
+      const stages = timerState.stages;
+      const rows = [];
+      try {
+        timerState.currentStageIndex = 0;
+        timerState.stageRemainingMs = stages[0] ? stages[0].durationSec * 1000 : 0;
+        timerState.sessionHalfDone = false;
+        recomputeTotalRemaining();
+        buildFuelSchedule();
+        if (stages[0]) rows.push({ t: 0, pieces: startPieces(stages[0], true) });
+        buildAnnouncementTimeline({ estimate: true, withFuel: true }).forEach(p => rows.push({ t: p.t0, pieces: p.e.pieces }));
+      } finally {
+        timerState.currentStageIndex = saved.idx;
+        timerState.stageRemainingMs = saved.rem;
+        timerState.totalRemainingMs = saved.tot;
+        timerState.sessionHalfDone = saved.half;
+        timerState.flags = saved.flags;
+        timerState.fuelPlan = saved.fuel;
+      }
+
+      // Déplacement simulé à la vitesse prévue de chaque segment
+      const marks = [];
+      let tt = 0, km = 0;
+      stages.forEach(st => { marks.push({ t: tt, km, v: parseFloat(st.speed) || 0 }); tt += st.durationSec; km += (parseFloat(st.speed) || 0) * st.durationSec / 3600; });
+      const totalKm = km, totalT = tt;
+      const kmAt = t => { let m = marks[0]; for (const x of marks) if (x.t <= t) m = x; return m ? m.km + m.v * (t - m.t) / 3600 : 0; };
+      const timeAtKm = d => {
+        for (let i = 0; i < marks.length; i++) {
+          const m = marks[i], next = marks[i + 1];
+          const endKm = next ? next.km : totalKm;
+          if (d <= endKm + 1e-9) return m.v > 0 ? m.t + (d - m.km) / m.v * 3600 : m.t;
+        }
+        return null;
+      };
+      const outdoor = getActiveSession().type === 'exterieur' || sensors().gpsMode === 'on';
+      const r = activeRoute();
+      const t = VT();
+      if (outdoor && sensors().gpsMode !== 'off') {
+        if (sensors().kmAnnounce) for (let n = 1; n <= totalKm; n++) { const tm = timeAtKm(n); if (tm !== null) rows.push({ t: tm, pieces: [kmText(n)], gps: true }); }
+        if (r) {
+          (r.turns || []).forEach(tu => {
+            const a = timeAtKm(tu.km - 0.1), b = timeAtKm(tu.km - 0.015);
+            if (a !== null && tu.km > 0.15) rows.push({ t: a, pieces: [turnText(tu, 'soon')], gps: true });
+            if (b !== null) rows.push({ t: b, pieces: [turnText(tu, 'now')], gps: true });
+          });
+          (r.climbs || []).forEach(c => {
+            const a = timeAtKm(c.startKm - 0.25), s = timeAtKm(c.startKm), e = timeAtKm(c.startKm + c.lenKm);
+            if (a !== null && c.startKm >= 0.25) rows.push({ t: a, pieces: [climbAheadText(c)], gps: true });
+            if (s !== null) rows.push({ t: s, pieces: [c.type === 'up' ? t.climbStart : t.descentStart], gps: true });
+            if (e !== null && c.type === 'up') rows.push({ t: e, pieces: [t.climbTop], gps: true });
+          });
+          if (totalKm < r.totalKm - 0.05) rows.push({ t: totalT, pieces: [`(Fin de séance à ${totalKm.toFixed(2)} km sur ${r.totalKm.toFixed(2)} km de parcours)`], info: true });
+          else if (totalKm > r.totalKm + 0.05) { const te = timeAtKm(r.totalKm); if (te !== null) rows.push({ t: te, pieces: [`(Fin du parcours GPX à ${r.totalKm.toFixed(2)} km : plus de guidage ensuite)`], info: true }); }
+        }
+      }
+      rows.forEach(x => { x.km = kmAt(x.t); });
+      rows.sort((a, b) => a.t - b.t);
+      return { rows, totalKm, totalT, outdoor, hasRoute: !!r };
+    }
+
+    function openScriptModal() {
+      if (document.getElementById('configModal') && !document.getElementById('configModal').classList.contains('hidden')) {
+        if (!saveActiveSessionConfig()) return;
+      }
+      const s = buildSessionScript();
+      scriptRows = s.rows;
+      const fmt = sec => { const s = Math.round(sec); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+      document.getElementById('scriptInfo').textContent =
+        `${scriptRows.length} annonces • ${fmt(s.totalT)} • ${s.totalKm.toFixed(2)} km${s.outdoor ? (s.hasRoute ? ' • parcours GPX simulé à la vitesse prévue' : ' • GPS simulé (sans parcours)') : ' • tapis'}`;
+      document.getElementById('scriptList').innerHTML = scriptRows.map((r, i) => `
+        <div id="scriptRow${i}" class="flex items-start gap-2 py-1.5 border-b border-slate-800 ${r.gps ? 'text-emerald-200' : r.info ? 'text-slate-500 italic' : 'text-slate-200'}">
+          <span class="font-mono text-[11px] text-sky-300 shrink-0 w-11">${fmt(r.t)}</span>
+          ${s.outdoor ? `<span class="font-mono text-[10px] text-slate-500 shrink-0 w-12">${r.km.toFixed(2)} km</span>` : ''}
+          <span class="flex-1 text-[11px] leading-snug">${r.pieces.join(' ').replace(/</g, '&lt;')}</span>
+          ${r.info ? '' : `<button type="button" onclick="playScriptRow(${i})" class="shrink-0 w-6 h-6 rounded-full bg-purple-600/30 text-purple-200 text-[10px]">▶</button>`}
+        </div>`).join('');
+      document.getElementById('scriptModal').classList.remove('hidden');
+    }
+    function closeScriptModal() {
+      scriptPlaying = false;
+      cancelSpeech();
+      document.getElementById('scriptModal').classList.add('hidden');
+    }
+    function highlightScriptRow(i) {
+      document.querySelectorAll('#scriptList > div').forEach(el => el.classList.remove('bg-purple-600/20'));
+      const el = document.getElementById(`scriptRow${i}`);
+      if (el) { el.classList.add('bg-purple-600/20'); el.scrollIntoView({ block: 'nearest' }); }
+    }
+    function playScriptRow(i) {
+      const r = scriptRows[i];
+      if (!r) return;
+      aiUnlock();
+      cancelSpeech();
+      highlightScriptRow(i);
+      speak(r.pieces);
+    }
+    async function playAllScript() {
+      if (scriptPlaying) { scriptPlaying = false; cancelSpeech(); document.getElementById('scriptPlayBtn').textContent = '▶ Tout écouter'; return; }
+      scriptPlaying = true;
+      aiUnlock();
+      document.getElementById('scriptPlayBtn').textContent = '⏹ Arrêter';
+      for (let i = 0; i < scriptRows.length && scriptPlaying; i++) {
+        if (scriptRows[i].info) continue;
+        playScriptRow(i);
+        await sleep(300);
+        while (scriptPlaying && isSpeaking()) await sleep(150);
+        await sleep(450);
+      }
+      scriptPlaying = false;
+      document.getElementById('scriptPlayBtn').textContent = '▶ Tout écouter';
+    }
+
+    // ==================== STOCKAGE & UTILISATION IA ====================
+    function fmtBytes(b) {
+      if (b < 1024) return `${b} o`;
+      if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} Ko`;
+      return `${(b / 1048576).toFixed(1)} Mo`;
+    }
+    async function computeStorageUsage() {
+      const el = document.getElementById('storageInfo');
+      if (el) el.textContent = 'Calcul…';
+      let local = 0;
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); local += (k.length + (localStorage.getItem(k) || '').length) * 2; } } catch (e) {}
+      let clips = 0, clipBytes = 0, prev = 0, prevBytes = 0;
+      const db = await aiDb();
+      if (db) {
+        await new Promise(resolve => {
+          try {
+            const req = db.transaction('clips', 'readonly').objectStore('clips').openCursor();
+            req.onsuccess = () => {
+              const c = req.result;
+              if (!c) return resolve();
+              const n = c.value && c.value.pcm ? c.value.pcm.byteLength : 0;
+              if (String(c.key).startsWith('preview')) { prev++; prevBytes += n; } else { clips++; clipBytes += n; }
+              c.continue();
+            };
+            req.onerror = () => resolve();
+          } catch (e) { resolve(); }
+        });
+      }
+      let est = '';
+      try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); est = ` • total navigateur ≈ ${fmtBytes(e.usage || 0)}`; } } catch (e) {}
+      const histN = (appData.history || []).length;
+      const txt = `Séances, suivi (${histN}), parcours, réglages : ${fmtBytes(local)}\nVoix IA : ${clips} annonces = ${fmtBytes(clipBytes)} + ${prev} aperçus = ${fmtBytes(prevBytes)}${est}`;
+      if (el) el.textContent = txt;
+      return txt;
+    }
+
+    // Suivi de la consommation Gemini (estimation, sur ce téléphone uniquement)
+    const TTS_PRICE_PER_M = { 'gemini-3.8-flash-lite-tts': 3, 'gemini-3.8-flash-tts': 9, 'gemini-3.1-flash-tts-preview': 10, 'gemini-2.5-flash-preview-tts': 10 };
+    function usageBucket() {
+      const month = toISODateLocal(new Date()).slice(0, 7);
+      if (!appData.aiUsage || appData.aiUsage.month !== month) appData.aiUsage = { month, tts: {}, text: { req: 0, inTok: 0, outTok: 0 } };
+      return appData.aiUsage;
+    }
+    function trackTtsUsage(model, seconds) {
+      const u = usageBucket();
+      const m = u.tts[model] || (u.tts[model] = { req: 0, sec: 0 });
+      m.req++;
+      m.sec += seconds;
+      saveAppData();
+    }
+    function trackTextUsage(meta) {
+      const u = usageBucket();
+      u.text.req++;
+      if (meta) { u.text.inTok += meta.promptTokenCount || 0; u.text.outTok += (meta.candidatesTokenCount || 0) + (meta.thoughtsTokenCount || 0); }
+      saveAppData();
+    }
+    function renderUsageInfo() {
+      const el = document.getElementById('usageInfo');
+      if (!el) return;
+      const u = usageBucket();
+      let usd = 0;
+      const lines = Object.entries(u.tts).map(([m, v]) => {
+        const c = v.sec * 25 / 1e6 * (TTS_PRICE_PER_M[m] || 9);
+        usd += c;
+        return `${m.replace('gemini-', '')} : ${v.req} requêtes, ${(v.sec / 60).toFixed(1)} min d'audio ≈ ${c.toFixed(3)} $`;
+      });
+      lines.push(`Texte (conseils, analyses, PDF) : ${u.text.req} requêtes, ${Math.round((u.text.inTok + u.text.outTok) / 1000)} k jetons`);
+      el.textContent = `Ce mois-ci depuis ce téléphone (estimation voix ≈ ${usd.toFixed(2)} $) :\n` + lines.join('\n');
     }
 
     // ==================== MODE POCHE ====================
@@ -5813,8 +6329,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     function launchFromHome() {
       showChrono();
       toggleTimer();
+      btAutoReconnect(); // la montre se reconnecte seule si elle a déjà été autorisée
     }
     function renderHome() {
+      renderHrChip();
       const el = document.getElementById('homeSessCard');
       if (!el) return;
       const sess = getActiveSession();
@@ -5825,6 +6343,8 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       document.getElementById('homeSessDesc').textContent = describeSessionProgram(sess);
       document.getElementById('homeSessStats').textContent =
         `${total} min • ≈ ${dist} km • ${sess.type === 'exterieur' ? 'extérieur' : `pente ${sess.pente}%`}`;
+      const fuelEl = document.getElementById('homeFuel');
+      if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE LA SÉANCE' : 'LANCER LA SÉANCE';
       const goal = appData.goal || {};
       const g = document.getElementById('homeGoal');
@@ -6004,6 +6524,17 @@ Si une donnée manque, dis-le simplement sans inventer.`;
         c.width = c.height = 512;
         drawRunAiLogo(c.getContext('2d'), 512, { bg: '#ffffff' });
         const png = c.toDataURL('image/png');
+        // Écran de lancement Android (fond noir) : logo clair sur fond transparent, sans carré blanc
+        const darkPng = runAiLogoDataUrl(512, { ink: '#ffffff', ringTrack: '#1e293b' });
+        // Icône d'écran d'accueil (masque rond/carré d'Android) : fond blanc, logo dans la zone sûre
+        const mc = document.createElement('canvas');
+        mc.width = mc.height = 512;
+        const mg = mc.getContext('2d');
+        mg.fillStyle = '#ffffff';
+        mg.fillRect(0, 0, 512, 512);
+        mg.translate(256 * 0.2, 256 * 0.2);
+        drawRunAiLogo(mg, 512 * 0.8, {});
+        const maskPng = mc.toDataURL('image/png');
 
         const addLink = (rel, href, extra = {}) => {
           const l = document.createElement('link');
@@ -6011,7 +6542,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
           Object.keys(extra).forEach(k => l.setAttribute(k, extra[k]));
           document.head.appendChild(l);
         };
-        addLink('icon', png, { type: 'image/png' });
+        addLink('icon', darkPng, { type: 'image/png' }); // pas de carré blanc sur fond noir
         addLink('apple-touch-icon', png);
 
         const manifest = {
@@ -6022,7 +6553,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
           orientation: "portrait",
           background_color: "#000000",
           theme_color: "#020617",
-          icons: [{ src: png, sizes: "512x512", type: "image/png", purpose: "any" }]
+          icons: [
+            { src: darkPng, sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: maskPng, sizes: "512x512", type: "image/png", purpose: "maskable" }
+          ]
         };
         if (/^https?:$/.test(location.protocol)) {
           manifest.start_url = location.href.split('#')[0];
