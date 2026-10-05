@@ -3138,7 +3138,7 @@
         } else if (elapsedMs >= pt.t) {
           const halfApplies = halfAlertApplies(curStage);
           const okWindow = remMs > 9500 && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
-          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: 60000 }[pt.kind] || 40000;
+          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS }[pt.kind] || 40000;
           const now = Date.now();
           if (elapsedMs > pt.t + 4000 || (!okWindow && remMs <= 9500) ||
               now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < 10000) {
@@ -4343,8 +4343,11 @@
       const sig = coachTipSignature(sess);
       appData.audioSettings.voiceLang = prev;
       const l = appData.coachLongTips && appData.coachLongTips[sig];
-      return Array.isArray(l) ? l : [];
+      return Array.isArray(l) ? l.filter(x => !POSTURE_RE.test(x)) : [];
     }
+    // Conseils de coach : 5 min minimum entre deux, sur toute la séance ; jamais de posture/technique
+    const TIP_GAP_MS = 300000;
+    const POSTURE_RE = /(épaule|bras|main|mâchoire|foulée|pied|appui|regard|nuque|posture|buste|cadence|genou|hanche|chips|shoulder|arm|hand|jaw|stride|foot|feet|posture|chest|cadence|knee|hip)/i;
 
     async function prefetchCoachTip() {
       if (appData.audioSettings.coachTip === false || !getGeminiKey()) return null;
@@ -4849,12 +4852,20 @@ Réponds uniquement avec le JSON.`;
       const doneBefore = stages.slice(0, idx).reduce((a, s) => a + s.durationSec, 0);
       const sessionHalfAt = totalS / 2 - doneBefore - nowElapsed;
 
+      let lastTipAt = (lastEncouragementAt.tip > 0 ? (lastEncouragementAt.tip - Date.now()) / 1000 : -1e9);
       for (let i = idx; i < stages.length; i++) {
         const st = stages[i];
         const d = st.durationSec;
         if (i > idx) ev.push({ t: t0, pieces: goPieces(st), fixed: true });
         if (halfAlertApplies(st)) ev.push({ t: t0 + d / 2, pieces: [pickRandom(t.half)], fixed: false });
-        if (enc) computeExtraPoints(st).forEach(p => ev.push({ t: t0 + p.t / 1000, pieces: [pickNoRepeat(p.kind)], fixed: false, kind: p.kind }));
+        if (enc) computeExtraPoints(st).forEach(p => {
+          const at = t0 + p.t / 1000;
+          if (p.kind === 'tip') {
+            if (at - lastTipAt < TIP_GAP_MS / 1000) return;
+            lastTipAt = at;
+          }
+          ev.push({ t: at, pieces: [pickNoRepeat(p.kind)], fixed: false, kind: p.kind });
+        });
         if (d >= 10) {
           const pp = [i + 1 < stages.length ? stagePhrase(stages[i + 1], 'prep') : t.last15];
           ev.push({ t: t0 + d - prepLeadMs(pp[0]) / 1000, pieces: pp, fixed: true });
