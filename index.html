@@ -207,18 +207,28 @@
 
   <!-- ==================== ÉCRAN D'ACCUEIL ==================== -->
   <section id="homeScreen" class="flex-1 flex-col w-full max-w-md mx-auto px-4 py-6 gap-4">
-    <div class="flex items-center">
-      <button onclick="showHome()" title="Accueil" class="active:scale-95 transition"><img class="runai-logo" style="width:52px;height:52px" alt="Accueil"></button>
+    <div class="flex items-center gap-2.5">
+      <button onclick="showHome()" title="Accueil" class="active:scale-95 transition"><img class="runai-logo" style="width:48px;height:48px" alt="Accueil"></button>
+      <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
+    </div>
+
+    <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
+      <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300"></div>
+      <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
+      <div class="text-[11px] text-slate-400">Aucune séance prévue. Profite de la récupération, ou ajoute une séance si tu te sens bien.</div>
+      <div id="homeRestNext" class="text-[11px] text-slate-300"></div>
+      <button onclick="openAddSession()" class="w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
+      <button id="homeRestNextBtn" onclick="launchNextAnyway()" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
 
     <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
-      <div class="text-[10px] uppercase tracking-widest font-bold text-sky-300">Séance chargée</div>
+      <div id="homeCardLabel" class="text-[10px] uppercase tracking-widest font-bold text-sky-300">Séance du jour</div>
       <div id="homeSessTitle" class="text-lg font-black text-white"></div>
       <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
       <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeSessDesc" class="text-[11px] text-slate-300"></div>
       <div id="homeAdapted" class="text-[10px] font-bold text-amber-300 hidden"></div>
-      <button onclick="openFeelModal()" id="homeFeelBtn" class="w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
+      <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">LANCER LA SÉANCE</span>
@@ -230,7 +240,7 @@
       <button onclick="openHistoryModal()" class="home-tile bg-emerald-500/10 border-emerald-500/40 text-emerald-300"><span class="icon-slot" data-icon="clipboard"></span><span>Planning & suivi</span></button>
       <button onclick="openCoachModal()" class="home-tile bg-purple-500/10 border-purple-500/40 text-purple-300"><span class="icon-slot" data-icon="cpu"></span><span>Coach IA & import PDF</span></button>
       <button onclick="openAudioModal()" class="home-tile bg-slate-800/60 border-slate-600 text-slate-200"><span class="icon-slot" data-icon="settings"></span><span>Voix & réglages</span></button>
-      <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Mon objectif</span></button>
+      <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Profil & objectif</span></button>
       <button onclick="openSensorsModal()" class="home-tile bg-rose-500/10 border-rose-500/40 text-rose-300"><span class="text-2xl leading-none">⌚</span><span>Cardio, GPS & parcours</span></button>
       <button onclick="openValidationModal()" class="home-tile bg-teal-500/10 border-teal-500/40 text-teal-300"><span class="icon-slot" data-icon="check-circle"></span><span>Valider une séance</span></button>
     </div>
@@ -341,22 +351,17 @@
 
         <!-- Échauffement / Retour au calme -->
         <div class="grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center">
+          <div id="cfgEfInfo" class="col-span-2 text-[10px] text-cyan-300 font-semibold"></div>
           <div>
             <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Chauffe (min)</label>
             <input type="number" id="cfgChauffe" value="10" min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
           </div>
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse chauffe (km/h)</label>
-            <input type="number" id="cfgVitChauffe" value="6" min="1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
-          </div>
+
           <div>
             <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Retour calme (min)</label>
             <input type="number" id="cfgRecup" value="5" min="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
           </div>
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse retour calme</label>
-            <input type="number" id="cfgVitRecup" value="5" min="1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
-          </div>
+
         </div>
 
         
@@ -444,7 +449,7 @@
   <div id="feelModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[65] flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-amber-500/40 rounded-3xl w-full max-w-sm p-4 space-y-3 text-xs max-h-[92vh] overflow-y-auto custom-scroll">
       <div class="flex items-center justify-between">
-        <span class="text-base font-bold text-white">🙂 Sensations du jour</span>
+        <span id="feelTitle" class="text-base font-bold text-white">🙂 Sensations du jour</span>
         <button onclick="closeFeelModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400">✕</button>
       </div>
       <div id="feelSessTitle" class="text-[10px] text-slate-400"></div>
@@ -454,8 +459,8 @@
       </div>
       <textarea id="feelNote" rows="2" placeholder="Autre chose ? (journée chargée, chaleur…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white"></textarea>
       <div class="grid grid-cols-2 gap-2">
-        <button onclick="saveFeelOnly()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Enregistrer</button>
-        <button onclick="askCoachAdaptation()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-[11px]">🧠 Avis du coach</button>
+        <button id="feelSaveBtn" onclick="saveFeelOnly()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Enregistrer</button>
+        <button id="feelAskBtn" onclick="feelAsk()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-[11px] col-span-1">🧠 Avis du coach</button>
       </div>
       <div id="feelAdvice" class="text-[11px] leading-relaxed bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 hidden"></div>
       <button id="feelRestore" onclick="restoreOriginalPlan()" class="w-full py-2 text-[11px] font-bold text-slate-400 underline hidden">↩️ Revenir à la séance d'origine</button>
@@ -578,6 +583,17 @@
           <input type="number" id="goalPenteInput" value="1" min="0" max="15" step="0.5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="updateGoalVAPCalculation()">
           <span class="text-[9px] text-slate-500 block mt-1">La VAP traduit votre allure tapis avec pente en équivalent effort sur le plat.</span>
         </div>
+      </div>
+
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-cyan-500/30 space-y-2 text-xs">
+        <span class="font-bold text-cyan-300 block">🏃 Profil coureur</span>
+        <div class="flex items-center gap-2">
+          <label class="text-[10px] text-slate-300 flex-1">Endurance fondamentale (km/h)<br><span class="text-[9px] text-slate-500">Vitesse de la chauffe et du retour au calme</span></label>
+          <input type="number" id="efInput" step="0.5" min="4" max="18" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white">
+        </div>
+        <label class="flex items-center justify-between text-[10px] text-slate-300">Recalcul automatique par le coach après chaque séance <input type="checkbox" id="efAuto" class="accent-cyan-500 w-4 h-4"></label>
+        <div id="efNote" class="text-[10px] text-slate-400"></div>
+        <button type="button" onclick="computeEfWithAI(true)" class="w-full py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-200 font-bold rounded-lg text-[11px]">🧠 Recalculer avec le coach</button>
       </div>
 
       <div class="pt-2">
@@ -1405,6 +1421,8 @@
       // Voix IA : chargement du cache et génération des annonces manquantes
       setTimeout(prepareSessionVoice, 800);
       setTimeout(() => btAutoReconnect(), 1500);
+      selectTodaySession();
+      renderHome();
       setTimeout(downloadAllPreviews, 4000);
 
       // Chiffre central : appui simple = vitesse ⇄ cardio ; double appui = segment suivant
@@ -1485,7 +1503,7 @@
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       const pyrKm = (sess.pyramide || []).reduce((a, p) => a + (parseFloat(p.speed) || 0) * (parseFloat(p.duration) || 0) / 60, 0);
-      return (sess.chauffe || 0) * (sess.vitChauffe || 6) / 60 + pyrKm * reps * nb + (nb - 1) * (sess.recupBloc || 0) * (sess.vitRecupBloc || 6) / 60 + (sess.recup || 0) * (sess.vitRecup || 5) / 60;
+      return ((sess.chauffe || 0) + (sess.recup || 0)) * runnerEF() / 60 + pyrKm * reps * nb + (nb - 1) * (sess.recupBloc || 0) * (sess.vitRecupBloc || 6) / 60;
     }
     function formatSessTitle(sess) {
       return `Semaine ${sess.semaine} • ${String(sess.jour || '').toUpperCase()}${sess.date ? ` (${sess.date})` : ''}`;
@@ -1548,7 +1566,7 @@
       const stages = [];
 
       if (sess.chauffe > 0) {
-        stages.push({ type: 'chauffe', name: "Échauffement", speed: sess.vitChauffe || 6, durationSec: Math.round(sess.chauffe * 60) });
+        stages.push({ type: 'chauffe', name: "Échauffement", speed: runnerEF(), durationSec: Math.round(sess.chauffe * 60) });
       }
 
       const reps = Math.max(1, parseInt(sess.repet) || 1);
@@ -1589,7 +1607,7 @@
       }
 
       if (sess.recup > 0) {
-        stages.push({ type: 'recup', name: "Retour au calme", speed: sess.vitRecup || 5, durationSec: Math.round(sess.recup * 60) });
+        stages.push({ type: 'recup', name: "Retour au calme", speed: runnerEF(), durationSec: Math.round(sess.recup * 60) });
       }
 
       // Intensité : rapide (au-dessus de la vitesse moyenne des paliers) / récup (récups et paliers les plus lents)
@@ -3302,8 +3320,7 @@
       updateDayFromDate();
       document.getElementById('cfgPente').value = (typeof sess.pente === 'number') ? sess.pente : 1;
       document.getElementById('cfgChauffe').value = sess.chauffe;
-      document.getElementById('cfgVitChauffe').value = sess.vitChauffe || 6;
-      document.getElementById('cfgVitRecup').value = sess.vitRecup || 5;
+      document.getElementById('cfgEfInfo').textContent = `Chauffe et retour au calme à l'endurance fondamentale : ${formatSpeed(runnerEF())} km/h (Profil & objectif)`;
       modalRoute = sess.route || null;
       renderRouteInfo();
       setGpxStatus(modalRoute ? `✓ Parcours : ${modalRoute.totalKm.toFixed(1)} km, D+ ${Math.round(modalRoute.gainM)} m` : 'Aucun parcours pour cette séance');
@@ -3457,8 +3474,7 @@
         recupBloc: Math.max(0, num('cfgRecupBloc', 0)),
         vitRecupBloc: Math.max(1, num('cfgVitRecupBloc', 6)),
         recup: Math.max(0, num('cfgRecup', 0)),
-        vitChauffe: Math.max(1, num('cfgVitChauffe', 6)),
-        vitRecup: Math.max(1, num('cfgVitRecup', 5)),
+
         pyramide: readPyramidFromDOM()
       };
     }
@@ -3512,8 +3528,6 @@
       sess.recupBloc = v.recupBloc;
       sess.vitRecupBloc = v.vitRecupBloc;
       sess.recup = v.recup;
-      sess.vitChauffe = v.vitChauffe;
-      sess.vitRecup = v.vitRecup;
       sess.route = modalRoute;
       sess.pyramide = pyr;
     }
@@ -3669,6 +3683,7 @@
       updateHistoryTable();
       closeValidationModal();
       showToast("Séance validée avec succès ! ✓");
+      if (runnerProfile().efAuto !== false) setTimeout(() => computeEfWithAI(false), 1500);
       if (timerState.finished) { reloadChrono(); showHome(); }
     }
 
@@ -3732,7 +3747,7 @@
           duration: dur,
           feeling: null,
           note: 'Planifiée',
-          details: describeSessionProgram(s)
+          details: describeSessionHuman(s)
         });
       });
 
@@ -3931,6 +3946,7 @@
     }
 
     function updateGoalModalUI() {
+      renderRunnerProfile();
       const g = appData.goal;
       document.getElementById('goalDateInput').value = g.date;
       document.getElementById('goalDistInput').value = g.distanceKm;
@@ -3981,6 +3997,7 @@
 
     function saveGoalSettings() {
       setTimeout(renderHome, 0);
+      saveRunnerProfile();
       appData.goal.date = document.getElementById('goalDateInput').value;
       appData.goal.distanceKm = parseFloat(document.getElementById('goalDistInput').value) || 10;
       appData.goal.durationMin = parseFloat(document.getElementById('goalDurInput').value) || 50;
@@ -6518,17 +6535,24 @@ Si une donnée manque, dis-le simplement sans inventer.`;
 
     function openFeelModal() {
       const sess = getActiveSession();
-      feelDraft = Object.assign({}, sess.dayFeel || {});
+      feelDraft = Object.assign({}, feelMode === 'add' ? {} : (sess.dayFeel || {}));
       feelProposal = null;
-      document.getElementById('feelSessTitle').textContent = `${formatSessTitle(sess)} — ${describeSessionProgram(sess)}`;
+      document.getElementById('feelSessTitle').textContent = feelMode === 'add'
+        ? "Aucune séance prévue aujourd'hui : indique tes sensations, le coach te dira si c'est judicieux d'en ajouter une."
+        : `${formatSessTitle(sess)} — ${describeSessionHuman(sess)}`;
       document.getElementById('feelPainWhere').value = feelDraft.painWhere || '';
       document.getElementById('feelNote').value = feelDraft.note || '';
       document.getElementById('feelAdvice').classList.add('hidden');
-      document.getElementById('feelRestore').classList.toggle('hidden', !sess.planOriginal);
+      document.getElementById('feelRestore').classList.toggle('hidden', feelMode === 'add' || !sess.planOriginal);
+      document.getElementById('feelTitle').textContent = feelMode === 'add' ? '➕ Ajouter une séance' : '🙂 Sensations du jour';
+      document.getElementById('feelAskBtn').textContent = feelMode === 'add' ? "🧠 Le coach décide" : "🧠 Avis du coach";
+      document.getElementById('feelSaveBtn').classList.toggle('hidden', feelMode === 'add');
+      document.getElementById('feelAskBtn').classList.toggle('col-span-2', feelMode === 'add');
       renderFeelChips();
       document.getElementById('feelModal').classList.remove('hidden');
     }
-    function closeFeelModal() { document.getElementById('feelModal').classList.add('hidden'); }
+    function closeFeelModal() { document.getElementById('feelModal').classList.add('hidden'); feelMode = 'adapt'; }
+    function feelAsk() { if (feelMode === 'add') askCoachAddSession(); else askCoachAdaptation(); }
 
     function renderFeelChips() {
       const box = document.getElementById('feelChips');
@@ -6658,6 +6682,259 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
       showToast("Séance d'origine rétablie");
     }
 
+    // ==================== PROFIL COUREUR : ENDURANCE FONDAMENTALE ====================
+    function runnerProfile() {
+      if (!appData.runner || typeof appData.runner !== 'object') appData.runner = { efKmh: null, efAuto: true, efNote: '', efAt: '' };
+      return appData.runner;
+    }
+    // Vitesse d'endurance fondamentale (chauffe et retour au calme)
+    function runnerEF() {
+      const r = runnerProfile();
+      if (r.efKmh && r.efKmh > 3) return r.efKmh;
+      const g = appData.goal || {};
+      const goalKmh = g.distanceKm && g.durationMin ? g.distanceKm / (g.durationMin / 60) : (parseFloat(g.speedKmh) || 0);
+      if (goalKmh > 5) return Math.max(6, Math.min(14, Math.round(goalKmh * 0.72 * 2) / 2));
+      return 8;
+    }
+    function renderRunnerProfile() {
+      const r = runnerProfile();
+      const inp = document.getElementById('efInput');
+      if (!inp) return;
+      inp.value = formatSpeed(runnerEF());
+      document.getElementById('efAuto').checked = r.efAuto !== false;
+      document.getElementById('efNote').textContent = r.efNote
+        ? `🧠 ${r.efNote}${r.efAt ? ` (${r.efAt})` : ''}`
+        : (r.efKmh ? '' : 'Estimation de départ d\'après votre objectif : le coach l\'affinera après vos séances.');
+    }
+    function saveRunnerProfile() {
+      const r = runnerProfile();
+      const v = parseFloat(String(document.getElementById('efInput').value).replace(',', '.'));
+      const auto = document.getElementById('efAuto').checked;
+      if (!isNaN(v) && v > 3 && v < 20 && Math.abs(v - runnerEF()) > 0.01) { r.efKmh = v; r.efNote = 'Réglée manuellement'; r.efAt = toISODateLocal(new Date()); }
+      r.efAuto = auto;
+      saveAppData();
+      reloadChrono();
+    }
+    // Calcul par le coach IA à partir des séances enregistrées
+    async function computeEfWithAI(manual = false) {
+      const r = runnerProfile();
+      if (!getGeminiKey()) { if (manual) showToast("Renseignez la clé Gemini pour le calcul par le coach"); return; }
+      const hist = (appData.history || []).filter(h => h.isVal !== false).slice(0, 10);
+      if (!hist.length) { if (manual) showToast("Il faut au moins une séance enregistrée"); return; }
+      const el = document.getElementById('efNote');
+      if (manual && el) el.textContent = '⏳ Le coach analyse vos séances…';
+      const lines = hist.map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}${h.seg && h.seg.length ? ` ; segments : ${h.seg.map(s => `${s.name} ${s.avgKmh ? formatSpeed(s.avgKmh) : '?'} km/h${s.avgHr ? ` FC ${s.avgHr}` : ''}`).join(', ')}` : ''}`).join('\n');
+      const g = appData.goal || {};
+      const prompt = `Tu es un entraîneur de course à pied. À partir de mes séances ci-dessous (vitesses en km/h, FC si disponible), estime ma vitesse d'endurance fondamentale (allure confortable, environ 65-75 % de la FC max, conversation possible), utilisée pour l'échauffement et le retour au calme.
+FC max connue : ${sensors().fcMax || 'inconnue'}. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min. Valeur actuelle : ${formatSpeed(runnerEF())} km/h.
+Séances :
+${lines}
+Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "une phrase courte, en tutoyant"}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        const v = parseFloat(String(j.ef_kmh).replace(',', '.'));
+        if (isNaN(v) || v < 4 || v > 18) throw new Error('valeur incohérente');
+        r.efKmh = Math.round(v * 2) / 2;
+        r.efNote = String(j.explication || '').slice(0, 200);
+        r.efAt = toISODateLocal(new Date());
+        saveAppData();
+        reloadChrono();
+        renderRunnerProfile();
+        if (manual) showToast(`Endurance fondamentale : ${formatSpeed(r.efKmh)} km/h`);
+      } catch (e) {
+        if (manual && el) el.textContent = `Calcul impossible : ${e.message || e}`;
+      }
+    }
+
+    // ==================== PRÉSENTATION LISIBLE D'UNE SÉANCE ====================
+    function qtyText(p) {
+      if (p.unit === 'km') {
+        const km = round2(p.distance);
+        return km < 1 ? `${Math.round(km * 1000)} m` : `${String(km).replace('.', ',')} km`;
+      }
+      return formatMinSec(p.duration).replace(/'00"$/, "'").replace(/"$/, '');
+    }
+    function spTxt(v) { return formatSpeed(v).replace('.', ','); }
+
+    function describeSessionHuman(sess) {
+      const segs = (sess.pyramide || []).filter(p => p.speed > 0);
+      const reps = Math.max(1, parseInt(sess.repet) || 1);
+      const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
+      const slope = sess.type !== 'exterieur' && sess.pente > 0 ? ` à ${String(sess.pente).replace('.', ',')} %` : '';
+      const speeds = segs.map(p => +p.speed);
+      const allSame = speeds.every(v => v === speeds[0]);
+      const sameUnit = segs.every(p => (p.unit === 'km') === (segs[0].unit === 'km'));
+      const listQty = arr => {
+        if (arr.every(p => p.unit === 'km')) {
+          const ms = arr.map(p => Math.round(p.distance * 1000));
+          return ms.every(m => m < 1000) ? `${ms.join('-')} m` : arr.map(qtyText).join('-');
+        }
+        const mins = arr.map(p => p.duration);
+        return mins.every(m => Number.isInteger(m)) ? `${mins.join('-')}'` : arr.map(qtyText).join('-');
+      };
+      let core = '', repsDone = false;
+      if (!segs.length) core = '—';
+      else if (segs.length === 1) {
+        core = `${reps > 1 ? `${reps}×` : ''}${qtyText(segs[0])} à ${spTxt(segs[0].speed)}${slope}`;
+        repsDone = true;
+      } else if (segs.length === 2 && speeds[0] > speeds[1]) {
+        // Fractionné : effort + récupération
+        core = `${reps > 1 ? `${reps}×` : ''}${qtyText(segs[0])} à ${spTxt(segs[0].speed)}${slope} (récup ${qtyText(segs[1])} à ${spTxt(segs[1].speed)})`;
+        repsDone = true;
+      } else if (allSame && sameUnit) {
+        core = `${reps > 1 ? `${reps} pyramides` : 'pyramide'} ${listQty(segs)} à ${spTxt(speeds[0])}${slope}`;
+        repsDone = true;
+      } else {
+        const work = segs.filter((_, i) => i % 2 === 0), rest = segs.filter((_, i) => i % 2 === 1);
+        const restSame = rest.length && rest.every(p => p.speed === rest[0].speed && p.speed < Math.min(...work.map(w => w.speed)));
+        const workSame = work.every(p => p.speed === work[0].speed);
+        if (segs.length % 2 === 0 && restSame && workSame) {
+          core = `${reps > 1 ? `${reps} pyramides` : 'pyramide'} ${listQty(work)} à ${spTxt(work[0].speed)}${slope} (récup ${qtyText(rest[0])} à ${spTxt(rest[0].speed)})`;
+          repsDone = true;
+        } else {
+          const durSame = segs.every(p => p.unit !== 'km' && p.duration === segs[0].duration);
+          const iMax = speeds.indexOf(Math.max(...speeds));
+          const up = speeds.slice(0, iMax + 1).every((v, i, a) => !i || v >= a[i - 1]);
+          const down = speeds.slice(iMax).every((v, i, a) => !i || v <= a[i - 1]);
+          if (durSame && up && down) {
+            core = `${reps > 1 ? `${reps} pyramides` : 'pyramide'} d'allure ${spTxt(speeds[0])}→${spTxt(speeds[iMax])}→${spTxt(speeds[speeds.length - 1])} (${qtyText(segs[0])} par palier)${slope}`;
+            repsDone = true;
+          } else {
+            core = segs.map(p => `${qtyText(p)} à ${spTxt(p.speed)}`).join(' + ') + slope;
+          }
+        }
+      }
+      if (!repsDone && reps > 1) core = `${reps}× (${core})`;
+      if (nb > 1) core = `${nb} blocs de ${core}${sess.recupBloc > 0 ? `, récup ${formatMinSec(sess.recupBloc).replace(/'00"$/, "'")} entre blocs` : ''}`;
+      const parts = [];
+      if (sess.chauffe > 0) parts.push(`Chauffe ${formatMinSec(sess.chauffe).replace(/'00"$/, "'")}`);
+      parts.push(core);
+      if (sess.recup > 0) parts.push(`retour au calme ${formatMinSec(sess.recup).replace(/'00"$/, "'")}`);
+      return parts.join(' + ');
+    }
+
+    // ==================== JOUR J : SÉANCE DU JOUR / REPOS ====================
+    function todayISO() { return toISODateLocal(new Date()); }
+    // Charge automatiquement la séance du jour (ou la prochaine) si aucune séance n'est en cours
+    function selectTodaySession() {
+      if (timerState.sessionStarted && !timerState.finished) return;
+      const t = todayISO();
+      let idx = appData.sessions.findIndex(s => s.dateISO === t);
+      if (idx < 0) {
+        const cur = getActiveSession();
+        if (cur && cur.dateISO && cur.dateISO > t) return; // une séance future déjà choisie
+        let best = -1;
+        appData.sessions.forEach((s, i) => { if (s.dateISO && s.dateISO > t && (best < 0 || s.dateISO < appData.sessions[best].dateISO)) best = i; });
+        idx = best;
+      }
+      if (idx >= 0 && idx !== appData.activeSessionIndex) {
+        appData.activeSessionIndex = idx;
+        saveAppData();
+        reloadChrono();
+      }
+    }
+    function launchNextAnyway() {
+      document.getElementById('homeRest').classList.add('hidden');
+      document.getElementById('homeSessCard').classList.remove('hidden');
+      homeShowNextAnyway = true;
+      renderHome();
+    }
+    let homeShowNextAnyway = false;
+
+    // ==================== AJOUTER UNE SÉANCE AUJOURD'HUI (AVIS DU COACH) ====================
+    let feelMode = 'adapt';
+    let addProposal = null;
+    function openAddSession() {
+      feelMode = 'add';
+      addProposal = null;
+      openFeelModal();
+    }
+    async function askCoachAddSession() {
+      const feel = Object.assign({}, readFeelForm());
+      const out = document.getElementById('feelAdvice');
+      out.classList.remove('hidden');
+      if (!getGeminiKey()) {
+        out.innerHTML = `<span class="text-rose-400">Sans clé Gemini, pas d'avis du coach.</span>
+          <button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Créer ma séance moi-même</button>`;
+        return;
+      }
+      out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach réfléchit…</div>';
+      const t = todayISO();
+      const now = new Date();
+      const past = (appData.history || []).slice(0, 8).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(s => s.dateISO && s.dateISO >= t).slice(0, 5).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
+      const g = appData.goal || {};
+      const prompt = `Tu es un coach de course à pied prudent. Aujourd'hui (${now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) aucune séance n'est prévue et je voudrais en ajouter une.
+Mes sensations : ${feelSummary(feel) || 'non précisées'}.
+Séances récentes :
+${past}
+Prochaines séances prévues :
+${next}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}. Endurance fondamentale : ${formatSpeed(runnerEF())} km/h.
+Dis si c'est judicieux d'ajouter une séance aujourd'hui (fatigue, récupération, séance dure la veille ou le lendemain…). Si oui, propose une séance adaptée et raisonnable. Si non, conseille le repos ou une activité douce.
+Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":true|false,"resume":"titre court de la séance","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":${runnerEF()},"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
+        addProposal = j;
+        let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>`;
+        if (j.ajouter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
+          const s = buildSessionFromProposal(j.seance, feel);
+          html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-emerald-500/40">
+            <div class="text-emerald-300 font-bold">➕ ${String(j.resume || 'Séance proposée').replace(/</g, '&lt;')}</div>
+            <div class="text-[10px] text-slate-300">${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))}')</div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <button onclick="acceptAddProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Ajouter</button>
+            <button onclick="closeFeelModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Non merci</button>
+          </div>`;
+        } else {
+          html += `<div class="mt-2 text-amber-300 font-bold">😴 Le coach conseille plutôt le repos aujourd'hui.</div>
+            <button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Ajouter quand même une séance</button>`;
+        }
+        out.innerHTML = html;
+      } catch (e) {
+        out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`;
+      }
+    }
+    function buildSessionFromProposal(p, feel) {
+      const d = new Date();
+      const next = appData.sessions.find(s => s.dateISO && s.dateISO >= todayISO());
+      const base = {
+        id: `sess_${Date.now()}`, semaine: next ? next.semaine : 1,
+        dateISO: toISODateLocal(d), date: toDDMM(d), jour: weekdayName(d),
+        type: p.type === 'exterieur' ? 'exterieur' : 'tapis',
+        pente: 1, chauffe: 10, recup: 5, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(), pyramide: [{ speed: runnerEF(), duration: 20, unit: 'min' }]
+      };
+      const s = proposalToSession(base, p);
+      s.type = base.type;
+      if (s.type === 'exterieur') s.pente = 0;
+      if (feel) s.dayFeel = feel;
+      delete s.planOriginal;
+      return s;
+    }
+    function insertTodaySession(s) {
+      appData.sessions.push(s);
+      sortSessionsKeep(s);
+      saveAppData();
+      reloadChrono();
+      updateHistoryTable();
+      homeShowNextAnyway = false;
+      renderHome();
+    }
+    function acceptAddProposal() {
+      if (!addProposal || !addProposal.seance) return;
+      insertTodaySession(buildSessionFromProposal(addProposal.seance, Object.assign({}, readFeelForm())));
+      closeFeelModal();
+      showToast("✅ Séance ajoutée pour aujourd'hui");
+    }
+    function createOwnSessionToday() {
+      const s = buildSessionFromProposal({ segments: [{ vitesse: runnerEF(), duree_min: 20 }] }, Object.assign({}, readFeelForm()));
+      insertTodaySession(s);
+      closeFeelModal();
+      openConfigModal();
+      showToast("Séance créée pour aujourd'hui : réglez-la puis enregistrez");
+    }
+
     // ==================== MODE POCHE ====================
     let pocketHold = null;
     function enterPocketMode() {
@@ -6710,6 +6987,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
     // ==================== ÉCRAN D'ACCUEIL ====================
     function showHome() {
       if (timerState.isRunning) return;
+      selectTodaySession();
       document.body.classList.add('home');
       renderHome();
       refreshAllIcons();
@@ -6735,11 +7013,26 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
       const el = document.getElementById('homeSessCard');
       if (!el) return;
       const sess = getActiveSession();
+      {
+        const t = todayISO();
+        const dayLong = capFirst(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+        const hasToday = appData.sessions.some(s => s.dateISO === t);
+        const busy = timerState.sessionStarted && !timerState.finished;
+        const showRest = !hasToday && !busy && !homeShowNextAnyway;
+        document.getElementById('homeRest').classList.toggle('hidden', !showRest);
+        el.classList.toggle('hidden', showRest);
+        document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui • ${dayLong}`;
+        const isNext = sess && sess.dateISO && sess.dateISO > t;
+        document.getElementById('homeRestNext').textContent = isNext ? `Prochaine séance : ${formatSessTitle(sess)} — ${describeSessionHuman(sess)}` : '';
+        document.getElementById('homeRestNextBtn').classList.toggle('hidden', !sess);
+        document.getElementById('homeRestNextBtn').textContent = isNext ? 'Voir la prochaine séance' : 'Voir la séance chargée';
+        document.getElementById('homeCardLabel').textContent = sess.dateISO === t ? `📅 Aujourd'hui • ${dayLong}` : (isNext ? `Prochaine séance` : 'Séance chargée');
+      }
       const total = Math.round(computeSessionTotalMin(sess));
       const dist = computeSessionDistanceKm(sess).toFixed(1);
       const inProgress = timerState.sessionStarted && !timerState.finished;
       document.getElementById('homeSessTitle').textContent = formatSessTitle(sess);
-      document.getElementById('homeSessDesc').textContent = describeSessionProgram(sess);
+      document.getElementById('homeSessDesc').textContent = describeSessionHuman(sess);
       document.getElementById('homeSessStats').textContent =
         `${total} min • ≈ ${dist} km • ${sess.type === 'exterieur' ? 'extérieur' : `pente ${sess.pente}%`}`;
       const fuelEl = document.getElementById('homeFuel');
@@ -6929,7 +7222,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
         const mc = document.createElement('canvas');
         mc.width = mc.height = 512;
         const mg = mc.getContext('2d');
-        mg.fillStyle = '#ffffff';
+        mg.fillStyle = '#000000';
         mg.fillRect(0, 0, 512, 512);
         mg.translate(512 * 0.14, 512 * 0.14);
         drawRunAiLogo(mg, 512 * 0.72, {});
