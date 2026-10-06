@@ -55,12 +55,13 @@
     #homeScreen { display: none; }
     body.home { background: #000; }
     #splash {
-      position: fixed; inset: 0; z-index: 200; background: #000;
+      position: fixed; inset: 0; z-index: 200; background: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem;
       transition: opacity 1.4s ease;
     }
     #splash img { width: 58vw; max-width: 260px; height: auto; }
-    #splash .splash-slogan { color: #94a3b8; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; margin-top: -0.25rem; }
+    #splash .runai-wordmark { color: #0f172a; }
+    #splash .splash-slogan { color: #64748b; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; margin-top: -0.25rem; }
     #splash.fade { opacity: 0; pointer-events: none; }
     .runai-wordmark { font-weight: 900; color: #fff; letter-spacing: -0.02em; line-height: 1; }
     .runai-wordmark span {
@@ -212,6 +213,8 @@
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
     </div>
 
+ <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
+
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300"></div>
       <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
@@ -228,6 +231,7 @@
       <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeSessDesc" class="text-[11px] text-slate-300"></div>
       <div id="homeAdapted" class="text-[10px] font-bold text-amber-300 hidden"></div>
+      <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
@@ -445,6 +449,17 @@
     </div>
   </div>
 
+  <!-- Proposition de prolongation pendant la course -->
+  <div id="extPrompt" class="fixed inset-x-3 bottom-6 z-[160] bg-slate-900 border-2 border-emerald-400 rounded-3xl p-4 space-y-3 text-center shadow-2xl hidden">
+    <div class="text-[10px] uppercase tracking-widest font-bold text-emerald-300">Proposition du coach</div>
+    <div id="extPromptText" class="text-xl font-black text-white"></div>
+    <div id="extPromptHint" class="text-[11px] text-slate-400"></div>
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="answerExtension(true)" class="py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl text-lg">OUI</button>
+      <button onclick="answerExtension(false)" class="py-4 bg-slate-700 text-white font-black rounded-2xl text-lg">NON</button>
+    </div>
+  </div>
+
   <!-- Sensations du jour -->
   <div id="feelModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[65] flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-amber-500/40 rounded-3xl w-full max-w-sm p-4 space-y-3 text-xs max-h-[92vh] overflow-y-auto custom-scroll">
@@ -585,8 +600,30 @@
         </div>
       </div>
 
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5 text-xs">
+        <span class="font-bold text-emerald-300 block">🎯 Probabilité de réussite</span>
+        <div id="goalProbBox"></div>
+        <button type="button" onclick="coachGoalOpinion()" class="w-full py-2 bg-purple-600/25 border border-purple-500/50 text-purple-100 font-bold rounded-lg text-[11px]">🧠 Avis du coach sur mes chances</button>
+        <div id="goalCoachOut" class="text-[11px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-lg p-2 hidden"></div>
+      </div>
+
       <div class="bg-slate-950 p-2.5 rounded-xl border border-cyan-500/30 space-y-2 text-xs">
         <span class="font-bold text-cyan-300 block">🏃 Profil coureur</span>
+        <div id="sexChips" class="flex gap-1">
+          <button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button>
+          <button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5 text-center">
+          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Âge</label><input id="ageInput" type="number" min="10" max="100" oninput="readRunnerBody(); renderRunnerBody()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
+          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Taille (cm)</label><input id="heightInput" type="number" min="120" max="230" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
+          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Poids (kg)</label><input id="weightInput" type="number" min="30" max="200" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-[10px] text-slate-300 flex-1">FC max (bpm)<br><span class="text-[9px] text-slate-500">Vide = théorique ; modifiable</span></label>
+          <input type="number" id="fcMaxProfile" min="120" max="230" oninput="readRunnerBody(); renderRunnerBody()" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white">
+        </div>
+        <div id="fcMaxNote" class="text-[10px] text-slate-400"></div>
+        <div id="hrZonesBox" class="bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-0.5"></div>
         <div class="flex items-center gap-2">
           <label class="text-[10px] text-slate-300 flex-1">Endurance fondamentale (km/h)<br><span class="text-[9px] text-slate-500">Vitesse de la chauffe et du retour au calme</span></label>
           <input type="number" id="efInput" step="0.5" min="4" max="18" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white">
@@ -1421,6 +1458,7 @@
       // Voix IA : chargement du cache et génération des annonces manquantes
       setTimeout(prepareSessionVoice, 800);
       setTimeout(() => btAutoReconnect(), 1500);
+      syncFcMax();
       selectTodaySession();
       renderHome();
       setTimeout(downloadAllPreviews, 4000);
@@ -1497,13 +1535,14 @@
     function computeSessionTotalMin(sess) {
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
-      return (sess.chauffe || 0) + pyramidSum(sess) * reps * nb + (nb - 1) * (sess.recupBloc || 0) + (sess.recup || 0);
+      return (sess.chauffe || 0) + pyramidSum(sess) * reps * nb + (nb - 1) * (sess.recupBloc || 0) + (sess.recup || 0) + ((sess.extension && sess.extension.minutes) || 0);
     }
     function computeSessionDistanceKm(sess) {
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       const pyrKm = (sess.pyramide || []).reduce((a, p) => a + (parseFloat(p.speed) || 0) * (parseFloat(p.duration) || 0) / 60, 0);
-      return ((sess.chauffe || 0) + (sess.recup || 0)) * runnerEF() / 60 + pyrKm * reps * nb + (nb - 1) * (sess.recupBloc || 0) * (sess.vitRecupBloc || 6) / 60;
+      const ext = sess.extension && sess.extension.minutes ? sess.extension.minutes * (sess.extension.speed || runnerEF()) / 60 : 0;
+      return ((sess.chauffe || 0) + (sess.recup || 0)) * runnerEF() / 60 + pyrKm * reps * nb + (nb - 1) * (sess.recupBloc || 0) * (sess.vitRecupBloc || 6) / 60 + ext;
     }
     function formatSessTitle(sess) {
       return `Semaine ${sess.semaine} • ${String(sess.jour || '').toUpperCase()}${sess.date ? ` (${sess.date})` : ''}`;
@@ -1606,6 +1645,9 @@
         }
       }
 
+      if (sess.extension && sess.extension.minutes > 0) {
+        stages.push({ type: 'palier', name: 'Prolongation', speed: sess.extension.speed || runnerEF(), durationSec: Math.round(sess.extension.minutes * 60), isExtension: true });
+      }
       if (sess.recup > 0) {
         stages.push({ type: 'recup', name: "Retour au calme", speed: runnerEF(), durationSec: Math.round(sess.recup * 60) });
       }
@@ -1721,7 +1763,7 @@
         speedBig.classList.toggle('text-white', !showHr);
         if (bigSub) {
           bigSub.classList.toggle('hidden', !showHr);
-          if (showHr) bigSub.textContent = `❤️ bpm • vitesse ${curStage ? formatSpeed(curStage.speed) : '–'}`;
+          if (showHr) bigSub.textContent = `❤️ bpm${zoneOf(runData.hr) ? ` • ${zoneOf(runData.hr)}` : ''} • vitesse ${curStage ? formatSpeed(curStage.speed) : '–'}`;
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
         speedBig.classList.toggle('sm:text-8xl', txt.length > 2);
@@ -3072,6 +3114,8 @@
         lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
         resetRunData();
         timerState.hrModel = buildHrModel();
+        timerState.extOfferDone = false;
+        timerState.extendedMin = 0;
       }
       if (gpsWanted()) startGps();
       speak(startPieces(cur, fresh), { chime: true });
@@ -3227,6 +3271,7 @@
       }
 
       routeNavAnnouncements();
+      checkExtensionOffer(remMs);
       checkKmSummary(remMs);
       sensorAnnouncements(curStage, elapsedMs, remMs);
 
@@ -3671,6 +3716,7 @@
         details: detailStr,
         plannedMin: Math.round(plannedMin * 10) / 10,
         endedEarly: !!early,
+        extendedMin: timerState.extendedMin || 0,
         dayFeel: sess.dayFeel && sess.dayFeel.at === toISODateLocal(new Date()) ? sess.dayFeel : undefined,
         summary,
         track: timerState.finished ? (timerState.runTrack || []) : [],
@@ -3684,6 +3730,9 @@
       closeValidationModal();
       showToast("Séance validée avec succès ! ✓");
       if (runnerProfile().efAuto !== false) setTimeout(() => computeEfWithAI(false), 1500);
+      { const s0 = getActiveSession(); delete s0.extensionOffer; }
+      recordGoalProbability();
+      renderGoalProbability();
       if (timerState.finished) { reloadChrono(); showHome(); }
     }
 
@@ -5828,6 +5877,7 @@ Réponds uniquement avec le JSON.`;
       s.kmAnnounce = document.getElementById('chkKmAnnounce').checked;
       const fc = parseInt(document.getElementById('fcMaxInput').value);
       s.fcMax = fc >= 120 && fc <= 230 ? fc : null;
+      runnerProfile().fcMax = s.fcMax; // même FC max partout (profil coureur)
       saveAppData();
     }
     async function testGps() {
@@ -6127,7 +6177,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
           }
         }
       }
-      if (fuelRemindersOn()) parts.push(pickNoRepeat('drink'));
+      if (fuelRemindersOn()) {
+        const ml = waterPlan(getActiveSession()).perKm;
+        parts.push(en ? `Drink about ${ml} millilitres.` : `Bois environ ${ml} millilitres.`);
+      }
       return parts.join(' ');
     }
 
@@ -6158,7 +6211,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     function fuelPlanText(sess) {
       const total = computeSessionTotalMin(sess);
       const fuels = fuelPlanForMinutes(total).map(p => `${p.atMin}'`);
-      return ['💧 boire à chaque km', fuels.length ? `🍬 manger à ${fuels.join(', ')}` : ''].filter(Boolean).join(' • ');
+      return [waterText(sess), fuels.length ? `🍬 manger à ${fuels.join(', ')}` : ''].filter(Boolean).join(' • ');
     }
     function fuelRemindersOn() { return appData.audioSettings.fuelReminders !== false; }
     function buildFuelSchedule() {
@@ -6512,6 +6565,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
 
     // ==================== SENSATIONS DU JOUR + ADAPTATION PAR LE COACH ====================
     const FEEL_FIELDS = {
+      when: { label: 'Quand est ta séance ?', opts: [['maintenant', 'Maintenant'], ['matin', 'Ce matin'], ['midi', 'Ce midi'], ['soir', 'Ce soir']] },
       energy: { label: 'Énergie', opts: [['1', '😫'], ['2', '😕'], ['3', '😐'], ['4', '🙂'], ['5', '🤩']] },
       sleep: { label: 'Sommeil', opts: [['mauvais', 'Mauvais'], ['moyen', 'Moyen'], ['bon', 'Bon']] },
       legs: { label: 'Jambes', opts: [['lourdes', 'Lourdes'], ['normales', 'Normales'], ['legeres', 'Légères']] },
@@ -6524,6 +6578,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     function feelSummary(f) {
       if (!f) return '';
       const p = [];
+      if (f.when) p.push(`séance ${{ maintenant: 'tout de suite', matin: 'ce matin', midi: 'ce midi', soir: 'ce soir' }[f.when] || f.when}`);
       if (f.energy) p.push(`énergie ${f.energy}/5`);
       if (f.sleep) p.push(`sommeil ${f.sleep}`);
       if (f.legs) p.push(`jambes ${f.legs === 'legeres' ? 'légères' : f.legs}`);
@@ -6594,35 +6649,58 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       if (!getGeminiKey()) { out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'avis du coach.</span>'; return; }
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach étudie tes sensations…</div>';
       const base = sess.planOriginal || sess;
-      const hist = (appData.history || []).slice(0, 5).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.dayFeel ? ` ; sensations avant : ${feelSummary(h.dayFeel)}` : ''}`).join('\n') || '- aucune';
+      const t = todayISO();
+      const hist = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.dayFeel ? ` ; sensations avant : ${feelSummary(h.dayFeel)}` : ''}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(s => s !== sess && s.dateISO && s.dateISO > t).slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionHuman(s)}`).join('\n') || '- aucune';
       const g = appData.goal || {};
+      const r = runnerProfile();
+      const when = { maintenant: 'tout de suite', matin: 'ce matin', midi: 'ce midi', soir: 'ce soir' }[sess.dayFeel.when] || 'aujourd\'hui';
+      const nowTxt = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const segs = (base.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
-      const prompt = `Tu es un coach de course à pied prudent et précis. Avant la séance du jour, voici mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
-Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionProgram(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h ; pente ${base.pente} %.
-Détail JSON actuel : {"chauffe":${base.chauffe},"vitChauffe":${base.vitChauffe || 6},"recup":${base.recup},"vitRecup":${base.vitRecup || 5},"repet":${base.repet},"nbBlocs":${base.nbBlocs || 1},"recupBloc":${base.recupBloc || 0},"vitRecupBloc":${base.vitRecupBloc || 6},"pente":${base.pente},"segments":[${segs}]}
-Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+      const prompt = `Tu es un coach de course à pied prudent et précis. Il est ${nowTxt}. Ma séance est prévue ${when}.
+Mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionHuman(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h.
+Détail JSON : {"chauffe":${base.chauffe},"recup":${base.recup},"repet":${base.repet},"nbBlocs":${base.nbBlocs || 1},"recupBloc":${base.recupBloc || 0},"vitRecupBloc":${base.vitRecupBloc || 6},"pente":${base.pente},"segments":[${segs}]}
 Séances récentes :
 ${hist}
-Décide s'il faut adapter la séance du jour. Si les sensations sont bonnes, garde-la telle quelle. Si fatigue, mauvais sommeil, jambes lourdes ou stress : allège raisonnablement (vitesses, répétitions ou durée). Si douleur gênante : propose une séance très facile ou du repos.
-Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":true|false,"resume_modif":"une phrase qui résume le changement","seance":{même format que le détail JSON ci-dessus}}. Si adapter vaut false, recopie la séance actuelle.`;
+Prochaines séances :
+${next}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+1) Donne des conseils concrets pour être au top ${when} : selon le moment (repas, sieste, hydratation, échauffement), et selon les sensations (douleur : que faire et quand renoncer ; fatigue ; stress).
+2) Décide s'il faut alléger la séance (fatigue, mauvais sommeil, douleur gênante…).
+3) Si la forme est bonne ET que les séances récentes et à venir le permettent sans surcharge, tu peux proposer de PROLONGER la séance (ex. +10 min en endurance) ; sinon non.
+Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils courts séparés par des retours à la ligne","adapter":true|false,"resume_modif":"une phrase","seance":{même format que le détail JSON},"prolonger":{"possible":true|false,"minutes":10,"vitesse":${runnerEF()},"raison":"une phrase"}}. En tutoyant. Si adapter vaut false, recopie la séance actuelle.`;
       try {
-        const raw = await geminiText([{ text: prompt }], { json: true, tier: 'full' });
-        const j = parseJsonLoose(raw);
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         feelProposal = j;
         let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>`;
+        if (j.preparation) html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-sky-500/40"><div class="text-sky-300 font-bold mb-1">🌅 Pour être au top ${when}</div><div class="text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.preparation))}</div></div>`;
         if (j.adapter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
           const after = proposalToSession(base, j.seance);
           html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-amber-500/40 space-y-1">
             <div class="text-amber-300 font-bold">✏️ ${String(j.resume_modif || 'Adaptation proposée').replace(/</g, '&lt;')}</div>
-            <div class="text-[10px] text-slate-400">Prévu : ${describeSessionProgram(base)} (${Math.round(computeSessionTotalMin(base))}')</div>
-            <div class="text-[10px] text-emerald-300">Proposé : ${describeSessionProgram(after)} (${Math.round(computeSessionTotalMin(after))}')</div>
+            <div class="text-[10px] text-slate-400">Prévu : ${describeSessionHuman(base)} (${Math.round(computeSessionTotalMin(base))}')</div>
+            <div class="text-[10px] text-emerald-300">Proposé : ${describeSessionHuman(after)} (${Math.round(computeSessionTotalMin(after))}')</div>
           </div>
           <div class="grid grid-cols-2 gap-2 mt-2">
             <button onclick="applyFeelProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Appliquer</button>
             <button onclick="keepPlannedSession()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Garder la séance prévue</button>
           </div>`;
+        } else if (j.prolonger && j.prolonger.possible && +j.prolonger.minutes > 0) {
+          const ext = { minutes: Math.min(30, Math.max(3, Math.round(+j.prolonger.minutes))), speed: Math.max(5, parseFloat(j.prolonger.vitesse) || runnerEF()), raison: j.prolonger.raison || '' };
+          window.__extProposal = ext;
+          html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-emerald-500/40 space-y-1">
+            <div class="text-emerald-300 font-bold">➕ Prolongation possible : +${ext.minutes}' à ${formatSpeed(ext.speed)}</div>
+            <div class="text-[10px] text-slate-400">${String(ext.raison).replace(/</g, '&lt;')}</div>
+          </div>
+          <div class="grid grid-cols-1 gap-1.5 mt-2">
+            <button onclick="setExtensionNow(window.__extProposal); closeFeelModal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Ajouter dès maintenant</button>
+            <button onclick="setExtensionOffer(window.__extProposal); closeFeelModal()" class="py-2.5 bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold rounded-xl text-[11px]">🎙️ Me le proposer pendant la séance</button>
+            <button onclick="keepPlannedSession()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Non, garder la séance prévue</button>
+          </div>`;
         } else {
-          html += `<div class="mt-2 text-emerald-300 font-bold">👍 Pas d'adaptation nécessaire : la séance prévue est maintenue.</div>`;
+          html += `<div class="mt-2 text-emerald-300 font-bold">👍 La séance prévue est maintenue.</div>`;
         }
         out.innerHTML = html;
         prefetchCoachTip();
@@ -6698,6 +6776,13 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
     }
     function renderRunnerProfile() {
       const r = runnerProfile();
+      if (document.getElementById('ageInput')) {
+        document.getElementById('ageInput').value = r.age || '';
+        document.getElementById('heightInput').value = r.heightCm || '';
+        document.getElementById('weightInput').value = r.weightKg || '';
+        renderRunnerBody();
+        renderGoalProbability();
+      }
       const inp = document.getElementById('efInput');
       if (!inp) return;
       inp.value = formatSpeed(runnerEF());
@@ -6708,6 +6793,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","adapter":tr
     }
     function saveRunnerProfile() {
       const r = runnerProfile();
+      readRunnerBody();
       const v = parseFloat(String(document.getElementById('efInput').value).replace(',', '.'));
       const auto = document.getElementById('efAuto').checked;
       if (!isNaN(v) && v > 3 && v < 20 && Math.abs(v - runnerEF()) > 0.01) { r.efKmh = v; r.efNote = 'Réglée manuellement'; r.efAt = toISODateLocal(new Date()); }
@@ -6809,6 +6895,7 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
       const parts = [];
       if (sess.chauffe > 0) parts.push(`Chauffe ${formatMinSec(sess.chauffe).replace(/'00"$/, "'")}`);
       parts.push(core);
+      if (sess.extension && sess.extension.minutes > 0) parts.push(`prolongation ${sess.extension.minutes}' à ${spTxt(sess.extension.speed || runnerEF())}`);
       if (sess.recup > 0) parts.push(`retour au calme ${formatMinSec(sess.recup).replace(/'00"$/, "'")}`);
       return parts.join(' + ');
     }
@@ -6935,6 +7022,306 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
       showToast("Séance créée pour aujourd'hui : réglez-la puis enregistrez");
     }
 
+    // ==================== PROFIL COUREUR : FC MAX & ZONES ====================
+    function theoreticalFcMax() {
+      const r = runnerProfile();
+      const age = parseInt(r.age);
+      if (!age || age < 10 || age > 100) return null;
+      // Tanaka (hommes) / Gulati (femmes)
+      return Math.round(r.sex === 'F' ? 206 - 0.88 * age : 208 - 0.7 * age);
+    }
+    function maxObservedHr() {
+      let m = 0;
+      (appData.history || []).forEach(h => {
+        if (h.summary && h.summary.hrMax) m = Math.max(m, h.summary.hrMax);
+        (h.track || []).forEach(t => { if (t[1]) m = Math.max(m, t[1]); });
+      });
+      return m >= 120 ? Math.round(m) : null;
+    }
+    function runnerFcMax() {
+      const r = runnerProfile();
+      return r.fcMax || theoreticalFcMax() || sensors().fcMax || null;
+    }
+    function syncFcMax() { sensors().fcMax = runnerFcMax(); }
+    function hrZones(fc) {
+      if (!fc) return [];
+      const z = [[0.5, 0.6, 'Z1', 'Récupération'], [0.6, 0.7, 'Z2', 'Endurance fondamentale'], [0.7, 0.8, 'Z3', 'Tempo / aérobie'], [0.8, 0.9, 'Z4', 'Seuil'], [0.9, 1.0, 'Z5', 'VMA']];
+      return z.map(([a, b, n, l]) => ({ n, l, lo: Math.round(fc * a), hi: Math.round(fc * b) }));
+    }
+    function zoneOf(hr) {
+      const fc = runnerFcMax();
+      if (!fc || !hr) return '';
+      const p = hr / fc;
+      return p < 0.6 ? 'Z1' : p < 0.7 ? 'Z2' : p < 0.8 ? 'Z3' : p < 0.9 ? 'Z4' : 'Z5';
+    }
+    function setRunnerSex(s) { runnerProfile().sex = s; renderRunnerBody(); }
+    function renderRunnerBody() {
+      const r = runnerProfile();
+      document.querySelectorAll('#sexChips button').forEach(b => {
+        const on = b.dataset.s === r.sex;
+        b.className = `flex-1 py-1.5 rounded-lg text-[11px] font-bold border ${on ? 'bg-cyan-500 border-cyan-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-300'}`;
+      });
+      const th = theoreticalFcMax(), obs = maxObservedHr(), fc = runnerFcMax();
+      document.getElementById('fcMaxProfile').value = r.fcMax || '';
+      document.getElementById('fcMaxProfile').placeholder = th ? String(th) : 'ex. 190';
+      let note = th ? `Théorique (${r.sex === 'F' ? 'Gulati' : 'Tanaka'}, âge ${r.age}) : ${th} bpm.` : 'Renseignez âge et sexe pour la FC max théorique.';
+      if (obs) note += ` Max observée dans vos séances : ${obs} bpm.`;
+      if (obs && fc && obs > fc) note += ` ⚠ Plus haute que la FC max utilisée.`;
+      document.getElementById('fcMaxNote').innerHTML = note + (obs && obs !== fc ? ` <button type="button" onclick="useObservedFcMax()" class="underline text-cyan-300">Utiliser ${obs}</button>` : '');
+      const zs = hrZones(fc);
+      document.getElementById('hrZonesBox').innerHTML = zs.length ? `<div class="text-[10px] text-slate-400 mb-1">Zones cardio (FC max ${fc}${r.fcMax ? ', manuelle' : th ? ', théorique' : ''})</div>` +
+        zs.map(z => `<div class="flex justify-between text-[10px]"><span class="font-bold text-slate-200">${z.n} <span class="font-normal text-slate-400">${z.l}</span></span><span class="font-mono text-rose-300">${z.lo}–${z.hi}</span></div>`).join('') : '';
+    }
+    function useObservedFcMax() {
+      const obs = maxObservedHr();
+      if (!obs) return;
+      runnerProfile().fcMax = obs;
+      document.getElementById('fcMaxProfile').value = obs;
+      renderRunnerBody();
+    }
+    function readRunnerBody() {
+      const r = runnerProfile();
+      const n = id => { const v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return isNaN(v) ? null : v; };
+      r.age = n('ageInput');
+      r.heightCm = n('heightInput');
+      r.weightKg = n('weightInput');
+      const fc = n('fcMaxProfile');
+      r.fcMax = fc && fc >= 120 && fc <= 230 ? Math.round(fc) : null;
+      syncFcMax();
+    }
+
+    // ==================== HYDRATATION : QUANTITÉ D'EAU ====================
+    function waterPlan(sess) {
+      const min = computeSessionTotalMin(sess);
+      const w = parseFloat(runnerProfile().weightKg) || 70;
+      const perHour = Math.max(400, Math.min(800, Math.round(w * 7 / 50) * 50)); // ~7 ml/kg/h
+      const total = Math.max(150, Math.round(min / 60 * perHour / 50) * 50);
+      const km = Math.max(1, computeSessionDistanceKm(sess));
+      return { total, perHour, perKm: Math.max(30, Math.min(150, Math.round(total / km / 10) * 10)), short: min < 45 };
+    }
+    function waterText(sess) {
+      const wp = waterPlan(sess);
+      return wp.short
+        ? `💧 ≈ ${wp.total} ml pendant (+ 200 ml dans l'heure avant)`
+        : `💧 gourde ≈ ${wp.total} ml (≈ ${wp.perKm} ml/km)`;
+    }
+
+    // ==================== PROBABILITÉ DE RÉUSSITE DE L'OBJECTIF ====================
+    function parseGoalDate(s) {
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+      return m ? new Date(+m[3], +m[2] - 1, +m[1], 12) : parseISODateLocal(s);
+    }
+    function normCdf(x) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(x));
+      const d = 0.3989423 * Math.exp(-x * x / 2);
+      const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return x > 0 ? 1 - p : p;
+    }
+    // VMA estimée d'après les segments des séances (cardio = réserve cardiaque ; sinon borne basse selon la durée)
+    function estimateVma() {
+      const fc = runnerFcMax();
+      const since = new Date(); since.setDate(since.getDate() - 70);
+      const hrEst = [], lb = [];
+      let n = 0;
+      (appData.history || []).forEach(h => {
+        const d = guessISOFromDDMM(h.date);
+        if (d && parseISODateLocal(d) < since) return;
+        (h.seg || []).forEach(s => {
+          if (!s.avgKmh || !s.sec || s.sec < 150 || /chauff|calme/i.test(s.name || '')) return;
+          n++;
+          const tMin = s.sec / 60;
+          lb.push(s.avgKmh / Math.min(1, Math.pow(Math.max(tMin, 6) / 6, -0.07)));
+          if (s.avgHr && fc) {
+            const hrr = (s.avgHr - 60) / (fc - 60);
+            if (hrr >= 0.55 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr);
+          }
+        });
+      });
+      if (!n) return null;
+      const lbMax = Math.max(...lb);
+      let vma;
+      if (hrEst.length >= 2) {
+        const top = hrEst.sort((a, b) => b - a).slice(0, 5);
+        vma = Math.max(top[Math.floor(top.length / 2)], lbMax);
+      } else vma = lbMax * 1.05; // séances d'entraînement : effort pas maximal
+      return { vma, n, withHr: hrEst.length };
+    }
+    function computeGoalProbability() {
+      const g = appData.goal || {};
+      const D = parseFloat(g.distanceKm), T = parseFloat(g.durationMin);
+      if (!D || !T) return null;
+      const est = estimateVma();
+      if (!est) return { noData: true };
+      const vGoal = D / (T / 60);
+      const f = Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(D / 5)));
+      const vNow = est.vma * f;
+      const gd = parseGoalDate(g.date);
+      const weeks = gd ? Math.max(0, (gd - new Date()) / (7 * 864e5)) : 0;
+      const vGoalDay = vNow * (1 + Math.min(0.06, 0.004 * weeks));
+      const sigma = 0.03 + (est.withHr ? 0 : 0.015) + (est.n < 4 ? 0.015 : 0);
+      const pNow = normCdf((vNow / vGoal - 1) / sigma);
+      const pDay = normCdf((vGoalDay / vGoal - 1) / sigma);
+      return {
+        pNow: Math.max(2, Math.min(98, Math.round(pNow * 100))), pDay: Math.max(2, Math.min(98, Math.round(pDay * 100))), vma: est.vma, vNow, vGoalDay, vGoal,
+        tNow: D / vNow * 60, tDay: D / vGoalDay * 60, weeks: Math.round(weeks), n: est.n, withHr: est.withHr,
+        conf: est.withHr >= 2 && est.n >= 4 ? 'bonne' : est.n >= 3 ? 'moyenne' : 'faible'
+      };
+    }
+    function recordGoalProbability() {
+      const p = computeGoalProbability();
+      if (!p || p.noData) return;
+      if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
+      const t = todayISO();
+      appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== t);
+      appData.goalProbHist.push({ d: t, p: p.pDay });
+      appData.goalProbHist = appData.goalProbHist.slice(-60);
+      saveAppData();
+    }
+    function goalProbTrend(pDay) {
+      const h = appData.goalProbHist || [];
+      const lim = new Date(); lim.setDate(lim.getDate() - 6);
+      const old = h.filter(x => parseISODateLocal(x.d) <= lim).pop();
+      if (!old) return '';
+      const d = pDay - old.p;
+      return d === 0 ? ' (stable)' : ` (${d > 0 ? '↗ +' : '↘ '}${d} pts en 1 sem.)`;
+    }
+    function renderGoalProbability() {
+      const p = computeGoalProbability();
+      const home = document.getElementById('homeGoalProb');
+      const box = document.getElementById('goalProbBox');
+      if (!p) { if (home) home.classList.add('hidden'); if (box) box.innerHTML = ''; return; }
+      if (p.noData) {
+        if (home) { home.classList.remove('hidden'); home.textContent = "🎯 Probabilité de réussite : disponible après quelques séances enregistrées"; }
+        if (box) box.innerHTML = '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
+        return;
+      }
+      const col = p.pDay >= 70 ? 'text-emerald-300' : p.pDay >= 40 ? 'text-amber-300' : 'text-rose-300';
+      const g = appData.goal;
+      if (home) {
+        home.classList.remove('hidden');
+        home.innerHTML = `🎯 ${g.distanceKm} km en ${g.durationMin}' : <span class="${col} font-black">${p.pDay} %</span> de réussite${goalProbTrend(p.pDay)}`;
+      }
+      if (box) box.innerHTML = `
+        <div class="text-2xl font-black ${col}">${p.pDay} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(p.pDay)}</span></div>
+        <div class="text-[10px] text-slate-300">Si la course était aujourd'hui : <b>${p.pNow} %</b> (temps prédit ${formatMinSec(p.tNow)})</div>
+        <div class="text-[10px] text-slate-300">Le jour J, dans ${p.weeks} sem. avec la progression attendue : temps prédit ${formatMinSec(p.tDay)} pour ${formatMinSec(+g.durationMin)} visé</div>
+        <div class="text-[10px] text-slate-500">VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}</div>`;
+    }
+    async function coachGoalOpinion() {
+      const out = document.getElementById('goalCoachOut');
+      const p = computeGoalProbability();
+      if (!getGeminiKey()) { out.classList.remove('hidden'); out.innerHTML = '<span class="text-rose-400">Clé Gemini nécessaire.</span>'; return; }
+      out.classList.remove('hidden');
+      out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach évalue tes chances…</div>';
+      const g = appData.goal;
+      const hist = (appData.history || []).slice(0, 10).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.seg && h.seg.length ? ` ; ${segStatsText(h.seg).replace(/\n/g, ' | ')}` : ''}`).join('\n') || '- aucune';
+      const prompt = `Tu es un entraîneur de course à pied. Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${g.date}.
+Calcul de l'app : ${p && !p.noData ? `VMA estimée ${p.vma.toFixed(1)} km/h, temps prédit aujourd'hui ${formatMinSec(p.tNow)}, le jour J ${formatMinSec(p.tDay)}, probabilité ${p.pDay} % (aujourd'hui ${p.pNow} %), fiabilité ${p.conf}` : 'pas assez de données'}.
+Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}.
+Séances récentes :
+${hist}
+Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabilité de réussite (en %), ce qui la soutient ou la limite, et 2 leviers concrets pour l'augmenter.`;
+      try { out.innerHTML = mdLite(await geminiText([{ text: prompt }], { tier: 'full' })); }
+      catch (e) { out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`; }
+    }
+
+    // ==================== PROLONGATION DE LA SÉANCE ====================
+    function setExtensionNow(ext) {
+      const sess = getActiveSession();
+      sess.extension = { minutes: ext.minutes, speed: ext.speed };
+      delete sess.extensionOffer;
+      saveAppData(); reloadChrono(); renderHome();
+      showToast(`➕ Séance prolongée de ${ext.minutes}' à ${formatSpeed(ext.speed)}`);
+    }
+    async function setExtensionOffer(ext) {
+      const sess = getActiveSession();
+      sess.extensionOffer = { minutes: ext.minutes, speed: ext.speed, raison: ext.raison || '' };
+      delete sess.extension;
+      saveAppData(); renderHome();
+      // Autorise le micro maintenant pour pouvoir répondre à la voix pendant la course
+      try {
+        const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+        st.getTracks().forEach(t => t.stop());
+      } catch (e) {}
+      showToast("Je te proposerai la prolongation un peu avant la fin");
+    }
+    function lastMainStageIndex() {
+      const st = timerState.stages;
+      for (let i = st.length - 1; i >= 0; i--) if (st[i].type !== 'recup') return i;
+      return st.length - 1;
+    }
+    // Proposition pendant la course, ~1 min avant la fin de la partie principale
+    function checkExtensionOffer(remMs) {
+      const offer = getActiveSession().extensionOffer;
+      if (!offer || timerState.extOfferDone || tl.active) return;
+      if (timerState.currentStageIndex !== lastMainStageIndex()) return;
+      if (remMs > 75000 || remMs < 30000 || isSpeaking()) return;
+      timerState.extOfferDone = true;
+      askExtensionDuringRun(offer);
+    }
+    let extAsk = null;
+    function askExtensionDuringRun(offer) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      const box = document.getElementById('extPrompt');
+      document.getElementById('extPromptText').textContent = `Prolonger de ${offer.minutes}' à ${formatSpeed(offer.speed)} ?`;
+      document.getElementById('extPromptHint').textContent = '🎙️ Réponds « oui » ou « non » à voix haute, ou touche un bouton';
+      box.classList.remove('hidden');
+      extAsk = { offer, done: false, rec: null };
+      speakLive(en ? `Feeling good? I suggest extending by ${offer.minutes} minutes at speed ${formatSpeed(offer.speed)}. Answer yes or no.`
+                   : `Tu te sens bien ? Je te propose de prolonger de ${offer.minutes} minutes à ${formatSpeed(offer.speed).replace('.', ',')}. Réponds oui ou non.`);
+      // Écoute la réponse quand la voix a fini de parler
+      const startAt = Date.now();
+      const waitVoice = setInterval(() => {
+        if (!extAsk || extAsk.done) { clearInterval(waitVoice); return; }
+        if (!isSpeaking() && Date.now() - startAt > 1500) { clearInterval(waitVoice); listenYesNo(); }
+      }, 300);
+      setTimeout(() => answerExtension(false, true), 25000);
+    }
+    function listenYesNo() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR || !extAsk || extAsk.done) return;
+      const rec = new SR();
+      rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = ev => {
+        const txt = Array.from(ev.results).map(r => r[0].transcript).join(' ').toLowerCase();
+        if (/\b(oui|ouais|ok|okay|d'accord|vas-y|allez|go|yes|yeah|yep)\b/.test(txt)) answerExtension(true);
+        else if (/\b(non|nan|no|nope|stop|pas)\b/.test(txt)) answerExtension(false);
+      };
+      rec.onend = () => { if (extAsk && !extAsk.done) setTimeout(listenYesNo, 200); };
+      rec.onerror = () => {};
+      extAsk.rec = rec;
+      try { rec.start(); } catch (e) {}
+    }
+    function answerExtension(yes, timeout = false) {
+      if (!extAsk || extAsk.done) return;
+      extAsk.done = true;
+      try { extAsk.rec && extAsk.rec.abort(); } catch (e) {}
+      document.getElementById('extPrompt').classList.add('hidden');
+      const offer = extAsk.offer;
+      extAsk = null;
+      const en = appData.audioSettings.voiceLang === 'en';
+      if (yes) {
+        insertExtensionStage(offer);
+        speakLive(en ? `Great, we extend by ${offer.minutes} minutes.` : `Super, on prolonge de ${offer.minutes} minutes.`);
+      } else {
+        speakLive(timeout ? (en ? "No answer, we keep the plan." : "Pas de réponse, on garde le programme.")
+                          : (en ? "Okay, we keep the plan." : "D'accord, on garde le programme."));
+      }
+    }
+    // Ajout en direct d'un segment après la partie principale (avant le retour au calme)
+    function insertExtensionStage(offer) {
+      const at = lastMainStageIndex() + 1;
+      const st = { type: 'palier', name: 'Prolongation', speed: offer.speed, durationSec: Math.round(offer.minutes * 60), intensity: 'normal', isExtension: true };
+      timerState.stages.splice(at, 0, st);
+      timerState.totalSessionMs += st.durationSec * 1000;
+      timerState.extendedMin = (timerState.extendedMin || 0) + offer.minutes;
+      recomputeTotalRemaining();
+      updateUIHeaderAndCircle();
+      if (aiVoiceActive()) prepareAIVoice();
+    }
+
     // ==================== MODE POCHE ====================
     let pocketHold = null;
     function enterPocketMode() {
@@ -7007,6 +7394,9 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
         const s0 = getActiveSession();
         const fb = document.getElementById('homeFeelBtn');
         if (fb) fb.textContent = s0.dayFeel && s0.dayFeel.at === toISODateLocal(new Date()) ? `🙂 Sensations : ${feelSummary(s0.dayFeel)}` : '🙂 Mes sensations du jour (avis du coach)';
+        const xo = document.getElementById('homeExtOffer');
+        if (xo) { xo.classList.toggle('hidden', !s0.extensionOffer); if (s0.extensionOffer) xo.textContent = `🎙️ Prolongation de ${s0.extensionOffer.minutes}' à ${formatSpeed(s0.extensionOffer.speed)} proposée pendant la séance`; }
+        renderGoalProbability();
         const ad = document.getElementById('homeAdapted');
         if (ad) { ad.classList.toggle('hidden', !s0.adapted); if (s0.adapted) ad.textContent = `✏️ Adaptée par le coach : ${s0.adapted.resume || ''}`; }
       }
@@ -7222,7 +7612,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
         const mc = document.createElement('canvas');
         mc.width = mc.height = 512;
         const mg = mc.getContext('2d');
-        mg.fillStyle = '#000000';
+        mg.fillStyle = '#ffffff';
         mg.fillRect(0, 0, 512, 512);
         mg.translate(512 * 0.14, 512 * 0.14);
         drawRunAiLogo(mg, 512 * 0.72, {});
@@ -7243,7 +7633,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
           display: "fullscreen",
           display_override: ["fullscreen", "standalone"],
           orientation: "portrait",
-          background_color: "#000000",
+          background_color: "#ffffff",
           theme_color: "#020617",
           icons: [
             { src: darkPng, sizes: "512x512", type: "image/png", purpose: "any" },
