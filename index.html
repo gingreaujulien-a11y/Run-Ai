@@ -218,14 +218,16 @@
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
     </div>
 
- <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
+    <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
+    <div id="homeGreeting" class="text-xl font-black text-white leading-snug px-1"></div>
+    <div id="homeFeelHost"></div>
 
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300"></div>
       <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
-      <div class="text-[11px] text-slate-400">Aucune séance prévue. Profite de la récupération, ou ajoute une séance si tu te sens bien.</div>
+      <div class="text-[11px] text-slate-400">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te dira si une séance est judicieuse.</div>
       <div id="homeRestNext" class="text-[11px] text-slate-300"></div>
-      <button onclick="openAddSession()" class="w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
+      <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
       <button id="homeRestNextBtn" onclick="launchNextAnyway()" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
 
@@ -237,7 +239,7 @@
       <div id="homeSessDesc" class="text-[11px] text-slate-300"></div>
       <div id="homeAdapted" class="text-[10px] font-bold text-amber-300 hidden"></div>
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
-      <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
+      <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">LANCER LA SÉANCE</span>
@@ -1467,6 +1469,7 @@
       setTimeout(prepareSessionVoice, 800);
       setTimeout(() => btAutoReconnect(), 1500);
       syncFcMax();
+      setupFeelPanel();
       selectTodaySession();
       renderHome();
       setTimeout(downloadAllPreviews, 4000);
@@ -6650,25 +6653,46 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       return p.join(', ');
     }
 
-    function openFeelModal() {
+    function openFeelModal(fromSync = false) {
       const sess = getActiveSession();
+      if (!fromSync) feelExpanded = true;
       feelDraft = Object.assign({}, feelMode === 'add' ? {} : (sess.dayFeel || {}));
       feelProposal = null;
       document.getElementById('feelSessTitle').textContent = feelMode === 'add'
-        ? "Aucune séance prévue aujourd'hui : indique tes sensations, le coach te dira si c'est judicieux d'en ajouter une."
-        : `${formatSessTitle(sess)} — ${describeSessionHuman(sess)}`;
+        ? "Pas de séance prévue aujourd'hui : indique tes sensations, le coach te dira si c'est judicieux d'en ajouter une."
+        : "Indique tes sensations : le coach peut adapter, prolonger ou décaler la séance si besoin.";
       document.getElementById('feelPainWhere').value = feelDraft.painWhere || '';
       document.getElementById('feelNote').value = feelDraft.note || '';
-      document.getElementById('feelAdvice').classList.add('hidden');
+      if (!fromSync || feelExpanded) document.getElementById('feelAdvice').classList.add('hidden');
       document.getElementById('feelRestore').classList.toggle('hidden', feelMode === 'add' || !sess.planOriginal);
-      document.getElementById('feelTitle').textContent = feelMode === 'add' ? '➕ Ajouter une séance' : '🙂 Sensations du jour';
+      document.getElementById('feelTitle').textContent = feelMode === 'add' ? '🙂 Mes sensations • ajouter une séance ?' : '🙂 Mes sensations du jour';
       document.getElementById('feelAskBtn').textContent = feelMode === 'add' ? "🧠 Le coach décide" : "🧠 Avis du coach";
       document.getElementById('feelSaveBtn').classList.toggle('hidden', feelMode === 'add');
       document.getElementById('feelAskBtn').classList.toggle('col-span-2', feelMode === 'add');
       renderFeelChips();
-      document.getElementById('feelModal').classList.remove('hidden');
+      const body = document.getElementById('feelBody');
+      const sum = document.getElementById('feelSummaryRow');
+      if (body && sum) {
+        body.classList.toggle('hidden', !feelExpanded);
+        sum.classList.toggle('hidden', feelExpanded);
+        sum.textContent = `✅ ${capFirst(feelSummary(sess.dayFeel) || 'sensations enregistrées')}  •  ✏️ Modifier`;
+      }
+      const m = document.getElementById('feelModal');
+      if (m) m.classList.remove('hidden');
+      else if (!fromSync) {
+        const p = document.getElementById('feelPanel');
+        if (document.body.classList.contains('home') && p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
-    function closeFeelModal() { document.getElementById('feelModal').classList.add('hidden'); feelMode = 'adapt'; }
+    function closeFeelModal() {
+      const m = document.getElementById('feelModal');
+      if (m) { m.classList.add('hidden'); feelMode = 'adapt'; return; }
+      // Questionnaire intégré à l'accueil : on le replie
+      feelExpanded = false;
+      feelPanelKey = '';
+      if (feelRecordedToday()) syncFeelPanel(true);
+      else { const b = document.getElementById('feelBody'); if (b) b.classList.add('hidden'); const s = document.getElementById('feelSummaryRow'); if (s) { s.classList.remove('hidden'); s.textContent = '🙂 Mes sensations du jour  •  ✏️ Remplir'; } }
+    }
     function feelAsk() { if (feelMode === 'add') askCoachAddSession(); else askCoachAdaptation(); }
 
     function renderFeelChips() {
@@ -7412,6 +7436,84 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       if (aiVoiceActive()) prepareAIVoice();
     }
 
+    // ==================== ACCUEIL : SALUTATION DU JOUR + SENSATIONS INTÉGRÉES ====================
+    function dailyGreeting(hasSession) {
+      const name = runnerFirstName();
+      const n = name ? ` ${name}` : '';
+      const fem = runnerProfile().sex === 'F';
+      const pret = fem ? 'prête' : 'prêt';
+      const hr = new Date().getHours();
+      const h = hr < 5 ? 'Bonsoir' : hr < 12 ? 'Bonjour' : hr < 18 ? 'Salut' : 'Bonsoir';
+      const withSession = [
+        `${h}${n}, comment vas-tu aujourd'hui ? ${capFirst(pret)} pour une nouvelle séance ?`,
+        `${h}${n} ! Comment te sens-tu ? Une belle séance t'attend aujourd'hui.`,
+        `${h}${n}, j'espère que tu as bien récupéré. On va chercher une bonne séance ensemble ?`,
+        `${h}${n} ! Chaque séance te rapproche de ton objectif. Comment ça va aujourd'hui ?`,
+        `${h}${n}, prends un instant pour écouter ton corps. ${capFirst(pret)} à courir ?`,
+        `${h}${n} ! Content de te retrouver. Comment sont les jambes aujourd'hui ?`,
+        `${h}${n}, belle journée pour progresser. Dis-moi comment tu te sens.`,
+        `${h}${n} ! Pas besoin d'être parfait${fem ? 'e' : ''}, juste régulier${fem ? 'e' : ''}. On y va ?`
+      ];
+      const rest = [
+        `${h}${n}, comment vas-tu aujourd'hui ? Pas de séance prévue : profite de ta récup.`,
+        `${h}${n} ! Jour de repos aujourd'hui, ton corps te remercie.`,
+        `${h}${n}, la récupération fait aussi partie de l'entraînement. Comment te sens-tu ?`,
+        `${h}${n} ! Repos au programme, mais je suis là si tu as envie de bouger.`,
+        `${h}${n}, une journée calme pour mieux repartir. Comment ça va ?`
+      ];
+      const list = hasSession ? withSession : rest;
+      const day = Math.floor(new Date(new Date().toDateString()).getTime() / 864e5);
+      return list[day % list.length];
+    }
+
+    let feelPanelKey = '';
+    let feelExpanded = true;
+    function setupFeelPanel() {
+      const modal = document.getElementById('feelModal');
+      const host = document.getElementById('homeFeelHost');
+      if (!modal || !host) return;
+      const panel = modal.firstElementChild;
+      panel.id = 'feelPanel';
+      panel.className = 'bg-slate-900 border border-amber-500/40 rounded-3xl w-full p-4 space-y-3 text-xs';
+      const header = panel.firstElementChild;
+      const body = document.createElement('div');
+      body.id = 'feelBody';
+      body.className = 'space-y-3';
+      while (header.nextSibling) body.appendChild(header.nextSibling);
+      panel.appendChild(body);
+      const summary = document.createElement('button');
+      summary.id = 'feelSummaryRow';
+      summary.type = 'button';
+      summary.className = 'w-full text-left text-[11px] text-amber-200 font-semibold hidden';
+      summary.onclick = () => { feelExpanded = true; openFeelModal(); };
+      panel.insertBefore(summary, body);
+      // La croix replie le questionnaire
+      const x = header.querySelector('button');
+      if (x) { x.textContent = '▴'; x.title = 'Replier'; }
+      host.appendChild(panel);
+      modal.remove();
+    }
+    function homeFeelMode() {
+      const t = todayISO();
+      const busy = timerState.sessionStarted && !timerState.finished;
+      return (appData.sessions.some(s => s.dateISO === t) || homeShowNextAnyway || busy) ? 'adapt' : 'add';
+    }
+    function feelRecordedToday() {
+      const s = getActiveSession();
+      return !!(s && s.dayFeel && s.dayFeel.at === todayISO());
+    }
+    // Met à jour le questionnaire intégré seulement quand le contexte change (sans effacer une saisie en cours)
+    function syncFeelPanel(force = false) {
+      if (!document.getElementById('feelPanel')) return;
+      const mode = homeFeelMode();
+      const key = `${todayISO()}|${mode}|${appData.activeSessionIndex}|${feelRecordedToday()}`;
+      if (!force && key === feelPanelKey) return;
+      feelPanelKey = key;
+      feelMode = mode;
+      feelExpanded = !(mode === 'adapt' && feelRecordedToday());
+      openFeelModal(true);
+    }
+
     // ==================== MODE POCHE ====================
     let pocketHold = null;
     function enterPocketMode() {
@@ -7480,6 +7582,11 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
     }
     function renderHome() {
       renderHrChip();
+      {
+        const g = document.getElementById('homeGreeting');
+        if (g) g.textContent = dailyGreeting(homeFeelMode() === 'adapt' && appData.sessions.some(s => s.dateISO === todayISO()));
+        syncFeelPanel();
+      }
       {
         const s0 = getActiveSession();
         const fb = document.getElementById('homeFeelBtn');
