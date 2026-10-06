@@ -1678,6 +1678,7 @@
         st.isPeak = st.type === 'palier' && maxS > minS && v === maxS;
       });
       timerState.totalSessionMs = stages.reduce((a, st) => a + st.durationSec * 1000, 0);
+      stages.forEach((st, i) => { st.goVar = (i * 5 + 3) % 7; }); // variété des « Top » sans répétition immédiate
       timerState.sessionHalfDone = false;
       buildFuelSchedule();
 
@@ -1770,11 +1771,11 @@
         const showHr = bigDisplayMode === 'hr' && hrFresh;
         const txt = showHr ? String(runData.hr) : (curStage ? formatSpeed(curStage.speed) : '–');
         speedBig.textContent = txt;
-        speedBig.classList.toggle('text-rose-400', showHr);
         speedBig.classList.toggle('text-white', !showHr);
+        speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
           bigSub.classList.toggle('hidden', !showHr);
-          if (showHr) bigSub.textContent = `❤️ bpm${zoneOf(runData.hr) ? ` • ${zoneOf(runData.hr)}` : ''} • vitesse ${curStage ? formatSpeed(curStage.speed) : '–'}`;
+          if (showHr) { bigSub.textContent = `❤️ bpm${zoneOf(runData.hr) ? ` • ${zoneOf(runData.hr)}` : ''} • vitesse ${curStage ? formatSpeed(curStage.speed) : '–'}`; bigSub.style.color = zoneColor(runData.hr); }
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
         speedBig.classList.toggle('sm:text-8xl', txt.length > 2);
@@ -2105,9 +2106,16 @@
       try {
         const t = VT();
         const set = new Set([t.start, t.resume, t.last15, t.end, t.count[3], t.count[2], t.count[1], t.allDone]);
+        if (appData.audioSettings.encouragements !== false && timerState.stages.some(st => st.type === 'recup')) {
+          const f = runnerProfile().sex === 'F';
+          t.praise(f).forEach(x => set.add(x));
+          if (runnerFirstName()) t.praiseNamed(runnerFirstName(), f).forEach(x => set.add(x));
+        }
         if (runnerFirstName()) set.add(t.startNamed(runnerFirstName()));
         testPieces().forEach(x => set.add(x));
         t.half.forEach(x => set.add(x));
+        timerState.stages.forEach(st => { if (halfAlertApplies(st)) halfPhraseList(st).forEach(x => set.add(x)); });
+        if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 60)) t.warm.forEach(x => set.add(x));
         timerState.stages.forEach((st, i) => {
           if (i === 0) set.add(stagePhrase(st, 'label'));
           else { set.add(stagePhrase(st, 'prep')); set.add(stagePhrase(st, 'goS')); goExtras(st).forEach(x => set.add(x)); }
@@ -2133,6 +2141,8 @@
             t.fast.forEach(x => set.add(x));
             t.push.forEach(x => set.add(x));
             t.boost.forEach(x => set.add(x));
+            t.mental.forEach(x => set.add(x));
+            if (runnerFirstName()) t.mentalNamed(runnerFirstName()).forEach(x => set.add(x));
             if (runnerFirstName()) t.named(runnerFirstName()).forEach(x => set.add(x));
             if ((getActiveSession().pente || 0) >= 3) t.hill.forEach(x => set.add(x));
           }
@@ -2383,22 +2393,84 @@
       aiPlayClips(clips, aiClipKey(pieces.join(' ¦ ')));
       return true;
     }
-    function aiPlayClips(clips, cacheKey) {
-      let url = aiMergedUrls.get(cacheKey);
-      if (!url) {
-        const sr = clips[0].sr;
-        const gap = Math.round(sr * 0.12);
-        let len = 0;
-        const parts = clips.map(c => resamplePcm(c.pcm, c.sr, sr));
-        parts.forEach((p, i) => { len += p.length + (i ? gap : 0); });
-        const all = new Int16Array(len);
-        let o = 0;
-        parts.forEach((p, i) => { if (i) o += gap; all.set(p, o); o += p.length; });
-        url = URL.createObjectURL(buildWavBlob(all, sr));
-        aiMergedUrls.set(cacheKey, url);
+    // Android : un son de 5 s ou plus est traité comme de la musique et COUPE l'autre appli.
+    // On découpe donc chaque annonce en morceaux de moins de 4,4 s (la musique est seulement baissée).
+    const AI_MAX_CHUNK_SEC = 4.4;
+    function splitAtQuiet(pcm, sr, maxSamples) {
+      const out = [];
+      let start = 0;
+      const frame = Math.round(sr * 0.02);
+      while (pcm.length - start > maxSamples) {
+        const lo = start + Math.round(maxSamples * 0.55), hi = start + maxSamples - frame;
+        let best = hi, bestE = Infinity;
+        for (let i = lo; i < hi; i += frame) {
+          let e = 0;
+          for (let j = i; j < i + frame; j++) e += Math.abs(pcm[j]);
+          if (e < bestE) { bestE = e; best = i + (frame >> 1); }
+        }
+        out.push(pcm.slice(start, best));
+        start = best;
       }
+      out.push(pcm.slice(start));
+      return out;
+    }
+    function aiPlayClips(clips, cacheKey) {
+      let urls = aiMergedUrls.get(cacheKey);
+      if (!urls) {
+        const sr = clips[0].sr;
+        const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+        const maxSamples = Math.floor(AI_MAX_CHUNK_SEC * sr * rate);
+        const gap = Math.round(sr * 0.12);
+        const parts = [];
+        clips.map(c => resamplePcm(c.pcm, c.sr, sr)).forEach(p => {
+          if (p.length > maxSamples) splitAtQuiet(p, sr, maxSamples).forEach(x => parts.push(x));
+          else parts.push(p);
+        });
+        // Regroupe les morceaux tant que l'ensemble reste sous la limite
+        const groups = [];
+        let cur = [], curLen = 0;
+        parts.forEach(p => {
+          const add = p.length + (cur.length ? gap : 0);
+          if (cur.length && curLen + add > maxSamples) { groups.push(cur); cur = []; curLen = 0; }
+          curLen += p.length + (cur.length ? gap : 0);
+          cur.push(p);
+        });
+        if (cur.length) groups.push(cur);
+        urls = groups.map(g => {
+          const len = g.reduce((s, p, i) => s + p.length + (i ? gap : 0), 0);
+          const all = new Int16Array(len);
+          let o = 0;
+          g.forEach((p, i) => { if (i) o += gap; all.set(p, o); o += p.length; });
+          return URL.createObjectURL(buildWavBlob(all, sr));
+        });
+        aiMergedUrls.set(cacheKey, urls);
+      }
+      (Array.isArray(urls) ? urls : [urls]).forEach(u => aiQueue.push(u));
+      if (!aiPlaying) aiPlayNext();
+    }
+
+    // « Trois, deux, un » en un seul son (1 s entre chaque) : la musique reste baissée sans « pomper »
+    function aiPlayCountdown(fromN) {
+      if (!aiVoiceActive() || tl.active) return false;
+      const t = VT();
+      const clips = [];
+      for (let n = fromN; n >= 1; n--) {
+        const c = aiClips.get(aiClipKey(t.count[n]));
+        if (!c) return false;
+        clips.push(c);
+      }
+      const sr = clips[0].sr;
+      const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+      const slot = Math.round(sr * rate); // 1 s réelle à la vitesse de lecture
+      const parts = clips.map(c => resamplePcm(c.pcm, c.sr, sr));
+      const len = slot * (parts.length - 1) + parts[parts.length - 1].length;
+      const all = new Int16Array(len);
+      parts.forEach((p, i) => all.set(p.subarray(0, Math.min(p.length, slot - 1)), i * slot));
+      const url = URL.createObjectURL(buildWavBlob(all, sr));
       aiQueue.push(url);
       if (!aiPlaying) aiPlayNext();
+      setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 10000);
+      return true;
     }
     function aiPlayNext() {
       const url = aiQueue.shift();
@@ -2800,6 +2872,20 @@
           "Magnifique, garde ce rythme !", "Plus que quelques secondes, à fond !", "T'es une machine !"
         ],
         named: n => [`Allez ${n} !`, `C'est super ce que tu fais ${n} !`, `Encore ${n}, encore !`, `Lâche rien ${n} !`, `T'es au top ${n} !`],
+        mental: [
+          "C'est dans la tête !", "Tu peux le faire !", "Tu y es presque !", "Encore un petit effort !", "Tiens bon !",
+          "C'est maintenant que tout se joue, reste fort dans ta tête !", "Ne lâche rien, tu es plus fort que la fatigue !",
+          "Dernière ligne droite, crois en toi !", "La fatigue est dans les jambes, la victoire est dans la tête !"
+        ],
+        mentalNamed: n => [`Tu peux le faire ${n} !`, `C'est dans la tête ${n} !`, `Tiens bon ${n}, tu y es presque !`],
+        praise: f => [
+          `Bravo, quelle séance ! Tu peux être ${f ? 'fière' : 'fier'} de toi.`,
+          "Superbe travail aujourd'hui, chaque séance comme celle-ci te rapproche de ton objectif.",
+          "Séance accomplie ! Tu as été solide du début à la fin.",
+          "Magnifique boulot, tu as tout donné. Maintenant on relâche et on savoure.",
+          `Respect, c'était une belle séance. Tu peux être ${f ? 'fière' : 'fier'} du travail accompli.`
+        ],
+        praiseNamed: (n, f) => [`Bravo ${n}, quelle séance ! Tu peux être ${f ? 'fière' : 'fier'} de toi.`, `Superbe travail ${n}, tu as été au top aujourd'hui.`],
         peak: "C'est le sommet, profites-en !", sessionHalf: "Tu as fait la moitié de la séance, bravo !",
         feel: {
           red: "La dernière fois c'était dur, vas-y progressivement.",
@@ -2808,7 +2894,24 @@
         },
         label: { chauffe: v => `Échauffement à ${v}.`, palier: v => `À ${v}.`, bloc: (b, v, n) => `Bloc ${b} sur ${n}, à ${v}.`, recupBloc: v => `Récup entre blocs à ${v}.`, recup: v => `Retour au calme à ${v}.` },
         prep: { chauffe: v => `Prépare-toi pour l'échauffement à ${v}.`, palier: v => `Prépare-toi à passer à ${v}.`, bloc: (b, v, n) => `Prépare-toi pour le bloc ${b} sur ${n}, à ${v}.`, recupBloc: v => `Prépare-toi pour la récup entre blocs, à ${v}.`, recup: v => `Prépare-toi pour le retour au calme, à ${v}.` },
-        goS: { chauffe: v => `Top, échauffement à ${v} !`, palier: v => `Top, à ${v} !`, bloc: (b, v, n) => `Top, bloc ${b} sur ${n}, à ${v} !`, recupBloc: v => `Top, récup à ${v} !`, recup: v => `Top, retour au calme à ${v} !` },
+        goS: {
+          chauffe: [v => `Top, échauffement à ${v} !`, v => `C'est parti pour l'échauffement, à ${v} !`],
+          palier: [v => `Top, à ${v} !`, v => `C'est parti, on passe à ${v} !`, v => `Let's go, à ${v} !`, v => `On y va, on passe à ${v} !`, v => `Top, on passe à ${v} !`, v => `C'est parti, à ${v} !`, v => `Let's go, on passe à ${v} !`, v => `On y va, à ${v} !`],
+          bloc: [(b, v, n) => `Top, bloc ${b} sur ${n}, à ${v} !`, (b, v, n) => `C'est parti pour le bloc ${b} sur ${n}, on passe à ${v} !`, (b, v, n) => `Let's go, bloc ${b} sur ${n}, à ${v} !`],
+          recupBloc: [v => `Top, récup à ${v} !`, v => `On y va, récup à ${v} !`],
+          recup: [v => `Top, retour au calme à ${v} !`, v => `C'est parti pour le retour au calme, on passe à ${v} !`]
+        },
+        halfWarm: ["On est à la moitié de l'échauffement.", "Moitié de l'échauffement, continue tranquillement."],
+        halfCool: ["On est à la moitié du retour au calme.", "Moitié du retour au calme, relâche tout."],
+        halfRecup: ["Moitié de la récup.", "On est à la moitié de la récup, profite."],
+        warm: [
+          "Vas-y tranquillement, ne pars pas trop vite.",
+          "Échauffe-toi en douceur, l'effort viendra après.",
+          "Garde une allure facile, tu dois pouvoir parler.",
+          "Laisse le corps se mettre en route progressivement.",
+          "Pas de précipitation, on monte en température.",
+          "Commence cool, on garde l'énergie pour la suite."
+        ],
         half: [
           "Moitié du segment, continue comme ça.",
           "Mi-segment, garde le rythme.",
@@ -2893,6 +2996,20 @@
           "Brilliant, hold that pace!", "Just a few more seconds, all out!", "You're a machine!"
         ],
         named: n => [`Come on ${n}!`, `Amazing work ${n}!`, `Keep pushing ${n}!`, `Don't give up ${n}!`, `You're on fire ${n}!`],
+        mental: [
+          "It's all in your head!", "You can do it!", "You're almost there!", "One more little effort!", "Hold on!",
+          "This is where it all happens, stay strong in your head!", "Don't give up, you're stronger than the fatigue!",
+          "Final stretch, believe in yourself!", "Tired legs, strong mind!"
+        ],
+        mentalNamed: n => [`You can do it ${n}!`, `It's all in your head ${n}!`, `Hold on ${n}, you're almost there!`],
+        praise: f => [
+          "Well done, what a session! You can be proud of yourself.",
+          "Superb work today, sessions like this bring you closer to your goal.",
+          "Session done! You were solid from start to finish.",
+          "Great job, you gave it everything. Now relax and enjoy.",
+          "Respect, that was a great session. Be proud of the work you did."
+        ],
+        praiseNamed: (n, f) => [`Well done ${n}, what a session! Be proud of yourself.`, `Superb work ${n}, you were great today.`],
         peak: "This is the peak, enjoy it!", sessionHalf: "You're halfway through the session, well done!",
         feel: {
           red: "Last time was tough, so ease into it.",
@@ -2901,7 +3018,24 @@
         },
         label: { chauffe: v => `Warm-up, speed ${v}.`, palier: v => `Speed ${v}.`, bloc: (b, v, n) => `Block ${b} of ${n}, speed ${v}.`, recupBloc: v => `Recovery between blocks, speed ${v}.`, recup: v => `Cool-down, speed ${v}.` },
         prep: { chauffe: v => `Get ready for the warm-up, speed ${v}.`, palier: v => `Get ready to switch to speed ${v}.`, bloc: (b, v, n) => `Get ready for block ${b} of ${n}, speed ${v}.`, recupBloc: v => `Get ready for recovery, speed ${v}.`, recup: v => `Get ready for the cool-down, speed ${v}.` },
-        goS: { chauffe: v => `Go, warm-up, speed ${v}!`, palier: v => `Go, speed ${v}!`, bloc: (b, v, n) => `Go, block ${b} of ${n}, speed ${v}!`, recupBloc: v => `Go, recovery, speed ${v}!`, recup: v => `Go, cool-down, speed ${v}!` },
+        goS: {
+          chauffe: [v => `Go, warm-up, speed ${v}!`, v => `Let's go for the warm-up, speed ${v}!`],
+          palier: [v => `Go, speed ${v}!`, v => `Let's go, switch to ${v}!`, v => `Here we go, speed ${v}!`, v => `Off we go, switch to ${v}!`, v => `Go, switch to ${v}!`, v => `Let's go, speed ${v}!`],
+          bloc: [(b, v, n) => `Go, block ${b} of ${n}, speed ${v}!`, (b, v, n) => `Let's go, block ${b} of ${n}, switch to ${v}!`, (b, v, n) => `Here we go, block ${b} of ${n}, speed ${v}!`],
+          recupBloc: [v => `Go, recovery, speed ${v}!`, v => `Here we go, recovery at ${v}!`],
+          recup: [v => `Go, cool-down, speed ${v}!`, v => `Let's go for the cool-down, switch to ${v}!`]
+        },
+        halfWarm: ["Halfway through the warm-up.", "Half of the warm-up done, keep it easy."],
+        halfCool: ["Halfway through the cool-down.", "Half of the cool-down, relax."],
+        halfRecup: ["Halfway through the recovery.", "Half of the recovery, enjoy it."],
+        warm: [
+          "Take it easy, don't start too fast.",
+          "Warm up gently, the effort comes later.",
+          "Keep it easy, you should be able to talk.",
+          "Let your body get going progressively.",
+          "No rush, we're warming up.",
+          "Start cool, save energy for later."
+        ],
         half: [
           "Halfway through, keep it up.",
           "Halfway there, hold the pace.",
@@ -2955,10 +3089,18 @@
       if (!st) return '';
       const set = VT()[kind];
       const v = speedSpeech(st.speed);
-      if (st.type === 'palier' && st.isBlockStart && st.nbBlocs > 1) return set.bloc(st.blocIndex, v, st.nbBlocs);
-      return (set[st.type] || set.palier)(v);
+      const pick = f => Array.isArray(f) ? f[(st.goVar || 0) % f.length] : f; // variantes « Top / C'est parti / Let's go / On y va »
+      if (st.type === 'palier' && st.isBlockStart && st.nbBlocs > 1) return pick(set.bloc)(st.blocIndex, v, st.nbBlocs);
+      return pick(set[st.type] || set.palier)(v);
     }
-    function testPieces() { const t = VT(); return [t.count[3], t.count[2], t.count[1], t.goS.palier(speedSpeech(12))]; }
+    function halfPhraseList(st) {
+      const t = VT();
+      if (st && st.type === 'chauffe') return t.halfWarm;
+      if (st && st.type === 'recup') return t.halfCool;
+      if (st && st.type === 'recupBloc') return t.halfRecup;
+      return t.half;
+    }
+    function testPieces() { const t = VT(); return [t.count[3], t.count[2], t.count[1], t.goS.palier[0](speedSpeech(12))]; }
     function capFirst(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
     function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -2969,6 +3111,8 @@
       // En côte, on mélange des conseils de technique aux encouragements
       const name = runnerFirstName();
       if (kind === 'boost') return name && !lastBoostNamed ? t.boost.concat(t.named(name)) : t.boost; // prénom : pas deux fois de suite
+      if (kind === 'mental') return name && !lastBoostNamed ? t.mental.concat(t.mentalNamed(name)) : t.mental;
+      if (kind === 'praise') { const f = runnerProfile().sex === 'F'; return name ? t.praise(f).concat(t.praiseNamed(name, f)) : t.praise(f); }
       if (kind === 'fast' || kind === 'push') {
         let l = t[kind].slice();
         if (kind === 'fast' && (getActiveSession().pente || 0) >= 3) l = l.concat(t.hill);
@@ -2983,14 +3127,17 @@
       return t[kind] || [];
     }
     let lastBoostNamed = false;
+    // Tirage sans répéter les dernières phrases du même type
     function pickNoRepeat(kind) {
       const arr = phraseList(kind);
       if (arr.length < 2) return arr[0];
-      let i;
-      do { i = Math.floor(Math.random() * arr.length); } while (i === lastPicked[kind]);
-      lastPicked[kind] = i;
-      if (kind === 'boost') lastBoostNamed = !!runnerFirstName() && arr[i].includes(runnerFirstName());
-      return arr[i];
+      const recent = lastPicked[kind] || [];
+      const keep = Math.min(arr.length - 1, 4);
+      const pool = arr.filter(x => !recent.slice(-keep).includes(x));
+      const choice = (pool.length ? pool : arr)[Math.floor(Math.random() * (pool.length || arr.length))];
+      lastPicked[kind] = recent.concat(choice).slice(-6);
+      if (kind === 'boost' || kind === 'mental') lastBoostNamed = !!runnerFirstName() && choice.includes(runnerFirstName());
+      return choice;
     }
 
     // Encouragements (segments rapides) et conseils de récup (segments lents) : dosés
@@ -2999,21 +3146,33 @@
       if (!st) return [];
       const d = st.durationSec * 1000;
       const p = [];
-      if (st.intensity === 'fast' && st.durationSec <= 180) {
+      // Dernières séries d'un bloc : on insiste sur le mental
+      const late = st.type === 'palier' && st.totalReps >= 2 && st.repIndex >= st.totalReps - (st.totalReps >= 3 ? 1 : 0);
+      if (st.type === 'recup') {
+        // Retour au calme : éloge du travail accompli
+        if (appData.audioSettings.encouragements !== false && st.durationSec >= 90) p.push({ t: 45000, kind: 'praise' });
+      } else if (st.intensity === 'fast' && st.durationSec <= 180) {
         // Fractionné court : encouragements très énergiques, surtout dans la 2e moitié
         [0.5 * d, 0.72 * d, d - 10500].sort((x, y) => x - y).forEach(x => {
-          if (x >= 4500 && d - x >= 7000 && !p.some(q => Math.abs(q.t - x) < 5000)) p.push({ t: x, kind: 'boost' });
+          if (x >= 4500 && d - x >= 7000 && !p.some(q => Math.abs(q.t - x) < 5000)) p.push({ t: x, kind: late ? 'mental' : 'boost' });
         });
       } else if (st.intensity === 'fast') {
         if (st.durationSec >= 150) p.push({ t: 0.25 * d, kind: 'fast' });
-        if (st.durationSec >= 40) p.push({ t: 0.5 * d, kind: 'fast' });
-        if (st.durationSec >= 24) p.push({ t: d - 13000, kind: 'push' }); // dernier effort, juste avant l'annonce des 5 s
-      } else if (st.intensity === 'easy') {
+        if (st.durationSec >= 40) p.push({ t: 0.5 * d, kind: late ? 'mental' : 'fast' });
+        if (st.durationSec >= 24) p.push({ t: d - 13000, kind: late ? 'mental' : 'push' }); // dernier effort, juste avant l'annonce des 5 s
+      } else if (st.intensity === 'easy' && st.type !== 'recup') {
         if (st.durationSec >= 20) p.push({ t: 7000, kind: 'easy' });
         if (st.durationSec >= 120) p.push({ t: 0.6 * d, kind: 'easy' });
       }
-      // Segments longs : un conseil du coach toutes les 5 min (première à 2 min)
-      if (st.durationSec >= 180) {
+      // Échauffement : consignes de départ tranquille (pas les conseils de course)
+      if (st.type === 'chauffe') {
+        for (let x = 75000; x < d - 25000; x += 210000) {
+          if (Math.abs(x - d / 2) > 25000) p.push({ t: x, kind: 'warm' });
+        }
+        return p.sort((a, b) => a.t - b.t);
+      }
+      // Segments longs : un conseil du coach toutes les 5 min (première à 2 min), pas pendant le retour au calme
+      if (st.durationSec >= 180 && st.type !== 'recup') {
         for (let x = 120000; x < d - 30000; x += 300000) {
           if (!p.some(q => Math.abs(q.t - x) < 20000)) p.push({ t: x, kind: 'tip' });
         }
@@ -3275,7 +3434,7 @@
           Math.abs((timerState.totalSessionMs - timerState.totalRemainingMs) - timerState.totalSessionMs / 2) < 30000) f.half = true; // pas deux « moitié » d'affilée
       if (!f.half && halfAlertApplies(curStage) && elapsedMs >= durMs / 2 && remMs > 9000) {
         f.half = true;
-        speak(pickRandom(VT().half), { chime: true });
+        speak(pickRandom(halfPhraseList(curStage)), { chime: true });
       }
 
       // Encouragements / conseils de récup, sans chevaucher les autres annonces
@@ -3285,10 +3444,10 @@
           f.extra.length = 0;
         } else if (elapsedMs >= pt.t) {
           const halfApplies = halfAlertApplies(curStage);
-          const boost = pt.kind === 'boost';
+          const boost = pt.kind === 'boost' || pt.kind === 'mental';
           const minRem = boost ? 7000 : 9500;
           const okWindow = remMs > minRem && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
-          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS, boost: 4000 }[pt.kind] || 40000;
+          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS, boost: 4000, mental: 4000, warm: 60000, praise: 20000 }[pt.kind] || 40000;
           const now = Date.now();
           if (elapsedMs > pt.t + (boost ? 2500 : 4000) || (!okWindow && remMs <= minRem) ||
               now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < (boost ? 4000 : 10000)) {
@@ -3313,10 +3472,12 @@
         }
       }
 
-      // Compte à rebours vocal 3, 2, 1
+      // Compte à rebours vocal 3, 2, 1 (voix IA : un seul son pour ne pas faire varier la musique)
       if (remMs > 0 && remMs <= 3000) {
         const n = Math.ceil(remMs / 1000);
-        if (f.count === -1 || n < f.count) {
+        if (f.count === -1 && aiPlayCountdown(n)) {
+          f.count = 0;
+        } else if (f.count !== 0 && (f.count === -1 || n < f.count)) {
           f.count = n;
           speak(VT().count[n] || String(n), { chime: n === 3 });
         }
@@ -4439,7 +4600,7 @@
     async function clearAiCache() {
       aiStop();
       aiClips.clear();
-      aiMergedUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+      aiMergedUrls.forEach(u => [].concat(u).forEach(x => { try { URL.revokeObjectURL(x); } catch (e) {} }));
       aiMergedUrls.clear();
       await aiDbClear();
       setAiStatus("Cache vidé : touchez « Préparer toutes les annonces »");
@@ -4969,6 +5130,11 @@ Réponds uniquement avec le JSON.`;
       if (st.type === 'recupBloc') { out.push(t.blockEnd(st.blocIndex, st.nbBlocs - st.blocIndex)); return out; }
       if (st.type === 'recup' || (st.type === 'palier' && st.isExtension)) {
         if (prev && prev.type === 'palier' && !prev.isExtension && (prev.nbBlocs > 1 || prev.totalReps > 1)) out.push(t.allDone);
+        if (st.type === 'recup' && appData.audioSettings.encouragements !== false) {
+          const pr = praiseForStage(st);
+          out.push(pr);
+          lastPicked.praise = (lastPicked.praise || []).concat(pr).slice(-6); // l'éloge suivant sera différent
+        }
         return out;
       }
       if (st.type !== 'palier') return out;
@@ -4978,6 +5144,12 @@ Réponds uniquement avec le JSON.`;
       if (st.isPeak && st.repIndex === 1 && appData.audioSettings.encouragements !== false) out.push(t.peak); // une fois par bloc
       if (treadmillVapWanted()) out.push(stageVapText(st));
       return out;
+    }
+    // Phrase d'éloge fixe pour un segment donné (même texte à la préparation et à l'annonce)
+    function praiseForStage(st) {
+      const t = VT(), f = runnerProfile().sex === 'F', n = runnerFirstName();
+      const l = n ? t.praiseNamed(n, f) : t.praise(f);
+      return l[(st.goVar || 0) % l.length];
     }
     function goPieces(st) { return [stagePhrase(st, 'goS'), ...goExtras(st)]; }
 
@@ -5085,7 +5257,7 @@ Réponds uniquement avec le JSON.`;
         const st = stages[i];
         const d = st.durationSec;
         if (i > idx) ev.push({ t: t0, pieces: goPieces(st), fixed: true });
-        if (halfAlertApplies(st)) ev.push({ t: t0 + d / 2, pieces: [pickRandom(t.half)], fixed: false });
+        if (halfAlertApplies(st)) ev.push({ t: t0 + d / 2, pieces: [pickRandom(halfPhraseList(st))], fixed: false });
         if (enc) computeExtraPoints(st).forEach(p => {
           const at = t0 + p.t / 1000;
           if (p.kind === 'tip') {
@@ -5791,8 +5963,7 @@ Réponds uniquement avec le JSON.`;
       return appData.audioSettings.voiceLang === 'en' ? `Flat equivalent ${s}.` : `Équivalent plat : ${s.replace('.', ',')}.`;
     }
     function treadmillVapWanted() {
-      const sess = getActiveSession();
-      return sensors().announceVap && sess.type !== 'exterieur' && Math.abs(sess.pente || 0) >= 1;
+      return false; // sur tapis la VAP n'est plus annoncée (elle reste affichée à l'écran)
     }
     // Toutes les phrases « GPS / parcours » possibles pour cette séance (préparées en voix IA)
     function gpsPieces() {
@@ -5868,7 +6039,10 @@ Réponds uniquement avec le JSON.`;
       if (!box) return;
       const parts = [];
       const now = Date.now();
-      if (runData.hr && now - runData.hrAt < 8000) parts.push(`<span class="text-rose-300">❤️ ${runData.hr}</span>`);
+      if (runData.hr && now - runData.hrAt < 8000) {
+        const z = zoneOf(runData.hr);
+        parts.push(`<span style="color:${zoneColor(runData.hr)}" class="font-black">❤️ ${runData.hr}${z ? ` <span class="text-[10px] px-1.5 py-0.5 rounded-md" style="background:${zoneColor(runData.hr)}22;border:1px solid ${zoneColor(runData.hr)}">${z}</span>` : ''}</span>`);
+      }
       const sess = getActiveSession();
       const cur = timerState.stages[timerState.currentStageIndex];
       if (gpsWanted() && timerState.sessionStarted) {
@@ -7161,6 +7335,8 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
       const z = [[0.5, 0.6, 'Z1', 'Récupération'], [0.6, 0.7, 'Z2', 'Endurance fondamentale'], [0.7, 0.8, 'Z3', 'Tempo / aérobie'], [0.8, 0.9, 'Z4', 'Seuil'], [0.9, 1.0, 'Z5', 'VMA']];
       return z.map(([a, b, n, l]) => ({ n, l, lo: Math.round(fc * a), hi: Math.round(fc * b) }));
     }
+    const ZONE_COLORS = { Z1: '#94a3b8', Z2: '#22c55e', Z3: '#eab308', Z4: '#f97316', Z5: '#ef4444' };
+    function zoneColor(hr) { return ZONE_COLORS[zoneOf(hr)] || '#fda4af'; }
     function zoneOf(hr) {
       const fc = runnerFcMax();
       if (!fc || !hr) return '';
