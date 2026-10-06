@@ -53,6 +53,11 @@
       display: none !important;
     }
     #homeScreen { display: none; }
+    /* Fenêtres : toujours défilables, même clavier ouvert */
+    div[id$="Modal"]:not(.hidden) { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    div[id$="Modal"] > div { max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    .modal-sticky-top { position: sticky; top: 0; z-index: 5; background: #0f172a; }
+    .modal-sticky-bottom { position: sticky; bottom: 0; z-index: 5; background: #0f172a; box-shadow: 0 -8px 12px -6px rgba(0,0,0,0.6); }
     body.home { background: #000; }
     #splash {
       position: fixed; inset: 0; z-index: 200; background: #fff;
@@ -546,10 +551,10 @@
 
   <!-- ==================== MODALE 3 : OBJECTIF & VAP (MINETTI) ==================== -->
   <div id="goalModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 pt-0 pb-0 shadow-2xl space-y-3">
+      <div class="modal-sticky-top flex items-center justify-between pt-4 pb-2 border-b border-slate-800">
         <div>
-          <span class="text-base font-bold text-white block">Mon Objectif de Course</span>
+          <span class="text-base font-bold text-white block">Profil & objectif</span>
           <span class="text-[10px] text-slate-400">Allure cible et équivalence physiologique</span>
         </div>
         <button onclick="closeGoalModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
@@ -609,6 +614,8 @@
 
       <div class="bg-slate-950 p-2.5 rounded-xl border border-cyan-500/30 space-y-2 text-xs">
         <span class="font-bold text-cyan-300 block">🏃 Profil coureur</span>
+        <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-0.5">Prénom (pour les encouragements)</label>
+          <input id="firstNameInput" type="text" autocomplete="given-name" maxlength="20" placeholder="ex. Julien" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 font-bold text-white"></div>
         <div id="sexChips" class="flex gap-1">
           <button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button>
           <button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button>
@@ -633,9 +640,10 @@
         <button type="button" onclick="computeEfWithAI(true)" class="w-full py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-200 font-bold rounded-lg text-[11px]">🧠 Recalculer avec le coach</button>
       </div>
 
-      <div class="pt-2">
-        <button onclick="saveGoalSettings()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
-          Enregistrer mon objectif
+      <div class="modal-sticky-bottom pt-2 pb-4 grid grid-cols-3 gap-2">
+        <button onclick="closeGoalModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-xs">Fermer</button>
+        <button onclick="saveGoalSettings()" class="col-span-2 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
+          Enregistrer
         </button>
       </div>
     </div>
@@ -2093,7 +2101,8 @@
       appData.audioSettings.voiceLang = p.lang; // textes dans la langue du profil
       try {
         const t = VT();
-        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[3], t.count[2], t.count[1]]);
+        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[3], t.count[2], t.count[1], t.allDone]);
+        if (runnerFirstName()) set.add(t.startNamed(runnerFirstName()));
         testPieces().forEach(x => set.add(x));
         t.half.forEach(x => set.add(x));
         timerState.stages.forEach((st, i) => {
@@ -2120,6 +2129,8 @@
           if (timerState.stages.some(st => st.intensity === 'fast')) {
             t.fast.forEach(x => set.add(x));
             t.push.forEach(x => set.add(x));
+            t.boost.forEach(x => set.add(x));
+            if (runnerFirstName()) t.named(runnerFirstName()).forEach(x => set.add(x));
             if ((getActiveSession().pente || 0) >= 3) t.hill.forEach(x => set.add(x));
           }
           if (timerState.stages.some(st => st.intensity === 'easy')) t.easy.forEach(x => set.add(x));
@@ -2775,16 +2786,26 @@
           "Dernière partie de séance : reste concentré, c'est là que tu progresses.",
           "La fatigue arrive, tiens le rythme, tu y es presque."
         ],
-        lastBloc: "Dernier bloc, on donne tout !", lastRep: "Dernière répétition !", twoReps: "Plus que deux répétitions.",
+        lastBloc: "Dernier bloc, on donne tout !", lastRep: "Dernière série !", twoReps: "Plus que deux séries.",
+        series: (r, n) => `Série ${r} sur ${n}.`,
+        blockEnd: (b, left) => left === 1 ? `Bloc ${b} terminé, plus qu'un bloc !` : `Bloc ${b} terminé, plus que ${left} blocs !`,
+        allDone: "Fractionné terminé, bravo !",
+        startNamed: n => `C'est parti ${n} !`,
+        boost: [
+          "Allez, allez, allez !", "C'est super ce que tu fais !", "Encore ! Encore !", "Lâche rien !",
+          "Tiens bon, c'est maintenant que ça se joue !", "Ouiii, continue comme ça !", "Pousse, pousse, pousse !",
+          "Magnifique, garde ce rythme !", "Plus que quelques secondes, à fond !", "T'es une machine !"
+        ],
+        named: n => [`Allez ${n} !`, `C'est super ce que tu fais ${n} !`, `Encore ${n}, encore !`, `Lâche rien ${n} !`, `T'es au top ${n} !`],
         peak: "C'est le sommet, profites-en !", sessionHalf: "Tu as fait la moitié de la séance, bravo !",
         feel: {
           red: "La dernière fois c'était dur, vas-y progressivement.",
           yellow: "La dernière séance était correcte, reste à l'écoute de tes sensations.",
           green: "La dernière fois tu étais en forme, garde cette énergie !"
         },
-        label: { chauffe: v => `Échauffement à ${v}.`, palier: v => `À ${v}.`, bloc: (b, v) => `Bloc ${b}, à ${v}.`, recupBloc: v => `Récup entre blocs à ${v}.`, recup: v => `Retour au calme à ${v}.` },
-        prep: { chauffe: v => `Prépare-toi pour l'échauffement à ${v}.`, palier: v => `Prépare-toi à passer à ${v}.`, bloc: (b, v) => `Prépare-toi pour le bloc ${b}, à ${v}.`, recupBloc: v => `Prépare-toi pour la récup entre blocs, à ${v}.`, recup: v => `Prépare-toi pour le retour au calme, à ${v}.` },
-        goS: { chauffe: v => `Top, échauffement à ${v} !`, palier: v => `Top, à ${v} !`, bloc: (b, v) => `Top, bloc ${b}, à ${v} !`, recupBloc: v => `Top, récup à ${v} !`, recup: v => `Top, retour au calme à ${v} !` },
+        label: { chauffe: v => `Échauffement à ${v}.`, palier: v => `À ${v}.`, bloc: (b, v, n) => `Bloc ${b} sur ${n}, à ${v}.`, recupBloc: v => `Récup entre blocs à ${v}.`, recup: v => `Retour au calme à ${v}.` },
+        prep: { chauffe: v => `Prépare-toi pour l'échauffement à ${v}.`, palier: v => `Prépare-toi à passer à ${v}.`, bloc: (b, v, n) => `Prépare-toi pour le bloc ${b} sur ${n}, à ${v}.`, recupBloc: v => `Prépare-toi pour la récup entre blocs, à ${v}.`, recup: v => `Prépare-toi pour le retour au calme, à ${v}.` },
+        goS: { chauffe: v => `Top, échauffement à ${v} !`, palier: v => `Top, à ${v} !`, bloc: (b, v, n) => `Top, bloc ${b} sur ${n}, à ${v} !`, recupBloc: v => `Top, récup à ${v} !`, recup: v => `Top, retour au calme à ${v} !` },
         half: [
           "Moitié du segment, continue comme ça.",
           "Mi-segment, garde le rythme.",
@@ -2858,16 +2879,26 @@
           "Last part of the session: stay focused, this is where you improve.",
           "Fatigue is coming, hold the pace, you're nearly there."
         ],
-        lastBloc: "Last block, give it everything!", lastRep: "Last repetition!", twoReps: "Two repetitions left.",
+        lastBloc: "Last block, give it everything!", lastRep: "Last set!", twoReps: "Two sets left.",
+        series: (r, n) => `Set ${r} of ${n}.`,
+        blockEnd: (b, left) => left === 1 ? `Block ${b} done, one block left!` : `Block ${b} done, ${left} blocks left!`,
+        allDone: "Intervals done, well done!",
+        startNamed: n => `Let's go ${n}!`,
+        boost: [
+          "Come on, come on, come on!", "What you're doing is amazing!", "Again! Again!", "Don't give up!",
+          "Hold on, this is where it counts!", "Yesss, keep going!", "Push, push, push!",
+          "Brilliant, hold that pace!", "Just a few more seconds, all out!", "You're a machine!"
+        ],
+        named: n => [`Come on ${n}!`, `Amazing work ${n}!`, `Keep pushing ${n}!`, `Don't give up ${n}!`, `You're on fire ${n}!`],
         peak: "This is the peak, enjoy it!", sessionHalf: "You're halfway through the session, well done!",
         feel: {
           red: "Last time was tough, so ease into it.",
           yellow: "Last session was okay, listen to your body.",
           green: "You felt great last time, keep that energy!"
         },
-        label: { chauffe: v => `Warm-up, speed ${v}.`, palier: v => `Speed ${v}.`, bloc: (b, v) => `Block ${b}, speed ${v}.`, recupBloc: v => `Recovery between blocks, speed ${v}.`, recup: v => `Cool-down, speed ${v}.` },
-        prep: { chauffe: v => `Get ready for the warm-up, speed ${v}.`, palier: v => `Get ready to switch to speed ${v}.`, bloc: (b, v) => `Get ready for block ${b}, speed ${v}.`, recupBloc: v => `Get ready for recovery, speed ${v}.`, recup: v => `Get ready for the cool-down, speed ${v}.` },
-        goS: { chauffe: v => `Go, warm-up, speed ${v}!`, palier: v => `Go, speed ${v}!`, bloc: (b, v) => `Go, block ${b}, speed ${v}!`, recupBloc: v => `Go, recovery, speed ${v}!`, recup: v => `Go, cool-down, speed ${v}!` },
+        label: { chauffe: v => `Warm-up, speed ${v}.`, palier: v => `Speed ${v}.`, bloc: (b, v, n) => `Block ${b} of ${n}, speed ${v}.`, recupBloc: v => `Recovery between blocks, speed ${v}.`, recup: v => `Cool-down, speed ${v}.` },
+        prep: { chauffe: v => `Get ready for the warm-up, speed ${v}.`, palier: v => `Get ready to switch to speed ${v}.`, bloc: (b, v, n) => `Get ready for block ${b} of ${n}, speed ${v}.`, recupBloc: v => `Get ready for recovery, speed ${v}.`, recup: v => `Get ready for the cool-down, speed ${v}.` },
+        goS: { chauffe: v => `Go, warm-up, speed ${v}!`, palier: v => `Go, speed ${v}!`, bloc: (b, v, n) => `Go, block ${b} of ${n}, speed ${v}!`, recupBloc: v => `Go, recovery, speed ${v}!`, recup: v => `Go, cool-down, speed ${v}!` },
         half: [
           "Halfway through, keep it up.",
           "Halfway there, hold the pace.",
@@ -2921,7 +2952,7 @@
       if (!st) return '';
       const set = VT()[kind];
       const v = speedSpeech(st.speed);
-      if (st.type === 'palier' && st.isBlockStart && st.nbBlocs > 1) return set.bloc(st.blocIndex, v);
+      if (st.type === 'palier' && st.isBlockStart && st.nbBlocs > 1) return set.bloc(st.blocIndex, v, st.nbBlocs);
       return (set[st.type] || set.palier)(v);
     }
     function testPieces() { const t = VT(); return [t.count[3], t.count[2], t.count[1], t.goS.palier(speedSpeech(12))]; }
@@ -2933,7 +2964,14 @@
     function phraseList(kind) {
       const t = VT();
       // En côte, on mélange des conseils de technique aux encouragements
-      if (kind === 'fast' && (getActiveSession().pente || 0) >= 3) return t.fast.concat(t.hill);
+      const name = runnerFirstName();
+      if (kind === 'boost') return name && !lastBoostNamed ? t.boost.concat(t.named(name)) : t.boost; // prénom : pas deux fois de suite
+      if (kind === 'fast' || kind === 'push') {
+        let l = t[kind].slice();
+        if (kind === 'fast' && (getActiveSession().pente || 0) >= 3) l = l.concat(t.hill);
+        if (name) l = l.concat(t.named(name).slice(0, 2));
+        return l;
+      }
       if (kind === 'tip') {
         const personal = currentCoachLongTips();
         const done = timerState.totalSessionMs ? 1 - timerState.totalRemainingMs / timerState.totalSessionMs : 0;
@@ -2941,12 +2979,14 @@
       }
       return t[kind] || [];
     }
+    let lastBoostNamed = false;
     function pickNoRepeat(kind) {
       const arr = phraseList(kind);
       if (arr.length < 2) return arr[0];
       let i;
       do { i = Math.floor(Math.random() * arr.length); } while (i === lastPicked[kind]);
       lastPicked[kind] = i;
+      if (kind === 'boost') lastBoostNamed = !!runnerFirstName() && arr[i].includes(runnerFirstName());
       return arr[i];
     }
 
@@ -2956,7 +2996,12 @@
       if (!st) return [];
       const d = st.durationSec * 1000;
       const p = [];
-      if (st.intensity === 'fast') {
+      if (st.intensity === 'fast' && st.durationSec <= 180) {
+        // Fractionné court : encouragements très énergiques, surtout dans la 2e moitié
+        [0.5 * d, 0.72 * d, d - 10500].sort((x, y) => x - y).forEach(x => {
+          if (x >= 4500 && d - x >= 7000 && !p.some(q => Math.abs(q.t - x) < 5000)) p.push({ t: x, kind: 'boost' });
+        });
+      } else if (st.intensity === 'fast') {
         if (st.durationSec >= 150) p.push({ t: 0.25 * d, kind: 'fast' });
         if (st.durationSec >= 40) p.push({ t: 0.5 * d, kind: 'fast' });
         if (st.durationSec >= 24) p.push({ t: d - 13000, kind: 'push' }); // dernier effort, juste avant l'annonce des 5 s
@@ -3223,6 +3268,8 @@
       const f = timerState.flags;
 
       // Alerte vocale à la moitié du segment
+      if (!f.half && elapsedMs >= durMs / 2 && timerState.totalSessionMs &&
+          Math.abs((timerState.totalSessionMs - timerState.totalRemainingMs) - timerState.totalSessionMs / 2) < 30000) f.half = true; // pas deux « moitié » d'affilée
       if (!f.half && halfAlertApplies(curStage) && elapsedMs >= durMs / 2 && remMs > 9000) {
         f.half = true;
         speak(pickRandom(VT().half), { chime: true });
@@ -3235,11 +3282,13 @@
           f.extra.length = 0;
         } else if (elapsedMs >= pt.t) {
           const halfApplies = halfAlertApplies(curStage);
-          const okWindow = remMs > 9500 && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
-          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS }[pt.kind] || 40000;
+          const boost = pt.kind === 'boost';
+          const minRem = boost ? 7000 : 9500;
+          const okWindow = remMs > minRem && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
+          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS, boost: 4000 }[pt.kind] || 40000;
           const now = Date.now();
-          if (elapsedMs > pt.t + 4000 || (!okWindow && remMs <= 9500) ||
-              now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < 10000) {
+          if (elapsedMs > pt.t + (boost ? 2500 : 4000) || (!okWindow && remMs <= minRem) ||
+              now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < (boost ? 4000 : 10000)) {
             f.extra.shift();
           } else if (okWindow && !isSpeaking()) {
             f.extra.shift();
@@ -3286,6 +3335,7 @@
           else if (remMs > 8000 && elapsedMs >= 4500 && !isSpeaking()) {
             timerState.sessionHalfDone = true;
             speak([VT().sessionHalf]);
+            timerState.sessionHalfAt = Date.now();
           }
         }
       }
@@ -3987,6 +4037,7 @@
 
     function openGoalModal() {
       updateGoalModalUI();
+      document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
       refreshAllIcons();
     }
@@ -4905,16 +4956,22 @@ Réponds uniquement avec le JSON.`;
 
     // ==================== IDÉES : ANNONCES SUPPLÉMENTAIRES ====================
     // Phrases ajoutées au « Top » : dernier bloc, répétitions restantes, palier le plus rapide
+    // Annonces de structure (séries, blocs) et extras au « Top »
     function goExtras(st) {
       const t = VT();
       const out = [];
-      if (!st || st.type !== 'palier') return out;
-      if (st.isBlockStart && st.nbBlocs > 1 && st.blocIndex === st.nbBlocs) out.push(t.lastBloc);
-      else if (st.isRepStart && st.totalReps >= 2 && st.repIndex > 1) {
-        const left = st.totalReps - st.repIndex + 1;
-        if (left === 1) out.push(t.lastRep);
-        else if (left === 2 && st.totalReps >= 3) out.push(t.twoReps);
+      if (!st) return out;
+      const idx = timerState.stages.indexOf(st);
+      const prev = idx > 0 ? timerState.stages[idx - 1] : null;
+      if (st.type === 'recupBloc') { out.push(t.blockEnd(st.blocIndex, st.nbBlocs - st.blocIndex)); return out; }
+      if (st.type === 'recup' || (st.type === 'palier' && st.isExtension)) {
+        if (prev && prev.type === 'palier' && !prev.isExtension && (prev.nbBlocs > 1 || prev.totalReps > 1)) out.push(t.allDone);
+        return out;
       }
+      if (st.type !== 'palier') return out;
+      if (st.isBlockStart && st.blocIndex > 1 && prev && prev.type === 'palier') out.push(t.blockEnd(st.blocIndex - 1, st.nbBlocs - st.blocIndex + 1));
+      if (st.isBlockStart && st.nbBlocs > 1 && st.blocIndex === st.nbBlocs) out.push(t.lastBloc);
+      if (st.isRepStart && st.totalReps >= 2) out.push(st.repIndex === st.totalReps ? t.lastRep : t.series(st.repIndex, st.totalReps));
       if (st.isPeak && st.repIndex === 1 && appData.audioSettings.encouragements !== false) out.push(t.peak); // une fois par bloc
       if (treadmillVapWanted()) out.push(stageVapText(st));
       return out;
@@ -4927,10 +4984,15 @@ Réponds uniquement avec le JSON.`;
     }
     function startPieces(st, fresh) {
       const t = VT();
-      const out = [fresh ? t.start : t.resume, stagePhrase(st, 'label')];
+      const name = runnerFirstName();
+      const out = [fresh ? (name ? t.startNamed(name) : t.start) : t.resume, stagePhrase(st, 'label')];
       const fe = lastFeeling();
       if (fresh && t.feel[fe] && appData.audioSettings.encouragements !== false) out.push(t.feel[fe]);
       return out;
+    }
+    function runnerFirstName() {
+      const n = String(runnerProfile().firstName || '').trim();
+      return n ? n.charAt(0).toUpperCase() + n.slice(1) : '';
     }
 
     // ==================== ANNONCES ÉCRAN VERROUILLÉ (programmation audio) ====================
@@ -6670,12 +6732,23 @@ Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date 
 1) Donne des conseils concrets pour être au top ${when} : selon le moment (repas, sieste, hydratation, échauffement), et selon les sensations (douleur : que faire et quand renoncer ; fatigue ; stress).
 2) Décide s'il faut alléger la séance (fatigue, mauvais sommeil, douleur gênante…).
 3) Si la forme est bonne ET que les séances récentes et à venir le permettent sans surcharge, tu peux proposer de PROLONGER la séance (ex. +10 min en endurance) ; sinon non.
-Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils courts séparés par des retours à la ligne","adapter":true|false,"resume_modif":"une phrase","seance":{même format que le détail JSON},"prolonger":{"possible":true|false,"minutes":10,"vitesse":${runnerEF()},"raison":"une phrase"}}. En tutoyant. Si adapter vaut false, recopie la séance actuelle.`;
+4) Si la forme du jour n'est pas idéale mais devrait s'améliorer, tu peux proposer de DÉCALER la séance (plus tard dans la journée, ou de 1 à 2 jours en respectant l'espacement avec les séances prévues).
+Pour les douleurs, reste mesuré et rassurant : une douleur légère permet souvent de courir en adaptant (échauffement plus long, allure plus douce, terrain souple) ; ne conseille l'arrêt que si la douleur est gênante, augmente pendant l'effort ou fait boiter.
+Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils courts séparés par des retours à la ligne","adapter":true|false,"resume_modif":"une phrase","seance":{même format que le détail JSON},"prolonger":{"possible":true|false,"minutes":10,"vitesse":${runnerEF()},"raison":"une phrase"},"decaler":{"conseille":true|false,"jours":0,"moment":"plus tard aujourd'hui | demain | ...","raison":"une phrase"}}. En tutoyant. Si adapter vaut false, recopie la séance actuelle.`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         feelProposal = j;
         let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>`;
         if (j.preparation) html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-sky-500/40"><div class="text-sky-300 font-bold mb-1">🌅 Pour être au top ${when}</div><div class="text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.preparation))}</div></div>`;
+        if (j.decaler && j.decaler.conseille) {
+          const jours = Math.max(0, Math.min(3, Math.round(+j.decaler.jours || 0)));
+          window.__postponeDays = jours;
+          html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-violet-500/40 space-y-1">
+            <div class="text-violet-300 font-bold">📅 Décaler la séance : ${String(j.decaler.moment || (jours ? `dans ${jours} jour(s)` : "plus tard aujourd'hui")).replace(/</g, '&lt;')}</div>
+            <div class="text-[10px] text-slate-400">${String(j.decaler.raison || '').replace(/</g, '&lt;')}</div>
+            ${jours > 0 ? `<button onclick="postponeSession(window.__postponeDays)" class="w-full mt-1 py-2 bg-violet-500/25 border border-violet-500/50 text-violet-100 font-bold rounded-xl text-[11px]">📅 Décaler au ${(() => { const d = new Date(); d.setDate(d.getDate() + jours); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()}</button>` : ''}
+          </div>`;
+        }
         if (j.adapter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
           const after = proposalToSession(base, j.seance);
           html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-amber-500/40 space-y-1">
@@ -6700,7 +6773,9 @@ Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils
             <button onclick="keepPlannedSession()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Non, garder la séance prévue</button>
           </div>`;
         } else {
-          html += `<div class="mt-2 text-emerald-300 font-bold">👍 La séance prévue est maintenue.</div>`;
+          html += j.decaler && j.decaler.conseille
+            ? `<div class="mt-2 text-slate-300 font-bold">Sinon, la séance prévue reste faisable telle quelle.</div>`
+            : `<div class="mt-2 text-emerald-300 font-bold">👍 La séance prévue est maintenue.</div>`;
         }
         out.innerHTML = html;
         prefetchCoachTip();
@@ -6742,6 +6817,19 @@ Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils
       closeFeelModal();
       showToast("✅ Séance adaptée par le coach");
     }
+    function postponeSession(days) {
+      if (!days) return;
+      const sess = getActiveSession();
+      const d = parseISODateLocal(sess.dateISO) || new Date();
+      d.setDate(d.getDate() + days);
+      const iso = toISODateLocal(d);
+      const clash = appData.sessions.some(s => s !== sess && s.dateISO === iso);
+      sess.dateISO = iso; sess.date = toDDMM(d); sess.jour = weekdayName(d);
+      sortSessionsKeep(sess);
+      saveAppData(); reloadChrono(); updateHistoryTable(); renderHome();
+      closeFeelModal();
+      showToast(`📅 Séance décalée au ${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}${clash ? ' (une autre séance est déjà prévue ce jour-là)' : ''}`);
+    }
     function keepPlannedSession() {
       closeFeelModal();
       showToast("Séance prévue conservée");
@@ -6778,6 +6866,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils
       const r = runnerProfile();
       if (document.getElementById('ageInput')) {
         document.getElementById('ageInput').value = r.age || '';
+        document.getElementById('firstNameInput').value = r.firstName || '';
         document.getElementById('heightInput').value = r.heightCm || '';
         document.getElementById('weightInput').value = r.weightKg || '';
         renderRunnerBody();
@@ -7083,6 +7172,7 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
       const r = runnerProfile();
       const n = id => { const v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return isNaN(v) ? null : v; };
       r.age = n('ageInput');
+      r.firstName = String(document.getElementById('firstNameInput').value || '').trim().slice(0, 20);
       r.heightCm = n('heightInput');
       r.weightKg = n('weightInput');
       const fc = n('fcMaxProfile');
