@@ -3276,19 +3276,21 @@
     function isFullscreen() {
       return !!(document.fullscreenElement || document.webkitFullscreenElement);
     }
-    function requestFullscreenSafe() {
-      if (isFullscreen()) return;
+    // Plein écran seulement à la demande (bouton) : la barre de navigation du téléphone reste visible
+    function requestFullscreenSafe(force = false) {
+      if (!force || isFullscreen()) return;
       const el = document.documentElement;
       const fn = el.requestFullscreen || el.webkitRequestFullscreen;
       if (!fn) return;
       try {
-        const p = fn.call(el, { navigationUI: 'hide' });
+        const p = fn.call(el, { navigationUI: 'show' });
         if (p && p.catch) p.catch(() => {});
       } catch (e) {}
     }
     // Plein écran automatique : le navigateur exige un geste, donc dès le premier appui sur l'écran
     let userExitedFullscreen = false;
     function armAutoFullscreen() {
+      return; // désactivé : on garde les boutons du téléphone
       if (isFullscreen() || userExitedFullscreen) return;
       const handler = () => {
         document.removeEventListener('pointerdown', handler, true);
@@ -3311,7 +3313,7 @@
         }
       } else {
         userExitedFullscreen = false;
-        requestFullscreenSafe();
+        requestFullscreenSafe(true);
         if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
           showToast("Plein écran non pris en charge : ajoutez l'app à l'écran d'accueil");
         }
@@ -6879,11 +6881,9 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     // ==================== SENSATIONS DU JOUR + ADAPTATION PAR LE COACH ====================
     const FEEL_FIELDS = {
       when: { label: 'Quand est ta séance ?', opts: [['maintenant', 'Maintenant'], ['matin', 'Ce matin'], ['midi', 'Ce midi'], ['soir', 'Ce soir']] },
-      energy: { label: 'Énergie', opts: [['1', '😫'], ['2', '😕'], ['3', '😐'], ['4', '🙂'], ['5', '🤩']] },
-      sleep: { label: 'Sommeil', opts: [['mauvais', 'Mauvais'], ['moyen', 'Moyen'], ['bon', 'Bon']] },
+      energy: { label: 'Énergie', opts: [['basse', '😫 Basse'], ['moyenne', '😐 Moyenne'], ['bonne', '🤩 En forme']] },
       legs: { label: 'Jambes', opts: [['lourdes', 'Lourdes'], ['normales', 'Normales'], ['legeres', 'Légères']] },
-      pain: { label: 'Douleur', opts: [['aucune', 'Aucune'], ['legere', 'Légère'], ['genante', 'Gênante']] },
-      stress: { label: 'Stress / fatigue', opts: [['faible', 'Faible'], ['moyen', 'Moyen'], ['eleve', 'Élevé']] }
+      pain: { label: 'Douleur', opts: [['aucune', 'Aucune'], ['legere', 'Légère'], ['genante', 'Gênante']] }
     };
     let feelDraft = {};
     let feelProposal = null;
@@ -6892,7 +6892,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       if (!f) return '';
       const p = [];
       if (f.when) p.push(`séance ${{ maintenant: 'tout de suite', matin: 'ce matin', midi: 'ce midi', soir: 'ce soir' }[f.when] || f.when}`);
-      if (f.energy) p.push(`énergie ${f.energy}/5`);
+      if (f.energy) {
+        const e = /^\d$/.test(String(f.energy)) ? (+f.energy <= 2 ? 'basse' : +f.energy === 3 ? 'moyenne' : 'bonne') : f.energy; // anciennes notes /5
+        p.push(`énergie ${e}`);
+      }
       if (f.sleep) p.push(`sommeil ${f.sleep}`);
       if (f.legs) p.push(`jambes ${f.legs === 'legeres' ? 'légères' : f.legs}`);
       if (f.pain && f.pain !== 'aucune') p.push(`douleur ${f.pain === 'genante' ? 'gênante' : 'légère'}${f.painWhere ? ` (${f.painWhere})` : ''}`);
@@ -6923,7 +6926,16 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       if (body && sum) {
         body.classList.toggle('hidden', !feelExpanded);
         sum.classList.toggle('hidden', feelExpanded);
-        sum.textContent = `✅ ${capFirst(feelSummary(sess.dayFeel) || 'sensations enregistrées')}  •  ✏️ Modifier`;
+        const recorded = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
+        sum.textContent = recorded
+          ? `✅ ${capFirst(feelSummary(sess.dayFeel))}  •  ✏️ Modifier`
+          : (feelMode === 'add' ? "💬 Envie de courir quand même ? Dis au coach comment tu te sens  ›" : "💬 Comment te sens-tu ? Dis-le au coach, il adapte ta séance  ›");
+        sum.className = recorded
+          ? 'w-full text-left text-[11px] text-amber-200 font-semibold'
+          : 'w-full text-left px-3 py-3 rounded-2xl bg-amber-500/15 border border-amber-500/50 text-amber-100 font-bold text-[13px]';
+        sum.classList.toggle('hidden', feelExpanded);
+        const hdr = document.getElementById('feelPanel') && document.getElementById('feelPanel').firstElementChild;
+        if (hdr && hdr !== sum) hdr.classList.toggle('hidden', !feelExpanded); // replié : seulement le bouton
       }
       const m = document.getElementById('feelModal');
       if (m) m.classList.remove('hidden');
@@ -6939,7 +6951,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       feelExpanded = false;
       feelPanelKey = '';
       if (feelRecordedToday()) syncFeelPanel(true);
-      else { const b = document.getElementById('feelBody'); if (b) b.classList.add('hidden'); const s = document.getElementById('feelSummaryRow'); if (s) { s.classList.remove('hidden'); s.textContent = '🙂 Mes sensations du jour  •  ✏️ Remplir'; } }
+      else { feelPanelKey = ''; syncFeelPanel(true); }
     }
     function feelAsk() { if (feelMode === 'add') askCoachAddSession(); else askCoachAdaptation(); }
 
@@ -7555,16 +7567,13 @@ Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":tr
       const box = document.getElementById('goalProbBox');
       if (!p) { if (home) home.classList.add('hidden'); if (box) box.innerHTML = ''; return; }
       if (p.noData) {
-        if (home) { home.classList.remove('hidden'); home.textContent = "🎯 Probabilité de réussite : disponible après quelques séances enregistrées"; }
+        if (home) home.classList.add('hidden');
         if (box) box.innerHTML = '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
         return;
       }
       const col = p.pDay >= 70 ? 'text-emerald-300' : p.pDay >= 40 ? 'text-amber-300' : 'text-rose-300';
       const g = appData.goal;
-      if (home) {
-        home.classList.remove('hidden');
-        home.innerHTML = `🎯 ${g.distanceKm} km en ${g.durationMin}' : <span class="${col} font-black">${p.pDay} %</span> de réussite${goalProbTrend(p.pDay)}`;
-      }
+      if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
       if (box) box.innerHTML = `
         <div class="text-2xl font-black ${col}">${p.pDay} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(p.pDay)}</span></div>
         <div class="text-[10px] text-slate-300">Si la course était aujourd'hui : <b>${p.pNow} %</b> (temps prédit ${formatMinSec(p.tNow)})</div>
@@ -7760,7 +7769,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       if (!force && key === feelPanelKey) return;
       feelPanelKey = key;
       feelMode = mode;
-      feelExpanded = !(mode === 'adapt' && feelRecordedToday());
+      feelExpanded = false; // replié par défaut
       openFeelModal(true);
     }
 
@@ -8232,8 +8241,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
         const manifest = {
           name: "Run Ai",
           short_name: "Run Ai",
-          display: "fullscreen",
-          display_override: ["fullscreen", "standalone"],
+          display: "standalone",
           orientation: "portrait",
           background_color: "#ffffff",
           theme_color: "#020617",
