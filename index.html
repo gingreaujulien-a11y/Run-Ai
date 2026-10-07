@@ -465,6 +465,13 @@
     </div>
   </div>
 
+  <!-- Compte à rebours de départ -->
+  <div id="preCountdown" class="fixed inset-0 z-[175] bg-slate-950/95 flex flex-col items-center justify-center gap-4 hidden">
+    <div class="text-sm uppercase tracking-widest font-bold text-sky-300">Prêt ?</div>
+    <div id="preCountdownNum" class="text-[9rem] leading-none font-black text-white font-mono">5</div>
+    <button onclick="cancelPreStartCountdown()" class="mt-4 px-5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-sm">Annuler</button>
+  </div>
+
   <!-- Reprise après fermeture de l'app -->
   <div id="resumeOverlay" onclick="dismissResumeOverlay()" class="fixed inset-0 z-[170] bg-slate-950/90 flex flex-col items-center justify-center gap-3 p-6 text-center hidden">
     <div class="text-4xl">🏃</div>
@@ -1107,13 +1114,17 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] text-slate-300">Écoute du mot « Coach » (mains libres)</span>
-            <input type="checkbox" id="chkWakeWord" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
+            <input type="checkbox" id="chkWakeWord" onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
           </div>
           <div class="flex items-center gap-2">
             <label class="text-[11px] text-slate-300 flex-1">Prénom du coach (optionnel)</label>
             <input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white text-[11px]">
           </div>
-          <p class="text-[9px] text-slate-400">Dites « Coach » (ou son prénom) puis votre question : douleur, envie d'alléger, d'ajouter une série, de ralentir… Le coach répond et peut modifier la séance en direct. Sur certains téléphones, l'écoute du micro coupe ou baisse la musique : décochez alors l'écoute mains libres et utilisez le bouton « Parler au coach » (ou un double appui en mode poche).</p>
+          <p class="text-[9px] text-slate-400">Dites « Coach » (ou son prénom) puis votre question : douleur, envie d'alléger, d'ajouter une série, de ralentir… Le coach répond et peut modifier la séance en direct. Écoute mains libres désactivée par défaut : sur Android, le téléphone émet un bip à chaque relance du micro et peut couper la musique. Le plus confortable : le bouton « Parler au coach » ou un double appui sur l'écran en mode poche.</p>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-300">Compte à rebours 5-4-3-2-1 au départ</span>
+            <input type="checkbox" id="chkStartCd" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
+          </div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-slate-300">Conseil du coach avant la séance</span>
             <input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
@@ -1543,6 +1554,7 @@
       // Voix IA : chargement du cache et génération des annonces manquantes
       setTimeout(prepareSessionVoice, 800);
       setTimeout(() => btAutoReconnect(), 1500);
+      if (!appData.audioSettings.wakeWordMigrated) { appData.audioSettings.wakeWord = false; appData.audioSettings.wakeWordMigrated = true; saveAppData(); }
       syncFcMax();
       setupFeelPanel();
       mergeCoachIntoGoal();
@@ -2200,7 +2212,7 @@
       appData.audioSettings.voiceLang = p.lang; // textes dans la langue du profil
       try {
         const t = VT();
-        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[3], t.count[2], t.count[1], t.allDone, t.freeStart]);
+        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[5], t.count[4], t.count[3], t.count[2], t.count[1], t.allDone, t.freeStart]);
         if (appData.audioSettings.encouragements !== false && timerState.stages.some(st => st.type === 'recup')) {
           const f = runnerProfile().sex === 'F';
           t.praise(f).forEach(x => set.add(x));
@@ -2931,7 +2943,7 @@
         start: "C'est parti !", resume: "On reprend.", go: "Top !",
         in15: "Dans quinze secondes :", last15: "Dernières secondes, c'est bientôt fini !",
         end: "Terminé ! Bravo, belle séance.",
-        count: { 3: "Trois.", 2: "Deux.", 1: "Un." },
+        count: { 5: "Cinq.", 4: "Quatre.", 3: "Trois.", 2: "Deux.", 1: "Un." },
         dec: ',',
         paceUp: "Tu es un peu en dessous, accélère légèrement.", paceDown: "Tu vas un peu vite, ralentis légèrement.",
         paceOk: "Allure parfaite, continue comme ça.", climbEffort: "En montée, garde l'effort plutôt que la vitesse.",
@@ -3056,7 +3068,7 @@
         start: "Let's go!", resume: "Resuming.", go: "Go!",
         in15: "In fifteen seconds:", last15: "Last few seconds, almost done!",
         end: "Finished! Well done, great session.",
-        count: { 3: "Three.", 2: "Two.", 1: "One." },
+        count: { 5: "Five.", 4: "Four.", 3: "Three.", 2: "Two.", 1: "One." },
         dec: '.',
         paceUp: "You're a little slow, pick it up slightly.", paceDown: "You're a bit fast, ease off slightly.",
         paceOk: "Perfect pace, keep it up.", climbEffort: "On the climb, hold the effort rather than the speed.",
@@ -3395,12 +3407,20 @@
       refreshAllIcons();
     }
 
-    function startTimer() {
+    function startTimer(opts = {}) {
       if (timerState.finished) buildCurrentSessionStages();
       document.body.classList.remove('home');
       const cur = timerState.stages[timerState.currentStageIndex];
       if (!cur) {
         showToast("Séance vide : ajoutez au moins un segment");
+        return;
+      }
+      // Compte à rebours 5, 4, 3, 2, 1 avant le départ du chrono
+      if (!timerState.sessionStarted && !opts.skipCountdown && appData.audioSettings.startCountdown !== false) {
+        requestFullscreenSafe();
+        aiUnlock();
+        getAudioContext();
+        runPreStartCountdown(() => startTimer({ skipCountdown: true }));
         return;
       }
 
@@ -4615,7 +4635,8 @@
       document.getElementById('chkEncouragements').checked = s.encouragements !== false;
       document.getElementById('chkCoachTip').checked = s.coachTip !== false;
       document.getElementById('chkVoiceCoach').checked = s.voiceCoach !== false;
-      document.getElementById('chkWakeWord').checked = s.wakeWord !== false;
+      document.getElementById('chkWakeWord').checked = s.wakeWord === true;
+      document.getElementById('chkStartCd').checked = s.startCountdown !== false;
       document.getElementById('coachNameInput').value = s.coachName || '';
       document.getElementById('chkFuel').checked = s.fuelReminders !== false;
       renderUsageInfo();
@@ -4665,6 +4686,7 @@
       s.coachTip = document.getElementById('chkCoachTip').checked;
       s.voiceCoach = document.getElementById('chkVoiceCoach').checked;
       s.wakeWord = document.getElementById('chkWakeWord').checked;
+      s.startCountdown = document.getElementById('chkStartCd').checked;
       s.coachName = document.getElementById('coachNameInput').value.trim();
       s.fuelReminders = document.getElementById('chkFuel').checked;
       s.aiVoiceName = document.getElementById('aiVoiceSelect').value || 'Puck';
@@ -6299,6 +6321,40 @@ Réponds uniquement avec le JSON.`;
     }
 
     // ==================== FIN ANTICIPÉE ====================
+    let preCd = null;
+    function runPreStartCountdown(done) {
+      if (preCd) return;
+      const ov = document.getElementById('preCountdown');
+      const num = document.getElementById('preCountdownNum');
+      ov.classList.remove('hidden');
+      let n = 5;
+      num.textContent = n;
+      const viaAi = aiPlayCountdown(5);
+      if (!viaAi) speak([VT().count[5]]);
+      preCd = { timers: [] };
+      for (let k = 1; k <= 5; k++) {
+        preCd.timers.push(setTimeout(() => {
+          n = 5 - k;
+          if (n > 0) {
+            num.textContent = n;
+            if (!viaAi) speak([VT().count[n]]);
+            if ('vibrate' in navigator) navigator.vibrate(40);
+          } else {
+            ov.classList.add('hidden');
+            preCd = null;
+            done();
+          }
+        }, k * 1000));
+      }
+    }
+    function cancelPreStartCountdown() {
+      if (!preCd) return;
+      preCd.timers.forEach(clearTimeout);
+      preCd = null;
+      cancelSpeech();
+      document.getElementById('preCountdown').classList.add('hidden');
+    }
+
     function finishEarly() {
       if (!timerState.sessionStarted || timerState.finished) return;
       const free = !!getActiveSession().free;
@@ -7397,7 +7453,8 @@ ${next}
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Choisis l'activité la plus utile aujourd'hui parmi : "repos", "musculation" (renforcement utile au coureur, sans matériel ou avec peu), "velo" (récupération active ou endurance) ou "course". Tiens compte de la fatigue, des séances de la veille et du lendemain.
 Donne la séance EN DÉTAIL : échauffement, exercices ou blocs avec durées / répétitions / séries / récupérations / intensité, retour au calme (pour le repos : conseils de récupération).
-Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|musculation|velo|course","titre":"titre court","duree_min":30,"detail":"séance détaillée, une ligne par étape, en markdown simple","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":${runnerEF()},"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}}. Le champ "seance" n'est utile que pour la course.`;
+Pour la musculation, liste aussi chaque exercice dans "exercices" avec son nom français, son nom anglais usuel (pour trouver une image) et son dosage.
+Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|musculation|velo|course","titre":"titre court","duree_min":30,"detail":"séance détaillée, une ligne par étape, en markdown simple","exercices":[{"nom":"Pont fessier","nom_en":"glute bridge","dosage":"3 × 15"}],"seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":${runnerEF()},"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}}. Le champ "seance" n'est utile que pour la course.`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         addProposal = j;
@@ -7408,7 +7465,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           <div class="mt-2 p-2.5 rounded-lg bg-slate-950 border border-emerald-500/40 space-y-1">
             <div class="text-emerald-300 font-bold text-[13px]">${icon} ${label}${j.titre ? ` — ${String(j.titre).replace(/</g, '&lt;')}` : ''}${j.duree_min ? ` (${Math.round(+j.duree_min)}')` : ''}</div>
             <div class="text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.detail || ''))}</div>
-          </div>`;
+          </div>${exercisesHtml(j.exercices)}`;
         if (act === 'course' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
           const s = buildSessionFromProposal(j.seance, feel);
           html += `<div class="text-[10px] text-slate-400 mt-1">Dans l'app : ${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))}')</div>
@@ -7427,6 +7484,49 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`;
       }
     }
+    // ---------- Exercices : démonstration YouTube + image de la banque libre wger ----------
+    function ytUrl(q) { return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`; }
+    function exercisesHtml(list) {
+      if (!Array.isArray(list) || !list.length) return '';
+      const items = list.slice(0, 15).map((e, i) => {
+        const nom = String(e.nom || e.name || '').replace(/</g, '&lt;');
+        const en = String(e.nom_en || '').replace(/"/g, '');
+        return `<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-1.5">
+          <div class="w-14 h-14 shrink-0 rounded-lg bg-slate-800 overflow-hidden flex items-center justify-center text-xl" data-ex-img="${en}">🏋️</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[12px] font-bold text-white">${nom}</div>
+            <div class="text-[10px] text-slate-400">${String(e.dosage || '').replace(/</g, '&lt;')}</div>
+          </div>
+          <a href="${ytUrl(`${e.nom || ''} exercice`)}" target="_blank" rel="noopener" class="shrink-0 px-2.5 py-2 rounded-lg bg-rose-600 text-white text-[10px] font-black">▶ Démo</a>
+        </div>`;
+      }).join('');
+      setTimeout(loadExerciseImages, 50);
+      return `<div class="mt-2 space-y-1.5"><div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Exercices • images wger.de, démonstrations YouTube</div>${items}</div>`;
+    }
+    async function exerciseImage(en) {
+      if (!en) return '';
+      if (!appData.exImgCache) appData.exImgCache = {};
+      if (en in appData.exImgCache) return appData.exImgCache[en];
+      let url = '';
+      try {
+        const r = await fetch(`https://wger.de/api/v2/exercise/search/?language=english&term=${encodeURIComponent(en)}`);
+        const j = await r.json();
+        const s = (j.suggestions || []).find(x => x.data && (x.data.image_thumbnail || x.data.image));
+        if (s) { url = s.data.image_thumbnail || s.data.image; if (url.startsWith('/')) url = `https://wger.de${url}`; }
+      } catch (e) { return ''; } // hors ligne : on réessaiera plus tard
+      appData.exImgCache[en] = url;
+      saveAppData();
+      return url;
+    }
+    async function loadExerciseImages() {
+      for (const box of document.querySelectorAll('[data-ex-img]')) {
+        if (box.dataset.done) continue;
+        box.dataset.done = '1';
+        const url = await exerciseImage(box.dataset.exImg);
+        if (url) box.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-contain bg-white" onerror="this.parentNode.textContent='🏋️'">`;
+      }
+    }
+
     // Enregistre une activité croisée (musculation, vélo) dans le suivi
     function logCrossTraining() {
       const j = addProposal || {};
@@ -7436,7 +7536,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       appData.history.unshift({
         id: 'hist_' + Date.now(), sessionTitle: `${label} • ${weekdayName(d).toUpperCase()}`, date: toDDMM(d),
         durationMin: Math.round(+j.duree_min || 30), pente: 0, feeling: 'green', note: String(j.titre || label),
-        isVal: true, details: `${label} : ${String(j.titre || '')}`.trim(), cross: true, crossDetail: String(j.detail || '')
+        isVal: true, details: `${label} : ${String(j.titre || '')}`.trim(), cross: true, crossDetail: String(j.detail || ''),
+        exercises: Array.isArray(j.exercices) ? j.exercices.slice(0, 15) : []
       });
       saveAppData();
       updateHistoryTable();
@@ -8017,9 +8118,26 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
     // ==================== PARLER AU COACH PENDANT LA SÉANCE ====================
     const vc = { rec: null, mode: 'idle', timer: null, lastStart: 0, checkinDone: false, original: null };
     function voiceCoachOn() { return appData.audioSettings.voiceCoach !== false; }
+    function normTxt(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
     function coachWakeWords() {
-      const n = String(appData.audioSettings.coachName || '').trim().toLowerCase();
-      return ['coach', 'coatch', 'couch'].concat(n ? [n] : []);
+      const n = normTxt(appData.audioSettings.coachName);
+      const out = ['coach', 'coatch', 'couch'];
+      if (n) {
+        out.push(n, n.replace(/ /g, ''));
+        // Variantes fréquentes de la dictée : « Gégé » peut être compris « g g », « gg », « jeje »…
+        const sq = n.replace(/ /g, '');
+        if (/^(.+)\1$/.test(sq)) { const h = sq.slice(0, sq.length / 2); out.push(`${h} ${h}`); }
+        out.push(sq.replace(/e/g, 'i'), sq.replace(/^g/, 'j'), sq.replace(/g/g, 'j'), sq.replace(/[aeiouy]/g, ''));
+      }
+      return Array.from(new Set(out.filter(x => x.length >= 2)));
+    }
+    function findWake(txt) {
+      const low = ` ${normTxt(txt)} `;
+      for (const w of coachWakeWords()) {
+        const i = low.indexOf(` ${w} `);
+        if (i >= 0) return { w, i: i - 1 + w.length + 1 };
+      }
+      return null;
     }
     function srCtor() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
     function setVcOverlay(text, sub = '') {
@@ -8034,7 +8152,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
     // Écoute du mot « Coach » (ou du prénom du coach) pendant la course
     function maintainCoachListening() {
       const SR = srCtor();
-      const wanted = voiceCoachOn() && appData.audioSettings.wakeWord !== false && SR && timerState.isRunning && !tl.active && !extAsk && vc.mode === 'idle';
+      const wanted = voiceCoachOn() && appData.audioSettings.wakeWord === true && SR && timerState.isRunning && !tl.active && !extAsk && vc.mode === 'idle';
       if (!wanted) { if (vc.rec && vc.mode === 'idle') stopRec(); return; }
       if (isSpeaking()) { if (vc.rec) stopRec(); return; } // ne pas s'entendre soi-même
       if (vc.rec || Date.now() - vc.lastStart < 600) return;
@@ -8044,11 +8162,10 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       rec.interimResults = true;
       rec.onresult = ev => {
         const txt = Array.from(ev.results).map(r => r[0].transcript).join(' ').trim();
-        const low = txt.toLowerCase();
-        const w = coachWakeWords().find(x => new RegExp(`\\b${x}\\b`).test(low));
-        if (!w || vc.mode !== 'idle') return;
+        const hit = findWake(txt);
+        if (!hit || vc.mode !== 'idle') return;
         const final = ev.results[ev.results.length - 1].isFinal;
-        const after = txt.slice(low.indexOf(w) + w.length).replace(/^[\s,!?.]+/, '');
+        const after = normTxt(txt).slice(hit.i).trim();
         if (after.split(/\s+/).length >= 3 && final) { stopRec(); askCoachLive(after); }
         else if (final || after.length === 0) { stopRec(); startCoachQuestion(); }
       };
@@ -8135,6 +8252,7 @@ Si une adaptation de la séance est demandée ou utile, choisis UNE action :
 - "vitesse" : change la vitesse des segments restants ("cible":"rapides" ou "tous", "delta" en km/h, ex. -0.5)
 - "series_moins" / "series_plus" : retire ou ajoute "n" séries au bloc en cours
 - "terminer_fractionne" : passer directement au retour au calme
+- "arreter" : arrêter complètement la séance maintenant (blessure, douleur forte : claquage, entorse…)
 - "prolonger" : ajouter "minutes" d'endurance avant le retour au calme
 - "annuler_modifs" : revenir à la séance prévue au départ
 - "aucune"
@@ -8210,10 +8328,15 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         afterStagesChanged();
         return '';
       }
+      const j0 = st.findIndex((s, k) => k > i && s.type === 'recup');
+      if (type === 'arreter' || (type === 'terminer_fractionne' && (j0 < 0 || cur.isFree))) {
+        setTimeout(stopSessionNow, 2500); // le temps de prononcer la réponse
+        return '';
+      }
       if (type === 'terminer_fractionne') {
-        const j = st.findIndex((s, k) => k > i && s.type === 'recup');
-        timerState.stages = st.filter((s, k) => k <= i || (j >= 0 && k >= j));
-        timerState.stageStartTime = Date.now() - cur.durationSec * 1000 + 3000; // fin du segment dans 3 s
+        timerState.stages = st.filter((s, k) => k <= i || k >= j0);
+        // Raccourcit le segment en cours (le temps réellement couru est conservé)
+        cur.durationSec = Math.ceil((Date.now() - timerState.stageStartTime) / 1000) + 3;
         afterStagesChanged();
         return '';
       }
@@ -8224,6 +8347,13 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       return '';
     }
     // Retour à la séance prévue (plan d'origine) pour la suite, à partir de la position actuelle
+    // Arrêt immédiat (sans confirmation) : durée réelle enregistrée
+    function stopSessionNow() {
+      if (!timerState.sessionStarted || timerState.finished) return;
+      if (timerState.isRunning) tickTimerClock();
+      timerState.endedEarly = !getActiveSession().free;
+      handleSessionCompletion();
+    }
     function revertToOriginal() {
       let orig = vc.original;
       const sess = getActiveSession();
