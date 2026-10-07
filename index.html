@@ -106,6 +106,7 @@
       transition: transform 0.1s;
     }
     .home-tile:active { transform: scale(0.96); }
+    .grid > .home-tile:last-child:nth-child(odd) { grid-column: span 2; min-height: 4.5rem; flex-direction: row; }
     .home-tile svg.icon { width: 1.75rem; height: 1.75rem; }
     /* Séance lancée : cercle centré verticalement, temps total bien détaché au-dessus */
     body.running #mainArea {
@@ -196,7 +197,7 @@
   <!-- ==================== MODE POCHE ==================== -->
   <div id="pocketOverlay">
     <div id="pocketTime" class="pk-time">00:00</div>
-    <div class="pk-hint">Mode poche • maintenez l'écran 2 s pour déverrouiller</div>
+    <div class="pk-hint">Mode poche • maintenez 2 s pour déverrouiller • double appui : parler au coach</div>
     <svg id="pocketRing" viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="42" stroke="#1e293b" stroke-width="8" fill="none"></circle>
       <circle id="pocketRingArc" cx="50" cy="50" r="42" stroke="#38bdf8" stroke-width="8" fill="none" stroke-linecap="round"
@@ -225,8 +226,8 @@
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300"></div>
       <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
-      <div class="text-[11px] text-slate-400">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te dira si une séance est judicieuse.</div>
-      <div id="homeRestNext" class="text-[11px] text-slate-300"></div>
+      <div class="text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
+      <div id="homeRestNext" class="text-sm text-slate-200 leading-snug"></div>
       <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
       <button id="homeRestNextBtn" onclick="launchNextAnyway()" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
@@ -236,7 +237,7 @@
       <div id="homeSessTitle" class="text-lg font-black text-white"></div>
       <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
       <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
-      <div id="homeSessDesc" class="text-[11px] text-slate-300"></div>
+      <div id="homeSessDesc" class="text-sm text-slate-200 leading-snug"></div>
       <div id="homeAdapted" class="text-[10px] font-bold text-amber-300 hidden"></div>
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
@@ -251,11 +252,9 @@
     <div class="grid grid-cols-2 gap-3">
       <button onclick="openConfigModal()" class="home-tile bg-sky-500/10 border-sky-500/40 text-sky-300"><span class="icon-slot" data-icon="sliders"></span><span>Paramétrer la séance</span></button>
       <button onclick="openHistoryModal()" class="home-tile bg-emerald-500/10 border-emerald-500/40 text-emerald-300"><span class="icon-slot" data-icon="clipboard"></span><span>Planning & suivi</span></button>
-      <button onclick="openCoachModal()" class="home-tile bg-purple-500/10 border-purple-500/40 text-purple-300"><span class="icon-slot" data-icon="cpu"></span><span>Coach IA & import PDF</span></button>
-      <button onclick="openAudioModal()" class="home-tile bg-slate-800/60 border-slate-600 text-slate-200"><span class="icon-slot" data-icon="settings"></span><span>Voix & réglages</span></button>
-      <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Profil & objectif</span></button>
+            <button onclick="openAudioModal()" class="home-tile bg-slate-800/60 border-slate-600 text-slate-200"><span class="icon-slot" data-icon="settings"></span><span>Voix & réglages</span></button>
+      <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Profil, objectif & coach IA</span></button>
       <button onclick="openSensorsModal()" class="home-tile bg-rose-500/10 border-rose-500/40 text-rose-300"><span class="text-2xl leading-none">⌚</span><span>Cardio, GPS & parcours</span></button>
-      <button onclick="openValidationModal()" class="home-tile bg-teal-500/10 border-teal-500/40 text-teal-300"><span class="icon-slot" data-icon="check-circle"></span><span>Valider une séance</span></button>
     </div>
 
   </section>
@@ -308,6 +307,9 @@
         <span id="mainToggleText">DÉMARRER</span>
       </button>
 
+      <button onclick="startCoachQuestion()" class="pocket-btn w-full py-3 bg-purple-600/20 active:scale-95 transition border border-purple-500/50 text-purple-100 rounded-2xl items-center justify-center gap-2 font-bold text-sm">
+        🎙️ <span>PARLER AU COACH</span>
+      </button>
       <button onclick="enterPocketMode()" class="pocket-btn w-full py-3 bg-indigo-500/15 hover:bg-indigo-500/25 active:scale-95 transition border border-indigo-500/50 text-indigo-200 rounded-2xl items-center justify-center gap-2 font-bold text-sm">
         🌙 <span>MODE POCHE</span>
       </button>
@@ -502,6 +504,18 @@
         <button onclick="confirmCopyDate(true)" class="py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl text-xs">Créer la copie</button>
       </div>
     </div>
+  </div>
+
+  <!-- Échange vocal avec le coach pendant la course -->
+  <div id="vcOverlay" class="fixed inset-x-3 top-6 z-[165] bg-slate-900 border-2 border-purple-400 rounded-3xl p-4 space-y-2 text-center shadow-2xl hidden">
+    <div id="vcOverlayText" class="text-lg font-black text-white"></div>
+    <div id="vcOverlaySub" class="text-[12px] text-purple-200"></div>
+    <div id="vcQuick" class="grid grid-cols-3 gap-2 hidden">
+      <button onclick="quickCheckin('Je me sens bien')" class="py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-sm">😊 Bien</button>
+      <button onclick="quickCheckin('Moyen, ça va')" class="py-3 bg-amber-400 text-slate-950 font-black rounded-xl text-sm">😐 Moyen</button>
+      <button onclick="quickCheckin('C\'est dur, je suis fatigué')" class="py-3 bg-rose-500 text-white font-black rounded-xl text-sm">😫 Dur</button>
+    </div>
+    <button onclick="cancelVoiceCoach()" class="text-[11px] text-slate-400 font-semibold">Fermer</button>
   </div>
 
   <!-- Proposition de prolongation pendant la course -->
@@ -1088,6 +1102,19 @@
           </div>
           <p class="text-[9px] text-slate-400">Quelques encouragements sur les segments rapides et des conseils sur les récups, espacés pour ne pas saturer.</p>
           <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-300">🎙️ Parler au coach pendant la séance</span>
+            <input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-300">Écoute du mot « Coach » (mains libres)</span>
+            <input type="checkbox" id="chkWakeWord" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] text-slate-300 flex-1">Prénom du coach (optionnel)</label>
+            <input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white text-[11px]">
+          </div>
+          <p class="text-[9px] text-slate-400">Dites « Coach » (ou son prénom) puis votre question : douleur, envie d'alléger, d'ajouter une série, de ralentir… Le coach répond et peut modifier la séance en direct. Sur certains téléphones, l'écoute du micro coupe ou baisse la musique : décochez alors l'écoute mains libres et utilisez le bouton « Parler au coach » (ou un double appui en mode poche).</p>
+          <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-slate-300">Conseil du coach avant la séance</span>
             <input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
           </div>
@@ -1518,8 +1545,10 @@
       setTimeout(() => btAutoReconnect(), 1500);
       syncFcMax();
       setupFeelPanel();
+      mergeCoachIntoGoal();
       const restored = restoreLiveRun();
       setInterval(saveLiveRun, 5000);
+      setInterval(maintainCoachListening, 1000);
       window.addEventListener('pagehide', saveLiveRun);
       if (!restored) selectTodaySession();
       renderHome();
@@ -1665,7 +1694,7 @@
     }
 
     function buildCurrentSessionStages() {
-      const sess = getActiveSession();
+      const sess = window.__buildOverride || getActiveSession();
       const stages = [];
 
       if (sess.chauffe > 0) {
@@ -1736,6 +1765,7 @@
       });
       timerState.totalSessionMs = stages.reduce((a, st) => a + st.durationSec * 1000, 0);
       stages.forEach((st, i) => { st.goVar = (i * 5 + 3) % 7; }); // variété des « Top » sans répétition immédiate
+      { const cnt = {}; stages.forEach(st => { const k0 = `${st.type}-${st.blocIndex || 0}-${st.repIndex || 0}`; cnt[k0] = (cnt[k0] || 0) + 1; st.key = `${k0}-${cnt[k0]}`; }); }
       timerState.sessionHalfDone = false;
       buildFuelSchedule();
 
@@ -3394,6 +3424,9 @@
         timerState.hrModel = buildHrModel();
         timerState.extOfferDone = false;
         timerState.extendedMin = 0;
+        vc.checkinDone = false;
+        vc.original = null;
+        if (voiceCoachOn() && navigator.mediaDevices) navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
       }
       if (gpsWanted()) startGps();
       speak(startPieces(cur, fresh), { chime: true });
@@ -3416,6 +3449,7 @@
 
     function pauseTimer(opts = {}) {
       exitPocketMode();
+      try { cancelVoiceCoach(); } catch (e) {}
       if (tl.active) { tl.sources.forEach(s => { try { s.stop(); } catch (e) {} }); }
       timerState.isRunning = false;
       if (tl.active) stopTimelineMode();
@@ -3556,6 +3590,7 @@
 
       routeNavAnnouncements();
       checkExtensionOffer(remMs);
+      checkMidSessionCheckin(remMs);
       checkKmSummary(remMs);
       sensorAnnouncements(curStage, elapsedMs, remMs);
 
@@ -3566,7 +3601,8 @@
       if (!timerState.sessionHalfDone && timerState.totalSessionMs > 0) {
         const sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
         if (sessEl >= timerState.totalSessionMs / 2) {
-          if (appData.audioSettings.encouragements === false || sessEl > timerState.totalSessionMs / 2 + 60000) timerState.sessionHalfDone = true;
+          if (appData.audioSettings.encouragements === false || sessEl > timerState.totalSessionMs / 2 + 60000 ||
+              (voiceCoachOn() && srCtor() && !getActiveSession().free)) timerState.sessionHalfDone = true; // le point « comment tu te sens » prend le relais
           else if (remMs > 8000 && elapsedMs >= 4500 && !isSpeaking()) {
             timerState.sessionHalfDone = true;
             speak([VT().sessionHalf]);
@@ -4349,14 +4385,33 @@
     }
 
     function openCoachModal() {
-      const savedKey = localStorage.getItem('gemini_api_key_tapis') || '';
-      document.getElementById('geminiApiKeyInput').value = savedKey;
+      openGoalModal();
+      const sec = document.getElementById('coachMerged');
+      if (sec) setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+    // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
+    function mergeCoachIntoGoal() {
+      const cm = document.getElementById('coachModal');
+      const gm = document.getElementById('goalModal');
+      if (!cm || !gm) return;
+      const content = cm.firstElementChild.children[1];
+      const panel = gm.firstElementChild;
+      const footer = panel.querySelector('.modal-sticky-bottom');
+      const wrap = document.createElement('div');
+      wrap.id = 'coachMerged';
+      wrap.className = 'space-y-3 text-xs';
+      wrap.innerHTML = '<div class="pt-1 text-sm font-bold text-purple-300">🧠 Coach IA, planning & import PDF</div>';
+      content.classList.remove('overflow-y-auto', 'pr-1');
+      wrap.appendChild(content);
+      panel.insertBefore(wrap, footer);
+      cm.remove();
+      const savedKey = (() => { try { return localStorage.getItem('gemini_api_key_tapis') || ''; } catch (e) { return ''; } })();
+      const k = document.getElementById('geminiApiKeyInput');
+      if (k) k.value = savedKey;
       updateGeminiStatusBadge(savedKey !== '');
-      document.getElementById('coachModal').classList.remove('hidden');
-      refreshAllIcons();
     }
     function closeCoachModal() {
-      document.getElementById('coachModal').classList.add('hidden');
+      closeGoalModal();
     }
 
     function updateGeminiStatusBadge(isConnected) {
@@ -4559,6 +4614,9 @@
       document.getElementById('voiceLangSelect').value = s.voiceLang === 'en' ? 'en' : 'fr';
       document.getElementById('chkEncouragements').checked = s.encouragements !== false;
       document.getElementById('chkCoachTip').checked = s.coachTip !== false;
+      document.getElementById('chkVoiceCoach').checked = s.voiceCoach !== false;
+      document.getElementById('chkWakeWord').checked = s.wakeWord !== false;
+      document.getElementById('coachNameInput').value = s.coachName || '';
       document.getElementById('chkFuel').checked = s.fuelReminders !== false;
       renderUsageInfo();
       document.getElementById('aiKeyInput').value = getGeminiKey();
@@ -4605,6 +4663,9 @@
       s.voiceLang = document.getElementById('voiceLangSelect').value === 'en' ? 'en' : 'fr';
       s.encouragements = document.getElementById('chkEncouragements').checked;
       s.coachTip = document.getElementById('chkCoachTip').checked;
+      s.voiceCoach = document.getElementById('chkVoiceCoach').checked;
+      s.wakeWord = document.getElementById('chkWakeWord').checked;
+      s.coachName = document.getElementById('coachNameInput').value.trim();
       s.fuelReminders = document.getElementById('chkFuel').checked;
       s.aiVoiceName = document.getElementById('aiVoiceSelect').value || 'Puck';
       s.aiStyle = document.getElementById('aiStyleSelect').value || 'coach';
@@ -6880,10 +6941,10 @@ Si une donnée manque, dis-le simplement sans inventer.`;
 
     // ==================== SENSATIONS DU JOUR + ADAPTATION PAR LE COACH ====================
     const FEEL_FIELDS = {
-      when: { label: 'Quand est ta séance ?', opts: [['maintenant', 'Maintenant'], ['matin', 'Ce matin'], ['midi', 'Ce midi'], ['soir', 'Ce soir']] },
+      when: { label: "Quand as-tu prévu de courir aujourd'hui ?", opts: [['matin', 'Ce matin'], ['midi', 'Ce midi'], ['soir', 'Ce soir'], ['maintenant', 'Maintenant']] },
       energy: { label: 'Énergie', opts: [['basse', '😫 Basse'], ['moyenne', '😐 Moyenne'], ['bonne', '🤩 En forme']] },
-      legs: { label: 'Jambes', opts: [['lourdes', 'Lourdes'], ['normales', 'Normales'], ['legeres', 'Légères']] },
-      pain: { label: 'Douleur', opts: [['aucune', 'Aucune'], ['legere', 'Légère'], ['genante', 'Gênante']] }
+      soreness: { label: 'Courbatures', opts: [['grosses', 'Grosses'], ['legeres', 'Légères'], ['aucune', 'Aucune']] },
+      pain: { label: 'Douleur', opts: [['genante', 'Gênante'], ['legere', 'Légère'], ['aucune', 'Aucune']] }
     };
     let feelDraft = {};
     let feelProposal = null;
@@ -6898,6 +6959,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       }
       if (f.sleep) p.push(`sommeil ${f.sleep}`);
       if (f.legs) p.push(`jambes ${f.legs === 'legeres' ? 'légères' : f.legs}`);
+      if (f.soreness) p.push(f.soreness === 'aucune' ? 'pas de courbatures' : `courbatures ${f.soreness === 'legeres' ? 'légères' : 'importantes'}`);
       if (f.pain && f.pain !== 'aucune') p.push(`douleur ${f.pain === 'genante' ? 'gênante' : 'légère'}${f.painWhere ? ` (${f.painWhere})` : ''}`);
       if (f.stress) p.push(`stress ${f.stress === 'eleve' ? 'élevé' : f.stress}`);
       if (f.note) p.push(`« ${f.note} »`);
@@ -6957,7 +7019,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
 
     function renderFeelChips() {
       const box = document.getElementById('feelChips');
-      box.innerHTML = Object.entries(FEEL_FIELDS).map(([k, f]) => `
+      box.innerHTML = Object.entries(FEEL_FIELDS).filter(([k]) => !(k === 'when' && feelMode === 'add')).map(([k, f]) => `
         <div>
           <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">${f.label}</div>
           <div class="grid gap-1" style="grid-template-columns: repeat(${f.opts.length}, minmax(0, 1fr))">
@@ -7315,46 +7377,71 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
       out.classList.remove('hidden');
       if (!getGeminiKey()) {
         out.innerHTML = `<span class="text-rose-400">Sans clé Gemini, pas d'avis du coach.</span>
-          <button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Créer ma séance moi-même</button>`;
+          <button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Créer ma séance de course moi-même</button>`;
         return;
       }
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach réfléchit…</div>';
       const t = todayISO();
       const now = new Date();
       const past = (appData.history || []).slice(0, 8).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
-      const next = appData.sessions.filter(s => s.dateISO && s.dateISO >= t).slice(0, 5).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(s => s.dateISO && s.dateISO >= t).slice(0, 5).map(s => `- ${formatSessTitle(s)} : ${describeSessionHuman(s)}`).join('\n') || '- aucune';
       const g = appData.goal || {};
-      const prompt = `Tu es un coach de course à pied prudent. Aujourd'hui (${now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) aucune séance n'est prévue et je voudrais en ajouter une.
+      const r = runnerProfile();
+      const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. Aujourd'hui (${now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) aucune course n'est prévue et je voudrais faire une activité.
 Mes sensations : ${feelSummary(feel) || 'non précisées'}.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg ; endurance fondamentale ${formatSpeed(runnerEF())} km/h.
 Séances récentes :
 ${past}
 Prochaines séances prévues :
 ${next}
-Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}. Endurance fondamentale : ${formatSpeed(runnerEF())} km/h.
-Dis si c'est judicieux d'ajouter une séance aujourd'hui (fatigue, récupération, séance dure la veille ou le lendemain…). Si oui, propose une séance adaptée et raisonnable. Si non, conseille le repos ou une activité douce.
-Réponds uniquement en JSON : {"avis":"2 à 3 phrases, en tutoyant","ajouter":true|false,"resume":"titre court de la séance","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":${runnerEF()},"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}}`;
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Choisis l'activité la plus utile aujourd'hui parmi : "repos", "musculation" (renforcement utile au coureur, sans matériel ou avec peu), "velo" (récupération active ou endurance) ou "course". Tiens compte de la fatigue, des séances de la veille et du lendemain.
+Donne la séance EN DÉTAIL : échauffement, exercices ou blocs avec durées / répétitions / séries / récupérations / intensité, retour au calme (pour le repos : conseils de récupération).
+Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|musculation|velo|course","titre":"titre court","duree_min":30,"detail":"séance détaillée, une ligne par étape, en markdown simple","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":${runnerEF()},"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}}. Le champ "seance" n'est utile que pour la course.`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         addProposal = j;
-        let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>`;
-        if (j.ajouter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
+        const act = String(j.activite || (j.ajouter ? 'course' : 'repos')).toLowerCase();
+        const icon = { repos: '😴', musculation: '🏋️', velo: '🚴', 'vélo': '🚴', course: '🏃' }[act] || '💡';
+        const label = { repos: 'Repos', musculation: 'Musculation', velo: 'Vélo', 'vélo': 'Vélo', course: 'Course à pied' }[act] || act;
+        let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>
+          <div class="mt-2 p-2.5 rounded-lg bg-slate-950 border border-emerald-500/40 space-y-1">
+            <div class="text-emerald-300 font-bold text-[13px]">${icon} ${label}${j.titre ? ` — ${String(j.titre).replace(/</g, '&lt;')}` : ''}${j.duree_min ? ` (${Math.round(+j.duree_min)}')` : ''}</div>
+            <div class="text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.detail || ''))}</div>
+          </div>`;
+        if (act === 'course' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
           const s = buildSessionFromProposal(j.seance, feel);
-          html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-emerald-500/40">
-            <div class="text-emerald-300 font-bold">➕ ${String(j.resume || 'Séance proposée').replace(/</g, '&lt;')}</div>
-            <div class="text-[10px] text-slate-300">${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))}')</div>
-          </div>
+          html += `<div class="text-[10px] text-slate-400 mt-1">Dans l'app : ${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))}')</div>
           <div class="grid grid-cols-2 gap-2 mt-2">
-            <button onclick="acceptAddProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Ajouter</button>
+            <button onclick="acceptAddProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Ajouter la séance</button>
             <button onclick="closeFeelModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Non merci</button>
           </div>`;
+        } else if (act === 'musculation' || act === 'velo' || act === 'vélo') {
+          html += `<button onclick="logCrossTraining()" class="w-full mt-2 py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ C'est fait : l'enregistrer dans le suivi</button>
+            <button onclick="createOwnSessionToday()" class="w-full mt-1.5 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Je préfère courir quand même</button>`;
         } else {
-          html += `<div class="mt-2 text-amber-300 font-bold">😴 Le coach conseille plutôt le repos aujourd'hui.</div>
-            <button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Ajouter quand même une séance</button>`;
+          html += `<button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Ajouter quand même une séance de course</button>`;
         }
         out.innerHTML = html;
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`;
       }
+    }
+    // Enregistre une activité croisée (musculation, vélo) dans le suivi
+    function logCrossTraining() {
+      const j = addProposal || {};
+      const act = String(j.activite || '').toLowerCase();
+      const label = act.startsWith('v') ? 'Vélo' : 'Musculation';
+      const d = new Date();
+      appData.history.unshift({
+        id: 'hist_' + Date.now(), sessionTitle: `${label} • ${weekdayName(d).toUpperCase()}`, date: toDDMM(d),
+        durationMin: Math.round(+j.duree_min || 30), pente: 0, feeling: 'green', note: String(j.titre || label),
+        isVal: true, details: `${label} : ${String(j.titre || '')}`.trim(), cross: true, crossDetail: String(j.detail || '')
+      });
+      saveAppData();
+      updateHistoryTable();
+      closeFeelModal();
+      showToast(`✅ ${label} enregistré dans le suivi`);
     }
     function buildSessionFromProposal(p, feel) {
       const d = new Date();
@@ -7927,6 +8014,307 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       duplicateSessionFromConfig(iso);
     }
 
+    // ==================== PARLER AU COACH PENDANT LA SÉANCE ====================
+    const vc = { rec: null, mode: 'idle', timer: null, lastStart: 0, checkinDone: false, original: null };
+    function voiceCoachOn() { return appData.audioSettings.voiceCoach !== false; }
+    function coachWakeWords() {
+      const n = String(appData.audioSettings.coachName || '').trim().toLowerCase();
+      return ['coach', 'coatch', 'couch'].concat(n ? [n] : []);
+    }
+    function srCtor() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
+    function setVcOverlay(text, sub = '') {
+      const o = document.getElementById('vcOverlay');
+      if (!o) return;
+      if (!text) { o.classList.add('hidden'); return; }
+      document.getElementById('vcOverlayText').textContent = text;
+      document.getElementById('vcOverlaySub').textContent = sub;
+      o.classList.remove('hidden');
+    }
+
+    // Écoute du mot « Coach » (ou du prénom du coach) pendant la course
+    function maintainCoachListening() {
+      const SR = srCtor();
+      const wanted = voiceCoachOn() && appData.audioSettings.wakeWord !== false && SR && timerState.isRunning && !tl.active && !extAsk && vc.mode === 'idle';
+      if (!wanted) { if (vc.rec && vc.mode === 'idle') stopRec(); return; }
+      if (isSpeaking()) { if (vc.rec) stopRec(); return; } // ne pas s'entendre soi-même
+      if (vc.rec || Date.now() - vc.lastStart < 600) return;
+      const rec = new SR();
+      rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = ev => {
+        const txt = Array.from(ev.results).map(r => r[0].transcript).join(' ').trim();
+        const low = txt.toLowerCase();
+        const w = coachWakeWords().find(x => new RegExp(`\\b${x}\\b`).test(low));
+        if (!w || vc.mode !== 'idle') return;
+        const final = ev.results[ev.results.length - 1].isFinal;
+        const after = txt.slice(low.indexOf(w) + w.length).replace(/^[\s,!?.]+/, '');
+        if (after.split(/\s+/).length >= 3 && final) { stopRec(); askCoachLive(after); }
+        else if (final || after.length === 0) { stopRec(); startCoachQuestion(); }
+      };
+      rec.onend = () => { if (vc.rec === rec) vc.rec = null; };
+      rec.onerror = () => {};
+      vc.rec = rec;
+      vc.lastStart = Date.now();
+      try { rec.start(); } catch (e) { vc.rec = null; }
+    }
+    function stopRec() { try { vc.rec && vc.rec.abort(); } catch (e) {} vc.rec = null; }
+
+    // Bouton « Parler au coach » (ou double appui en mode poche)
+    function startCoachQuestion(prompt) {
+      if (!srCtor()) { showToast("Reconnaissance vocale indisponible sur ce navigateur"); return; }
+      stopRec();
+      vc.mode = 'question';
+      setVcOverlay('🎙️ Je t\'écoute…', 'Pose ta question au coach');
+      speakLive(prompt || (appData.audioSettings.voiceLang === 'en' ? "Yes, I'm listening." : "Oui, je t'écoute."));
+      const t0 = Date.now();
+      const wait = setInterval(() => {
+        if (vc.mode !== 'question') { clearInterval(wait); return; }
+        if (!isSpeaking() && Date.now() - t0 > 900) { clearInterval(wait); listenQuestion(); }
+      }, 250);
+    }
+    function listenQuestion() {
+      const SR = srCtor();
+      const rec = new SR();
+      rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
+      rec.continuous = false;
+      rec.interimResults = true;
+      let got = '', done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        clearTimeout(to);
+        try { rec.abort(); } catch (e) {}
+        vc.rec = null;
+        if (got.trim().length >= 2) askCoachLive(got.trim());
+        else { vc.mode = 'idle'; setVcOverlay(''); }
+      };
+      rec.onresult = ev => {
+        got = Array.from(ev.results).map(r => r[0].transcript).join(' ');
+        document.getElementById('vcOverlaySub').textContent = `« ${got} »`;
+        if (ev.results[ev.results.length - 1].isFinal) finish();
+      };
+      rec.onend = finish;
+      rec.onerror = () => {};
+      const to = setTimeout(finish, 10000);
+      vc.rec = rec;
+      try { rec.start(); } catch (e) { finish(); }
+    }
+
+    // ---------- Contexte de la séance pour le coach ----------
+    function liveContextText() {
+      const sess = getActiveSession();
+      const st = timerState.stages, i = timerState.currentStageIndex, cur = st[i];
+      const elapsed = Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 60000);
+      const left = Math.round(timerState.totalRemainingMs / 60000);
+      const nextList = st.slice(i + 1, i + 9).map(s => `${s.name} ${formatSpeed(s.speed)} km/h ${Math.round(s.durationSec)}s`).join(' ; ');
+      const hr = runData.hr && Date.now() - runData.hrAt < 10000 ? `${runData.hr} bpm (${zoneOf(runData.hr) || '?'}, FC max ${runnerFcMax() || '?'})` : 'inconnu';
+      return `Séance : ${describeSessionHuman(sess)} (${sess.type === 'exterieur' ? 'extérieur' : 'tapis'}).
+Écoulé ${elapsed} min, reste ${left} min. Segment en cours : ${cur ? `${cur.name} à ${formatSpeed(cur.speed)} km/h${cur.totalReps > 1 ? `, série ${cur.repIndex}/${cur.totalReps}` : ''}${cur.nbBlocs > 1 ? `, bloc ${cur.blocIndex}/${cur.nbBlocs}` : ''}` : '?'}, reste ${Math.round(timerState.stageRemainingMs / 1000)} s.
+Segments suivants : ${nextList || 'aucun'}.
+Cardio : ${hr}. Distance : ${kmDistanceNow().toFixed(2)} km.
+Sensations avant la séance : ${feelSummary(sess.dayFeel) || 'non renseignées'}.
+${isSessionModified() ? 'La séance a déjà été modifiée par rapport au plan initial (retour possible avec l\'action "annuler_modifs").' : ''}`;
+    }
+
+    async function askCoachLive(question, isCheckin = false) {
+      vc.mode = 'thinking';
+      setVcOverlay('🧠 Le coach réfléchit…', `« ${question} »`);
+      if (!getGeminiKey()) {
+        const r = localCheckinAnswer(question);
+        vc.mode = 'idle'; setVcOverlay('');
+        speakLive(r.text);
+        if (r.action) applyLiveAction(r.action);
+        return;
+      }
+      const name = runnerFirstName();
+      const prompt = `Tu es le coach de course de ${name || 'ce coureur'}, qui te parle EN PLEINE SÉANCE via un écouteur.
+${liveContextText()}
+${isCheckin ? 'Tu viens de lui demander comment il se sent à mi-séance. ' : ''}Il dit : « ${question} »
+Réponds comme un coach bienveillant et rassurant, à voix haute : 1 à 3 phrases courtes, en tutoyant, sans chiffres inutiles. En cas de douleur, sois mesuré : adapte (ralentir, alléger) et ne conseille l'arrêt que si la douleur est forte ou augmente.
+Si une adaptation de la séance est demandée ou utile, choisis UNE action :
+- "vitesse" : change la vitesse des segments restants ("cible":"rapides" ou "tous", "delta" en km/h, ex. -0.5)
+- "series_moins" / "series_plus" : retire ou ajoute "n" séries au bloc en cours
+- "terminer_fractionne" : passer directement au retour au calme
+- "prolonger" : ajouter "minutes" d'endurance avant le retour au calme
+- "annuler_modifs" : revenir à la séance prévue au départ
+- "aucune"
+Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible":"rapides","delta":0,"n":1,"minutes":5}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        vc.mode = 'idle'; setVcOverlay('');
+        const applied = j.action && j.action.type && j.action.type !== 'aucune' ? applyLiveAction(j.action) : '';
+        speakLive(String(j.reponse || '') + (applied ? ` ${applied}` : ''));
+      } catch (e) {
+        vc.mode = 'idle'; setVcOverlay('');
+        speakLive(appData.audioSettings.voiceLang === 'en' ? "Sorry, I couldn't hear the answer. Keep going!" : "Désolé, je n'ai pas réussi à te répondre. Continue à ton rythme !");
+      }
+    }
+
+    // Réponse simple sans clé Gemini (point à mi-séance)
+    function localCheckinAnswer(q) {
+      const s = q.toLowerCase();
+      if (/(dur|difficile|crevé|fatigu|mal|douleur|lourd)/.test(s)) return { text: "D'accord, j'allège un peu la fin : vitesse des segments rapides moins 0,5.", action: { type: 'vitesse', cible: 'rapides', delta: -0.5 } };
+      if (/(revenir|initial|prévu|origine)/.test(s)) return { text: "C'est noté.", action: { type: 'annuler_modifs' } };
+      if (/(bien|super|top|forme|nickel)/.test(s)) return { text: "Super, continue comme ça, tu fais du bon travail !" };
+      return { text: "Merci, écoute bien ton corps et garde ton rythme." };
+    }
+
+    // ---------- Modifications de la séance en direct ----------
+    function isSessionModified() { return !!vc.original || !!getActiveSession().planOriginal; }
+    function snapshotOriginal() { if (!vc.original) vc.original = JSON.parse(JSON.stringify(timerState.stages)); }
+    function afterStagesChanged() {
+      timerState.totalSessionMs = timerState.stages.reduce((a, s) => a + s.durationSec * 1000, 0);
+      recomputeTotalRemaining();
+      updateUIHeaderAndCircle();
+      saveLiveRun();
+      if (aiVoiceActive()) prepareAIVoice();
+    }
+    function applyLiveAction(a) {
+      const st = timerState.stages, i = timerState.currentStageIndex, cur = st[i];
+      const fr = appData.audioSettings.voiceLang !== 'en';
+      const type = String(a.type || '').toLowerCase();
+      if (type === 'annuler_modifs') return revertToOriginal() ? (fr ? "On revient à la séance prévue." : "Back to the planned session.") : '';
+      if (!cur) return '';
+      snapshotOriginal();
+      if (type === 'vitesse') {
+        const d = Math.max(-3, Math.min(2, parseFloat(a.delta) || 0));
+        if (!d) return '';
+        st.forEach((s, k) => {
+          if (k < i || s.type !== 'palier') return;
+          if ((a.cible || 'rapides') === 'rapides' && s.intensity !== 'fast') return;
+          s.speed = Math.max(4, Math.round((parseFloat(s.speed) + d) * 2) / 2);
+        });
+        afterStagesChanged();
+        return '';
+      }
+      const b = cur.blocIndex;
+      if (type === 'series_moins') {
+        const n = Math.max(1, Math.round(+a.n || 1));
+        const maxRep = Math.max(...st.filter(s => s.type === 'palier' && s.blocIndex === b).map(s => s.repIndex || 1));
+        const minKeep = Math.max(cur.repIndex || 1, maxRep - n);
+        timerState.stages = st.filter((s, k) => !(k > i && s.type === 'palier' && s.blocIndex === b && (s.repIndex || 1) > minKeep));
+        timerState.stages.forEach(s => { if (s.type === 'palier' && s.blocIndex === b) s.totalReps = minKeep; });
+        afterStagesChanged();
+        return '';
+      }
+      if (type === 'series_plus') {
+        const n = Math.max(1, Math.min(4, Math.round(+a.n || 1)));
+        const reps = st.filter(s => s.type === 'palier' && s.blocIndex === b);
+        const lastRep = Math.max(...reps.map(s => s.repIndex || 1));
+        const tpl = reps.filter(s => (s.repIndex || 1) === lastRep);
+        let at = st.lastIndexOf(tpl[tpl.length - 1]) + 1;
+        const add = [];
+        for (let r = 1; r <= n; r++) tpl.forEach((s, k) => add.push(Object.assign({}, s, { repIndex: lastRep + r, isRepStart: k === 0, isBlockStart: false, key: `${s.key || ''}+${r}` })));
+        st.splice(at, 0, ...add);
+        st.forEach(s => { if (s.type === 'palier' && s.blocIndex === b) s.totalReps = lastRep + n; });
+        afterStagesChanged();
+        return '';
+      }
+      if (type === 'terminer_fractionne') {
+        const j = st.findIndex((s, k) => k > i && s.type === 'recup');
+        timerState.stages = st.filter((s, k) => k <= i || (j >= 0 && k >= j));
+        timerState.stageStartTime = Date.now() - cur.durationSec * 1000 + 3000; // fin du segment dans 3 s
+        afterStagesChanged();
+        return '';
+      }
+      if (type === 'prolonger') {
+        insertExtensionStage({ minutes: Math.max(2, Math.min(30, Math.round(+a.minutes || 5))), speed: runnerEF() });
+        return '';
+      }
+      return '';
+    }
+    // Retour à la séance prévue (plan d'origine) pour la suite, à partir de la position actuelle
+    function revertToOriginal() {
+      let orig = vc.original;
+      const sess = getActiveSession();
+      if (sess.planOriginal) orig = buildStagesFor(sess.planOriginal);
+      if (!orig) return false;
+      const i = timerState.currentStageIndex, cur = timerState.stages[i];
+      const baseKey = String(cur.key || '').split('+')[0];
+      let j = orig.findIndex(s => s.key === baseKey);
+      if (j < 0) j = Math.min(i, orig.length - 1);
+      cur.speed = orig[j].speed;
+      timerState.stages = timerState.stages.slice(0, i + 1).concat(JSON.parse(JSON.stringify(orig.slice(j + 1))));
+      vc.original = null;
+      if (sess.planOriginal) {
+        ['chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide'].forEach(k => { sess[k] = sess.planOriginal[k]; });
+        delete sess.planOriginal; delete sess.adapted; saveAppData();
+      }
+      afterStagesChanged();
+      return true;
+    }
+    function buildStagesFor(sessObj) {
+      const keep = { stages: timerState.stages, idx: timerState.currentStageIndex, flags: timerState.flags, rem: timerState.stageRemainingMs,
+        tot: timerState.totalRemainingMs, ts: timerState.totalSessionMs, started: timerState.sessionStarted, fin: timerState.finished, half: timerState.sessionHalfDone,
+        act: timerState.actualMs, early: timerState.endedEarly };
+      window.__buildOverride = sessObj;
+      try { buildCurrentSessionStages(); } finally { window.__buildOverride = null; }
+      const out = timerState.stages;
+      Object.assign(timerState, { stages: keep.stages, currentStageIndex: keep.idx, flags: keep.flags, stageRemainingMs: keep.rem,
+        totalRemainingMs: keep.tot, totalSessionMs: keep.ts, sessionStarted: keep.started, finished: keep.fin, sessionHalfDone: keep.half,
+        actualMs: keep.act, endedEarly: keep.early });
+      return out;
+    }
+
+    // ---------- Point à mi-séance ----------
+    function checkMidSessionCheckin(remMs) {
+      if (vc.checkinDone || !timerState.isRunning || tl.active || extAsk || vc.mode !== 'idle') return;
+      const st = timerState.stages, i = timerState.currentStageIndex, cur = st[i];
+      if (!cur || cur.type === 'chauffe' || cur.type === 'recup' || cur.isFree) return;
+      const first = st.findIndex(s => s.type !== 'chauffe');
+      let last = st.length - 1; while (last > 0 && st[last].type === 'recup') last--;
+      const startMs = st.slice(0, first).reduce((a, s) => a + s.durationSec * 1000, 0);
+      const endMs = st.slice(0, last + 1).reduce((a, s) => a + s.durationSec * 1000, 0);
+      const el = timerState.totalSessionMs - timerState.totalRemainingMs;
+      if (el < startMs + (endMs - startMs) / 2) return;
+      if (remMs < 15000 || isSpeaking() || (cur.durationSec * 1000 - remMs) < 5000) return;
+      vc.checkinDone = true;
+      const fr = appData.audioSettings.voiceLang !== 'en';
+      const name = runnerFirstName();
+      let q = fr ? `Tu es à la moitié de ta séance${name ? ` ${name}` : ''}. Comment tu te sens ?` : `You're halfway through${name ? ` ${name}` : ''}. How are you feeling?`;
+      if (isSessionModified()) q += fr ? " La séance a été modifiée : tu veux revenir à la séance prévue au départ ?" : " The session was changed: do you want to go back to the original plan?";
+      if (!srCtor()) { speakLive(q); return; }
+      vc.mode = 'question';
+      setVcOverlay('🎙️ Comment tu te sens ?', 'Réponds à voix haute, ou touche un bouton');
+      document.getElementById('vcQuick').classList.remove('hidden');
+      speakLive(q);
+      const t0 = Date.now();
+      const wait = setInterval(() => {
+        if (vc.mode !== 'question') { clearInterval(wait); return; }
+        if (!isSpeaking() && Date.now() - t0 > 1500) { clearInterval(wait); listenCheckin(); }
+      }, 250);
+    }
+    function listenCheckin() {
+      const SR = srCtor();
+      const rec = new SR();
+      rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
+      rec.continuous = false; rec.interimResults = true;
+      let got = '', done = false;
+      const finish = () => {
+        if (done) return; done = true; clearTimeout(to);
+        try { rec.abort(); } catch (e) {}
+        vc.rec = null;
+        if (vc.mode !== 'question') return;
+        document.getElementById('vcQuick').classList.add('hidden');
+        if (got.trim()) askCoachLive(got.trim(), true);
+        else { vc.mode = 'idle'; setVcOverlay(''); }
+      };
+      rec.onresult = ev => { got = Array.from(ev.results).map(r => r[0].transcript).join(' '); document.getElementById('vcOverlaySub').textContent = `« ${got} »`; if (ev.results[ev.results.length - 1].isFinal) finish(); };
+      rec.onend = finish; rec.onerror = () => {};
+      const to = setTimeout(finish, 12000);
+      vc.rec = rec;
+      try { rec.start(); } catch (e) { finish(); }
+    }
+    function quickCheckin(txt) {
+      stopRec();
+      document.getElementById('vcQuick').classList.add('hidden');
+      askCoachLive(txt, true);
+    }
+    function cancelVoiceCoach() {
+      stopRec(); vc.mode = 'idle'; setVcOverlay('');
+      const q = document.getElementById('vcQuick'); if (q) q.classList.add('hidden');
+    }
+
     // ==================== MODE POCHE ====================
     let pocketHold = null;
     function enterPocketMode() {
@@ -7956,8 +8344,12 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       const ov = document.getElementById('pocketOverlay');
       const block = e => { e.preventDefault(); e.stopPropagation(); };
       ['touchstart', 'touchmove', 'touchend', 'click', 'dblclick', 'contextmenu'].forEach(t => ov.addEventListener(t, block, { passive: false }));
+      let lastPocketTap = 0;
       ov.addEventListener('pointerdown', e => {
         e.preventDefault();
+        const now = Date.now();
+        if (now - lastPocketTap < 400) { lastPocketTap = 0; cancelPocketHold(); if (voiceCoachOn()) startCoachQuestion(); return; }
+        lastPocketTap = now;
         cancelPocketHold();
         const start = performance.now();
         document.getElementById('pocketRing').classList.add('on');
