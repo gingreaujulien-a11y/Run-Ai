@@ -1421,7 +1421,8 @@
         encouragements: true,
         coachTip: true,
         aiModel: "",
-        aiRate: 0.9
+        aiRate: 0.9,
+        coachProfile: "motivant"
       }
     };
 
@@ -2078,6 +2079,8 @@
     function speak(pieces, opts = {}) {
       if (tl.active) return; // écran verrouillé : les annonces sont déjà programmées
       if (!Array.isArray(pieces)) pieces = [pieces];
+      pieces = pieces.filter(Boolean);
+      if (!pieces.length) return;
       const s = appData.audioSettings;
       const run = () => {
         if (aiVoiceActive()) {
@@ -2212,7 +2215,7 @@
       appData.audioSettings.voiceLang = p.lang; // textes dans la langue du profil
       try {
         const t = VT();
-        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[5], t.count[4], t.count[3], t.count[2], t.count[1], t.allDone, t.freeStart]);
+        const set = new Set([t.start, t.resume, t.last15, t.end, t.count[5], t.count[4], t.count[3], t.count[2], t.count[1], t.allDone, t.freeStart, t.lastBloc, t.peak].filter(Boolean));
         if (appData.audioSettings.encouragements !== false && timerState.stages.some(st => st.type === 'recup')) {
           const f = runnerProfile().sex === 'F';
           t.praise(f).forEach(x => set.add(x));
@@ -2251,10 +2254,12 @@
             t.mental.forEach(x => set.add(x));
             if (runnerFirstName()) t.mentalNamed(runnerFirstName()).forEach(x => set.add(x));
             if (runnerFirstName()) t.named(runnerFirstName()).forEach(x => set.add(x));
+            if (runnerFirstName() && t.fastNamed) t.fastNamed(runnerFirstName()).forEach(x => set.add(x));
             if ((getActiveSession().pente || 0) >= 3) t.hill.forEach(x => set.add(x));
           }
           if (timerState.stages.some(st => st.intensity === 'easy')) t.easy.forEach(x => set.add(x));
         }
+        set.delete(''); set.delete(undefined);
         return Array.from(set); // le conseil d'avant-séance n'est lu qu'à la demande (bouton 🔊)
       } finally {
         appData.audioSettings.voiceLang = prevLang;
@@ -2325,6 +2330,7 @@
       const fr = VOICE_TEXT.fr;
       const frTexts = new Set([fr.start, fr.resume, fr.go, fr.in15, fr.last15, fr.end, fr.count[3], fr.count[2], fr.count[1], 'Go !',
         ...fr.half, ...fr.fast, ...fr.easy, ...fr.push, ...fr.hill, fr.lastBloc, fr.lastRep, fr.twoReps, fr.peak, fr.sessionHalf, ...Object.values(fr.feel)]);
+      Object.values(COACH_PROFILES).forEach(p => Object.values(p.g).forEach(l => l.forEach(x => x && frTexts.add(x))));
       const groups = {};
       keys.forEach(k => {
         const parts = String(k).split('|');
@@ -3188,7 +3194,102 @@
         }
       }
     };
-    function VT() { return VOICE_TEXT[appData.audioSettings.voiceLang === 'en' ? 'en' : 'fr']; }
+
+    // ==================== PROFILS DU COACH (fichier Excel v3) ====================
+    const COACH_PROFILE_ORDER = ["bienveillant", "motivant", "flatteur", "exigeant", "competition", "neutre"];
+    const COACH_PROFILES = {"bienveillant": {"label": "Bienveillant", "emoji": "🤗", "g": {"G01": ["C'est parti, en douceur surtout.", "C'est parti {prénom}, on y va tranquillement."], "G03": ["La dernière fois c'était dur, vas-y progressivement.", "La dernière séance était bien, reste à l'écoute de tes sensations.", "La dernière fois t'étais en forme, garde cette énergie !"], "G04": ["Vas-y tranquillement, ne pars pas trop vite.", "Garde une allure facile, tu dois pouvoir parler.", "Laisse le corps se mettre en route progressivement."], "G05": ["On est à la moitié de l'échauffement, tout va bien."], "G10": ["Dernier bloc, à ton rythme, tu y es presque.", "Fractionné terminé, bravo, tu peux souffler."], "G11": ["Moitié du segment, tout va bien.", "On est à la moitié, prends soin de toi.", "La moitié est faite, c'est bien."], "G12": ["Tu gères bien, reste relâché dans ta tête.", "C'est bien, continue à ton rythme.", "Respire calmement, ça passe.", "Tu fais du bon travail {prénom}."], "G13": ["C'est bien, tiens encore un peu.", "Tu y es presque, doucement dans la tête.", "Garde ton calme, ça va passer.", "Plus que quelques secondes, tu gères.", "Bien {prénom}, continue."], "G14": ["Tu peux le faire, à ton rythme.", "Tu y es presque, sois fier de toi.", "Un petit effort, et c'est fini.", "Tiens bon {prénom}, tout doux."], "G15": ["Bientôt fini, garde ton calme.", "Encore un petit peu, tu gères."], "G16": ["C'est le palier le plus rapide, vas-y à ta façon."], "G17": ["La côte passe, prends ton temps.", "Ne force pas, l'essentiel est d'avancer."], "G18": ["On récupère, souffle un coup.", "Laisse le cœur redescendre tranquillement.", "Une petite gorgée d'eau si besoin."], "G19": ["Moitié de la récup, profite."], "G20": ["Écoute tes sensations, l'effort doit rester confortable.", "Tu es exactement là où tu dois être.", "Reste dans ta bulle, une minute après l'autre.", "La fatigue arrive, c'est normal, continue doucement."], "G21": ["Bravo, tu peux être fier de toi, prends soin de toi maintenant.", "Superbe travail, maintenant on relâche tout.", "Bravo {prénom}, savoure ce moment."], "G22": ["On est à la moitié du retour au calme, relâche tout."], "G23": ["Dernières secondes, en douceur.", "Terminé, bravo, prends bien soin de toi."], "G25": ["Tu es dans le bon rythme, c'est parfait.", "Un peu en dessous, ce n'est pas grave, vise {vitesse} si tu te sens bien.", "Un peu rapide, garde de la marge pour la suite.", "Ton cardio est bas pour cette allure, tu es en forme.", "Cardio un peu haut aujourd'hui, ralentis si besoin."], "G27": ["Tu es un peu en dessous, accélère légèrement si tu te sens bien.", "Tu vas un peu vite, ralentis tranquillement.", "Allure parfaite, tu es bien.", "En montée, garde l'effort, pas la vitesse."], "G30": ["Tu es à la moitié {prénom}. Comment te sens-tu ?"], "G31": ["Tu te sens bien ? Si tu veux, on peut prolonger de {minutes} minutes à {vitesse}."], "G32": ["Séance libre, à ton rythme, profite."]}, "desc": "Doux, rassurant, à l'écoute du corps. Valorise la régularité et la récupération.", "forWho": "Reprise, fatigue, douleurs, débutants, séances faciles.", "tone": "Coach bienveillant et rassurant : tutoiement, phrases douces, priorité aux sensations et à la récupération, jamais culpabilisant."}, "motivant": {"label": "Motivant", "emoji": "🔥", "g": {"G01": ["Et c'est parti !", "C'est parti {prénom} !"], "G03": ["La dernière fois c'était dur, aujourd'hui on se rattrape, mais intelligemment.", "La dernière séance était pas mal, on vise encore mieux aujourd'hui !", "La dernière fois t'avais les jambes en feux, on refait pareil aujourd'hui !"], "G04": ["Échauffe-toi bien, l'énergie on la garde pour la suite !", "Laisse monter la température, on va faire une belle séance !", "Commence cool, on garde l'énergie pour la suite."], "G05": ["Moitié de l'échauffement, continue tranquillement."], "G10": ["Dernier bloc, on donne tout !", "Fractionné terminé, bravo !"], "G11": ["Mi-segment, garde le rythme.", "On est à la moitié, tiens bon.", "La moitié est faite, c'est bien."], "G12": ["Allez, on lâche rien !", "Super, garde cette allure !", "Respire en rythme, tu es dans le bon tempo !", "Allez {prénom} !"], "G13": ["Allez, allez, allez !", "C'est super ce que tu fais !", "Encore ! Encore !", "Plus que quelques secondes, à fond !", "Allez {prénom} !"], "G14": ["C'est dans la tête !", "Tu y es presque !", "Encore un petit effort !", "Tiens bon {prénom}, tu y es presque !"], "G15": ["Dernier effort, ne lâche rien !", "Allez, finis fort !"], "G16": ["C'est le sommet, profites-en !"], "G17": ["Belle côte, garde l'effort régulier !", "Tiens l'effort, le sommet approche !"], "G18": ["Récup, recharge les batteries pour la suite !", "Profite de la récup pour bien respirer.", "Récupère bien, la suite arrive."], "G19": ["On est à la moitié de la récup, profite."], "G20": ["Garde une allure régulière, c'est elle qui fait la séance.", "Pense à ton objectif, chaque séance t'en rapproche.", "Gère ton énergie, la fin de séance se prépare maintenant.", "La fatigue arrive, tiens le rythme, tu y es presque."], "G21": ["Bravo, quelle séance ! Tu peux être fier de toi.", "Superbe travail aujourd'hui, chaque séance comme celle-ci te rapproche de ton objectif.", "Bravo {prénom}, quelle séance !"], "G22": ["Moitié du retour au calme, relâche tout."], "G23": ["Dernières secondes, c'est bientôt fini !", "Terminé ! Bravo, belle séance."], "G25": ["Tu es pile dans le rythme.", "Un peu en dessous du rythme prévu, vise {vitesse}.", "Un peu plus rapide que prévu, garde de la marge.", "Cardio bas pour cette allure : tu es en forme !", "Cardio un peu haut pour cette allure, gère ton effort."], "G27": ["Tu es un peu en dessous, accélère légèrement.", "Tu vas un peu vite, ralentis légèrement.", "Allure parfaite, continue comme ça.", "En montée, garde l'effort plutôt que la vitesse."], "G30": ["Tu es à la moitié de ta séance {prénom}. Comment tu te sens ?"], "G31": ["Tu te sens bien ? Je te propose de prolonger de {minutes} minutes à {vitesse}. Réponds oui ou non."], "G32": ["Séance libre, à ton rythme. Bonne course !"]}, "desc": "Énergique, positif, pousse à donner le meilleur sans dureté. Encourage fort sur les efforts.", "forWho": "Profil polyvalent : fractionné, séances clés, objectif de course.", "tone": "Coach énergique et positif : tutoiement, phrases dynamiques, encourage fort sur les efforts, reste rassurant sur les douleurs."}, "flatteur": {"label": "Flatteur", "emoji": "🌟", "g": {"G01": ["C'est parti, champion !", "C'est parti {prénom}, tu vas briller aujourd'hui !"], "G03": ["La dernière fois t'as eu du mal mais même quand c'est dur tu tiens bon, c'est ce qui fait ta force.", "Ta dernière séance était solide, continue sur cette lancée.", "La dernière fois tu étais au top, tu vas encore assurer !"], "G04": ["Belle mise en route, ta foulée est déjà fluide.", "Tu démarres avec beaucoup d'aisance, c'est parfait.", "Tu sais t'échauffer comme un pro."], "G05": ["Moitié de l'échauffement, tu es déjà parfaitement lancé."], "G10": ["Dernier bloc, montre ce dont tu es capable, tu es impressionnant !", "Fractionné terminé, quelle performance !"], "G11": ["Moitié du segment, tu gères parfaitement.", "Déjà la moitié, avec quelle aisance !", "La moitié est faite, bravo, c'est du beau travail."], "G12": ["Quelle foulée, c'est magnifique !", "Tu es vraiment en forme aujourd'hui !", "Tu cours avec une aisance impressionnante.", "Bravo {prénom}, tu es au top !"], "G13": ["Incroyable, quelle vitesse !", "Tu voles, c'est magnifique !", "Tu es une machine, bravo !", "Quelle fin de série, tu es impressionnant !", "Bravo {prénom}, tu es exceptionnel !"], "G14": ["Tu as un mental d'acier, je le sais !", "Les champions finissent fort, et c'est ton cas !", "Tu es plus fort que la fatigue, tu le prouves !", "{prénom}, tu es impressionnant jusqu'au bout !"], "G15": ["Superbe fin de segment !", "Tu termines avec brio !"], "G16": ["Le sommet, et tu le domines !"], "G17": ["Tu montes avec une facilité étonnante !", "Les côtes, c'est ton terrain !"], "G18": ["Belle série, tu mérites cette récup.", "Tu récupères vite, c'est le signe d'une belle forme.", "Quelle série, savoure cette récup !"], "G19": ["Moitié de la récup, tu récupères comme un pro."], "G20": ["Tu as une régularité remarquable.", "Avec une séance comme ça, l'objectif est à ta portée.", "Tu gères ton énergie comme un expert.", "Même fatigué, tu restes élégant."], "G21": ["Séance exceptionnelle, tu as été brillant du début à la fin !", "Quelle classe, tu as tout donné avec talent !", "{prénom}, tu as été absolument remarquable !"], "G22": ["Moitié du retour au calme, tu as été génial."], "G23": ["Dernières secondes d'une séance magnifique !", "Terminé ! Tu as été extraordinaire !"], "G25": ["Rythme parfait, c'est remarquable !", "Un peu en dessous, mais je sais que tu peux viser {vitesse}.", "Tu vas même plus vite que prévu, impressionnant !", "Cardio bas pour cette allure : tu as une forme de champion !", "Cardio un peu haut, mais tu tiens avec courage."], "G27": ["Tu peux accélérer un peu, tu en as largement les moyens.", "Tu vas trop vite, garde ce talent pour la fin.", "Allure parfaite, quelle maîtrise !", "En montée tu es solide, garde l'effort."], "G30": ["Déjà la moitié {prénom}, tu es génial ! Comment tu te sens ?"], "G31": ["Tu es tellement en forme ! On prolonge de {minutes} minutes à {vitesse} ?"], "G32": ["Séance libre, montre-moi ta belle foulée !"]}, "desc": "Complimente beaucoup, met en avant les qualités et les progrès du coureur.", "forWho": "Besoin de confiance, retour après une pause, motivation en baisse.", "tone": "Coach très élogieux : souligne les qualités et les progrès, beaucoup de compliments, tout en restant honnête sur les risques."}, "exigeant": {"label": "Exigeant", "emoji": "🎯", "g": {"G01": ["C'est parti. Pars sur le bon rythme.", "C'est parti {prénom}. Respecte bien le plan prévu."], "G03": ["La dernière séance était compliquée : gère mieux ton allure aujourd'hui.", "La dernière séance était moyenne : un peu plus de rigueur aujourd'hui.", "T'as fait une bonne séance la dernière fois, on confirme aujourd'hui."], "G04": ["Allure facile. Ne pars pas trop vite.", "Tu dois pouvoir parler. Si ce n'est pas le cas, ralentis.", "Pas de précipitation. L'effort viendra après."], "G05": ["Moitié de l'échauffement."], "G10": ["Dernier bloc. C'est là que ça compte.", "Fractionné terminé. Travail fait."], "G11": ["Mi-segment. Tiens l'allure.", "Moitié. Pas de relâchement.", "La moitié. Continue."], "G12": ["Tiens l'allure. Ne baisse pas.", "C'est l'allure demandée. Garde-la.", "Reste concentré sur l'allure.", "{prénom}, tiens l'allure."], "G13": ["Tiens. Encore.", "Pas de relâchement.", "Pousse. Jusqu'au bout.", "Dernières secondes. À fond.", "{prénom}, encore !"], "G14": ["C'est dans la tête. Tiens.", "Pas maintenant que tu lâches.", "La fatigue, tu l'ignores.", "{prénom}, finis proprement."], "G15": ["Termine fort.", "Ne relâche pas avant la fin."], "G16": ["Palier le plus rapide. Tiens-le."], "G17": ["Garde l'effort, pas la vitesse.", "Régulier jusqu'en haut."], "G18": ["Récupère. La suite arrive vite.", "Respire. Prépare la prochaine.", "Récup courte. Reste concentré."], "G19": ["Moitié de la récup."], "G20": ["Allure régulière. C'est non négociable.", "Chaque minute compte pour l'objectif.", "Gère ton énergie. Ne gaspille rien.", "Dernière partie. C'est là que tu progresses."], "G21": ["Séance faite. Correct.", "Bon travail. On analysera la séance.", "{prénom}, séance validée."], "G22": ["Moitié du retour au calme."], "G23": ["Dernières secondes.", "Terminé. Note ton ressenti."], "G25": ["Allure respectée.", "Trop lent. Vise {vitesse}.", "Trop rapide. Reviens à l'allure.", "Cardio bas : tu peux être plus ambitieux.", "Cardio haut. Contrôle l'allure."], "G27": ["Trop lent. Accélère.", "Trop rapide. Ralentis.", "Allure correcte.", "Montée : effort constant."], "G30": ["Moitié de séance. Comment ça va ? Réponds court."], "G31": ["Prolongation de {minutes} minutes à {vitesse} possible. Oui ou non ?"], "G32": ["Séance libre. Reste régulier."]}, "desc": "Direct, ferme, centré sur la consigne et la rigueur. Peu de compliments, beaucoup de « tiens l'allure ».", "forWho": "Coureurs expérimentés, préparation de course, séances au seuil/VMA.", "tone": "Coach direct et rigoureux : phrases courtes, consignes claires, attend le respect du plan, peu de compliments, jamais méprisant."}, "competition": {"label": "Compétition", "emoji": "🏆", "g": {"G01": ["C'est parti, concentre-toi !", "C'est parti {prénom}. Cherche la qualité."], "G03": ["C'était pas bon la dernière fois, on se ressaisit sur celle-là !", "C'était pas trop mal la dernière mais tu peux faire mieux !", "T'étais bien la dernière fois, garde cette lancée !"], "G04": ["Échauffe-toi sérieusement, la séance va être dure.", "Pas de flânerie, mais pas de vitesse non plus. On chauffe le moteur.", "Concentre-toi déjà, le vrai travail arrive."], "G05": ["Moitié de l'échauffement. Mets-toi dans ta bulle de compétiteur."], "G10": ["Dernier bloc. C'est là que se font les champions, donne tout !", "Fractionné terminé. Voilà ce que j'attendais de toi."], "G11": ["Mi-segment. Tu tiens, point.", "Moitié. Si tu ralentis maintenant, tu perds.", "La moitié, c'est rien. Continue."], "G12": ["Plus vite ! T'es pas là pour te balader.", "C'est l'allure de course, pas une sortie du dimanche.", "Tes adversaires ne ralentissent pas, toi non plus.", "{prénom}, accroche-toi à cette allure, maintenant !"], "G13": ["Allez ! Plus fort !", "T'avances pas là ! Accélère !", "Mal aux jambes ? Tant mieux, c'est que ça travaille !", "Dernières secondes, tout ce qui te reste, maintenant !", "{prénom}, plus vite ! Allez !"], "G14": ["La douleur passe, la fierté reste. Encore !", "C'est maintenant qu'on voit qui veut gagner.", "Ta tête commande, tes jambes obéissent !", "{prénom}, interdit de lâcher. Jusqu'au bout !"], "G15": ["Finis comme si la ligne d'arrivée était là !", "Pas un mètre de relâché. Sprint final !"], "G16": ["Le sommet. C'est là que tu gagnes ta course."], "G17": ["Une côte, c'est là qu'on fait la différence. Attaque !", "Ceux qui marchent ici ne gagnent jamais. Monte !"], "G18": ["Récup. Profite, la prochaine sera encore plus dure.", "Respire, récupère vite. Tu vas en avoir besoin.", "Pas le temps de traîner, prépare-toi à repartir."], "G19": ["Moitié de la récup. Prépare-toi mentalement."], "G20": ["Une course se gagne à l'entraînement. Tiens ton allure.", "Pense à la ligne d'arrivée. Chaque seconde gagnée ici compte le jour J.", "Pas de place pour l'à-peu-près. Concentration totale.", "C'est maintenant que les autres lâchent. Toi, tu continues."], "G21": ["Séance faite. Voilà ce qui te rapproche du podium.", "Bon boulot. Mais la prochaine fois, on en redemande.", "{prénom}, c'était du travail de compétiteur. Respect."], "G22": ["Moitié du retour au calme. Récupère comme un pro."], "G23": ["Dernières secondes, ne lâche rien jusqu'au bout.", "Terminé. Tu as gagné le droit de souffler."], "G25": ["Allure tenue. C'est le minimum.", "Trop lent ! Remonte à {vitesse}, tout de suite.", "Trop vite, tu brûles tes cartouches. Reviens à l'allure.", "Cardio bas : t'en as sous le pied, pousse plus !", "Cardio haut. Reste lucide, gère ton allure."], "G27": ["T'avances pas ! Accélère !", "Trop vite. Un compétiteur gère sa course.", "Allure correcte. Tiens-la.", "Montée : garde l'effort, ne lâche rien."], "G30": ["Moitié de séance. Comment ça va ? Réponds vite, on n'a pas fini."], "G31": ["T'en as encore sous le pied ? {minutes} minutes de plus à {vitesse}. Oui ou non ?"], "G32": ["Séance libre. Pas une excuse pour traîner."]}, "desc": "Dur dans ses propos mais sans manquer de respect, donne des ordres, pousse le mental dans les extrêmes.", "forWho": "Coureurs élites qui veulent se surpasser, séances très difficiles.", "tone": "Coach selon profil exigeant + dur dans ses propos mais sans manquer de respect, donne des ordres, pousse le mental dans les extrêmes."}, "neutre": {"label": "Neutre", "emoji": "📋", "g": {"G01": ["Début de la séance.", "Début de la séance."], "G03": ["Dernière séance notée difficile.", "Dernière séance notée moyenne.", "Dernière séance notée bonne."], "G04": ["Échauffement en cours.", "", ""], "G05": ["Moitié de l'échauffement."], "G10": ["Dernier bloc.", "Fin du fractionné."], "G11": ["Moitié du segment.", "", ""], "G12": ["", "", "", ""], "G13": ["", "", "", "", ""], "G14": ["", "", "", ""], "G15": ["Fin du segment dans quelques secondes.", ""], "G16": ["Palier le plus rapide."], "G17": ["", ""], "G18": ["Récupération.", "", ""], "G19": ["Moitié de la récup."], "G20": ["", "", "", ""], "G21": ["Retour au calme.", "", ""], "G22": ["Moitié du retour au calme."], "G23": ["Fin dans quelques secondes.", "Séance terminée."], "G25": ["Allure conforme.", "Sous l'allure prévue ({vitesse}).", "Au-dessus de l'allure prévue.", "Cardio bas pour l'allure.", "Cardio élevé pour l'allure."], "G27": ["Allure inférieure à la cible.", "Allure supérieure à la cible.", "Allure conforme.", "Montée : effort constant."], "G30": ["Moitié de la séance. Comment te sens-tu ?"], "G31": ["Prolongation possible : {minutes} minutes à {vitesse}. Oui ou non ?"], "G32": ["Séance libre."]}, "desc": "Factuel et sobre : donne les informations utiles, sans encouragements.", "forWho": "Coureurs qui veulent seulement les infos (vitesse, temps, séries).", "tone": "Coach factuel : informations et conseils précis, sans encouragements ni émotions."}};
+
+    const COMPETITION_WARNING = "⚠ Profil Compétition : le coach sera dur et directif, il poussera ton mental dans ses retranchements. Il est réservé aux coureurs expérimentés, en bonne santé, pour des séances intenses. Il ne t'empêchera jamais de ralentir ou d'arrêter en cas de douleur. Confirmer ?";
+    function coachProfileId() { const p = appData.audioSettings && appData.audioSettings.coachProfile; return COACH_PROFILES[p] ? p : 'motivant'; }
+    function coachProfile() { return COACH_PROFILES[coachProfileId()]; }
+    // Accords au féminin (fier → fière…) pour les phrases des profils
+    const FEM_FR = [['fier', 'fière'], ['impressionnant', 'impressionnante'], ['brillant', 'brillante'], ['lancé', 'lancée'], ['fatigué', 'fatiguée'],
+      ['exceptionnel', 'exceptionnelle'], ['champion', 'championne'], ['génial', 'géniale'], ['élégant', 'élégante'], ['ambitieux', 'ambitieuse'],
+      ['concentré', 'concentrée'], ['prêt', 'prête'], ['plus fort que', 'plus forte que']]
+      .map(([m, f]) => [new RegExp(`(?<![\\wÀ-ÿ])${m}(?![\\wÀ-ÿ])`, 'g'), f]);
+    function feminizeFr(s) { let o = String(s || ''); FEM_FR.forEach(([r, f]) => { o = o.replace(r, f); }); return o; }
+    function buildProfileText(pid, fem) {
+      const P = COACH_PROFILES[pid] || COACH_PROFILES.motivant;
+      const g = id => (P.g[id] || []).map(x => fem ? feminizeFr(x) : x);
+      const plain = id => g(id).filter(x => x && !x.includes('{prénom}'));
+      const named = id => n => g(id).filter(x => x && x.includes('{prénom}')).map(x => x.split('{prénom}').join(n));
+      const nth = (id, i) => g(id)[i] || '';
+      const fill = (x, o) => String(x || '').replace(/\{([^}]+)\}/g, (m, k) => o[k] !== undefined ? o[k] : m);
+      const noName = x => String(x || '').replace(/\s*\{prénom\}\s*,?/g, m => /,/.test(m) ? ',' : '').replace(/\s+([.,])/g, '$1').replace(/^,\s*/, '').trim();
+      return {
+        start: plain('G01')[0] || "C'est parti !",
+        startNamed: n => named('G01')(n)[0] || plain('G01')[0] || "C'est parti !",
+        feel: { red: nth('G03', 0), yellow: nth('G03', 1), green: nth('G03', 2) },
+        warm: plain('G04'), halfWarm: plain('G05'),
+        lastBloc: nth('G10', 0), allDone: nth('G10', 1),
+        half: plain('G11'),
+        fast: plain('G12'), fastNamed: named('G12'),
+        boost: plain('G13'), named: named('G13'),
+        mental: plain('G14'), mentalNamed: named('G14'),
+        push: plain('G15'), peak: nth('G16', 0), hill: plain('G17'),
+        easy: plain('G18'), halfRecup: plain('G19'),
+        tips: g('G20').slice(0, 3).filter(Boolean), tipsEnd: [nth('G20', 3)].filter(Boolean),
+        praise: () => plain('G21'), praiseNamed: n => named('G21')(n),
+        halfCool: plain('G22'), last15: nth('G23', 0), end: nth('G23', 1),
+        km: { ok: nth('G25', 0), slow: v => fill(nth('G25', 1), { vitesse: v }), fast: nth('G25', 2), hrLow: nth('G25', 3), hrHigh: nth('G25', 4) },
+        paceUp: nth('G27', 0), paceDown: nth('G27', 1), paceOk: nth('G27', 2), climbEffort: nth('G27', 3),
+        checkin: n => n ? fill(nth('G30', 0), { 'prénom': n }) : noName(nth('G30', 0)),
+        extend: (m, v) => fill(nth('G31', 0), { minutes: m, vitesse: v }),
+        freeStart: nth('G32', 0)
+      };
+    }
+    const _vtCache = {};
+    function VT() {
+      const en = appData.audioSettings.voiceLang === 'en';
+      const pid = coachProfileId();
+      if (en) {
+        const b = VOICE_TEXT.en;
+        if (pid !== 'neutre') return b;
+        return _vtCache.enNeutre || (_vtCache.enNeutre = Object.assign({}, b, {
+          boost: [], named: () => [], fast: [], mental: [], mentalNamed: () => [], hill: [], tips: [], tipsEnd: [],
+          praise: () => ['Cool-down.'], praiseNamed: () => [], warm: ['Warm-up in progress.'], easy: ['Recovery.'], push: ['Segment ending in a few seconds.']
+        }));
+      }
+      const fem = runnerProfile().sex === 'F';
+      const key = pid + (fem ? '_F' : '_M');
+      return _vtCache[key] || (_vtCache[key] = Object.assign({}, VOICE_TEXT.fr, buildProfileText(pid, fem)));
+    }
+    function coachToneText() {
+      const p = coachProfile();
+      return `Ton du coach à adopter (profil « ${p.label} ») : ${p.tone} Quel que soit le ton, la santé passe avant tout : en cas de douleur, conseille de ralentir ou d'arrêter.`;
+    }
+    // Sélecteur de profil (fenêtre Profil, objectif & coach IA)
+    function renderCoachProfileChips() {
+      const box = document.getElementById('coachProfileChips');
+      if (!box) return;
+      const cur = coachProfileId();
+      box.innerHTML = COACH_PROFILE_ORDER.map(id => {
+        const p = COACH_PROFILES[id], on = id === cur;
+        return `<button type="button" data-cp="${id}" onclick="setCoachProfile('${id}')" class="rounded-xl border px-1 py-2 text-[12px] font-bold leading-tight transition active:scale-95 ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-lg leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`;
+      }).join('');
+      const p = COACH_PROFILES[cur];
+      const d = document.getElementById('coachProfileDesc');
+      if (d) d.innerHTML = `<b class="text-slate-200">${p.emoji} ${p.label}${cur === 'motivant' ? ' (par défaut)' : ''}</b> — ${p.desc || ''}${p.forWho ? `<br><span class="text-slate-500">Pour : ${p.forWho}</span>` : ''}`;
+    }
+    function setCoachProfile(id) {
+      if (!COACH_PROFILES[id]) return;
+      if (id === 'competition' && coachProfileId() !== 'competition' && !confirm(COMPETITION_WARNING)) return;
+      appData.audioSettings.coachProfile = id;
+      saveAppData();
+      renderCoachProfileChips();
+      showToast(`Profil du coach : ${COACH_PROFILES[id].label}`);
+    }
+    function coachProfileSample() {
+      const t = buildProfileText(coachProfileId(), runnerProfile().sex === 'F');
+      const n = runnerFirstName();
+      const enc = (n && t.named(n)[0]) || t.boost[0] || t.fast[0] || t.half[0] || '';
+      return [n ? t.startNamed(n) : t.start, enc].filter(Boolean).join(' ');
+    }
+    function previewCoachProfile() {
+      const txt = coachProfileSample();
+      if (appData.audioSettings.voiceLang === 'en') { showToast("Les profils s'appliquent à la voix française"); }
+      if (typeof speakLive === 'function') speakLive(txt);
+    }
 
     function speedSpeech(v) {
       return formatSpeed(v).replace('.', VT().dec);
@@ -3225,7 +3326,7 @@
       if (kind === 'fast' || kind === 'push') {
         let l = t[kind].slice();
         if (kind === 'fast' && (getActiveSession().pente || 0) >= 3) l = l.concat(t.hill);
-        if (name) l = l.concat(t.named(name).slice(0, 2));
+        if (name) l = l.concat(kind === 'fast' && t.fastNamed ? t.fastNamed(name) : t.named(name).slice(0, 2));
         return l;
       }
       if (kind === 'tip') {
@@ -3239,6 +3340,7 @@
     // Tirage sans répéter les dernières phrases du même type
     function pickNoRepeat(kind) {
       const arr = phraseList(kind);
+      if (!arr.length) return '';
       if (arr.length < 2) return arr[0];
       const recent = lastPicked[kind] || [];
       const keep = Math.min(arr.length - 1, 4);
@@ -3252,6 +3354,15 @@
     // Encouragements (segments rapides) et conseils de récup (segments lents) : dosés
     // Encouragements (rapide) : à mi-segment et sur la fin ; conseils (récup) : au début
     function computeExtraPoints(st) {
+      const seen = {};
+      return computeExtraPointsRaw(st).filter(q => {
+        const l = phraseList(q.kind);
+        if (!l.length) return false; // cellule vide dans le profil = pas d'annonce
+        if (l.length === 1 && ['easy', 'warm', 'praise'].includes(q.kind)) { if (seen[q.kind]) return false; seen[q.kind] = 1; }
+        return true;
+      });
+    }
+    function computeExtraPointsRaw(st) {
       if (!st) return [];
       const d = st.durationSec * 1000;
       const p = [];
@@ -4342,6 +4453,7 @@
 
     function updateGoalModalUI() {
       renderRunnerProfile();
+      renderCoachProfileChips();
       const g = appData.goal;
       document.getElementById('goalDateInput').value = g.date;
       document.getElementById('goalDistInput').value = g.distanceKm;
@@ -4420,11 +4532,18 @@
       const wrap = document.createElement('div');
       wrap.id = 'coachMerged';
       wrap.className = 'space-y-3 text-xs';
-      wrap.innerHTML = '<div class="pt-1 text-sm font-bold text-purple-300">🧠 Coach IA, planning & import PDF</div>';
+      wrap.innerHTML = '<div id="coachProfileBox" class="rounded-2xl border border-purple-500/30 bg-slate-950/60 p-3 space-y-2">'
+        + '<div class="flex items-center justify-between gap-2"><span class="text-sm font-bold text-white">🎙️ Profil du coach</span>'
+        + '<button type="button" onclick="previewCoachProfile()" class="text-[12px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 active:scale-95">🔊 Exemple</button></div>'
+        + '<div id="coachProfileChips" class="grid grid-cols-3 gap-1.5"></div>'
+        + '<div id="coachProfileDesc" class="text-[12px] text-slate-400 leading-snug"></div>'
+        + '<div class="text-[11px] text-slate-500">Change le ton des annonces vocales et des réponses du coach IA.</div></div>'
+        + '<div class="pt-1 text-sm font-bold text-purple-300">🧠 Coach IA, planning & import PDF</div>';
       content.classList.remove('overflow-y-auto', 'pr-1');
       wrap.appendChild(content);
       panel.insertBefore(wrap, footer);
       cm.remove();
+      renderCoachProfileChips();
       const savedKey = (() => { try { return localStorage.getItem('gemini_api_key_tapis') || ''; } catch (e) { return ''; } })();
       const k = document.getElementById('geminiApiKeyInput');
       if (k) k.value = savedKey;
@@ -4896,7 +5015,8 @@
       const en = appData.audioSettings.voiceLang === 'en';
       const hist = (appData.history || []).slice(0, 4).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
       const g = appData.goal || {};
-      const prompt = `Tu es un coach de course à pied bienveillant et précis. Donne UN conseil personnalisé pour la séance de tapis ci-dessous, qui sera lu à voix haute juste avant de commencer.
+      const prompt = `Tu es un coach de course à pied précis. ${coachToneText()}
+Donne UN conseil personnalisé pour la séance de tapis ci-dessous, qui sera lu à voix haute juste avant de commencer.
 Contraintes : ${en ? 'réponds en anglais' : 'réponds en français, en tutoyant'} ; 2 ou 3 phrases courtes, 45 mots maximum ; style parlé et naturel ; pas d'emoji, pas de liste, pas de markdown ; les vitesses sont en km/h mais n'écris pas « km/h » ; donne un conseil concret (gestion de l'allure et de l'effort, mental, hydratation, ressenti récent ; pas de conseil de posture ni de technique)${fuelPlanText(sess) ? ` ; rappelle en quelques mots le plan d'hydratation/alimentation prévu : ${fuelPlanText(sess).replace(/[💧🍬]/g, '')}` : ''}.
 Séance : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; durée ${Math.round(computeSessionTotalMin(sess))} min ; distance ≈ ${computeSessionDistanceKm(sess).toFixed(1)} km ; pente ${sess.pente} %${sess.notes ? ` ; notes du plan : ${sess.notes}` : ''}${sess.dayFeel ? ` ; sensations du jour : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance allégée/adaptée ce jour : ${sess.adapted.resume}` : ''}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
@@ -5290,7 +5410,7 @@ Réponds uniquement avec le JSON.`;
         if (prev && prev.type === 'palier' && !prev.isExtension && (prev.nbBlocs > 1 || prev.totalReps > 1)) out.push(t.allDone);
         if (st.type === 'recup' && appData.audioSettings.encouragements !== false) {
           const pr = praiseForStage(st);
-          out.push(pr);
+          if (pr && !normTxt(stagePhrase(st, 'goS')).includes(normTxt(pr))) out.push(pr);
           lastPicked.praise = (lastPicked.praise || []).concat(pr).slice(-6); // l'éloge suivant sera différent
         }
         return out;
@@ -5306,8 +5426,9 @@ Réponds uniquement avec le JSON.`;
     // Phrase d'éloge fixe pour un segment donné (même texte à la préparation et à l'annonce)
     function praiseForStage(st) {
       const t = VT(), f = runnerProfile().sex === 'F', n = runnerFirstName();
-      const l = n ? t.praiseNamed(n, f) : t.praise(f);
-      return l[(st.goVar || 0) % l.length];
+      const ln = n ? t.praiseNamed(n, f) : [];
+      const l = ln.length ? ln : t.praise(f);
+      return l.length ? l[(st.goVar || 0) % l.length] : '';
     }
     function goPieces(st) { return [stagePhrase(st, 'goS'), ...goExtras(st)]; }
 
@@ -6419,7 +6540,8 @@ Réponds uniquement avec le JSON.`;
       const next = appData.sessions.filter((s, i) => i !== appData.activeSessionIndex).slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
       const g = appData.goal || {};
       const feelLbl = { green: 'bon', yellow: 'moyen', red: 'dur' }[selectedValidationFeeling] || selectedValidationFeeling;
-      const prompt = `Tu es un coach de course à pied expert. Analyse la séance que je viens de faire${valShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
+      const prompt = `Tu es un coach de course à pied expert. ${coachToneText()}
+Analyse la séance que je viens de faire${valShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h.
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
 ${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
@@ -6488,7 +6610,8 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       const g = appData.goal || {};
       const feelLbl = { green: 'bon', yellow: 'moyen', red: 'dur' }[selectedEditFeelingVal] || selectedEditFeelingVal;
       const note = document.getElementById('editHistNote').value.trim();
-      const prompt = `Tu es un coach de course à pied expert. Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
+      const prompt = `Tu es un coach de course à pied expert. ${coachToneText()}
+Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Autres séances récentes :
@@ -6587,11 +6710,12 @@ Si une donnée manque, dis-le simplement sans inventer.`;
         if (p.measured && p.target && !getActiveSession().free) {
           const eff = vapKmh(p.avgKmh, p.grade || 0);
           const diff = eff - p.target;
-          if (Math.abs(diff) <= 0.4) parts.push(en ? "You're right on pace." : "Tu es pile dans le rythme.");
+          const k = VT().km || {};
+          if (Math.abs(diff) <= 0.4) parts.push(en ? "You're right on pace." : k.ok);
           else if (diff < 0) parts.push((p.grade || 0) >= 3
             ? (en ? "Slightly under target, normal on this climb." : "Un peu en dessous, c'est normal avec cette montée.")
-            : (en ? `A bit below target pace, aim for ${sp(p.target)}.` : `Un peu en dessous du rythme prévu, vise ${sp(p.target)}.`));
-          else parts.push(en ? "A bit faster than planned, keep some margin." : "Un peu plus rapide que prévu, garde de la marge.");
+            : (en ? `A bit below target pace, aim for ${sp(p.target)}.` : k.slow(sp(p.target))));
+          else parts.push(en ? "A bit faster than planned, keep some margin." : k.fast);
         }
         // Forme : cardio comparé à celui habituel pour cette vitesse
         if (p.hr) {
@@ -6599,8 +6723,9 @@ Si une donnée manque, dis-le simplement sans inventer.`;
           const eff = vapKmh(p.avgKmh, p.grade || 0);
           if (m) {
             const d = p.hr - (m.a + m.b * eff);
-            if (d <= -4) parts.push(en ? "Low heart rate for this pace: you're in good shape!" : "Cardio bas pour cette allure : tu es en forme !");
-            else if (d >= 5) parts.push(en ? "Heart rate a bit high for this pace, you seem tired today, manage your effort." : "Cardio un peu haut pour cette allure, tu sembles moins en forme aujourd'hui, gère ton effort.");
+            const k = VT().km || {};
+            if (d <= -4) parts.push(en ? "Low heart rate for this pace: you're in good shape!" : k.hrLow);
+            else if (d >= 5) parts.push(en ? "Heart rate a bit high for this pace, you seem tired today, manage your effort." : k.hrHigh);
             else parts.push(en ? "Normal heart rate for this pace, good form." : "Cardio normal pour cette allure, bonne forme.");
           } else if (sensors().fcMax) {
             const r = p.hr / sensors().fcMax;
@@ -6613,7 +6738,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
         const ml = waterPlan(getActiveSession()).perKm;
         parts.push(en ? `Drink about ${ml} millilitres.` : `Bois environ ${ml} millilitres.`);
       }
-      return parts.join(' ');
+      return parts.filter(Boolean).join(' ');
     }
 
     // Annonce dont le texte change à chaque fois (chiffres) : voix IA générée sur le moment (Flash-Lite), sinon voix du téléphone
@@ -7121,7 +7246,8 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       const when = { maintenant: 'tout de suite', matin: 'ce matin', midi: 'ce midi', soir: 'ce soir' }[sess.dayFeel.when] || 'aujourd\'hui';
       const nowTxt = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const segs = (base.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
-      const prompt = `Tu es un coach de course à pied prudent et précis. Il est ${nowTxt}. Ma séance est prévue ${when}.
+      const prompt = `Tu es un coach de course à pied prudent et précis. ${coachToneText()}
+Il est ${nowTxt}. Ma séance est prévue ${when}.
 Mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
 Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionHuman(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h.
@@ -7443,7 +7569,8 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
       const next = appData.sessions.filter(s => s.dateISO && s.dateISO >= t).slice(0, 5).map(s => `- ${formatSessTitle(s)} : ${describeSessionHuman(s)}`).join('\n') || '- aucune';
       const g = appData.goal || {};
       const r = runnerProfile();
-      const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. Aujourd'hui (${now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) aucune course n'est prévue et je voudrais faire une activité.
+      const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
+Aujourd'hui (${now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) aucune course n'est prévue et je voudrais faire une activité.
 Mes sensations : ${feelSummary(feel) || 'non précisées'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg ; endurance fondamentale ${formatSpeed(runnerEF())} km/h.
 Séances récentes :
@@ -7776,7 +7903,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach évalue tes chances…</div>';
       const g = appData.goal;
       const hist = (appData.history || []).slice(0, 10).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.seg && h.seg.length ? ` ; ${segStatsText(h.seg).replace(/\n/g, ' | ')}` : ''}`).join('\n') || '- aucune';
-      const prompt = `Tu es un entraîneur de course à pied. Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${g.date}.
+      const prompt = `Tu es un entraîneur de course à pied. ${coachToneText()}
+Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${g.date}.
 Calcul de l'app : ${p && !p.noData ? `VMA estimée ${p.vma.toFixed(1)} km/h, temps prédit aujourd'hui ${formatMinSec(p.tNow)}, le jour J ${formatMinSec(p.tDay)}, probabilité ${p.pDay} % (aujourd'hui ${p.pNow} %), fiabilité ${p.conf}` : 'pas assez de données'}.
 Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}.
 Séances récentes :
@@ -7829,7 +7957,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       box.classList.remove('hidden');
       extAsk = { offer, done: false, rec: null };
       speakLive(en ? `Feeling good? I suggest extending by ${offer.minutes} minutes at speed ${formatSpeed(offer.speed)}. Answer yes or no.`
-                   : `Tu te sens bien ? Je te propose de prolonger de ${offer.minutes} minutes à ${formatSpeed(offer.speed).replace('.', ',')}. Réponds oui ou non.`);
+                   : VT().extend(offer.minutes, formatSpeed(offer.speed).replace('.', ',')));
       // Écoute la réponse quand la voix a fini de parler
       const startAt = Date.now();
       const waitVoice = setInterval(() => {
@@ -8247,7 +8375,8 @@ ${isSessionModified() ? 'La séance a déjà été modifiée par rapport au plan
       const prompt = `Tu es le coach de course de ${name || 'ce coureur'}, qui te parle EN PLEINE SÉANCE via un écouteur.
 ${liveContextText()}
 ${isCheckin ? 'Tu viens de lui demander comment il se sent à mi-séance. ' : ''}Il dit : « ${question} »
-Réponds comme un coach bienveillant et rassurant, à voix haute : 1 à 3 phrases courtes, en tutoyant, sans chiffres inutiles. En cas de douleur, sois mesuré : adapte (ralentir, alléger) et ne conseille l'arrêt que si la douleur est forte ou augmente.
+${coachToneText()}
+Réponds à voix haute avec ce ton : 1 à 3 phrases courtes, en tutoyant, sans chiffres inutiles. En cas de douleur, sois mesuré : adapte (ralentir, alléger) et ne conseille l'arrêt que si la douleur est forte ou augmente.
 Si une adaptation de la séance est demandée ou utile, choisis UNE action :
 - "vitesse" : change la vitesse des segments restants ("cible":"rapides" ou "tous", "delta" en km/h, ex. -0.5)
 - "series_moins" / "series_plus" : retire ou ajoute "n" séries au bloc en cours
@@ -8401,7 +8530,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       vc.checkinDone = true;
       const fr = appData.audioSettings.voiceLang !== 'en';
       const name = runnerFirstName();
-      let q = fr ? `Tu es à la moitié de ta séance${name ? ` ${name}` : ''}. Comment tu te sens ?` : `You're halfway through${name ? ` ${name}` : ''}. How are you feeling?`;
+      let q = fr ? VT().checkin(name) : `You're halfway through${name ? ` ${name}` : ''}. How are you feeling?`;
       if (isSessionModified()) q += fr ? " La séance a été modifiée : tu veux revenir à la séance prévue au départ ?" : " The session was changed: do you want to go back to the original plan?";
       if (!srCtor()) { speakLive(q); return; }
       vc.mode = 'question';
