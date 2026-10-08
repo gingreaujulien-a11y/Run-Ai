@@ -13,6 +13,9 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Styles de secours garantissant le rendu même hors connexion -->
   <style>
@@ -27,7 +30,7 @@
     body {
       background-color: #020617;
       color: #f8fafc;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
       padding: 0;
       min-height: 100vh;
@@ -59,6 +62,17 @@
     .modal-sticky-top { position: sticky; top: 0; z-index: 5; background: #0f172a; }
     .modal-sticky-bottom { position: sticky; bottom: 0; z-index: 5; background: #0f172a; box-shadow: 0 -8px 12px -6px rgba(0,0,0,0.6); }
     body.home { background: #000; }
+    button, input, select, textarea { font-family: inherit; }
+    /* Planning */
+    #historyModal .pl-sec { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 4px 0; }
+    #historyModal .pl-card { padding: 12px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; }
+    #historyModal .pl-card.today { padding: 16px; border-radius: 22px; background: #0f172a; border: 1.5px solid #38bdf8; box-shadow: 0 8px 28px rgba(56,189,248,.15); }
+    #historyModal .pl-card.done { background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.3); }
+    #historyModal .pl-card.past { opacity: .6; }
+    #historyModal .pl-date { width: 48px; height: 52px; border-radius: 14px; background: #131f35; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    #historyModal .pl-tab { height: 40px; border-radius: 12px; font-weight: 800; font-size: 13px; color: #94a3b8; background: transparent; }
+    #historyModal .pl-tab.on { background: #38bdf8; color: #04121f; }
+    #historyModal .pl-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     #splash {
       position: fixed; inset: 0; z-index: 200; background: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem;
@@ -85,6 +99,7 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
+    #btnMainToggle.ctl-big svg { width: 30px; height: 30px; }
     .session-end-btn { opacity: 0.35; pointer-events: none; }
     body.started .session-end-btn { opacity: 1; pointer-events: auto; }
     body.running .pocket-btn { display: flex; }
@@ -267,18 +282,18 @@
   </section>
 
   <!-- ==================== ZONE CENTRALE : CHRONOMÈTRE CIRCULAIRE ÉPURÉ ==================== -->
-  <main id="mainArea" class="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-md mx-auto w-full">
+  <main id="mainArea" class="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-md mx-auto w-full min-w-0" style="min-width:0">
     
     <!-- TEMPS RESTANT (APPUI : BASCULE SÉANCE / SEGMENT) -->
-    <div id="topZone" class="text-center mb-3">
+    <div id="topZone" class="text-center mb-3 w-full min-w-0" style="max-width:100%">
+      <div id="stageInfoLine" style="max-width:100%" class="w-full text-6xl sm:text-7xl font-black text-sky-300 tracking-tight leading-none whitespace-nowrap overflow-hidden mb-2 hidden"></div>
       <button type="button" onclick="toggleDisplayMode()" title="Basculer temps restant séance / segment" class="block mx-auto focus:outline-none active:scale-95 transition">
         <div id="totalRemainingDisplay" class="text-6xl sm:text-7xl font-black tracking-tight font-mono text-white drop-shadow-[0_2px_14px_rgba(255,255,255,0.25)]">
           33:00
         </div>
-        <div id="displayModeLabel" class="text-[10px] uppercase tracking-widest font-bold mt-0.5 text-slate-500">Temps restant séance ⇄</div>
+        <div id="displayModeLabel" class="hidden"></div>
       </button>
-      <div id="stageInfoLine" class="text-sm font-black text-sky-300 mt-2 tracking-wide hidden"></div>
-      <div id="liveMetrics" class="text-[12px] font-bold mt-1 hidden"></div>
+      <div id="liveMetrics" class="text-[13px] font-bold mt-2 hidden flex flex-wrap items-center justify-center gap-x-2 gap-y-1"></div>
       <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <div id="sessInfoLine" class="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mt-1">
         <span id="activeSessLabel" class="text-sky-400 font-bold">Semaine 1 • MARDI</span> • Pente <span id="activePenteLabel" class="text-white font-mono font-bold">1%</span>
@@ -310,27 +325,22 @@
 
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
-      <button id="btnMainToggle" onclick="toggleTimer()" class="w-full py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
-        <span id="mainToggleIcon" class="icon-slot" data-icon="play"></span>
-        <span id="mainToggleText">DÉMARRER</span>
-      </button>
-
-      <button onclick="startCoachQuestion()" class="pocket-btn w-full py-3 bg-purple-600/20 active:scale-95 transition border border-purple-500/50 text-purple-100 rounded-2xl items-center justify-center gap-2 font-bold text-sm">
-        🎙️ <span>PARLER AU COACH</span>
-      </button>
+      <div id="ctlRow" class="grid grid-cols-3 gap-3">
+        <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
+          <span id="mainToggleIcon" class="icon-slot" data-icon="play"></span>
+          <span id="mainToggleText">DÉMARRER</span>
+        </button>
+        <button id="btnCtlMic" onclick="startCoachQuestion()" aria-label="Parler au coach" class="hidden py-4 rounded-2xl bg-purple-600/25 border border-purple-500/60 text-purple-100 active:scale-95 transition flex items-center justify-center">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+        </button>
+        <button id="btnCtlStop" onclick="finishEarly()" aria-label="Arrêter la séance" class="hidden py-4 rounded-2xl bg-rose-600 text-white shadow-lg shadow-rose-600/30 active:scale-95 transition flex items-center justify-center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>
+        </button>
+      </div>
       <button onclick="enterPocketMode()" class="pocket-btn w-full py-3 bg-indigo-500/15 hover:bg-indigo-500/25 active:scale-95 transition border border-indigo-500/50 text-indigo-200 rounded-2xl items-center justify-center gap-2 font-bold text-sm">
         🌙 <span>MODE POCHE</span>
       </button>
 
-      <div class="grid grid-cols-2 gap-3">
-      <button onclick="confirmRestart()" title="Recommencer la séance" class="min-w-0 px-2 py-3 bg-slate-800/90 hover:bg-slate-700 active:scale-95 transition border border-slate-700 text-slate-300 rounded-2xl flex items-center justify-center gap-1.5 font-bold text-xs whitespace-nowrap overflow-hidden">
-        <span class="icon-slot shrink-0" data-icon="rotate-ccw"></span>
-        <span class="truncate">RECOMMENCER</span>
-      </button>
-      <button onclick="finishEarly()" title="Terminer et enregistrer" class="session-end-btn min-w-0 px-2 py-3 bg-teal-600/20 hover:bg-teal-600/30 active:scale-95 transition border border-teal-500/50 text-teal-200 rounded-2xl flex items-center justify-center gap-1.5 font-bold text-xs whitespace-nowrap overflow-hidden">
-        <span class="icon-slot shrink-0" data-icon="check-circle"></span><span class="truncate">TERMINER</span>
-      </button>
-      </div>
     </div>
   </main>
 
@@ -578,53 +588,29 @@
   </div>
 
   <!-- ==================== MODALE 2 : SUIVI DES SÉANCES (TABLEAU COMPACT) ==================== -->
-  <div id="historyModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg max-h-[92vh] flex flex-col p-4 shadow-2xl">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div>
-          <span class="text-base font-bold text-white block">Suivi & Planning</span>
-          <span class="text-[10px] text-slate-400">Séances réalisées et à venir</span>
+  <div id="historyModal" class="fixed inset-0 z-50 hidden" style="background:#050a16">
+    <div class="h-full w-full max-w-md mx-auto flex flex-col" style="color:#f1f5f9">
+      <div class="flex items-start justify-between gap-3" style="padding:22px 20px 12px">
+        <div class="flex flex-col gap-1 min-w-0">
+          <h2 class="m-0 font-extrabold" style="font-size:26px;letter-spacing:-.5px">Mon planning</h2>
+          <div id="plGoal" class="flex items-center gap-1.5 font-bold text-[13px]" style="color:#fbbf24"></div>
         </div>
-        <div class="flex items-center gap-2">
-          <!-- Bouton Vider à venir -->
-          <button onclick="clearUpcomingSessions()" title="Supprimer toutes les séances à venir" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 text-[10px] font-bold rounded-lg transition active:scale-95 flex items-center gap-1">
-            <span class="icon-slot" data-icon="trash"></span> Vider à venir
-          </button>
-          <button onclick="closeHistoryModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-            <span class="icon-slot" data-icon="x"></span>
-          </button>
+        <button onclick="closeHistoryModal()" aria-label="Fermer" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8">
+          <span class="icon-slot" data-icon="x"></span>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 96px">
+        <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
+        <div class="grid grid-cols-3 gap-1 my-3.5" style="padding:4px;border-radius:16px;background:#0f172a;border:1px solid #1e293b">
+          <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
+          <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
+          <button onclick="setHistoryFilter('all')" id="fltAll" class="pl-tab">Tout · <span id="cntAll">0</span></button>
         </div>
+        <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
-
-      <!-- Filtres -->
-      <div class="grid grid-cols-3 gap-1.5 text-[11px] font-bold my-2.5">
-        <button onclick="setHistoryFilter('all')" id="fltAll" class="py-1.5 rounded-lg bg-slate-800 text-white border border-slate-700">
-          Toutes (<span id="cntAll">0</span>)
-        </button>
-        <button onclick="setHistoryFilter('validated')" id="fltVal" class="py-1.5 rounded-lg bg-slate-950 text-slate-400 border border-slate-800">
-          ✓ Validées (<span id="cntVal">0</span>)
-        </button>
-        <button onclick="setHistoryFilter('planned')" id="fltPlan" class="py-1.5 rounded-lg bg-slate-950 text-slate-400 border border-slate-800">
-          ⏳ Planifiées (<span id="cntPlan">0</span>)
-        </button>
-      </div>
-
-      <!-- Tableau compact -->
-      <div class="flex-1 overflow-y-auto custom-scroll p-0.5">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="text-[9px] text-slate-400 uppercase border-b border-slate-800">
-              <th class="py-2 px-1 text-center">Statut</th>
-              <th class="py-2 px-1.5">Date / Séance</th>
-              <th class="py-2 px-1 text-center">Pente</th>
-              <th class="py-2 px-1.5 text-right">Durée</th>
-              <th class="py-2 px-1 text-center">Détail</th>
-              <th class="py-2 px-1.5 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="historyTableBody"></tbody>
-        </table>
-      </div>
+      <button onclick="closeHistoryModal(); openAddSession()" aria-label="Ajouter une séance" class="absolute flex items-center gap-2 font-extrabold active:scale-95 transition" style="right:max(20px,calc(50% - 204px));bottom:24px;height:56px;padding:0 22px;border-radius:28px;background:#34d399;color:#03140d;font-size:15px;box-shadow:0 10px 30px rgba(52,211,153,.35)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
+      </button>
     </div>
   </div>
 
@@ -1512,7 +1498,7 @@
     let lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
     let displayMode = 'total';
     try { if (localStorage.getItem('tapis_display_mode') === 'segment') displayMode = 'segment'; } catch (e) {}
-    let currentFilter = 'all';
+    let currentFilter = 'planned';
     let selectedValidationFeeling = 'green';
     let selectedEditFeelingVal = 'green';
     let currentEditingHistoryId = null;
@@ -1865,10 +1851,7 @@
         totDisplay.classList.toggle('text-amber-300', isSeg);
         totDisplay.classList.toggle('text-white', !isSeg);
       }
-      if (modeLabel) {
-        modeLabel.textContent = freeNow ? 'Temps écoulé • séance libre' : (isSeg ? 'Temps restant segment ⇄' : 'Temps restant séance ⇄');
-        modeLabel.className = `text-[10px] uppercase tracking-widest font-bold mt-0.5 ${isSeg ? 'text-amber-400' : 'text-slate-500'}`;
-      }
+      if (modeLabel) modeLabel.className = 'hidden'; // plus de texte « séance / segment » (couleur ambre = segment)
 
       const curStage = timerState.stages[timerState.currentStageIndex];
       updatePocketTime();
@@ -1879,7 +1862,10 @@
       if (infoLine) {
         const show = timerState.sessionStarted && !timerState.finished && !!curStage;
         infoLine.classList.toggle('hidden', !show);
-        if (show) infoLine.textContent = curStage.isFree ? `Séance libre • ${kmDistanceNow().toFixed(2)} km` : stageProgressLabel(curStage);
+        if (show) {
+          const txt = curStage.isFree ? `${kmDistanceNow().toFixed(2).replace('.', ',')} km` : stageTopLabel(curStage);
+          if (infoLine.textContent !== txt) { infoLine.textContent = txt; fitStageInfo(); }
+        }
       }
       const speedBig = document.getElementById('stageSpeedBig');
       const bigSub = document.getElementById('bigSubLabel');
@@ -1892,8 +1878,7 @@
         speedBig.classList.toggle('text-white', !showHr);
         speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
-          bigSub.classList.toggle('hidden', !showHr);
-          if (showHr) { bigSub.textContent = `❤️ bpm${zoneOf(runData.hr) ? ` • ${zoneOf(runData.hr)}` : ''} • vitesse ${curStage ? formatSpeed(curStage.speed) : '–'}`; bigSub.style.color = zoneColor(runData.hr); }
+          bigSub.classList.add('hidden'); // cardio dans le cercle : ni zone ni vitesse en dessous
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
         speedBig.classList.toggle('sm:text-8xl', txt.length > 2);
@@ -3517,16 +3502,42 @@
       const btn = document.getElementById('btnMainToggle');
       const txt = document.getElementById('mainToggleText');
       const icon = document.getElementById('mainToggleIcon');
-      if (state === 'running') {
-        btn.className = "w-full py-4 bg-amber-500 hover:bg-amber-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2";
-        txt.textContent = "PAUSE";
-        icon.setAttribute('data-icon', 'pause');
+      const mic = document.getElementById('btnCtlMic');
+      const stop = document.getElementById('btnCtlStop');
+      const finished = !!timerState.finished && !!timerState.sessionStarted;
+      const live = !!timerState.sessionStarted && !timerState.finished;
+      const big = 'py-4 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg flex items-center justify-center gap-2 ';
+      if (live) {
+        // En séance : 3 icônes (pause/reprendre • micro • arrêter)
+        txt.textContent = '';
+        txt.classList.add('hidden');
+        icon.setAttribute('data-icon', state === 'running' ? 'pause' : 'play');
+        btn.setAttribute('aria-label', state === 'running' ? 'Pause' : 'Reprendre');
+        btn.className = big + 'ctl-big ' + (state === 'running' ? 'bg-amber-500 shadow-lg shadow-amber-500/30' : 'bg-sky-500 shadow-lg shadow-sky-500/30');
+        mic.classList.remove('hidden'); stop.classList.remove('hidden');
+        mic.disabled = stop.disabled = false; mic.style.opacity = stop.style.opacity = '';
+      } else if (finished) {
+        // Séance arrêtée : « Recommencer » prend la place de la pause
+        txt.textContent = '';
+        txt.classList.add('hidden');
+        icon.setAttribute('data-icon', 'rotate-ccw');
+        btn.setAttribute('aria-label', 'Recommencer');
+        btn.className = big + 'ctl-big bg-slate-200 shadow-lg shadow-slate-200/20';
+        mic.classList.remove('hidden'); stop.classList.remove('hidden');
+        mic.disabled = stop.disabled = true; mic.style.opacity = stop.style.opacity = '0.3';
       } else {
-        btn.className = "w-full py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2";
-        txt.textContent = state === 'paused' ? "REPRENDRE" : "DÉMARRER";
+        txt.classList.remove('hidden');
+        txt.textContent = 'DÉMARRER';
         icon.setAttribute('data-icon', 'play');
+        btn.setAttribute('aria-label', 'Démarrer');
+        btn.className = big + 'col-span-3 bg-sky-500 shadow-lg shadow-sky-500/30';
+        mic.classList.add('hidden'); stop.classList.add('hidden');
       }
       refreshAllIcons();
+    }
+    function mainCtlLeft() {
+      if (timerState.finished && timerState.sessionStarted) { resetTimer(); return; }
+      toggleTimer();
     }
 
     function startTimer(opts = {}) {
@@ -4204,6 +4215,7 @@
     }
 
     function openHistoryModal() {
+      currentFilter = 'planned';
       updateHistoryTable();
       document.getElementById('historyModal').classList.remove('hidden');
       refreshAllIcons();
@@ -4214,133 +4226,211 @@
 
     function setHistoryFilter(f) {
       currentFilter = f;
-      ['all', 'val', 'plan'].forEach(id => {
-        const btn = document.getElementById(`flt${id.charAt(0).toUpperCase() + id.slice(1)}`);
-        if ((f === 'all' && id === 'all') || (f === 'validated' && id === 'val') || (f === 'planned' && id === 'plan')) {
-          btn.className = "py-1.5 rounded-lg bg-slate-800 text-white border border-slate-700 font-bold";
-        } else {
-          btn.className = "py-1.5 rounded-lg bg-slate-950 text-slate-400 border border-slate-800 font-bold";
-        }
+      [['all', 'fltAll'], ['validated', 'fltVal'], ['planned', 'fltPlan']].forEach(([k, id]) => {
+        const b = document.getElementById(id); if (b) b.classList.toggle('on', f === k);
       });
       updateHistoryTable();
     }
 
-    function updateHistoryTable() {
-      const tbody = document.getElementById('historyTableBody');
-      tbody.innerHTML = '';
-
-      const allItems = [];
-
-      appData.history.forEach((h, idx) => {
-        allItems.push({
-          type: 'validated',
-          rawIdx: idx,
-          id: h.id,
-          title: h.sessionTitle,
-          date: h.date,
-          pente: h.pente,
-          duration: h.durationMin,
-          feeling: h.feeling,
-          note: h.note,
-          details: h.details,
-          summary: h.summary,
-          track: h.track,
-          seg: h.seg,
-          analysis: h.analysis
-        });
-      });
-
-      appData.sessions.forEach((s, sIdx) => {
-        const dur = computeSessionTotalMin(s);
-
-        allItems.push({
-          type: 'planned',
-          rawIdx: sIdx,
-          id: s.id,
-          title: `Semaine ${s.semaine} • ${String(s.jour || '').toUpperCase()}`,
-          date: s.date || '--/--',
-          pente: s.pente,
-          duration: dur,
-          feeling: null,
-          note: 'Planifiée',
-          details: describeSessionHuman(s)
-        });
-      });
-
-      const valCount = allItems.filter(i => i.type === 'validated').length;
-      const planCount = allItems.filter(i => i.type === 'planned').length;
-
-      document.getElementById('cntAll').textContent = allItems.length;
-      document.getElementById('cntVal').textContent = valCount;
-      document.getElementById('cntPlan').textContent = planCount;
-      document.getElementById('badgeHistCount').textContent = valCount;
-
-      let filtered = allItems;
-      if (currentFilter === 'validated') filtered = allItems.filter(i => i.type === 'validated');
-      if (currentFilter === 'planned') filtered = allItems.filter(i => i.type === 'planned');
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500 text-xs">Aucune séance dans cette vue</td></tr>`;
-        return;
+    // Type de séance (étiquette colorée du planning)
+    function sessionKind(s) {
+      if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
+      if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
+      if (s.free || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
+      if (!s.pyramide) return { label: 'COURSE', color: '#38bdf8' };
+      const segs = (s.pyramide || []).filter(p => p.speed > 0);
+      const speeds = segs.map(p => +p.speed);
+      const reps = Math.max(1, parseInt(s.repet) || 1) * Math.max(1, parseInt(s.nbBlocs) || 1);
+      const total = computeSessionTotalMin(s);
+      const varied = speeds.length > 1 && Math.max(...speeds) - Math.min(...speeds) >= 0.5;
+      if (varied || reps > 1) {
+        const fastMax = Math.max(...segs.filter(p => +p.speed === Math.max(...speeds)).map(p => p.unit === 'km' ? (p.distance || 0) * 60 / Math.max(1, p.speed) : (p.duration || 0)));
+        return fastMax >= 6 ? { label: 'SEUIL', color: '#fbbf24' } : { label: 'FRACTIONNÉ', color: '#fb923c' };
       }
+      return total >= 65 ? { label: 'SORTIE LONGUE', color: '#a78bfa' } : { label: 'ENDURANCE', color: '#38bdf8' };
+    }
+    function histISO(h) {
+      let iso = guessISOFromDDMM(h.date);
+      if (iso && iso > todayISO()) { const d = parseISODateLocal(iso); d.setFullYear(d.getFullYear() - 1); iso = toISODateLocal(d); }
+      return iso;
+    }
+    function weekStartISO(iso) {
+      const d = parseISODateLocal(iso) || new Date();
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return toISODateLocal(d);
+    }
+    function plEsc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+    function plDateChip(iso, cls = '', style = '') {
+      const d = parseISODateLocal(iso);
+      if (!d) return `<div class="pl-date ${cls}" style="${style}"><span style="font-size:18px;font-weight:800">–</span></div>`;
+      const wd = d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '').toUpperCase();
+      return `<div class="pl-date ${cls}" style="${style}"><span style="font-size:10px;font-weight:800;opacity:.75">${wd}</span><span style="font-size:19px;font-weight:800;line-height:1">${d.getDate()}</span></div>`;
+    }
+    function renderPlanningHeader(items) {
+      const g = appData.goal || {};
+      const goalEl = document.getElementById('plGoal');
+      if (goalEl) {
+        const gd = guessISOFromDDMM(g.date);
+        const days = gd ? Math.round((parseISODateLocal(gd) - parseISODateLocal(todayISO())) / 86400000) : null;
+        goalEl.innerHTML = g.distanceKm ? `<span class="icon-slot" data-icon="target"></span><span>${g.distanceKm} km en ${g.durationMin}'${days !== null ? (days > 0 ? ` · Jour J dans ${days} jour${days > 1 ? 's' : ''}` : days === 0 ? " · C'est le jour J !" : '') : ''}</span>` : '';
+      }
+      const wk = document.getElementById('plWeek');
+      if (!wk) return;
+      const t = todayISO(), w0 = weekStartISO(t);
+      const d0 = parseISODateLocal(w0);
+      const dayIso = [...Array(7)].map((_, i) => { const d = new Date(d0); d.setDate(d.getDate() + i); return toISODateLocal(d); });
+      const w6 = dayIso[6];
+      const planned = appData.sessions.filter(x => x.dateISO && x.dateISO >= w0 && x.dateISO <= w6);
+      const done = items.filter(i => i.type === 'validated' && i.iso >= w0 && i.iso <= w6);
+      const doneRun = done.filter(i => !i.cross);
+      const kmDone = doneRun.reduce((a, i) => a + (parseFloat(i.summary && i.summary.distKm) || 0), 0);
+      const kmPlan = planned.reduce((a, x) => a + computeSessionDistanceKm(x), 0);
+      const nPlan = Math.max(planned.length, doneRun.length);
+      const pct = kmPlan > 0 ? Math.min(100, Math.round(kmDone / kmPlan * 100)) : (nPlan ? Math.round(doneRun.length / nPlan * 100) : 0);
+      const fmt = d => parseISODateLocal(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      const L = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+      const base = 'width:34px;height:34px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-sizing:border-box;';
+      const strip = dayIso.map((iso, i) => {
+        const isDone = done.some(x => x.iso === iso), isPlan = planned.some(x => x.dateISO === iso);
+        let st = base + 'color:#475569;';
+        if (isDone) st = base + 'background:#34d399;color:#03140d;';
+        else if (iso === t) st = base + 'border:2px solid #38bdf8;color:#38bdf8;';
+        else if (isPlan) st = base + (iso < t ? 'border:1px dashed #475569;color:#64748b;' : 'background:#172338;color:#e2e8f0;border:1px solid #334155;');
+        return `<div class="flex flex-col items-center gap-1.5"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></div>`;
+      }).join('');
+      wk.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex flex-col gap-0.5">
+            <span style="font-size:12px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.2px">Semaine · ${parseISODateLocal(w0).getDate()} au ${fmt(w6)}</span>
+            <span style="font-size:20px;font-weight:800">${doneRun.length} séance${doneRun.length > 1 ? 's' : ''} sur ${nPlan}</span>
+          </div>
+          <div class="flex flex-col items-end gap-0.5 shrink-0">
+            <span style="font-size:20px;font-weight:800;color:#34d399">${kmDone.toFixed(1).replace('.', ',')} km</span>
+            <span style="font-size:12px;color:#94a3b8;font-weight:600;white-space:nowrap">sur ${kmPlan.toFixed(0)} km prévus</span>
+          </div>
+        </div>
+        <div style="height:8px;border-radius:4px;background:#1e293b;overflow:hidden"><div style="width:${pct}%;height:8px;border-radius:4px;background:#34d399"></div></div>
+        <div class="grid grid-cols-7 gap-1.5">${strip}</div>`;
+    }
+    function plPlannedCard(item, isToday) {
+      const s = appData.sessions[item.rawIdx];
+      const k = sessionKind(s);
+      const dist = computeSessionDistanceKm(s).toFixed(1).replace('.', ',');
+      const where = s.type === 'exterieur' ? 'extérieur' : `tapis ${String(s.pente || 0).replace('.', ',')} %`;
+      const stats = `${Math.round(item.duration)} min · ${dist} km · ${where}`;
+      const past = item.iso && item.iso < todayISO();
+      const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · PASSÉE' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
+      const body = `<div class="flex-1 flex flex-col gap-1 min-w-0">${tag}<span class="pl-clamp" style="${isToday ? '-webkit-line-clamp:3;' : ''}font-size:${isToday ? 16 : 15}px;font-weight:800;line-height:1.25">${plEsc(item.details)}</span><span style="font-size:12px;color:#94a3b8;font-weight:600">${stats}</span></div>`;
+      const more = `<button onclick="toggleDetailRow('${item.id}')" aria-label="Plus d'options" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>`;
+      const actions = `
+        <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
+          ${s.notes ? `<div style="font-size:12px;color:#94a3b8">📝 ${plEsc(s.notes)}</div>` : ''}
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="loadPlannedSessionToChrono(${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#7dd3fc">▶ Charger</button>
+            <button onclick="editHistoryItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
+            <button onclick="deleteItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
+          </div>
+        </div>`;
+      if (isToday) {
+        return `<div class="pl-card today">
+          <div class="flex items-center gap-3">${plDateChip(item.iso, '', 'background:#38bdf8;color:#04121f;width:52px;height:56px;border-radius:16px')}${body}${more}</div>
+          <div class="flex gap-2 mt-3">
+            <button onclick="closeHistoryModal(); appData.activeSessionIndex=${item.rawIdx}; saveAppData(); reloadChrono(); launchFromHome()" class="flex-1 flex items-center justify-center gap-2 font-extrabold" style="height:46px;border-radius:14px;background:#38bdf8;color:#04121f;font-size:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>Lancer</button>
+            <button onclick="editHistoryItem('${item.id}', 'planned', ${item.rawIdx})" class="font-bold" style="height:46px;padding:0 16px;border-radius:14px;border:1px solid #334155;background:#111c30;color:#e2e8f0;font-size:14px">Modifier</button>
+          </div>${actions}</div>`;
+      }
+      return `<div class="pl-card ${past ? 'past' : ''}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
+    }
+    function plDoneCard(item) {
+      const k = sessionKind(item);
+      const feel = { green: ['bien', '#6ee7b7'], yellow: ['moyen', '#fcd34d'], red: ['dur', '#fda4af'] }[item.feeling] || null;
+      const d = parseISODateLocal(item.iso);
+      const dTxt = d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })) : item.date;
+      const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, summaryText(item.summary).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
+      const title = item.cross ? (item.note || item.title) : (String(item.details || '').split(' — ')[0] || item.title);
+      return `<div class="pl-card done">
+        <div class="flex items-center gap-3">
+          <div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="flex-1 flex flex-col gap-1 min-w-0">
+            <span style="font-size:12px;font-weight:700;color:#6ee7b7">${dTxt}${feel ? ` · ressenti : <span style="color:${feel[1]}">${feel[0]}</span>` : ''} · <span style="color:${k.color}">${k.label}</span></span>
+            <span class="pl-clamp" style="font-size:15px;font-weight:700;line-height:1.25">${plEsc(title)}</span>
+            <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats)}</span>
+          </div>
+          <button onclick="toggleDetailRow('${item.id}')" aria-label="Détails" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
+          <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(item.details)}</div>
+          ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
+          ${item.cross ? '' : runDataBlockHtml(item.track, item.seg)}
+          ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0"><b style="color:#d8b4fe">🧠 Analyse du coach</b><br>${mdLite(item.analysis)}</div>` : ''}
+          <div class="grid grid-cols-3 gap-2">
+            ${item.cross ? '<span></span>' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? 'Refaire' : 'Analyse IA'}</button>`}
+            <button onclick="editHistoryItem('${item.id}', 'validated', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
+            <button onclick="deleteItem('${item.id}', 'validated', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    function updateHistoryTable() {
+      const box = document.getElementById('historyTableBody');
+      if (!box) return;
+      const t = todayISO();
+      const items = [];
+      appData.history.forEach((h, idx) => items.push({
+        type: 'validated', rawIdx: idx, id: h.id, title: h.sessionTitle, date: h.date, iso: histISO(h), pente: h.pente, duration: h.durationMin,
+        feeling: h.feeling, note: h.note, details: h.details, summary: h.summary, track: h.track, seg: h.seg, analysis: h.analysis, cross: h.cross, sessionTitle: h.sessionTitle
+      }));
+      appData.sessions.forEach((s, sIdx) => items.push({
+        type: 'planned', rawIdx: sIdx, id: s.id, title: formatSessTitle(s), date: s.date || '--/--', iso: s.dateISO || guessISOFromDDMM(s.date), pente: s.pente,
+        duration: computeSessionTotalMin(s), details: describeSessionHuman(s)
+      }));
+      const done = items.filter(i => i.type === 'validated');
+      const planned = items.filter(i => i.type === 'planned').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
+      const upcoming = planned.filter(i => !i.iso || i.iso >= t);
+      document.getElementById('cntAll').textContent = items.length;
+      document.getElementById('cntVal').textContent = done.length;
+      document.getElementById('cntPlan').textContent = upcoming.length;
+      const badge = document.getElementById('badgeHistCount'); if (badge) badge.textContent = done.length;
+      setTimeout(() => ['all', 'validated', 'planned'].forEach(k => { const b = document.getElementById({ all: 'fltAll', validated: 'fltVal', planned: 'fltPlan' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
+      renderPlanningHeader(items);
 
-      filtered.forEach(item => {
-        const isVal = item.type === 'validated';
-        const smiley = item.feeling === 'green' ? '😊' : item.feeling === 'yellow' ? '😐' : item.feeling === 'red' ? '😫' : '';
-
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-800/60 hover:bg-slate-800/30 transition text-[11px]";
-        tr.innerHTML = `
-          <td class="py-2 px-1 text-center font-bold">
-            ${isVal 
-              ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px]">✓</span>` 
-              : `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[10px]">⏳</span>`}
-          </td>
-          <td class="py-2 px-1.5 font-semibold text-slate-200">
-            <span class="block text-white">${item.title}</span>
-            <span class="text-[9px] text-slate-400 font-mono">${item.date} ${smiley}</span>
-          </td>
-          <td class="py-2 px-1 text-center font-mono text-slate-300">${item.pente}%</td>
-          <td class="py-2 px-1.5 text-right font-mono font-bold text-sky-400">${(parseFloat(item.duration) || 0).toFixed(1)}'</td>
-          <td class="py-2 px-1 text-center">
-            <button onclick="toggleDetailRow('${item.id}')" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white text-[9px] font-mono">
-              Info
-            </button>
-          </td>
-          <td class="py-2 px-1.5 text-center">
-            <div class="flex items-center justify-center gap-1">
-              ${!isVal ? `
-                <button onclick="loadPlannedSessionToChrono(${item.rawIdx})" title="Lancer" class="w-6 h-6 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center justify-center">
-                  <span class="icon-slot" data-icon="play"></span>
-                </button>
-              ` : ''}
-              <button onclick="editHistoryItem('${item.id}', '${item.type}', ${item.rawIdx})" title="Modifier" class="w-6 h-6 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center">
-                <span class="icon-slot" data-icon="edit-2"></span>
-              </button>
-              <button onclick="deleteItem('${item.id}', '${item.type}', ${item.rawIdx})" title="Supprimer" class="w-6 h-6 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center">
-                <span class="icon-slot" data-icon="trash"></span>
-              </button>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-
-        const trDetail = document.createElement('tr');
-        trDetail.id = `detail_${item.id}`;
-        trDetail.className = "hidden bg-slate-950/80 border-b border-slate-800/80";
-        trDetail.innerHTML = `
-          <td colspan="6" class="p-2.5 text-[10px] space-y-1">
-            <div class="text-slate-300 font-mono"><strong class="text-sky-400">Programme :</strong> ${item.details}</div>
-            <div class="text-slate-400"><strong class="text-amber-400">Note :</strong> ${item.note || 'Aucune'}</div>
-            ${summaryText(item.summary) ? `<div class="text-slate-300"><strong class="text-rose-300">Capteurs :</strong> ${summaryText(item.summary)}</div>` : ''}
-            ${isVal ? runDataBlockHtml(item.track, item.seg) : ''}
-            ${item.analysis ? `<div class="text-slate-300 leading-relaxed mt-1 p-2 rounded-lg bg-purple-950/30 border border-purple-800/40"><strong class="text-purple-300">🧠 Analyse du coach</strong><br>${mdLite(item.analysis)}</div>` : ''}
-            ${isVal ? `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="mt-1 px-3 py-1.5 rounded-lg bg-purple-600 text-white font-bold text-[10px]">🧠 ${item.analysis ? 'Refaire l\'analyse IA' : 'Analyser par l\'IA'}</button>` : ''}
-          </td>
-        `;
-        tbody.appendChild(trDetail);
-      });
-
+      const out = [];
+      const sec = txt => out.push(`<div class="pl-sec">${txt}</div>`);
+      const groupPlanned = list => {
+        const w0 = weekStartISO(t);
+        const nextW = (() => { const d = parseISODateLocal(w0); d.setDate(d.getDate() + 7); return toISODateLocal(d); })();
+        const after = (() => { const d = parseISODateLocal(w0); d.setDate(d.getDate() + 14); return toISODateLocal(d); })();
+        let cur = '';
+        list.forEach(i => {
+          const iso = i.iso || '';
+          let g;
+          if (iso && iso < t) g = 'Séances passées non faites';
+          else if (iso === t) g = "Aujourd'hui";
+          else if (iso && iso < nextW) g = 'Cette semaine';
+          else if (iso && iso < after) g = 'Semaine prochaine';
+          else if (iso) g = `Semaine du ${parseISODateLocal(weekStartISO(iso)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
+          else g = 'Sans date';
+          if (g !== cur) { sec(g); cur = g; }
+          out.push(plPlannedCard(i, iso === t));
+        });
+      };
+      if (currentFilter === 'planned') {
+        if (!upcoming.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance à venir.<br>Importe un plan (Profil › Coach IA) ou ajoute une séance.</div>');
+        groupPlanned(upcoming);
+        if (upcoming.length) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
+      } else if (currentFilter === 'validated') {
+        if (!done.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance faite pour l\'instant.</div>');
+        let cur = '';
+        done.forEach(i => {
+          const m = i.iso ? capFirst(parseISODateLocal(i.iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })) : 'Sans date';
+          if (m !== cur) { sec(m); cur = m; }
+          out.push(plDoneCard(i));
+        });
+      } else {
+        groupPlanned(planned);
+        if (done.length) { sec('Séances faites'); done.forEach(i => out.push(plDoneCard(i))); }
+      }
+      box.innerHTML = out.join('');
       refreshAllIcons();
     }
 
@@ -6353,10 +6443,6 @@ Réponds uniquement avec le JSON.`;
       if (!box) return;
       const parts = [];
       const now = Date.now();
-      if (runData.hr && now - runData.hrAt < 8000) {
-        const z = zoneOf(runData.hr);
-        parts.push(`<span style="color:${zoneColor(runData.hr)}" class="font-black">❤️ ${runData.hr}${z ? ` <span class="text-[10px] px-1.5 py-0.5 rounded-md" style="background:${zoneColor(runData.hr)}22;border:1px solid ${zoneColor(runData.hr)}">${z}</span>` : ''}</span>`);
-      }
       const sess = getActiveSession();
       const cur = timerState.stages[timerState.currentStageIndex];
       if (gpsWanted() && timerState.sessionStarted) {
@@ -6367,7 +6453,7 @@ Réponds uniquement avec le JSON.`;
           parts.push(`<span class="text-sky-300">📍 ${formatSpeed(Math.round(g.speedKmh * 10) / 10)} km/h • ${g.distKm.toFixed(2)} km</span>`);
           const rt = runData.route;
           const grade = activeRoute() && rt.progressKm !== null && !rt.offRoute ? rt.grade : 0;
-          if (grade) parts.push(`<span class="text-violet-300">VAP ${formatSpeed(Math.round(vapKmh(g.speedKmh, grade) * 10) / 10)}</span>`);
+          if (grade) parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(g.speedKmh, grade) * 10) / 10)}</span>`);
         }
         if (activeRoute() && runData.route.progressKm !== null) {
           const rt = runData.route;
@@ -6375,9 +6461,9 @@ Réponds uniquement avec le JSON.`;
             : `<span class="text-emerald-300">🗺️ ${rt.progressKm.toFixed(1)}/${activeRoute().totalKm.toFixed(1)} km${rt.grade ? ` • ${rt.grade > 0 ? '+' : ''}${Math.round(rt.grade)}%` : ''}</span>`);
         }
       } else if (cur && cur.type === 'palier' && sess.type !== 'exterieur' && Math.abs(sess.pente || 0) >= 1) {
-        parts.push(`<span class="text-violet-300">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, sess.pente) * 10) / 10)}</span>`);
+        parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, sess.pente) * 10) / 10)}</span>`);
       }
-      box.innerHTML = parts.join('<span class="text-slate-600"> • </span>');
+      box.innerHTML = parts.join('');
       box.classList.toggle('hidden', !parts.length || !timerState.sessionStarted);
     }
 
@@ -8750,6 +8836,33 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const g = document.getElementById('homeGoal');
       if (g) g.textContent = goal.distanceKm ? `🎯 Objectif : ${goal.distanceKm} km en ${goal.durationMin} min le ${goal.date}` : '';
     }
+
+    // Libellé court du haut de l'écran (bloc / série)
+    function stageTopLabel(st) {
+      if (!st) return '';
+      if (st.type === 'chauffe') return 'Échauffement';
+      if (st.type === 'recup') return 'Retour au calme';
+      if (st.type === 'recupBloc') return `Récup · Bloc ${st.blocIndex}/${st.nbBlocs}`;
+      if (st.isExtension) return 'Prolongation';
+      const parts = [];
+      if (st.nbBlocs > 1) parts.push(`Bloc ${st.blocIndex}/${st.nbBlocs}`);
+      if (st.totalReps > 1) parts.push(`Série ${st.repIndex}/${st.totalReps}`);
+      if (parts.length) return parts.join(' · ');
+      const pal = timerState.stages.filter(x => x.type === 'palier' && !x.isExtension);
+      return pal.length > 1 ? `Segment ${pal.indexOf(st) + 1}/${pal.length}` : 'Allure';
+    }
+    // Même taille que le chrono, réduite seulement si le texte dépasse la largeur
+    function fitStageInfo() {
+      const el = document.getElementById('stageInfoLine');
+      const ref = document.getElementById('totalRemainingDisplay');
+      if (!el || !ref) return;
+      el.style.fontSize = '';
+      const max = parseFloat(getComputedStyle(ref).fontSize) || 60;
+      el.style.fontSize = max + 'px';
+      let fs = max;
+      while (fs > 20 && el.scrollWidth > el.clientWidth + 1) { fs -= 2; el.style.fontSize = fs + 'px'; }
+    }
+    window.addEventListener('resize', () => { try { fitStageInfo(); } catch (e) {} });
 
     // ==================== INFO BLOC EN COURS ====================
     function stageProgressLabel(st) {
