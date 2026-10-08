@@ -217,6 +217,10 @@
     <div class="flex items-center gap-2.5">
       <button onclick="showHome()" title="Accueil" class="active:scale-95 transition"><img class="runai-logo" style="width:48px;height:48px" alt="Accueil"></button>
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
+      <div class="ml-auto flex items-center gap-2">
+        <button id="homeProfileBtn" onclick="openGoalModal()" title="Profil, objectif & coach IA" class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="user"></span></button>
+        <button id="homeSettingsBtn" onclick="openAudioModal()" title="Réglages (voix, cardio, GPS)" class="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-600 text-slate-200 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="settings"></span></button>
+      </div>
     </div>
 
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
@@ -224,7 +228,10 @@
     <div id="homeFeelHost"></div>
 
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
-      <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300"></div>
+      <div class="flex items-start justify-between gap-2">
+        <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300 pt-1"></div>
+        <button onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
+      </div>
       <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
       <div class="text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
       <div id="homeRestNext" class="text-sm text-slate-200 leading-snug"></div>
@@ -233,29 +240,29 @@
     </div>
 
     <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
-      <div id="homeCardLabel" class="text-[10px] uppercase tracking-widest font-bold text-sky-300">Séance du jour</div>
-      <div id="homeSessTitle" class="text-lg font-black text-white"></div>
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <div id="homeCardLabel" class="text-[10px] uppercase tracking-widest font-bold text-sky-300">Séance du jour</div>
+          <div id="homeSessTitle" class="text-lg font-black text-white"></div>
+        </div>
+        <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
+      </div>
       <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
       <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
-      <div id="homeSessDesc" class="text-sm text-slate-200 leading-snug"></div>
+      <div class="flex items-start gap-2">
+        <div id="homeSessDesc" class="flex-1 text-sm text-slate-200 leading-snug"></div>
+        <button id="homeCfgBtn" onclick="openConfigModal()" title="Paramétrer la séance" class="shrink-0 px-2.5 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-200 text-[11px] font-bold flex items-center gap-1 active:scale-95"><span class="icon-slot" data-icon="sliders"></span>Modifier</button>
+      </div>
       <div id="homeAdapted" class="text-[10px] font-bold text-amber-300 hidden"></div>
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
-      <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">LANCER LA SÉANCE</span>
       </button>
     </div>
 
-    <button onclick="openFreeModal()" class="w-full py-3 rounded-2xl bg-slate-900 border border-sky-500/40 text-sky-200 font-black text-sm active:scale-95 transition">🏃 Commencer une séance libre</button>
+    <button id="homeFreeBtn" onclick="openFreeModal()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">🏃 SÉANCE LIBRE</button>
 
-    <div class="grid grid-cols-2 gap-3">
-      <button onclick="openConfigModal()" class="home-tile bg-sky-500/10 border-sky-500/40 text-sky-300"><span class="icon-slot" data-icon="sliders"></span><span>Paramétrer la séance</span></button>
-      <button onclick="openHistoryModal()" class="home-tile bg-emerald-500/10 border-emerald-500/40 text-emerald-300"><span class="icon-slot" data-icon="clipboard"></span><span>Planning & suivi</span></button>
-            <button onclick="openAudioModal()" class="home-tile bg-slate-800/60 border-slate-600 text-slate-200"><span class="icon-slot" data-icon="settings"></span><span>Voix & réglages</span></button>
-      <button onclick="openGoalModal()" class="home-tile bg-amber-500/10 border-amber-500/40 text-amber-300"><span class="icon-slot" data-icon="target"></span><span>Profil, objectif & coach IA</span></button>
-      <button onclick="openSensorsModal()" class="home-tile bg-rose-500/10 border-rose-500/40 text-rose-300"><span class="text-2xl leading-none">⌚</span><span>Cardio, GPS & parcours</span></button>
-    </div>
 
   </section>
 
@@ -272,6 +279,7 @@
       </button>
       <div id="stageInfoLine" class="text-sm font-black text-sky-300 mt-2 tracking-wide hidden"></div>
       <div id="liveMetrics" class="text-[12px] font-bold mt-1 hidden"></div>
+      <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <div id="sessInfoLine" class="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mt-1">
         <span id="activeSessLabel" class="text-sky-400 font-bold">Semaine 1 • MARDI</span> • Pente <span id="activePenteLabel" class="text-white font-mono font-bold">1%</span>
       </div>
@@ -1011,7 +1019,7 @@
 
       <p class="text-[10px] text-slate-400">🗺️ Le parcours GPX s'importe maintenant dans les paramètres de chaque séance.</p>
 
-      <button onclick="closeSensorsModal()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Enregistrer</button>
+      <button data-sensors-save onclick="closeSensorsModal()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Enregistrer</button>
     </div>
   </div>
 
@@ -1070,8 +1078,8 @@
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3">
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
-          <span class="text-base font-bold text-white block">Réglages Audio & Puissance</span>
-          <span class="text-[10px] text-slate-400">Voix, carillon et musique</span>
+          <span class="text-base font-bold text-white block">Réglages</span>
+          <span class="text-[10px] text-slate-400">Voix, cardio, GPS, carillon et musique</span>
         </div>
         <button onclick="closeAudioModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
           <span class="icon-slot" data-icon="x"></span>
@@ -1279,6 +1287,8 @@
   <!-- ==================== SCRIPT JAVASCRIPT COMPLET & AUTONOME ==================== -->
   <script>
     const SVG_ICONS = {
+      'calendar': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+      'user': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
       'sliders': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
       'clipboard': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`,
       'target': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
@@ -1559,6 +1569,7 @@
       syncFcMax();
       setupFeelPanel();
       mergeCoachIntoGoal();
+      mergeSensorsIntoAudio();
       const restored = restoreLiveRun();
       setInterval(saveLiveRun, 5000);
       setInterval(maintainCoachListening, 1000);
@@ -4522,6 +4533,24 @@
       if (sec) setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
+    function mergeSensorsIntoAudio() {
+      const sm = document.getElementById('sensorsModal');
+      const am = document.getElementById('audioModal');
+      if (!sm || !am) return;
+      const panel = sm.firstElementChild;
+      const host = am.querySelector('.custom-scroll');
+      const det = document.createElement('details');
+      det.id = 'sensorsSection';
+      det.className = 'bg-slate-950/60 border border-rose-500/40 rounded-2xl p-2.5';
+      det.innerHTML = '<summary class="cursor-pointer text-sm font-bold text-rose-200 py-1">⌚ Cardio, GPS & parcours</summary>';
+      const body = document.createElement('div');
+      body.className = 'space-y-3 pt-2';
+      Array.from(panel.children).slice(1).forEach(c => body.appendChild(c)); // tout sauf l'en-tête
+      const sv = body.querySelector('[data-sensors-save]'); if (sv) sv.remove();
+      det.appendChild(body);
+      host.insertBefore(det, host.firstChild);
+      sm.remove();
+    }
     function mergeCoachIntoGoal() {
       const cm = document.getElementById('coachModal');
       const gm = document.getElementById('goalModal');
@@ -4733,12 +4762,16 @@
     function openAudioModal() {
       loadVoices();
       updateAudioModalUI();
+      fillSensorsUI();
+      const sec = document.getElementById('sensorsSection'); if (sec) sec.open = false;
       document.getElementById('audioModal').classList.remove('hidden');
       refreshAllIcons();
     }
     function closeAudioModal() {
       saveAudioSettingsFromUI();
+      if (document.getElementById('gpsModeSelect')) saveSensorsFromUI();
       document.getElementById('audioModal').classList.add('hidden');
+      if (aiVoiceActive()) prepareAIVoice();
     }
 
     function updateAudioModalUI() {
@@ -5888,9 +5921,11 @@ Réponds uniquement avec le JSON.`;
         chip.textContent = `❤️ ${btDevice.name || 'Cardio'} connecté${runData.hr ? ` • ${runData.hr} bpm` : ''}`;
         chip.className = 'w-full py-2 rounded-xl text-[11px] font-bold border bg-emerald-500/15 border-emerald-500/50 text-emerald-200';
       } else {
-        chip.textContent = known ? `❤️ Reconnecter ${s.btName || 'la montre'}` : '❤️ Connecter une montre / ceinture cardio';
-        chip.className = 'w-full py-2 rounded-xl text-[11px] font-bold border bg-rose-500/10 border-rose-500/40 text-rose-200';
+        chip.textContent = `❤️ Reconnecter ${s.btName || 'la montre'}`;
+        chip.className = 'mx-auto mt-2 px-4 py-1.5 rounded-full text-[12px] font-bold border bg-rose-500/10 border-rose-500/40 text-rose-200 active:scale-95';
       }
+      // Affiché seulement sur l'écran de séance, montre connue mais déconnectée
+      if (btConnected() || !known) chip.className = 'hidden';
     }
 
     function setBtStatus(t, err = false) {
@@ -5974,7 +6009,7 @@ Réponds uniquement avec le JSON.`;
       }
       updateLiveMetrics();
       if (bigDisplayMode === 'hr' && !timerState.isRunning) updateUIHeaderAndCircle();
-      if (document.body.classList.contains('home')) renderHrChip();
+      renderHrChip();
     }
 
     // ---------- GPS du téléphone ----------
@@ -6370,6 +6405,17 @@ Réponds uniquement avec le JSON.`;
     }
 
     // ---------- Modale « Capteurs & parcours » ----------
+    function fillSensorsUI() {
+      const s = sensors();
+      if (!document.getElementById('gpsModeSelect')) return;
+      document.getElementById('gpsModeSelect').value = s.gpsMode;
+      document.getElementById('chkPaceAdvice').checked = !!s.paceAdvice;
+      document.getElementById('chkAnnounceVap').checked = !!s.announceVap;
+      document.getElementById('chkKmAnnounce').checked = !!s.kmAnnounce;
+      document.getElementById('fcMaxInput').value = s.fcMax || '';
+      if (!btDevice) setBtStatus(navigator.bluetooth ? 'Aucun capteur connecté' : "Bluetooth indisponible sur ce navigateur (Chrome Android + https requis)", !navigator.bluetooth);
+      renderRouteInfo();
+    }
     function openSensorsModal() {
       const s = sensors();
       document.getElementById('gpsModeSelect').value = s.gpsMode;
@@ -6379,13 +6425,12 @@ Réponds uniquement avec le JSON.`;
       document.getElementById('fcMaxInput').value = s.fcMax || '';
       if (!btDevice) setBtStatus(navigator.bluetooth ? 'Aucun capteur connecté' : "Bluetooth indisponible sur ce navigateur (Chrome Android + https requis)", !navigator.bluetooth);
       renderRouteInfo();
-      document.getElementById('sensorsModal').classList.remove('hidden');
-      refreshAllIcons();
+      openAudioModal();
+      const sec = document.getElementById('sensorsSection');
+      if (sec) { sec.open = true; setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120); }
     }
     function closeSensorsModal() {
-      saveSensorsFromUI();
-      document.getElementById('sensorsModal').classList.add('hidden');
-      if (aiVoiceActive()) prepareAIVoice();
+      closeAudioModal();
     }
     function saveSensorsFromUI() {
       const s = sensors();
@@ -7262,12 +7307,18 @@ Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date 
 3) Si la forme est bonne ET que les séances récentes et à venir le permettent sans surcharge, tu peux proposer de PROLONGER la séance (ex. +10 min en endurance) ; sinon non.
 4) Si la forme du jour n'est pas idéale mais devrait s'améliorer, tu peux proposer de DÉCALER la séance (plus tard dans la journée, ou de 1 à 2 jours en respectant l'espacement avec les séances prévues).
 Pour les douleurs, reste mesuré et rassurant : une douleur légère permet souvent de courir en adaptant (échauffement plus long, allure plus douce, terrain souple) ; ne conseille l'arrêt que si la douleur est gênante, augmente pendant l'effort ou fait boiter.
-Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils courts séparés par des retours à la ligne","adapter":true|false,"resume_modif":"une phrase","seance":{même format que le détail JSON},"prolonger":{"possible":true|false,"minutes":10,"vitesse":${runnerEF()},"raison":"une phrase"},"decaler":{"conseille":true|false,"jours":0,"moment":"plus tard aujourd'hui | demain | ...","raison":"une phrase"}}. En tutoyant. Si adapter vaut false, recopie la séance actuelle.`;
+Verdict : "maintenue" (séance faite telle quelle, éventuellement prolongée), "modifiee" (séance allégée/adaptée ou décalée), "annulee" (pas de course aujourd'hui : douleur gênante, maladie, grosse fatigue → repos).
+Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"UNE phrase courte (20 mots max) qui résume ton conseil","avis":"1 phrase","preparation":"3 conseils très courts séparés par des retours à la ligne","adapter":true|false,"resume_modif":"une phrase","seance":{même format que le détail JSON},"prolonger":{"possible":true|false,"minutes":10,"vitesse":${runnerEF()},"raison":"une phrase"},"decaler":{"conseille":true|false,"jours":0,"moment":"plus tard aujourd'hui | demain | ...","raison":"une phrase"}}. En tutoyant. Si adapter vaut false, recopie la séance actuelle.`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         feelProposal = j;
-        let html = `<div class="text-slate-200">${mdLite(String(j.avis || ''))}</div>`;
-        if (j.preparation) html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-sky-500/40"><div class="text-sky-300 font-bold mb-1">🌅 Pour être au top ${when}</div><div class="text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.preparation))}</div></div>`;
+        const esc = x => String(x || '').replace(/</g, '&lt;');
+        const hasAdapt = j.adapter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        const vd = String(j.verdict || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const verdict = vd.startsWith('annul') ? 'annulee' : (hasAdapt || vd.startsWith('modif') || (j.decaler && j.decaler.conseille)) ? 'modifiee' : 'maintenue';
+        const V = { maintenue: ['✅ Séance maintenue', 'text-emerald-400'], modifiee: ['✏️ Séance modifiée', 'text-amber-400'], annulee: ['⛔ Séance annulée', 'text-rose-400'] }[verdict];
+        let html = `<div class="text-xl font-black leading-tight ${V[1]}">${V[0]}</div>
+          <div class="mt-1 text-sm text-slate-100 leading-snug">${esc(j.resume || j.avis)}</div>`;
         if (j.decaler && j.decaler.conseille) {
           const jours = Math.max(0, Math.min(3, Math.round(+j.decaler.jours || 0)));
           window.__postponeDays = jours;
@@ -7277,7 +7328,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils
             ${jours > 0 ? `<button onclick="postponeSession(window.__postponeDays)" class="w-full mt-1 py-2 bg-violet-500/25 border border-violet-500/50 text-violet-100 font-bold rounded-xl text-[11px]">📅 Décaler au ${(() => { const d = new Date(); d.setDate(d.getDate() + jours); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()}</button>` : ''}
           </div>`;
         }
-        if (j.adapter && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) {
+        if (verdict === 'annulee') {
+          html += `<div class="grid grid-cols-1 gap-1.5 mt-2">
+            <button onclick="keepPlannedSession()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Garder la séance quand même</button>
+          </div>`;
+        } else if (hasAdapt) {
           const after = proposalToSession(base, j.seance);
           html += `<div class="mt-2 p-2 rounded-lg bg-slate-950 border border-amber-500/40 space-y-1">
             <div class="text-amber-300 font-bold">✏️ ${String(j.resume_modif || 'Adaptation proposée').replace(/</g, '&lt;')}</div>
@@ -7300,11 +7355,10 @@ Réponds uniquement en JSON : {"avis":"2 phrases","preparation":"3 à 5 conseils
             <button onclick="setExtensionOffer(window.__extProposal); closeFeelModal()" class="py-2.5 bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold rounded-xl text-[11px]">🎙️ Me le proposer pendant la séance</button>
             <button onclick="keepPlannedSession()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Non, garder la séance prévue</button>
           </div>`;
-        } else {
-          html += j.decaler && j.decaler.conseille
-            ? `<div class="mt-2 text-slate-300 font-bold">Sinon, la séance prévue reste faisable telle quelle.</div>`
-            : `<div class="mt-2 text-emerald-300 font-bold">👍 La séance prévue est maintenue.</div>`;
+        } else if (j.decaler && j.decaler.conseille) {
+          html += `<div class="mt-2 text-slate-300 font-bold">Sinon, la séance prévue reste faisable telle quelle.</div>`;
         }
+        if (j.preparation) html += `<details class="mt-2 rounded-lg bg-slate-950 border border-slate-700 p-2"><summary class="text-sky-300 font-bold cursor-pointer">🌅 Conseils pour être au top ${when}</summary><div class="mt-1 text-[11px] text-slate-200 leading-relaxed">${mdLite(String(j.preparation))}</div></details>`;
         out.innerHTML = html;
         prefetchCoachTip();
       } catch (e) {
@@ -8214,6 +8268,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       showChrono();
       updateUIHeaderAndCircle();
       startTimer(); // dans le geste de l'utilisateur (son + plein écran)
+      btAutoReconnect();
       if (aiVoiceActive()) prepareAIVoice();
     }
     function endFreeSessionIfIdle() {
@@ -8639,6 +8694,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     function showChrono() {
       document.body.classList.remove('home');
       updateUIHeaderAndCircle();
+      renderHrChip();
     }
     function launchFromHome() {
       showChrono();
