@@ -96,6 +96,8 @@
     .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; transition: left .2s; }
     .sw:checked { background: var(--acc, #38bdf8); }
     .sw:checked::after { left: 21px; }
+    .leaflet-container img { max-width: none !important; max-height: none !important; }
+    .leaflet-container { font-family: inherit; }
     .wheel-box { position: relative; height: 176px; }
     .wheel-box::before { content: ''; position: absolute; left: 0; right: 0; top: 66px; height: 44px; border-radius: 12px; background: rgba(52,211,153,.14); border: 1px solid rgba(52,211,153,.5); pointer-events: none; }
     .wheel { position: relative; height: 176px; overflow-y: scroll; scroll-snap-type: y mandatory; padding: 66px 0; box-sizing: border-box; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
@@ -296,6 +298,7 @@
       </button>
     </div>
 
+    <button id="homeNutBtn" onclick="openNutrition()" class="order-last w-full py-4 bg-orange-500 hover:bg-orange-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2">🍽️ MES REPAS DU JOUR</button>
     <button id="homeFreeBtn" onclick="openActivityWizard()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">➕ CRÉER UNE ACTIVITÉ</button>
 
 
@@ -434,12 +437,15 @@
         <div id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
           <span class="text-xs font-bold text-emerald-300 block">🗺️ Parcours GPX de la séance</span>
           <p class="text-[10px] text-slate-400">Pour une sortie extérieure : l'app vous situe sur le parcours, annonce les virages (« dans 100 mètres, tourne à droite ») et les côtes 250 m avant (« montée de 5 % sur 1 km »).</p>
+          <button onclick="openRouteEditor()" class="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">🗺️ Dessiner un parcours</button>
           <div class="grid grid-cols-2 gap-2">
-            <label class="py-2 bg-emerald-600 text-white font-bold rounded-lg text-[11px] text-center cursor-pointer">Importer un GPX
+            <label class="py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-lg text-[11px] text-center cursor-pointer">📂 Importer un GPX
               <input type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="hidden" onchange="importGpx(this)">
             </label>
             <button onclick="clearRoute()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Retirer</button>
           </div>
+          <div class="text-[11px] font-bold text-emerald-300 pt-1">📍 Mes parcours</div>
+          <div id="myRoutesList" class="space-y-1.5"></div>
           <div id="gpxStatus" class="text-[10px] font-semibold text-slate-400"></div>
           <div id="routeInfo" class="space-y-1.5"></div>
         </div>
@@ -661,6 +667,7 @@
         <div class="pm-panel" data-p="moi">
           <div class="pm-card">
             <span class="pm-cap">Identité</span>
+            <div class="pm-lbl">Mon niveau de coureur<div id="runnerTierChips" class="grid grid-cols-2 gap-1.5"></div></div>
             <div class="grid grid-cols-2 gap-2">
               <label class="pm-lbl">Prénom<input id="firstNameInput" type="text" autocomplete="given-name" maxlength="20" placeholder="ex. Julien" class="pm-in"></label>
               <div class="pm-lbl">Sexe<div id="sexChips" class="flex gap-1"><button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button><button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button></div></div>
@@ -796,12 +803,53 @@
   </div>
 
 
+  <!-- Dessiner un parcours -->
+  <div id="routeModal" class="pm hidden" style="--acc:#34d399;z-index:95">
+    <div class="pm-wrap" style="max-width:none">
+      <div class="flex items-center justify-between gap-2" style="padding:12px 14px 8px">
+        <div class="flex flex-col min-w-0"><span class="text-[20px] font-extrabold">🗺️ Mon parcours</span><div id="reStats" class="flex gap-3 text-[14px] font-extrabold text-emerald-300"></div></div>
+        <div class="flex items-center gap-2">
+          <label class="flex flex-col items-center gap-1 text-[10px] text-slate-300 font-bold">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
+          <button onclick="closeRouteEditor()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
+        </div>
+      </div>
+      <div id="reMap" class="flex-1" style="min-height:200px;background:#0b1324"></div>
+      <div style="padding:8px 12px 14px;display:flex;flex-direction:column;gap:8px;background:#050a16">
+        <div id="reStatus" class="text-[12px] text-slate-400 font-semibold"></div>
+        <div id="reProfile"></div>
+        <div class="grid grid-cols-4 gap-2">
+          <button onclick="reUndo()" class="pm-btn" style="padding:0">↶ Annuler</button>
+          <button onclick="reCloseLoop()" class="pm-btn" style="padding:0">🔁 Boucle</button>
+          <button onclick="reOutAndBack()" class="pm-btn" style="padding:0">↔ A/R</button>
+          <button onclick="reClear()" class="pm-btn" style="padding:0;color:#fda4af">🗑 Effacer</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="reLoopKm" class="pm-in" style="width:96px"></select>
+          <button onclick="reAutoLoop()" class="pm-btn flex-1" style="border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12);color:#6ee7b7">🔄 Boucle automatique</button>
+        </div>
+        <div class="flex gap-2">
+          <input id="reName" class="pm-in flex-1" placeholder="Nom du parcours" style="font-weight:600">
+          <button onclick="reSave()" class="pm-save" style="width:auto;padding:0 18px;height:44px;font-size:15px">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Faire une séance prévue un autre jour : avis du coach -->
   <div id="chkModal" class="pm hidden" style="--acc:#38bdf8;z-index:85">
     <div class="pm-wrap">
       <div class="pm-head"><h2 class="pm-title">Faire cette séance ?</h2><button onclick="document.getElementById('chkModal').classList.add('hidden')" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
       <div id="chkBody" class="pm-body custom-scroll flex flex-col gap-3"></div>
       <div id="chkFoot" class="pm-foot"></div>
+    </div>
+  </div>
+
+  <!-- Conseils nutrition -->
+  <div id="nutModal" class="pm hidden" style="--acc:#fb923c;z-index:80">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 class="pm-title">Mes repas</h2><button onclick="document.getElementById('nutModal').classList.add('hidden')" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
+      <div id="nutBody" class="pm-body custom-scroll flex flex-col gap-3"></div>
+      <div id="nutFoot" class="pm-foot"></div>
     </div>
   </div>
 
@@ -3897,6 +3945,7 @@
       document.getElementById('cfgEfInfo').textContent = `Chauffe et retour au calme à l'endurance fondamentale : ${formatSpeed(runnerEF())} km/h (Profil & objectif)`;
       modalRoute = sess.route || null;
       renderRouteInfo();
+      renderMyRoutes();
       setGpxStatus(modalRoute ? `✓ Parcours : ${modalRoute.totalKm.toFixed(1)} km, D+ ${Math.round(modalRoute.gainM)} m` : 'Aucun parcours pour cette séance');
       document.getElementById('cfgRepet').value = sess.repet;
       document.getElementById('cfgNbBlocs').value = sess.nbBlocs || 1;
@@ -4322,6 +4371,79 @@
     function stripWarmCool(t) {
       return String(t || '').replace(/^\s*Chauffe\s*[^+]*\+\s*/i, '').replace(/\s*\+\s*(Récup|retour au calme)\s*[\d'",.\s]+$/i, '').trim();
     }
+    // ==================== NUTRITION DU JOUR ====================
+    let nut = { day: 'today', when: '', loading: false };
+    function nutDayISO() { const d = new Date(); if (nut.day === 'tomorrow') d.setDate(d.getDate() + 1); return toISODateLocal(d); }
+    function openNutrition() {
+      nut = { day: new Date().getHours() >= 15 ? 'tomorrow' : 'today', when: '', loading: false };
+      document.getElementById('nutModal').classList.remove('hidden');
+      renderNutrition();
+    }
+    function nutSessionOf(iso) { return appData.sessions.find(s => s.dateISO === iso && !isSessionDone(s)) || (appData.crossPlan || []).find(c => c.dateISO === iso) || null; }
+    function renderNutrition() {
+      const body = document.getElementById('nutBody'), foot = document.getElementById('nutFoot');
+      const iso = nutDayISO(), d = parseISODateLocal(iso);
+      const saved = (appData.nutrition || {})[iso];
+      const ses = nutSessionOf(iso);
+      const sesTxt = ses ? (ses.pyramide ? `${sessionKind(ses).label.toLowerCase()} · ${Math.round(computeSessionTotalMin(ses))} min` : `${ses.type === 'velo' ? 'vélo' : 'musculation'} · ${ses.dur} min`) : 'pas de séance prévue';
+      const chip = (on, onclick, label) => `<button type="button" class="act-chip ${on ? 'on' : ''}" style="${on ? 'background:#fb923c;border-color:#fb923c;color:#1c0d02' : ''}" onclick="${onclick}">${label}</button>`;
+      const prefs = (appData.nutPrefs || '').replace(/"/g, '&quot;');
+      body.innerHTML = `<div class="pm-card">
+          <div class="grid grid-cols-2 gap-2">${chip(nut.day === 'today', "nut.day='today';renderNutrition()", "Aujourd'hui")}${chip(nut.day === 'tomorrow', "nut.day='tomorrow';renderNutrition()", 'Demain')}</div>
+          <span class="text-[13px] text-slate-300">${capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))} : <b>${plEsc(sesTxt)}</b></span>
+          ${ses ? `<div class="pm-lbl">Heure de la séance<div class="grid grid-cols-3 gap-2">${chip(nut.when === 'matin', "nut.when='matin';renderNutrition()", 'Matin')}${chip(nut.when === 'midi', "nut.when='midi';renderNutrition()", 'Midi')}${chip(nut.when === 'soir', "nut.when='soir';renderNutrition()", 'Soir')}</div></div>` : ''}
+          <label class="pm-lbl">Préférences ou contraintes (optionnel)<input id="nutPrefs" class="pm-in" style="font-weight:500;font-size:14px" placeholder="ex. végétarien, sans lactose, pas le temps à midi…" value="${prefs}" onchange="appData.nutPrefs=this.value;saveAppData()"></label>
+        </div>
+        <div id="nutOut">${saved ? nutritionHtml(saved) : ''}</div>`;
+      foot.innerHTML = `<button onclick="askNutrition()" class="pm-save">${saved ? '🔄 Refaire les conseils' : '🍽️ Demander au coach'}</button>`;
+    }
+    async function askNutrition() {
+      const out = document.getElementById('nutOut');
+      if (!getGeminiKey()) { out.innerHTML = '<div class="pm-card text-rose-400">Clé Gemini nécessaire (Réglages › Données).</div>'; return; }
+      appData.nutPrefs = (document.getElementById('nutPrefs') || {}).value || appData.nutPrefs || '';
+      const iso = nutDayISO(), ses = nutSessionOf(iso), r = runnerProfile(), g = appData.goal || {};
+      const sesTxt = ses ? (ses.pyramide ? `${sessionKind(ses).label.toLowerCase()} : ${describeSessionHuman(ses)} (${Math.round(computeSessionTotalMin(ses))} min, ≈ ${computeSessionDistanceKm(ses).toFixed(1)} km)` : `${ses.type === 'velo' ? 'vélo' : 'musculation'} ${ses.dur} min`) : 'aucune séance (jour de repos)';
+      const hist = (appData.history || []).slice(0, 4).map(h => `- ${h.date} ${h.sessionTitle} : ${(+h.durationMin || 0).toFixed(0)} min`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(s => s.dateISO && s.dateISO > iso && !isSessionDone(s)).slice(0, 2).map(s => `- ${s.dateISO} : ${sessionKind(s).label.toLowerCase()} ${Math.round(computeSessionTotalMin(s))} min`).join('\n') || '- aucune';
+      const prompt = `Tu es un coach de course à pied qui donne des conseils de nutrition sportive simples et concrets (pas un médecin). ${coachToneText()}
+Prépare les repas du ${parseISODateLocal(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}.
+Coureur : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, ${r.heightCm || '?'} cm ; niveau : ${runnerLevelsText()}.
+Séance ce jour-là : ${sesTxt}${ses && nut.when ? `, le ${nut.when}` : ''}.
+Séances récentes :
+${hist}
+Séances suivantes :
+${next}
+Objectif : ${g.distanceKm || '?'} km le ${g.date || '?'}.${appData.nutPrefs ? `\nPréférences / contraintes : ${appData.nutPrefs}.` : ''}
+Donne des aliments courants en France avec des quantités simples (grammes, portions, « 1 bol »), adaptées à la charge du jour et au poids. Place les repas par rapport à la séance (délai avant, récupération après). Sans régime extrême, sans compléments obligatoires.
+Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"glucides_g":320,"proteines_g":110,"eau_l":2.5},"repas":[{"moment":"Petit-déjeuner","heure":"7h","aliments":["80 g de flocons d'avoine","1 banane"],"pourquoi":"une phrase courte"}],"seance":{"avant":"1 phrase","pendant":"1 phrase","apres":"1 phrase"},"eviter":["2 ou 3 choses à éviter ce jour-là"]}`;
+      out.innerHTML = `<div class="pm-card"><div class="flex items-center gap-2 text-orange-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-orange-400 animate-spin"></div> Le coach prépare tes repas…</div></div>`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        if (!appData.nutrition) appData.nutrition = {};
+        appData.nutrition[iso] = j;
+        Object.keys(appData.nutrition).filter(k => k < todayISO()).forEach(k => delete appData.nutrition[k]);
+        saveAppData();
+        renderNutrition();
+      } catch (e) { out.innerHTML = `<div class="pm-card text-rose-400">Conseils impossibles : ${plEsc(e.message || e)}</div>`; }
+    }
+    function nutritionHtml(j) {
+      const esc = plEsc, b = j.besoins || {};
+      const tile = (v, l) => v ? `<div style="padding:8px;border-radius:12px;background:#0b1324;display:flex;flex-direction:column;align-items:center"><span style="font-size:17px;font-weight:800;color:#fdba74">${v}</span><span style="font-size:11px;color:#94a3b8;font-weight:700">${l}</span></div>` : '';
+      const meals = (j.repas || []).map(m => `<div class="pm-card">
+          <div class="flex items-center justify-between"><span style="font-size:16px;font-weight:800">${esc(m.moment)}</span>${m.heure ? `<span style="font-size:13px;font-weight:800;color:#fdba74">${esc(m.heure)}</span>` : ''}</div>
+          <ul style="margin:0;padding-left:18px;font-size:14px;color:#e2e8f0;line-height:1.5">${(m.aliments || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+          ${m.pourquoi ? `<span class="text-[12px] text-slate-400">${esc(m.pourquoi)}</span>` : ''}</div>`).join('');
+      const se = j.seance || {};
+      return `<div class="pm-card" style="border-color:rgba(251,146,60,.5)">
+          ${j.resume ? `<span style="font-size:15px;font-weight:800;line-height:1.35">${esc(j.resume)}</span>` : ''}
+          <div class="grid grid-cols-4 gap-2">${tile(b.kcal, 'kcal')}${tile(b.glucides_g ? b.glucides_g + ' g' : '', 'glucides')}${tile(b.proteines_g ? b.proteines_g + ' g' : '', 'protéines')}${tile(b.eau_l ? String(b.eau_l).replace('.', ',') + ' L' : '', 'eau')}</div>
+        </div>
+        ${meals}
+        ${se.avant || se.pendant || se.apres ? `<div class="pm-card"><span class="pm-cap" style="color:#fdba74">Autour de la séance</span>${['avant', 'pendant', 'apres'].filter(k => se[k]).map(k => `<span class="text-[14px] text-slate-200"><b>${{ avant: 'Avant', pendant: 'Pendant', apres: 'Après' }[k]} :</b> ${esc(se[k])}</span>`).join('')}</div>` : ''}
+        ${(j.eviter || []).length ? `<div class="pm-card"><span class="pm-cap" style="color:#fb7185">À éviter</span>${j.eviter.map(x => `<span class="text-[14px] text-slate-300">• ${esc(x)}</span>`).join('')}</div>` : ''}
+        <span class="text-[11px] text-slate-500 px-1">Conseils généraux, à adapter : en cas de pathologie ou de régime particulier, demande l'avis d'un professionnel de santé.</span>`;
+    }
+
     // ==================== PROGRÈS & RECORDS ====================
     function runHistory() { return (appData.history || []).filter(h => h && !h.cross && h.isVal !== false).map(h => Object.assign({ _iso: histISO(h) }, h)); }
     function fmtDateShort(iso) { const d = parseISODateLocal(iso); return d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''; }
@@ -6542,6 +6664,12 @@ Réponds uniquement avec le JSON.`;
           const route = parseGpx(String(r.result), file.name.replace(/\.gpx$/i, ''));
           modalRoute = route;
           renderRouteInfo();
+          try {
+            if (!Array.isArray(appData.myRoutes)) appData.myRoutes = [];
+            appData.myRoutes.unshift({ id: `rt_${Date.now()}`, name: route.name, km: route.totalKm, gain: route.gainM, at: todayISO(), wps: null,
+              segs: [route.pts.map(p => [p[0], p[1]])], eles: route.hasEle ? route.pts.map(p => [p[2], p[3]]) : null });
+            saveAppData(); renderMyRoutes();
+          } catch (e) {}
           setGpxStatus(`✓ Parcours chargé : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m, ${route.turns.length} virages — enregistrez la séance`);
         } catch (e) {
           setGpxStatus(`⚠ ${e.message || 'Fichier GPX illisible'}`, true);
@@ -6943,6 +7071,264 @@ Réponds uniquement avec le JSON.`;
         <div class="text-[10px] text-slate-300 space-y-0.5">${r.climbs.length ? r.climbs.map(c =>
           `<div>${c.type === 'up' ? '⛰️ Montée' : '↘️ Descente'} au km ${c.startKm.toFixed(1)} : ${c.grade}% sur ${c.lenKm < 1 ? Math.round(c.lenKm * 1000) + ' m' : c.lenKm.toFixed(1) + ' km'}</div>`).join('')
           : '<div class="text-slate-500">Aucune côte marquée (≥ 3 %).</div>'}</div>`;
+    }
+
+
+    // ==================== CRÉER UN PARCOURS SUR LA CARTE ====================
+    const RE_LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+    let re = null;
+    function loadLeaflet() {
+      if (window.L && window.L.map) return Promise.resolve();
+      return new Promise((res, rej) => {
+        const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = RE_LEAFLET + 'leaflet.min.css'; document.head.appendChild(css);
+        const js = document.createElement('script'); js.src = RE_LEAFLET + 'leaflet.min.js';
+        js.onload = () => res(); js.onerror = () => rej(new Error('carte indisponible (pas de réseau ?)'));
+        document.head.appendChild(js);
+      });
+    }
+    async function openRouteEditor(editId) {
+      const m = document.getElementById('routeModal');
+      m.classList.remove('hidden');
+      const saved = editId ? (appData.myRoutes || []).find(r => r.id === editId) : null;
+      re = { wps: [], segs: [], follow: true, map: null, line: null, marks: [], editId: saved ? saved.id : null, name: saved ? saved.name : '', eles: null, eleTimer: null, busy: 0, loopKm: 8 };
+      reStatus('Chargement de la carte…');
+      try { await loadLeaflet(); } catch (e) { reStatus('⚠ ' + e.message, true); return; }
+      const box = document.getElementById('reMap');
+      box.innerHTML = '';
+      let center = [48.8566, 2.3522], zoom = 13;
+      if (runData && runData.gps && runData.gps.lat) { center = [runData.gps.lat, runData.gps.lon]; zoom = 15; }
+      re.map = L.map(box, { zoomControl: false, attributionControl: true }).setView(center, zoom);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(re.map);
+      re.line = L.polyline([], { color: '#34d399', weight: 5, opacity: 0.95 }).addTo(re.map);
+      re.map.on('click', e => reAddPoint(e.latlng.lat, e.latlng.lng));
+      setTimeout(() => re && re.map && re.map.invalidateSize(), 150);
+      if (saved) {
+        re.wps = saved.wps.map(p => ({ lat: p[0], lon: p[1] }));
+        re.segs = (saved.segs || []).map(sg => sg.map(p => [p[0], p[1]]));
+        if (re.segs.length !== Math.max(0, re.wps.length - 1)) await reRebuildAll();
+        reRedraw(true);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(p => { if (re && re.map && !re.wps.length) re.map.setView([p.coords.latitude, p.coords.longitude], 15); }, () => {}, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      }
+      const sel = document.getElementById('reLoopKm');
+      if (sel && !sel.options.length) for (let k = 2; k <= 30; k++) sel.add(new Option(`${k} km`, k, false, k === 8));
+      document.getElementById('reName').value = saved ? saved.name : '';
+      reStatus(saved ? `Modification de « ${saved.name} »` : 'Touche la carte pour poser le départ, puis les points de passage');
+      reRenderBar();
+    }
+    function closeRouteEditor() {
+      document.getElementById('routeModal').classList.add('hidden');
+      if (re && re.map) { try { re.map.remove(); } catch (e) {} }
+      re = null;
+    }
+    function reStatus(t, err) { const el = document.getElementById('reStatus'); if (el) { el.textContent = t; el.style.color = err ? '#fda4af' : ''; } }
+    // Itinéraire à pied qui suit les chemins (service OSRM public), sinon ligne droite
+    async function reRouteSeg(a, b) {
+      if (!re.follow) return [[a.lat, a.lon], [b.lat, b.lon]];
+      try {
+        const url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
+        const r = await Promise.race([fetch(url), sleep(9000).then(() => { throw new Error('délai'); })]);
+        const j = await r.json();
+        const c = j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates;
+        if (c && c.length >= 2) return c.map(p => [p[1], p[0]]);
+      } catch (e) { reStatus('Calcul d\'itinéraire indisponible : tracé en ligne droite', true); }
+      return [[a.lat, a.lon], [b.lat, b.lon]];
+    }
+    async function reAddPoint(lat, lon, silent) {
+      if (!re) return;
+      const p = { lat, lon };
+      re.wps.push(p);
+      if (re.wps.length > 1) {
+        re.busy++; reRenderBar();
+        const seg = await reRouteSeg(re.wps[re.wps.length - 2], p);
+        re.busy--;
+        re.segs.push(seg);
+      }
+      if (!silent) reRedraw();
+    }
+    async function reRebuildAll() {
+      re.segs = [];
+      re.busy++; reRenderBar();
+      for (let i = 1; i < re.wps.length; i++) re.segs.push(await reRouteSeg(re.wps[i - 1], re.wps[i]));
+      re.busy--;
+    }
+    function reCoords() {
+      const out = [];
+      re.segs.forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; out.push(p); }));
+      if (!out.length && re.wps.length) out.push([re.wps[0].lat, re.wps[0].lon]);
+      return out;
+    }
+    function reLenKm(coords) { let d = 0; for (let i = 1; i < coords.length; i++) d += haversineM({ lat: coords[i - 1][0], lon: coords[i - 1][1] }, { lat: coords[i][0], lon: coords[i][1] }); return d / 1000; }
+    function reRedraw(fit) {
+      if (!re || !re.map) return;
+      const c = reCoords();
+      re.line.setLatLngs(c);
+      re.marks.forEach(m => re.map.removeLayer(m));
+      re.marks = re.wps.map((p, i) => {
+        const first = i === 0, last = i === re.wps.length - 1 && i > 0;
+        const icon = L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: `<div style="width:22px;height:22px;border-radius:11px;border:3px solid #fff;background:${first ? '#34d399' : last ? '#fb7185' : '#38bdf8'};box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>` });
+        const mk = L.marker([p.lat, p.lon], { icon, draggable: true }).addTo(re.map);
+        mk.on('dragend', async e => { const ll = e.target.getLatLng(); re.wps[i] = { lat: ll.lat, lon: ll.lng }; re.busy++; reRenderBar();
+          if (i > 0) re.segs[i - 1] = await reRouteSeg(re.wps[i - 1], re.wps[i]);
+          if (i < re.wps.length - 1) re.segs[i] = await reRouteSeg(re.wps[i], re.wps[i + 1]);
+          re.busy--; reRedraw(); });
+        return mk;
+      });
+      if (fit && c.length > 1) re.map.fitBounds(L.latLngBounds(c), { padding: [30, 30] });
+      re.eles = null;
+      clearTimeout(re.eleTimer);
+      re.eleTimer = setTimeout(reFetchEles, 1200);
+      reRenderBar();
+    }
+    // Altitudes (Open-Meteo) le long du tracé
+    function reSamples(coords, maxN) {
+      const km = reLenKm(coords);
+      if (coords.length < 2) return [];
+      const step = Math.max(0.025, km / maxN), out = [];
+      let cum = 0, next = 0;
+      for (let i = 0; i < coords.length; i++) {
+        if (i) cum += haversineM({ lat: coords[i - 1][0], lon: coords[i - 1][1] }, { lat: coords[i][0], lon: coords[i][1] }) / 1000;
+        if (cum >= next || i === coords.length - 1) { out.push({ lat: coords[i][0], lon: coords[i][1], d: cum }); next = cum + step; }
+      }
+      return out;
+    }
+    async function reFetchEles() {
+      if (!re) return;
+      const s = reSamples(reCoords(), 200);
+      if (s.length < 2) { reRenderBar(); return; }
+      try {
+        const eles = [];
+        for (let i = 0; i < s.length; i += 100) {
+          const part = s.slice(i, i + 100);
+          const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`);
+          const j = await r.json();
+          (j.elevation || []).forEach(e => eles.push(e));
+        }
+        if (re && eles.length === s.length) re.eles = s.map((p, i) => [p.d, eles[i]]);
+      } catch (e) {}
+      reRenderBar();
+    }
+    function reGain(eles) { let g = 0; for (let i = 1; i < (eles || []).length; i++) { const d = eles[i][1] - eles[i - 1][1]; if (d > 0) g += d; } return g; }
+    function reProfileSvg(eles) {
+      if (!eles || eles.length < 2) return '';
+      const W = 340, H = 56, mx = eles[eles.length - 1][0] || 1;
+      const lo = Math.min(...eles.map(e => e[1])), hi = Math.max(...eles.map(e => e[1])), sp = Math.max(10, hi - lo);
+      const pts = eles.map(e => `${(e[0] / mx * W).toFixed(1)},${(H - 4 - (e[1] - lo) / sp * (H - 10)).toFixed(1)}`).join(' ');
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" aria-label="Profil d'altitude"><polygon points="0,${H} ${pts} ${W},${H}" fill="rgba(52,211,153,.18)"></polygon><polyline points="${pts}" fill="none" stroke="#34d399" stroke-width="2"></polyline></svg>`;
+    }
+    function reRenderBar() {
+      if (!re) return;
+      const c = reCoords(), km = reLenKm(c);
+      document.getElementById('reStats').innerHTML = `<span>${km.toFixed(2).replace('.', ',')} km</span><span>D+ ${re.eles ? Math.round(reGain(re.eles)) + ' m' : '…'}</span>${re.busy ? '<span style="color:#fbbf24">calcul…</span>' : ''}`;
+      document.getElementById('reProfile').innerHTML = reProfileSvg(re.eles);
+      const f = document.getElementById('reFollow'); if (f) f.checked = re.follow;
+    }
+    async function reUndo() { if (!re || re.busy) return; re.wps.pop(); re.segs.splice(Math.max(0, re.wps.length - 1)); reRedraw(); }
+    function reClear() { if (!re || re.busy) return; re.wps = []; re.segs = []; reRedraw(); }
+    async function reCloseLoop() {
+      if (!re || re.wps.length < 2 || re.busy) return;
+      const a = re.wps[0];
+      await reAddPoint(a.lat, a.lon);
+    }
+    function reOutAndBack() {
+      if (!re || re.wps.length < 2 || re.busy) return;
+      const back = re.segs.slice().reverse().map(sg => sg.slice().reverse());
+      const wb = re.wps.slice(0, -1).reverse();
+      re.wps = re.wps.concat(wb.map(p => ({ lat: p.lat, lon: p.lon })));
+      re.segs = re.segs.concat(back);
+      reRedraw();
+    }
+    // Boucle automatique de X km autour du départ
+    async function reAutoLoop() {
+      if (!re || !re.map || re.busy) return;
+      const km = parseFloat(document.getElementById('reLoopKm').value) || 8;
+      re.loopKm = km;
+      const c = re.wps[0] || (() => { const m = re.map.getCenter(); return { lat: m.lat, lon: m.lng }; })();
+      const th = Math.random() * 2 * Math.PI;
+      const build = async (rM) => {
+        const dLat = rM / 111320, dLon = rM / (111320 * Math.cos(c.lat * Math.PI / 180));
+        const C = { lat: c.lat + dLat * Math.sin(th), lon: c.lon + dLon * Math.cos(th) };
+        const pts = [c];
+        [90, 180, 270].forEach(a => { const ang = th + Math.PI + a * Math.PI / 180; pts.push({ lat: C.lat + dLat * Math.sin(ang), lon: C.lon + dLon * Math.cos(ang) }); });
+        pts.push({ lat: c.lat, lon: c.lon });
+        re.wps = []; re.segs = [];
+        for (const p of pts) await reAddPoint(p.lat, p.lon, true);
+        return reLenKm(reCoords());
+      };
+      reStatus('Recherche d\'une boucle…');
+      let r = km * 1000 / (2 * Math.PI) * 0.8;
+      let got = await build(r);
+      if (got > 0 && Math.abs(got - km) / km > 0.12) { r *= km / got; got = await build(r); }
+      reRedraw(true);
+      reStatus(`Boucle de ${got.toFixed(1).replace('.', ',')} km : déplace les points pour l'ajuster, ou relance pour une autre`);
+    }
+    function reGpx(name, coords, eles) {
+      // altitude interpolée sur chaque point
+      let cum = 0, j = 0;
+      const pts = coords.map((p, i) => {
+        if (i) cum += haversineM({ lat: coords[i - 1][0], lon: coords[i - 1][1] }, { lat: p[0], lon: p[1] }) / 1000;
+        let ele = '';
+        if (eles && eles.length > 1) {
+          while (j < eles.length - 2 && eles[j + 1][0] < cum) j++;
+          const a = eles[j], b = eles[Math.min(j + 1, eles.length - 1)];
+          const f = b[0] > a[0] ? Math.max(0, Math.min(1, (cum - a[0]) / (b[0] - a[0]))) : 0;
+          ele = `<ele>${(a[1] + (b[1] - a[1]) * f).toFixed(1)}</ele>`;
+        }
+        return `<trkpt lat="${p[0].toFixed(6)}" lon="${p[1].toFixed(6)}">${ele}</trkpt>`;
+      });
+      return `<?xml version="1.0"?><gpx version="1.1" creator="Run Ai"><trk><name>${String(name).replace(/[<&]/g, '')}</name><trkseg>${pts.join('')}</trkseg></trk></gpx>`;
+    }
+    async function reSave() {
+      if (!re) return;
+      const c = reCoords();
+      if (c.length < 2) { reStatus('Pose au moins deux points', true); return; }
+      if (re.busy) { reStatus('Calcul en cours, patiente une seconde…', true); return; }
+      const name = (document.getElementById('reName').value || '').trim() || re.name || `Parcours ${reLenKm(c).toFixed(1).replace('.', ',')} km`;
+      if (!re.eles) { reStatus('Récupération des altitudes…'); await reFetchEles(); }
+      const route = parseGpx(reGpx(name, c, re.eles), name);
+      // Mes parcours
+      if (!Array.isArray(appData.myRoutes)) appData.myRoutes = [];
+      const step = Math.max(1, Math.ceil(c.length / 1500));
+      const item = {
+        id: re.editId || `rt_${Date.now()}`, name, km: route.totalKm, gain: route.gainM, at: todayISO(),
+        wps: re.wps.map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6)]),
+        segs: re.segs.map(sg => sg.filter((_, k) => k % step === 0 || k === sg.length - 1).map(p => [+p[0].toFixed(5), +p[1].toFixed(5)])),
+        eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null
+      };
+      const k = appData.myRoutes.findIndex(r => r.id === item.id);
+      if (k >= 0) appData.myRoutes[k] = item; else appData.myRoutes.unshift(item);
+      saveAppData();
+      modalRoute = route;
+      renderRouteInfo(); renderMyRoutes();
+      setGpxStatus(`✓ « ${name} » : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m — enregistre la séance pour le garder`);
+      closeRouteEditor();
+      showToast('🗺️ Parcours enregistré dans Mes parcours');
+    }
+    // Mes parcours (dans le paramétrage de la séance)
+    function myRouteToRoute(it) {
+      const c = []; (it.segs || []).forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; c.push(p); }));
+      return parseGpx(reGpx(it.name, c, it.eles), it.name);
+    }
+    function useMyRoute(id) {
+      const it = (appData.myRoutes || []).find(r => r.id === id);
+      if (!it) return;
+      try { modalRoute = myRouteToRoute(it); renderRouteInfo(); setGpxStatus(`✓ « ${it.name} » choisi — enregistre la séance pour le garder`); } catch (e) { setGpxStatus('⚠ Parcours illisible', true); }
+    }
+    function deleteMyRoute(id) {
+      if (!confirm('Supprimer ce parcours de Mes parcours ?')) return;
+      appData.myRoutes = (appData.myRoutes || []).filter(r => r.id !== id);
+      saveAppData(); renderMyRoutes();
+    }
+    function renderMyRoutes() {
+      const box = document.getElementById('myRoutesList');
+      if (!box) return;
+      const L0 = appData.myRoutes || [];
+      box.innerHTML = L0.length ? L0.map(r => `<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-2">
+          <div class="flex-1 min-w-0"><div class="text-[13px] font-bold text-white truncate">${plEsc(r.name)}</div><div class="text-[11px] text-slate-400">${r.km.toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m</div></div>
+          <button onclick="useMyRoute('${r.id}')" class="px-2.5 py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-bold">Utiliser</button>
+          ${r.wps ? '' : '<!--'}<button onclick="openRouteEditor('${r.id}')" aria-label="Modifier" class="px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">✏️</button>${r.wps ? '' : '-->'}
+          <button onclick="deleteMyRoute('${r.id}')" aria-label="Supprimer" class="px-2.5 py-2 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[11px] font-bold">🗑</button>
+        </div>`).join('') : '<span class="text-[11px] text-slate-500">Aucun parcours enregistré. Dessine-en un ou importe un GPX.</span>';
     }
 
     // ==================== FIN ANTICIPÉE ====================
@@ -7879,7 +8265,7 @@ ${analysisFormatPrompt()}`;
       const prompt = `Tu es un coach de course à pied prudent et précis. ${coachToneText()}
 Il est ${nowTxt}. Ma séance est prévue ${when}.
 Mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
-Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.
 Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionHuman(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h.
 Détail JSON : {"chauffe":${base.chauffe},"recup":${base.recup},"repet":${base.repet},"nbBlocs":${base.nbBlocs || 1},"recupBloc":${base.recupBloc || 0},"vitRecupBloc":${base.vitRecupBloc || 6},"pente":${base.pente},"segments":[${segs}]}
 Séances récentes :
@@ -8042,6 +8428,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const inp = document.getElementById('efInput');
       if (!inp) return;
       inp.value = formatSpeed(runnerEF());
+      renderRunnerTier();
       { const L = runnerLevels(); LEVEL_DISTS.forEach(([d, id]) => { const el = document.getElementById(id); if (el) el.value = L[d] ? fmtTime(L[d]) : ''; });
         renderLevelInfo();
         const ln = document.getElementById('lvlNote');
@@ -8459,10 +8846,20 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       });
     }
     function runnerLevels() { const r = runnerProfile(); return r.levels && typeof r.levels === 'object' ? r.levels : {}; }
+    const RUNNER_TIERS = [['debutant', '🌱 Débutant', 'moins d\'1 an de course'], ['intermediaire', '🏃 Intermédiaire', 'courses régulières'], ['confirme', '💪 Confirmé', 'entraînement structuré'], ['elite', '🏆 Élite', 'compétition à haut niveau']];
+    function runnerTier() { return runnerProfile().tier || ''; }
+    function runnerTierLabel() { const t = RUNNER_TIERS.find(x => x[0] === runnerTier()); return t ? t[1].replace(/^\S+\s/, '').toLowerCase() : ''; }
+    function renderRunnerTier() {
+      const box = document.getElementById('runnerTierChips');
+      if (!box) return;
+      box.innerHTML = RUNNER_TIERS.map(([k, l, sub]) => `<button type="button" onclick="setRunnerTier('${k}')" class="rounded-xl border text-left px-3 py-2 ${runnerTier() === k ? 'bg-amber-400 border-amber-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-200'}"><span class="block text-[14px] font-extrabold">${l}</span><span class="block text-[11px] font-semibold ${runnerTier() === k ? 'text-slate-800' : 'text-slate-400'}">${sub}</span></button>`).join('');
+    }
+    function setRunnerTier(k) { runnerProfile().tier = k; saveAppData(); renderRunnerTier(); }
     function runnerLevelsText() {
       const L = runnerLevels();
       const parts = LEVEL_DISTS.filter(([d]) => L[d]).map(([d]) => `${d === 21.1 ? 'semi' : d === 42.2 ? 'marathon' : d + ' km'} en ${fmtTime(L[d])}`);
-      return parts.length ? parts.join(', ') : 'non renseigné';
+      const tier = runnerTierLabel() ? `coureur ${runnerTierLabel()}` : '';
+      return [tier, parts.length ? parts.join(', ') : (tier ? '' : 'non renseigné')].filter(Boolean).join(' ; ');
     }
     function readRunnerBody() {
       const r = runnerProfile();
