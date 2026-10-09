@@ -69,6 +69,7 @@
     .pm-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
     .pm-x { width: 44px; height: 44px; border-radius: 22px; border: 1px solid #1e293b; background: #0f172a; color: #94a3b8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .pm-tabs { margin: 0 16px 12px; padding: 4px; border-radius: 16px; background: #0f172a; border: 1px solid #1e293b; display: grid; gap: 4px; }
+    .pm-tab { padding: 0 2px; }
     .pm-tab { height: 40px; border-radius: 12px; font-weight: 700; font-size: 13px; color: #94a3b8; background: transparent; }
     .pm-tab.on { background: var(--acc); color: #0b0f19; font-weight: 800; }
     .pm-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
@@ -95,6 +96,14 @@
     .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; transition: left .2s; }
     .sw:checked { background: var(--acc, #38bdf8); }
     .sw:checked::after { left: 21px; }
+    .wheel-box { position: relative; height: 176px; }
+    .wheel-box::before { content: ''; position: absolute; left: 0; right: 0; top: 66px; height: 44px; border-radius: 12px; background: rgba(52,211,153,.14); border: 1px solid rgba(52,211,153,.5); pointer-events: none; }
+    .wheel { position: relative; height: 176px; overflow-y: scroll; scroll-snap-type: y mandatory; padding: 66px 0; box-sizing: border-box; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+    .wheel::-webkit-scrollbar { display: none; }
+    .wheel > div { height: 44px; line-height: 44px; scroll-snap-align: center; text-align: center; font-size: 20px; font-weight: 800; color: #64748b; }
+    .wheel > div.sel { color: #fff; font-size: 26px; }
+    .act-chip { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #334155; background: #0b1324; color: #cbd5e1; font-weight: 700; font-size: 14px; }
+    .act-chip.on { background: #34d399; border-color: #34d399; color: #03140d; font-weight: 800; }
     .act-tile { min-height: 120px; border-radius: 20px; border: 1.5px solid #1e293b; background: #0c1424; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px; text-align: center; }
     .act-tile:active { transform: scale(.97); }
     .act-tile.on { border-color: #34d399; background: rgba(52,211,153,.1); }
@@ -137,6 +146,10 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
+    body.free-ctl #circleZone svg { width: 12.5rem !important; height: 12.5rem !important; }
+    body.free-ctl #topZone { margin-bottom: 1rem !important; }
+    body.free-ctl #bottomZone { margin-top: 1rem !important; }
+    body.free-ctl #stageSpeedBig { font-size: 4.5rem !important; }
     #btnMainToggle.ctl-big svg { width: 30px; height: 30px; }
     .session-end-btn { opacity: 0.35; pointer-events: none; }
     body.started .session-end-btn { opacity: 1; pointer-events: auto; }
@@ -254,8 +267,8 @@
         <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300 pt-1"></div>
         <button onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
       </div>
-      <div class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
-      <div class="text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
+      <div id="homeRestTitle" class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
+      <div id="homeRestText" class="text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
       <div id="homeRestNext" class="text-sm text-slate-200 leading-snug"></div>
       <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
       <button id="homeRestNextBtn" onclick="launchNextAnyway()" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
@@ -324,10 +337,17 @@
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
       </div>
     </div>
-    <div id="freeSpeedCtl" class="flex items-center gap-3 hidden">
-      <button onclick="adjustFreeSpeed(-0.5)" class="w-16 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">−</button>
-      <span class="text-[11px] text-slate-400 font-bold">vitesse tapis</span>
-      <button onclick="adjustFreeSpeed(0.5)" class="w-16 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">+</button>
+    <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 hidden">
+      <div class="flex items-center gap-3">
+        <button onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">−</button>
+        <span id="freeSpeedLbl" class="w-28 text-center text-[13px] text-slate-300 font-bold">vitesse</span>
+        <button onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">+</button>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">−</button>
+        <span id="freePenteLbl" class="w-28 text-center text-[13px] text-slate-300 font-bold">pente</span>
+        <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">+</button>
+      </div>
     </div>
 
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
@@ -628,9 +648,10 @@
         <h2 class="pm-title">Mon profil</h2>
         <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <div class="pm-tabs" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="pm-tabs" style="grid-template-columns:repeat(5,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
         <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
+        <button type="button" class="pm-tab" data-t="progres" onclick="setPmTab('goalModal','progres')">Progrès</button>
         <button type="button" class="pm-tab" data-t="coach" onclick="setPmTab('goalModal','coach')">Coach</button>
         <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')">Plan</button>
       </div>
@@ -718,6 +739,9 @@
           </div>
         </div>
 
+        <!-- ===== PROGRÈS ===== -->
+        <div class="pm-panel pm-off" data-p="progres" id="progressPanel"></div>
+
         <!-- ===== COACH ===== -->
         <div class="pm-panel pm-off" data-p="coach">
           <div id="coachProfileBox" class="pm-card" style="border-color:#3b2a63">
@@ -771,6 +795,24 @@
     </div>
   </div>
 
+
+  <!-- Faire une séance prévue un autre jour : avis du coach -->
+  <div id="chkModal" class="pm hidden" style="--acc:#38bdf8;z-index:85">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 class="pm-title">Faire cette séance ?</h2><button onclick="document.getElementById('chkModal').classList.add('hidden')" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
+      <div id="chkBody" class="pm-body custom-scroll flex flex-col gap-3"></div>
+      <div id="chkFoot" class="pm-foot"></div>
+    </div>
+  </div>
+
+  <!-- Détail de l'analyse du coach -->
+  <div id="anaModal" class="pm hidden" style="--acc:#a78bfa;z-index:90">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 class="pm-title">Analyse du coach</h2><button onclick="document.getElementById('anaModal').classList.add('hidden')" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
+      <div id="anaBody" class="pm-body custom-scroll flex flex-col gap-3"></div>
+      <div class="pm-foot"><button onclick="document.getElementById('anaModal').classList.add('hidden')" class="pm-save">Fermer</button></div>
+    </div>
+  </div>
 
   <!-- ==================== CRÉER UNE ACTIVITÉ ==================== -->
   <div id="actModal" class="pm hidden" style="--acc:#34d399;z-index:66">
@@ -1635,6 +1677,21 @@
       timerState.totalRemainingMs = Math.max(0, rest);
     }
 
+    // Le dernier segment d'une répétition est-il une récup (effort / récup) ?
+    function isRecoveryTail(pyr) {
+      const segs = (pyr || []).filter(p => (parseFloat(p.duration) || 0) > 0 && p.speed > 0);
+      if (segs.length < 2) return false;
+      const sp = segs.map(p => +p.speed);
+      const last = sp[sp.length - 1], prev = sp[sp.length - 2];
+      if (!(last < prev)) return false;
+      if (segs.length === 2) return true;
+      // Alternance effort / récup avec des récups identiques et plus lentes que tous les efforts
+      if (segs.length % 2 === 0) {
+        const work = sp.filter((_, i) => i % 2 === 0), rest = sp.filter((_, i) => i % 2 === 1);
+        return rest.every(v => v === rest[0]) && rest[0] < Math.min(...work);
+      }
+      return false;
+    }
     function buildCurrentSessionStages() {
       const sess = window.__buildOverride || getActiveSession();
       const stages = [];
@@ -1652,9 +1709,11 @@
         let first = true;
         for (let r = 1; r <= reps; r++) {
           let repFirst = true;
-          sess.pyramide.forEach(step => {
+          sess.pyramide.forEach((step, si) => {
             const d = Math.round((parseFloat(step.duration) || 0) * 60);
             if (d <= 0) return;
+            // Dernière série du dernier bloc : la récup finale est remplacée par le retour au calme
+            if (b === nb && r === reps && si === sess.pyramide.length - 1 && sess.recup > 0 && !(sess.extension && sess.extension.minutes > 0) && isRecoveryTail(sess.pyramide)) return;
             stages.push({
               type: 'palier',
               name: `Palier ${formatSpeed(step.speed)} km/h`,
@@ -1792,6 +1851,12 @@
       updateLiveMetrics();
       const fsc = document.getElementById('freeSpeedCtl');
       if (fsc) fsc.classList.toggle('hidden', !(sess.free && sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished));
+      document.body.classList.toggle('free-ctl', !!(fsc && !fsc.classList.contains('hidden')));
+      if (sess.free) {
+        const sl = document.getElementById('freeSpeedLbl'), pl = document.getElementById('freePenteLbl');
+        if (sl) sl.textContent = `vitesse ${formatSpeed(curStage ? curStage.speed : 0).replace('.', ',')}`;
+        if (pl) pl.textContent = `pente ${String(sess.pente || 0).replace('.', ',')} %`;
+      }
       const infoLine = document.getElementById('stageInfoLine');
       if (infoLine) {
         const done = timerState.sessionStarted && timerState.finished;
@@ -2170,7 +2235,8 @@
         gpsPieces().forEach(x => set.add(x));
         if (fuelRemindersOn()) {
           const pl = fuelPlanForMinutes(timerState.totalSessionMs / 60000);
-          t.drink.forEach(x => set.add(x)); // utilisé écran verrouillé (km estimés)
+          t.drink.forEach(x => set.add(x));
+          set.add(drinkText()); // « boire » après chaque km
           if (pl.some(x => x.kind === 'fuel')) t.fuel.forEach(x => set.add(x));
         }
         if (appData.audioSettings.encouragements !== false) {
@@ -4192,6 +4258,7 @@
       };
 
       appData.history.unshift(newEntry);
+      if (!sess.free) sess.doneHistId = newEntry.id; // la séance prévue est faite
       saveAppData();
       updateHistoryTable();
       closeValidationModal();
@@ -4244,6 +4311,109 @@
       if (iso && iso > todayISO()) { const d = parseISODateLocal(iso); d.setFullYear(d.getFullYear() - 1); iso = toISODateLocal(d); }
       return iso;
     }
+    // Une séance prévue est-elle déjà faite ? (lien direct, ou même date et même titre pour les anciennes)
+    function isSessionDone(s) {
+      if (!s) return false;
+      const H = appData.history || [];
+      if (s.doneHistId && H.some(h => h.id === s.doneHistId)) return true;
+      const title = `Semaine ${s.semaine} • ${String(s.jour || '').toUpperCase()}`;
+      return H.some(h => !h.cross && h.sessionTitle === title && (h.date === s.date || histISO(h) === s.dateISO));
+    }
+    function stripWarmCool(t) {
+      return String(t || '').replace(/^\s*Chauffe\s*[^+]*\+\s*/i, '').replace(/\s*\+\s*(Récup|retour au calme)\s*[\d'",.\s]+$/i, '').trim();
+    }
+    // ==================== PROGRÈS & RECORDS ====================
+    function runHistory() { return (appData.history || []).filter(h => h && !h.cross && h.isVal !== false).map(h => Object.assign({ _iso: histISO(h) }, h)); }
+    function fmtDateShort(iso) { const d = parseISODateLocal(iso); return d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''; }
+    function computeRecords() {
+      const H = runHistory();
+      const best = (fn) => { let b = null; H.forEach(h => { const v = fn(h); if (v && (!b || v > b.v)) b = { v, iso: h._iso }; }); return b; };
+      const segBest = minSec => h => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      return {
+        dist: best(h => parseFloat(h.summary && h.summary.distKm) || 0),
+        dur: best(h => +h.durationMin || 0),
+        v3: best(segBest(180)),
+        v10: best(segBest(600)),
+        n: H.length
+      };
+    }
+    // Cardio à vitesse d'endurance : premières séances comparées aux dernières
+    function hrProgress() {
+      const ef = runnerEF();
+      const pts = [];
+      runHistory().forEach(h => (h.seg || []).forEach(x => { if (x.sec >= 180 && x.avgHr && x.avgKmh && Math.abs(x.avgKmh - ef) <= 0.75) pts.push({ iso: h._iso, hr: x.avgHr }); }));
+      if (pts.length < 4) return null;
+      pts.sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+      const k = Math.min(3, Math.floor(pts.length / 2));
+      const avg = a => Math.round(a.reduce((x, p) => x + p.hr, 0) / a.length);
+      return { speed: ef, before: avg(pts.slice(0, k)), now: avg(pts.slice(-k)) };
+    }
+    function weeklyKm(nWeeks) {
+      const H = runHistory(), w0 = weekStartISO(todayISO()), out = [];
+      for (let i = nWeeks - 1; i >= 0; i--) {
+        const d = parseISODateLocal(w0); d.setDate(d.getDate() - 7 * i);
+        const a = toISODateLocal(d); const e = new Date(d); e.setDate(e.getDate() + 6); const b = toISODateLocal(e);
+        const list = H.filter(h => h._iso && h._iso >= a && h._iso <= b);
+        out.push({ start: a, km: list.reduce((x, h) => x + (parseFloat(h.summary && h.summary.distKm) || computeKmFromHist(h)), 0), n: list.length });
+      }
+      return out;
+    }
+    function computeKmFromHist(h) { // séances sans capteur : distance estimée d'après les segments
+      return (h.seg || []).reduce((x, sg) => x + (sg.avgKmh || 0) * (sg.sec || 0) / 3600, 0);
+    }
+    function barChartSvg(data, id) {
+      const W = 340, Hh = 150, pad = 22, bw = (W - 8) / data.length;
+      const max = Math.max(5, ...data.map(d => d.km));
+      const bars = data.map((d, i) => {
+        const h = Math.max(d.km > 0 ? 4 : 0, (Hh - pad - 18) * d.km / max), x = 4 + i * bw + bw * 0.18, w = bw * 0.64, y = Hh - pad - h;
+        const cur = i === data.length - 1;
+        const label = `Semaine du ${fmtDateShort(d.start)} : ${d.km.toFixed(1).replace('.', ',')} km (${d.n} séance${d.n > 1 ? 's' : ''})`;
+        return `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${label.replace(/'/g, "\\'")}'">
+          <rect x="${x - bw * 0.18}" y="0" width="${bw}" height="${Hh - pad}" fill="transparent"></rect>
+          ${h ? `<path d="M${x},${Hh - pad} V${y + 4} Q${x},${y} ${x + 4},${y} H${x + w - 4} Q${x + w},${y} ${x + w},${y + 4} V${Hh - pad} Z" fill="${cur ? '#34d399' : 'rgba(52,211,153,.55)'}"><title>${label}</title></path>` : ''}
+          ${cur || d.km === max ? `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" font-size="11" font-weight="800" fill="#e2e8f0">${d.km.toFixed(0)}</text>` : ''}
+          <text x="${x + w / 2}" y="${Hh - 6}" text-anchor="middle" font-size="10" fill="#64748b">${cur ? 'cette sem.' : parseISODateLocal(d.start).getDate() + '/' + (parseISODateLocal(d.start).getMonth() + 1)}</text>
+        </g>`;
+      }).join('');
+      return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Kilomètres par semaine"><line x1="0" x2="${W}" y1="${Hh - pad}" y2="${Hh - pad}" stroke="#334155" stroke-width="1"></line>${bars}</svg>`;
+    }
+    function lineChartSvg(pts, id) {
+      const W = 340, Hh = 140, pad = 22, n = pts.length;
+      const x = i => 10 + (W - 20) * (n === 1 ? 0.5 : i / (n - 1)), y = v => 8 + (Hh - pad - 16) * (1 - v / 100);
+      const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.p).toFixed(1)}`).join(' ');
+      const grid = [25, 50, 75].map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b" stroke-width="1"></line><text x="2" y="${y(v) - 3}" font-size="9" fill="#475569">${v} %</text>`).join('');
+      const dots = pts.map((p, i) => `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${fmtDateShort(p.d)} : ${p.p} %'"><circle cx="${x(i)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><circle cx="${x(i)}" cy="${y(p.p)}" r="${i === n - 1 ? 5 : 3}" fill="#fbbf24" stroke="#0c1424" stroke-width="2"><title>${fmtDateShort(p.d)} : ${p.p} %</title></circle></g>`).join('');
+      const last = pts[n - 1];
+      return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chances de réussite">${grid}<path d="${path}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"></path>${dots}
+        <text x="${Math.min(W - 30, x(n - 1))}" y="${y(last.p) - 10}" text-anchor="middle" font-size="12" font-weight="800" fill="#fde68a">${last.p} %</text>
+        <text x="10" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(pts[0].d)}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(last.d)}</text></svg>`;
+    }
+    function renderProgress() {
+      const box = document.getElementById('progressPanel');
+      if (!box) return;
+      const R0 = computeRecords();
+      if (!R0.n) { box.innerHTML = `<div class="pm-card"><span class="text-[14px] text-slate-300">Tes records et tes progrès apparaîtront ici après ta première séance validée.</span></div>`; return; }
+      const row = (ic, lbl, val, iso) => `<div class="pm-row"><div class="pm-rt">${ic} ${lbl}${iso ? `<small>${fmtDateShort(iso)}</small>` : ''}</div><span style="font-size:18px;font-weight:800;color:#fde68a;white-space:nowrap">${val}</span></div>`;
+      const rec = [
+        R0.dist ? row('🛣️', 'Plus longue distance', `${R0.dist.v.toFixed(1).replace('.', ',')} km`, R0.dist.iso) : '',
+        R0.dur ? row('⏱️', 'Plus longue séance', formatMinSec(R0.dur.v).replace(/'\d+"$/, "'").replace(/"$/, ''), R0.dur.iso) : '',
+        R0.v3 ? row('⚡', 'Meilleure vitesse tenue 3 min', `${formatSpeed(R0.v3.v).replace('.', ',')} km/h`, R0.v3.iso) : '',
+        R0.v10 ? row('🔥', 'Meilleure vitesse tenue 10 min', `${formatSpeed(R0.v10.v).replace('.', ',')} km/h`, R0.v10.iso) : ''
+      ].join('');
+      const wk = weeklyKm(8);
+      const last4 = wk.slice(4).reduce((a, w) => a + w.km, 0), prev4 = wk.slice(0, 4).reduce((a, w) => a + w.km, 0);
+      const hp = hrProgress();
+      const prog = [
+        `<div class="pm-row" style="border-top:0"><div class="pm-rt">📦 4 dernières semaines<small>${prev4 ? `contre ${prev4.toFixed(0)} km les 4 précédentes` : 'premières semaines enregistrées'}</small></div><span style="font-size:18px;font-weight:800;color:${last4 >= prev4 ? '#34d399' : '#fbbf24'}">${last4.toFixed(0)} km</span></div>`,
+        hp ? `<div class="pm-row"><div class="pm-rt">❤️ Cardio à ${formatSpeed(hp.speed).replace('.', ',')} km/h<small>${hp.now < hp.before ? 'plus bas : ta forme progresse' : hp.now > hp.before ? 'plus haut : fatigue ou chaleur ?' : 'stable'}</small></div><span style="font-size:18px;font-weight:800;color:${hp.now <= hp.before ? '#34d399' : '#fbbf24'}">${hp.before} → ${hp.now}</span></div>` : '',
+        `<div class="pm-row"><div class="pm-rt">✅ Séances validées</div><span style="font-size:18px;font-weight:800">${R0.n}</span></div>`
+      ].join('');
+      const ph = (appData.goalProbHist || []).slice(-30);
+      box.innerHTML = `<div class="pm-card" style="gap:0;border-color:rgba(251,191,36,.45)"><span class="pm-cap" style="color:#fbbf24;padding-bottom:6px">🏆 Mes records</span>${rec || '<span class="text-[13px] text-slate-400 py-2">Pas encore de record mesuré (il faut des séances avec capteurs ou GPS).</span>'}</div>
+        <div class="pm-card" style="gap:0"><span class="pm-cap" style="padding-bottom:6px">📈 Mes progrès</span>${prog}</div>
+        <div class="pm-card"><span class="pm-cap">Kilomètres par semaine</span>${barChartSvg(wk, 'wkChart')}<span id="wkChartCap" class="text-[12px] text-slate-400">Touche une barre pour le détail</span></div>
+        ${ph.length >= 2 ? `<div class="pm-card"><span class="pm-cap">Chances de réussir l'objectif</span>${lineChartSvg(ph, 'pbChart')}<span id="pbChartCap" class="text-[12px] text-slate-400">Touche un point pour le détail</span></div>` : ''}`;
+    }
     function weekStartISO(iso) {
       const d = parseISODateLocal(iso) || new Date();
       d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
@@ -4271,11 +4441,12 @@
       const dayIso = [...Array(7)].map((_, i) => { const d = new Date(d0); d.setDate(d.getDate() + i); return toISODateLocal(d); });
       const w6 = dayIso[6];
       const planned = appData.sessions.filter(x => x.dateISO && x.dateISO >= w0 && x.dateISO <= w6);
+      const plannedLeft = planned.filter(x => !isSessionDone(x));
       const done = items.filter(i => i.type === 'validated' && i.iso >= w0 && i.iso <= w6);
       const doneRun = done.filter(i => !i.cross);
       const kmDone = doneRun.reduce((a, i) => a + (parseFloat(i.summary && i.summary.distKm) || 0), 0);
       const kmPlan = planned.reduce((a, x) => a + computeSessionDistanceKm(x), 0);
-      const nPlan = Math.max(planned.length, doneRun.length);
+      const nPlan = Math.max(planned.length, doneRun.length + plannedLeft.length);
       const pct = kmPlan > 0 ? Math.min(100, Math.round(kmDone / kmPlan * 100)) : (nPlan ? Math.round(doneRun.length / nPlan * 100) : 0);
       const fmt = d => parseISODateLocal(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
       const L = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -4316,7 +4487,7 @@
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
           ${s.notes ? `<div style="font-size:12px;color:#94a3b8">📝 ${plEsc(s.notes)}</div>` : ''}
           <div class="grid grid-cols-3 gap-2">
-            <button onclick="loadPlannedSessionToChrono(${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#7dd3fc">▶ Charger</button>
+            <button onclick="loadPlannedSessionToChrono(${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#7dd3fc">▶ La faire</button>
             <button onclick="editHistoryItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
             <button onclick="deleteItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
           </div>
@@ -4359,7 +4530,7 @@
       const d = parseISODateLocal(item.iso);
       const dTxt = d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })) : item.date;
       const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, summaryText(item.summary).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
-      const title = item.cross ? (item.note || item.title) : (String(item.details || '').split(' — ')[0] || item.title);
+      const title = item.cross ? (item.note || item.title) : (stripWarmCool(String(item.details || '').split(' — ')[0]) || item.title);
       return `<div class="pl-card done">
         <div class="flex items-center gap-3">
           <div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -4371,7 +4542,7 @@
           <button onclick="toggleDetailRow('${item.id}')" aria-label="Détails" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
-          <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(item.details)}</div>
+          <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(stripWarmCool(item.details))}</div>
           ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
           ${item.cross ? '' : runDataBlockHtml(item.track, item.seg)}
           ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
@@ -4392,9 +4563,9 @@
         type: 'validated', rawIdx: idx, id: h.id, title: h.sessionTitle, date: h.date, iso: histISO(h), pente: h.pente, duration: h.durationMin,
         feeling: h.feeling, note: h.note, details: h.details, summary: h.summary, track: h.track, seg: h.seg, analysis: h.analysis, cross: h.cross, sessionTitle: h.sessionTitle
       }));
-      appData.sessions.forEach((s, sIdx) => items.push({
+      appData.sessions.forEach((s, sIdx) => isSessionDone(s) ? null : items.push({
         type: 'planned', rawIdx: sIdx, id: s.id, title: formatSessTitle(s), date: s.date || '--/--', iso: s.dateISO || guessISOFromDDMM(s.date), pente: s.pente,
-        duration: computeSessionTotalMin(s), details: describeSessionHuman(s)
+        duration: computeSessionTotalMin(s), details: capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))
       }));
       (appData.crossPlan || []).forEach(c => items.push({ type: 'crossplan', id: c.id, iso: c.dateISO, item: c }));
       const done = items.filter(i => i.type === 'validated');
@@ -4444,6 +4615,12 @@
         if (done.length) { sec('Séances faites'); done.forEach(i => out.push(plDoneCard(i))); }
       }
       box.innerHTML = out.join('');
+      box.onclick = e => {
+        if (e.target.closest('button, a, input, select, textarea, label, [id^="detail_"]')) return;
+        const card = e.target.closest('.pl-card');
+        const d = card && card.querySelector('[id^="detail_"]');
+        if (d) d.classList.toggle('hidden');
+      };
       refreshAllIcons();
     }
 
@@ -4453,11 +4630,79 @@
     }
 
     function loadPlannedSessionToChrono(idx) {
-      appData.activeSessionIndex = idx;
-      saveAppData();
-      reloadChrono();
+      const s = appData.sessions[idx];
+      if (!s) return;
+      if (!s.dateISO || s.dateISO === todayISO()) { doSessionToday(idx, null); return; }
+      openSessionCheck(idx);
+    }
+    // Faire la séance aujourd'hui (déplacée à aujourd'hui, éventuellement modifiée)
+    function doSessionToday(idx, modified) {
+      const s = appData.sessions[idx];
+      if (!s) return;
+      const d = new Date();
+      if (s.dateISO !== todayISO()) { s.movedFrom = s.dateISO || ''; s.dateISO = toISODateLocal(d); s.date = toDDMM(d); s.jour = weekdayName(d); }
+      if (modified) {
+        if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; s.planOriginal = b; }
+        const after = proposalToSession(s, modified.seance);
+        ['chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide'].forEach(k => { s[k] = after[k]; });
+        s.adapted = { at: todayISO(), resume: String(modified.resume || 'Adaptée par le coach') };
+      }
+      sortSessionsKeep(s);
+      appData.activeSessionIndex = appData.sessions.indexOf(s);
+      homeShowNextAnyway = false;
+      saveAppData(); reloadChrono(); updateHistoryTable();
+      document.getElementById('chkModal').classList.add('hidden');
       closeHistoryModal();
-      showToast("Séance chargée sur le chronomètre !");
+      showHome();
+      showToast("✅ Séance prête pour aujourd'hui");
+    }
+    let chkProposal = null;
+    async function openSessionCheck(idx) {
+      const s = appData.sessions[idx];
+      const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      const when = parseISODateLocal(s.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const head = `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · prévue ${when}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km</span></div>`;
+      m.classList.remove('hidden');
+      chkProposal = null;
+      const btns = (mod) => `<div class="grid grid-cols-1 gap-2">
+          <button onclick="doSessionToday(${idx}, null)" class="pm-save" style="background:#38bdf8">▶ La faire aujourd'hui telle quelle</button>
+          ${mod ? `<button onclick="doSessionToday(${idx}, chkProposal)" class="pm-save" style="background:#fbbf24">✏️ Faire la version modifiée</button>` : ''}
+          <button onclick="document.getElementById('chkModal').classList.add('hidden')" class="pm-btn" style="height:48px">Ne pas la faire</button>
+        </div>`;
+      if (!getGeminiKey()) { body.innerHTML = head + `<div class="pm-card text-[14px] text-slate-300">Sans clé Gemini, pas d'avis du coach. Tu peux quand même la faire aujourd'hui.</div>`; foot.innerHTML = btns(false); return; }
+      body.innerHTML = head + `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach vérifie si c'est une bonne idée aujourd'hui…</div></div>`;
+      foot.innerHTML = '';
+      const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
+      const s0 = appData.sessions.find(x => x.dayFeel && x.dayFeel.at === t);
+      const past = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(x => x !== s && x.dateISO && x.dateISO >= t && !isSessionDone(x)).slice(0, 5).map(x => `- ${formatSessTitle(x)} le ${x.dateISO} : ${describeSessionHuman(x)}`).join('\n') || '- aucune';
+      const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
+      const prompt = `Tu es un coach de course à pied prudent et précis. ${coachToneText()}
+Le coureur veut faire AUJOURD'HUI (${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}) une séance prévue ${when}.
+Séance : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : 'tapis'}.
+Détail JSON : {"chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"pente":${s.pente},"segments":[${segs}]}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.${s0 ? ` Sensations du jour : ${feelSummary(s0.dayFeel)}.` : ''}
+Séances récentes :
+${past}
+Séances prévues à venir :
+${next}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Est-ce pertinent de la faire aujourd'hui (enchaînement avec les séances d'hier et de demain, fatigue, place dans le plan) ? Va droit au but.
+Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","avis":"2 phrases courtes en tutoyant","resume":"si modifiée : la modification en une phrase","seance":{même format que le détail JSON, seulement si modifiée}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        const v = String(j.verdict || '').toLowerCase();
+        const mod = v.startsWith('modif') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        if (mod) chkProposal = j;
+        const V = v.startsWith('ne') ? ['⛔ Mieux vaut ne pas la faire', '#fb7185'] : mod ? ['✏️ Oui, mais modifiée', '#fbbf24'] : ['✅ Tu peux la faire telle quelle', '#34d399'];
+        let after = '';
+        if (mod) { const a = proposalToSession(s, j.seance); after = `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, a, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(a))} min)</span>`; }
+        body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
+        foot.innerHTML = btns(!!mod);
+      } catch (e) {
+        body.innerHTML = head + `<div class="pm-card text-rose-400">Avis impossible : ${plEsc(e.message || e)}</div>`;
+        foot.innerHTML = btns(false);
+      }
     }
 
     function deleteItem(id, type, rawIdx) {
@@ -4677,6 +4922,7 @@
       m.querySelectorAll('.pm-panel').forEach(p => p.classList.toggle('pm-off', p.dataset.p !== tab));
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
       if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
+      if (tab === 'progres') renderProgress();
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
     function mergeSensorsIntoAudio() {
@@ -5802,13 +6048,21 @@ Réponds uniquement avec le JSON.`;
       // Écran verrouillé : « bois » à chaque km estimé d'après les vitesses prévues
       if (fuelRemindersOn() && !opts.noDrink) {
         let d = kmDistanceNow(), tt = 0, next = Math.floor(d) + 1;
+        const starts = []; { let a = 0; for (let i = idx; i < stages.length; i++) { starts[i] = a; a += i === idx ? timerState.stageRemainingMs / 1000 : stages[i].durationSec; } }
+        const calmAt = (i, t) => {
+          if (stageIsCalm(stages[i])) return t;
+          for (let j = i + 1; j < stages.length; j++) if (stageIsCalm(stages[j])) return starts[j] + 8;
+          return t;
+        };
+        let lastDrinkT = -1e9;
         for (let i = idx; i < stages.length; i++) {
           const v = parseFloat(stages[i].speed) || 0;
           let left = i === idx ? timerState.stageRemainingMs / 1000 : stages[i].durationSec;
           while (v > 0 && d + v * left / 3600 >= next) {
             const dt = (next - d) / v * 3600;
             tt += dt; left -= dt; d = next;
-            ev.push({ t: tt, pieces: [pickNoRepeat('drink')], fixed: false, kind: 'drink' });
+            const at = calmAt(i, tt);
+            if (at - lastDrinkT > 90) { ev.push({ t: at, pieces: [drinkText()], fixed: false, kind: 'drink' }); lastDrinkT = at; }
             next++;
           }
           d += v * left / 3600; tt += left;
@@ -6056,6 +6310,8 @@ Réponds uniquement avec le JSON.`;
       g = Math.max(-0.45, Math.min(0.45, g));
       return 155.4 * g ** 5 - 30.4 * g ** 4 - 43.3 * g ** 3 + 46.3 * g ** 2 + 19.5 * g + 3.6;
     }
+    // Sur tapis, 1 % de pente compense l'absence de résistance de l'air : 1 % tapis ≈ plat en extérieur
+    function treadmillGrade(p) { return Math.max(0, (parseFloat(p) || 0) - 1); }
     function vapKmh(speed, gradePct) {
       return speed * minettiCost((gradePct || 0) / 100) / 3.6;
     }
@@ -6480,7 +6736,7 @@ Réponds uniquement avec le JSON.`;
       return appData.audioSettings.voiceLang === 'en' ? `Grade adjusted speed ${s}.` : `Allure ajustée à la pente : ${s.replace('.', ',')}.`;
     }
     function stageVapText(st) {
-      const v = vapKmh(parseFloat(st.speed) || 0, getActiveSession().pente || 0);
+      const v = vapKmh(parseFloat(st.speed) || 0, treadmillGrade(getActiveSession().pente));
       const s = formatSpeed(Math.round(v * 10) / 10);
       return appData.audioSettings.voiceLang === 'en' ? `Flat equivalent ${s}.` : `Équivalent plat : ${s.replace('.', ',')}.`;
     }
@@ -6578,8 +6834,8 @@ Réponds uniquement avec le JSON.`;
           parts.push(rt.offRoute ? `<span class="text-amber-300">🗺️ hors parcours</span>`
             : `<span class="text-emerald-300">🗺️ ${rt.progressKm.toFixed(1)}/${activeRoute().totalKm.toFixed(1)} km${rt.grade ? ` • ${rt.grade > 0 ? '+' : ''}${Math.round(rt.grade)}%` : ''}</span>`);
         }
-      } else if (cur && cur.type === 'palier' && sess.type !== 'exterieur' && Math.abs(sess.pente || 0) >= 1) {
-        parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, sess.pente) * 10) / 10)}</span>`);
+      } else if (cur && cur.type === 'palier' && sess.type !== 'exterieur' && treadmillGrade(sess.pente) >= 0.5) {
+        parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, treadmillGrade(sess.pente)) * 10) / 10)}</span>`);
       }
       box.innerHTML = parts.join('');
       box.classList.toggle('hidden', !parts.length || !timerState.sessionStarted);
@@ -6813,6 +7069,17 @@ Réponds uniquement en JSON :
 {"titre":"Récupération","texte":"quoi faire dans les 24 à 48 h (sommeil, hydratation, alimentation, activité), 1 à 2 phrases"},
 {"titre":"Plan","texte":"faut-il ajuster les prochaines séances ? quoi précisément, ou rien, 1 à 2 phrases"}]}`;
     }
+    const ANA_STORE = {};
+    function anaStore(j) { const k = 'a' + Object.keys(ANA_STORE).length; ANA_STORE[k] = j; return k; }
+    function openAnalysisDetail(k) {
+      const j = ANA_STORE[k];
+      if (!j) return;
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const icons = { 'Exécution': '🎯', 'Forme et progression': '📈', 'Objectif': '🏁', 'Récupération': '🛌', 'Plan': '🛠️' };
+      document.getElementById('anaBody').innerHTML = `<div class="pm-card">${analysisHtml(JSON.stringify(Object.assign({}, j, { details: [] })))}</div>`
+        + (j.details || []).filter(d => d && d.texte).map(d => `<div class="pm-card"><span style="font-size:15px;font-weight:800;color:#d8b4fe">${icons[d.titre] || '•'} ${esc(d.titre)}</span><span style="font-size:15px;line-height:1.5;color:#e2e8f0">${esc(d.texte)}</span></div>`).join('');
+      document.getElementById('anaModal').classList.remove('hidden');
+    }
     function analysisHtml(raw) {
       if (!raw) return '';
       let j = null;
@@ -6830,7 +7097,7 @@ Réponds uniquement en JSON :
         ${pts ? `<ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:#e2e8f0">${pts}</ul>` : ''}
         ${j.alerte ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4);color:#fecdd3;font-size:13px;font-weight:600">🚨 ${esc(j.alerte)}</div>` : ''}
         ${j.action ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e0f2fe;font-size:13px;font-weight:700">👉 ${esc(j.action)}</div>` : ''}
-        ${det ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#c4b5fd">Voir le détail</summary><div style="font-size:13px;line-height:1.45">${det}</div></details>` : ''}`;
+        ${det ? `<button type="button" onclick="openAnalysisDetail('${anaStore(j)}')" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:1px solid rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:14px">🔎 Voir le détail</button>` : ''}`;
     }
     async function analyzeSessionWithAI() {
       const out = document.getElementById('valAnalysis');
@@ -6977,11 +7244,13 @@ ${analysisFormatPrompt()}`;
         const target = tg.length ? tg.reduce((a, b) => a + b, 0) / tg.length : (parseFloat((timerState.stages[timerState.currentStageIndex] || {}).speed) || 0);
         const e1 = currentEle();
         const grade = (runData.kmStartEle !== null && e1 !== null) ? (e1 - runData.kmStartEle) / (10 * count) : 0;
+        if (fuelRemindersOn()) runData.drinkDueAt = runData.drinkDueAt || now; // « boire » : au prochain moment calme
         runData.kmPending = { n, avgKmh, hr, target, grade, measured: measuredSpeed(), at: now };
         // Voix IA : on génère l'annonce tout de suite (jusqu'à 1 min si le réseau est faible)
-        const kp = runData.kmPending;
-        kp.text = kmSummaryText(kp);
-        if (aiVoiceActive() && kp.text) {
+        const kp = runData.kmPending || {};
+        kp.text = sensors().kmAnnounce ? kmSummaryText(kp) : '';
+        if (!kp.text) { runData.kmPending = null; }
+        if (runData.kmPending && aiVoiceActive() && kp.text) {
           kp.wait = true;
           aiFetchWithRetry(kp.text, now + 60000).then(ok => { kp.wait = false; kp.ai = ok; });
         }
@@ -6999,6 +7268,7 @@ ${analysisFormatPrompt()}`;
       if ((remMs > 8500 && !isSpeaking()) || now - p.readyAt > 40000) {
         runData.kmPending = null;
         const txt = p.text || kmSummaryText(p);
+        if (!txt) return;
         if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]);
         else if (!tl.active) systemSpeak(txt);
       }
@@ -7046,10 +7316,6 @@ ${analysisFormatPrompt()}`;
             else if (r <= 0.8) parts.push(en ? "Heart rate under control." : "Cardio bien maîtrisé.");
           }
         }
-      }
-      if (fuelRemindersOn()) {
-        const ml = waterPlan(getActiveSession()).perKm;
-        parts.push(en ? `Drink about ${ml} millilitres.` : `Bois environ ${ml} millilitres.`);
       }
       return parts.filter(Boolean).join(' ');
     }
@@ -7103,13 +7369,45 @@ ${analysisFormatPrompt()}`;
       timerState.fuelPlan = fuelRemindersOn() ? fuelPlanForMinutes(totalMin).map(p => ({ at: p.atMin * 60000, kind: p.kind, done: false })) : [];
     }
     // Appelé à chaque tick : place le rappel dans un moment calme
+    // Séance de fractionné (efforts et récups) ou allure continue ?
+    function sessionIsInterval() {
+      const pal = timerState.stages.filter(x => x.type === 'palier' && !x.isFree);
+      return pal.some(x => x.intensity === 'easy') || new Set(pal.map(x => +x.speed)).size > 1 || timerState.stages.some(x => x.type === 'recupBloc');
+    }
+    function stageIsCalm(st) {
+      if (!st) return false;
+      if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') return true;
+      return !sessionIsInterval();
+    }
+    // Bon moment pour parler de boire / manger : récup (tapis), plat ou descente facile (extérieur), jamais pendant un effort
+    function isCalmMoment(remMs, elapsedMs) {
+      const st = timerState.stages[timerState.currentStageIndex];
+      if (!st || remMs <= 12000 || elapsedMs < 5000 || isSpeaking()) return false;
+      if (getActiveSession().type === 'exterieur' || gpsWanted()) {
+        const rt = runData.route;
+        const grade = activeRoute() && rt && rt.progressKm !== null && !rt.offRoute ? (rt.grade || 0) : 0;
+        if (grade > 1) return false; // en montée : on attend
+      }
+      return stageIsCalm(st);
+    }
+    function drinkText() {
+      const ml = waterPlan(getActiveSession()).perKm;
+      return appData.audioSettings.voiceLang === 'en' ? `Time to drink: about ${ml} millilitres.` : `Pense à boire : environ ${ml} millilitres.`;
+    }
     function fuelAnnouncements(remMs, elapsedMs) {
       const plan = timerState.fuelPlan || [];
       const sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
+      // Boire après chaque km, au prochain moment calme
+      if (runData.drinkDueAt && fuelRemindersOn() && isCalmMoment(remMs, elapsedMs)) {
+        runData.drinkDueAt = 0;
+        speakLive(drinkText());
+        return;
+      }
       for (const p of plan) {
         if (p.done || sessEl < p.at) continue;
-        if (sessEl > p.at + 120000) { p.done = true; continue; }
-        if (remMs > 9500 && elapsedMs >= 4500 && !isSpeaking()) {
+        if (sessEl > p.at + 900000) { p.done = true; continue; }
+        const late = sessEl > p.at + 600000; // après 10 min d'attente, on le dit dès que possible
+        if ((late ? (remMs > 9500 && elapsedMs >= 4500 && !isSpeaking()) : isCalmMoment(remMs, elapsedMs))) {
           p.done = true;
           speak([pickNoRepeat(p.kind)]);
         }
@@ -7894,12 +8192,12 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
     function selectTodaySession() {
       if (timerState.sessionStarted && !timerState.finished) return;
       const t = todayISO();
-      let idx = appData.sessions.findIndex(s => s.dateISO === t);
+      let idx = appData.sessions.findIndex(s => s.dateISO === t && !isSessionDone(s));
       if (idx < 0) {
         const cur = getActiveSession();
-        if (cur && cur.dateISO && cur.dateISO > t) return; // une séance future déjà choisie
+        if (cur && cur.dateISO && cur.dateISO > t && !isSessionDone(cur)) return; // une séance future déjà choisie
         let best = -1;
-        appData.sessions.forEach((s, i) => { if (s.dateISO && s.dateISO > t && (best < 0 || s.dateISO < appData.sessions[best].dateISO)) best = i; });
+        appData.sessions.forEach((s, i) => { if (s.dateISO && s.dateISO > t && !isSessionDone(s) && (best < 0 || s.dateISO < appData.sessions[best].dateISO)) best = i; });
         idx = best;
       }
       if (idx >= 0 && idx !== appData.activeSessionIndex) {
@@ -8479,7 +8777,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
     function homeFeelMode() {
       const t = todayISO();
       const busy = timerState.sessionStarted && !timerState.finished;
-      return (appData.sessions.some(s => s.dateISO === t) || homeShowNextAnyway || busy) ? 'adapt' : 'add';
+      return (appData.sessions.some(s => s.dateISO === t && !isSessionDone(s)) || homeShowNextAnyway || busy) ? 'adapt' : 'add';
     }
     function feelRecordedToday() {
       const s = getActiveSession();
@@ -8514,10 +8812,33 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       renderAct();
     }
     function closeActivityWizard() { document.getElementById('actModal').classList.add('hidden'); act = null; }
-    function actBack() { if (!act) return; if (act.step <= 1) { closeActivityWizard(); return; } act.step--; if (act.step < 4) act.advice = ''; renderAct(); }
+    function actBack() {
+      if (!act) return;
+      if (act.step <= 1) { closeActivityWizard(); return; }
+      act.step--;
+      if (act.step === 4 && act.mode === 'manual' && !actIsRun()) act.step = 3;
+      act.advice = ''; act.loading = false;
+      renderAct();
+    }
     function actIsRun() { return act && (act.type === 'tapis' || act.type === 'exterieur'); }
     function actTile(onclick, icon, title, sub, on) {
       return `<button type="button" onclick="${onclick}" class="act-tile ${on ? 'on' : ''}"><span class="text-3xl leading-none">${icon}</span><span class="text-[16px] font-extrabold">${title}</span>${sub ? `<span class="text-[12px] font-semibold text-slate-400">${sub}</span>` : ''}</button>`;
+    }
+    const ACT_WISHES = {
+      run: ['Au choix du coach', 'Endurance', 'Fractionné court', 'Fractionné long', 'Seuil', 'Sortie longue', 'Côtes', 'Récupération'],
+      velo: ['Au choix du coach', 'Récupération', 'Endurance', 'Intervalles', 'Côtes'],
+      muscu: ['Au choix du coach', 'Gainage', 'Jambes', 'Haut du corps', 'Corps entier', 'Mobilité']
+    };
+    const RUN_TYPES = [['fc', '⚡', 'Fractionné court', '30 s à 1 min vite'], ['fl', '🔥', 'Fractionné long', '3 à 5 min soutenu'], ['seuil', '🎯', 'Seuil', 'Allure tempo'], ['endu', '🌿', 'Endurance', 'Allure facile'], ['longue', '🛣️', 'Sortie longue', 'Plus d\'1 h tranquille'], ['cotes', '⛰️', 'Côtes', 'Montées et récups'], ['recup', '🫧', 'Récupération', 'Très facile']];
+    function wheelHtml(id, vals, cur, fmt) {
+      return `<div class="wheel-box"><div class="wheel" id="${id}" onscroll="wheelScroll('${id}')">${vals.map(v => `<div data-v="${v}" class="${v === cur ? 'sel' : ''}" onclick="this.parentNode.scrollTo({top:${vals.indexOf(v)}*44,behavior:'smooth'})">${fmt(v)}</div>`).join('')}</div></div>`;
+    }
+    function wheelInit(id, cur) { const el = document.getElementById(id); if (!el) return; const i = Array.from(el.children).findIndex(c => +c.dataset.v === cur); if (i >= 0) el.scrollTop = i * 44; }
+    function wheelScroll(id) {
+      const el = document.getElementById(id); if (!el) return;
+      const i = Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / 44)));
+      Array.from(el.children).forEach((c, k) => c.classList.toggle('sel', k === i));
+      if (act) act.dur = +el.children[i].dataset.v;
     }
     function renderAct() {
       if (!act) return;
@@ -8525,8 +8846,11 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       const title = document.getElementById('actTitle');
       const foot = document.getElementById('actFoot');
       const T = ACT_TYPES[act.type] || {};
-      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, 4)} sur 4${act.type ? ` · ${T.icon} ${T.label}` : ''}`;
+      const total = act.mode === 'manual' && !actIsRun() ? 4 : 5;
+      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, total)} sur ${total}${act.type ? ` · ${T.icon} ${T.label}` : ''}`;
       foot.innerHTML = '';
+      const back = document.getElementById('actBackBtn');
+      if (back) back.style.visibility = act.step > 1 ? 'visible' : 'hidden';
       if (act.step === 1) {
         title.textContent = 'Quelle activité ?';
         body.innerHTML = `<div class="grid grid-cols-2 gap-3">${Object.entries(ACT_TYPES).map(([k, t]) => actTile(`act.type='${k}';act.step=2;renderAct()`, t.icon, t.label, { tapis: 'Course sur tapis', exterieur: 'Course dehors', velo: 'Route, VTT ou home-trainer', muscu: 'Renforcement' }[k], act.type === k)).join('')}</div>`;
@@ -8537,22 +8861,38 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
             ${actTile(`act.when='now';act.step=3;renderAct()`, '⚡', 'Maintenant', "C'est parti tout de suite", act.when === 'now')}
             ${actTile(`act.when='later';renderAct()`, '📅', 'Plus tard', 'Ajouter au planning', act.when === 'later')}
           </div>
-          ${act.when === 'later' ? `<div class="pm-card mt-3"><label class="pm-lbl">Date de l'activité<input type="date" id="actDate" class="pm-in" value="${act.date || tmr}" min="${todayISO()}" onclick="openDatePicker && openDatePicker(this)" onchange="act.date=this.value"></label></div>` : ''}`;
+          ${act.when === 'later' ? `<div class="pm-card mt-3"><label class="pm-lbl">Date de l'activité<input type="date" id="actDate" class="pm-in" value="${act.date || tmr}" min="${todayISO()}" onchange="act.date=this.value"></label></div>` : ''}`;
         if (act.when === 'later') foot.innerHTML = `<button onclick="act.date=document.getElementById('actDate').value||act.date;if(!act.date){showToast('Choisis une date');return;}act.step=3;renderAct()" class="pm-save">Continuer</button>`;
       } else if (act.step === 3) {
-        title.textContent = 'Comment ?';
+        title.textContent = 'Qui prépare la séance ?';
         body.innerHTML = `<div class="grid grid-cols-1 gap-3">
-            ${actTile(`actChooseMode('coach')`, '🧠', 'Proposition du coach', 'Selon ton profil, ton objectif et tes sensations', false)}
-            ${actTile(`actChooseMode('manual')`, '✍️', 'Je la règle moi-même', actIsRun() ? 'Séance libre ou programme' : 'Durée et contenu', false)}
-          </div>
-          <div class="pm-card mt-3">
-            <label class="pm-lbl">Durée souhaitée
-              <select id="actDur" class="pm-in" onchange="act.dur=+this.value">${[20, 30, 45, 60, 75, 90].map(m => `<option value="${m}" ${act.dur === m ? 'selected' : ''}>${m} min</option>`).join('')}<option value="0" ${!act.dur ? 'selected' : ''}>Peu importe</option></select></label>
-            <label class="pm-lbl">Envie ou consigne (optionnel)<input id="actWish" class="pm-in" placeholder="${actIsRun() ? 'ex. du fractionné, une sortie tranquille…' : act.type === 'velo' ? 'ex. récupération, sortie longue…' : 'ex. gainage, haut du corps…'}" value="${actEsc(act.wish)}" oninput="act.wish=this.value"></label>
+            ${actTile(`actChooseMode('coach')`, '🧠', 'Le coach', 'Selon ton profil, ton objectif et tes sensations', act.mode === 'coach')}
+            ${actTile(`actChooseMode('manual')`, '✍️', 'Moi', actIsRun() ? 'Séance libre ou type de séance' : 'Durée et contenu', act.mode === 'manual')}
           </div>`;
+      } else if (act.step === 4 && act.mode === 'coach') {
+        title.textContent = 'Ce que tu veux';
+        const wishes = ACT_WISHES[actIsRun() ? 'run' : act.type];
+        if (!act.dur) act.dur = 45;
+        const durs = []; for (let m = 10; m <= 180; m += 5) durs.push(m);
+        body.innerHTML = `<div class="pm-card"><span class="pm-cap">Durée de l'activité</span>${wheelHtml('actWheel', durs, act.dur, m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`)}</div>
+          <div class="pm-card"><span class="pm-cap">Difficulté</span><div class="grid grid-cols-3 gap-2">${[['facile', '🙂 Facile'], ['moderee', '💪 Modérée'], ['difficile', '🔥 Difficile']].map(([v, l]) => `<button type="button" class="act-chip ${act.diff === v ? 'on' : ''}" onclick="act.diff='${v}';renderActKeepWheel()">${l}</button>`).join('')}</div></div>
+          <div class="pm-card"><span class="pm-cap">Envie</span><div class="flex flex-wrap gap-2">${wishes.map(w => `<button type="button" class="act-chip ${act.wish === w ? 'on' : ''}" onclick="act.wish='${w.replace(/'/g, "\\'")}';renderActKeepWheel()">${w}</button>`).join('')}</div></div>`;
+        setTimeout(() => wheelInit('actWheel', act.dur), 0);
+        foot.innerHTML = `<button onclick="proposeActivityWithCoach()" class="pm-save">🧠 Demander au coach</button>`;
+      } else if (act.step === 4 && act.mode === 'manual' && actIsRun()) {
+        title.textContent = 'Quelle séance ?';
+        body.innerHTML = `${actTile(`actPickRunType('libre')`, '🏃', 'Séance libre', 'Sans durée ni allure : vitesse et pente se règlent pendant la course', false)}
+          <span class="pm-cap" style="margin-top:6px">Ou un type de séance</span>
+          <div class="grid grid-cols-2 gap-3">${RUN_TYPES.filter(t => !(t[0] === 'cotes' && act.type !== 'tapis')).map(([k, ic, l, sub]) => actTile(`actPickRunType('${k}')`, ic, l, sub, false)).join('')}</div>`;
       } else {
         title.textContent = act.mode === 'coach' ? 'Proposition du coach' : 'Mon activité';
         if (act.loading) { body.innerHTML = `<div class="flex items-center gap-3 text-purple-300 font-bold p-4"><div class="w-5 h-5 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach prépare ta séance…</div>`; return; }
+        const f = act.form;
+        if (actIsRun() && f.libre) {
+          body.innerHTML = `<div class="pm-card"><span style="font-size:20px;font-weight:800">🏃 Séance libre</span><span class="text-[14px] text-slate-300 leading-snug">${act.type === 'tapis' ? 'Pas de durée ni d\'allure imposées. Pendant la course, règle la vitesse et la pente avec les boutons − / + sous le cercle.' : 'Pas de durée ni d\'allure imposées. Le chrono compte le temps et les km (GPS), avec bilans et conseils.'}</span></div>`;
+          foot.innerHTML = act.when === 'later' ? `<span class="text-[13px] text-amber-300 font-semibold">Une séance libre se lance au moment voulu : reviens en arrière et choisis un type de séance pour la planifier.</span>` : `<button onclick="launchActivity()" class="pm-save">▶ Lancer l'activité</button>`;
+          return;
+        }
         body.innerHTML = (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
           + actFormHtml()
           + `<div id="actAdvice">${act.advice || ''}</div>`;
@@ -8562,8 +8902,26 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
             <button onclick="launchActivity()" class="pm-save">${act.when === 'later' ? '📅 Ajouter au planning' : "▶ Lancer l'activité"}</button>
           </div>`;
       }
-      const back = document.getElementById('actBackBtn');
-      if (back) back.style.visibility = act.step > 1 ? 'visible' : 'hidden';
+    }
+    function renderActKeepWheel() { const w = document.getElementById('actWheel'); const top = w ? w.scrollTop : null; renderAct(); const w2 = document.getElementById('actWheel'); if (w2 && top !== null) w2.scrollTop = top; }
+    function actPickRunType(k) {
+      act.form = actDefaultForm();
+      const f = act.form, ef = runnerEF();
+      const vma = (estimateVma() || {}).vma || ef * 1.45;
+      const r5 = v => Math.round(v * 2) / 2, rec = Math.max(6, r5(ef - 1));
+      f.libre = k === 'libre';
+      const T = {
+        fc: { repet: 10, segs: [{ v: r5(vma * 0.95), d: 1 }, { v: rec, d: 1 }] },
+        fl: { repet: 5, segs: [{ v: r5(vma * 0.9), d: 3 }, { v: rec, d: 2 }] },
+        seuil: { repet: 3, segs: [{ v: r5(vma * 0.85), d: 8 }, { v: rec, d: 2 }] },
+        endu: { repet: 1, segs: [{ v: ef, d: 40 }] },
+        longue: { repet: 1, segs: [{ v: ef, d: 70 }] },
+        cotes: { repet: 8, pente: 5, segs: [{ v: r5(ef + 0.5), d: 1 }, { v: rec, d: 1.5 }] },
+        recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] }
+      }[k];
+      if (T) { f.repet = T.repet; f.segs = T.segs; if (T.pente !== undefined && act.type === 'tapis') f.pente = T.pente; if (T.chauffe !== undefined) f.chauffe = T.chauffe; if (T.recup !== undefined) f.recup = T.recup; }
+      act.runType = k;
+      act.step = 5; renderAct();
     }
     function actDefaultForm() {
       const r = runnerProfile();
@@ -8573,11 +8931,11 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
     }
     function actChooseMode(mode) {
       act.mode = mode;
-      act.dur = +(document.getElementById('actDur') || {}).value || 0;
-      act.wish = (document.getElementById('actWish') || {}).value || '';
-      act.step = 4; act.advice = ''; act.prop = null;
+      act.advice = ''; act.prop = null;
       act.form = actDefaultForm();
-      if (mode === 'coach') { proposeActivityWithCoach(); return; }
+      act.form.libre = false;
+      if (mode === 'coach') { act.diff = act.diff || 'moderee'; act.wish = act.wish || 'Au choix du coach'; act.dur = act.dur || 45; act.step = 4; }
+      else act.step = actIsRun() ? 4 : 5;
       renderAct();
     }
     // ----- Formulaire modifiable -----
@@ -8585,7 +8943,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       const f = act.form;
       if (actIsRun()) {
         const sess = actFormToSession();
-        const libreSwitch = `<div class="pm-row" style="border-top:0"><div class="pm-rt">Séance libre<small>Sans programme, à ton rythme</small></div><input type="checkbox" class="sw" ${f.libre ? 'checked' : ''} onchange="actReadForm();act.form.libre=this.checked;renderAct()"></div>`;
+        const libreSwitch = '';
         if (f.libre) {
           return `<div class="pm-card">${libreSwitch}
             ${act.type === 'tapis' ? `<div class="grid grid-cols-2 gap-2"><label class="pm-lbl">Vitesse (km/h)<input id="af_speed" type="number" step="0.5" class="pm-in c" value="${f.speed}"></label><label class="pm-lbl">Pente (%)<input id="af_pente" type="number" step="0.5" class="pm-in c" value="${f.pente}"></label></div>` : '<span class="text-[12px] text-slate-400">Le chrono compte le temps et les km (GPS), avec bilans et conseils.</span>'}
@@ -8687,8 +9045,8 @@ Prochaines séances prévues :
 ${next}`;
     }
     async function proposeActivityWithCoach() {
-      if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données) : réglage manuel"); act.mode = 'manual'; renderAct(); return; }
-      act.loading = true; renderAct();
+      if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données) : réglage manuel"); act.mode = 'manual'; act.step = actIsRun() ? 4 : 5; renderAct(); return; }
+      act.step = 5; act.loading = true; renderAct();
       const kind = { tapis: 'une séance de course sur tapis', exterieur: 'une séance de course en extérieur', velo: 'une séance de vélo', muscu: 'une séance de musculation / renforcement utile au coureur, sans matériel ou avec peu' }[act.type];
       const fmt = actIsRun()
         ? `{"avis":"2 phrases en tutoyant","titre":"titre court","seance":{"pente":1,"chauffe":10,"recup":5,"repet":1,"segments":[{"vitesse":12,"duree_min":3}]}}`
@@ -8697,7 +9055,7 @@ ${next}`;
           : `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":30,"detail":"consignes (échauffement, récupérations)","exercices":[{"nom":"Pont fessier","nom_en":"glute bridge","dosage":"3 × 15"}]}`;
       const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
 ${actContextText()}
-Propose ${kind}${act.dur ? ` d'environ ${act.dur} minutes au total` : ''}${act.wish ? `. Souhait du coureur : « ${act.wish} »` : ''}. Tiens compte de la fatigue et des séances autour.
+Propose ${kind}${act.dur ? ` d'environ ${act.dur} minutes au total` : ''}, difficulté ${({ facile: 'facile', moderee: 'modérée', difficile: 'difficile' })[act.diff] || 'modérée'}${act.wish && act.wish !== 'Au choix du coach' ? `, type de séance souhaité : « ${act.wish} »` : ' (type de séance au choix du coach)'}. Tiens compte de la fatigue et des séances autour : si la difficulté demandée n'est pas raisonnable aujourd'hui, dis-le dans l'avis et propose plus doux.
 ${actIsRun() ? `Vitesses en km/h ; "segments" = la partie principale répétée "repet" fois (une récupération entre fractions est un segment lent) ; échauffement et retour au calme à l'endurance fondamentale ; ${act.type === 'tapis' ? '"pente" en % (1 par défaut)' : '"pente" = 0'}.` : ''}
 Réponds uniquement en JSON : ${fmt}`;
       try {
@@ -8995,6 +9353,12 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
     function endFreeSessionIfIdle() {
       if (freeSession && (!timerState.sessionStarted || timerState.finished)) { freeSession = null; buildCurrentSessionStages(); }
+    }
+    function adjustFreePente(delta) {
+      if (!freeSession) return;
+      freeSession.pente = Math.max(0, Math.min(15, Math.round(((parseFloat(freeSession.pente) || 0) + delta) * 2) / 2));
+      updateUIHeaderAndCircle();
+      saveLiveRun();
     }
     function adjustFreeSpeed(delta) {
       const st = timerState.stages[timerState.currentStageIndex];
@@ -9431,7 +9795,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       renderHrChip();
       {
         const g = document.getElementById('homeGreeting');
-        if (g) g.textContent = dailyGreeting(homeFeelMode() === 'adapt' && appData.sessions.some(s => s.dateISO === todayISO()));
+        if (g) g.textContent = dailyGreeting(homeFeelMode() === 'adapt' && appData.sessions.some(s => s.dateISO === todayISO() && !isSessionDone(s)));
         syncFeelPanel();
       }
       {
@@ -9450,14 +9814,18 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       {
         const t = todayISO();
         const dayLong = capFirst(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
-        const hasToday = appData.sessions.some(s => s.dateISO === t);
+        const hasToday = appData.sessions.some(s => s.dateISO === t && !isSessionDone(s));
+        const doneToday = appData.sessions.some(s => s.dateISO === t && isSessionDone(s));
+        { const rt = document.getElementById('homeRestTitle'), rx = document.getElementById('homeRestText');
+          if (rt) rt.textContent = doneToday ? '✅ Séance du jour faite' : "😴 Repos aujourd'hui";
+          if (rx) rx.textContent = doneToday ? 'Bravo ! Pense à bien récupérer : hydratation, repas, sommeil.' : "Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course."; }
         const busy = timerState.sessionStarted && !timerState.finished;
         const showRest = !hasToday && !busy && !homeShowNextAnyway;
         document.getElementById('homeRest').classList.toggle('hidden', !showRest);
         el.classList.toggle('hidden', showRest);
         document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui • ${dayLong}`;
         const isNext = sess && sess.dateISO && sess.dateISO > t;
-        document.getElementById('homeRestNext').textContent = isNext ? `Prochaine séance : ${formatSessTitle(sess)} — ${describeSessionHuman(sess)}` : '';
+        document.getElementById('homeRestNext').textContent = isNext ? `Prochaine séance : ${capFirst(parseISODateLocal(sess.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))} — ${describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))}` : '';
         document.getElementById('homeRestNextBtn').classList.toggle('hidden', !sess);
         document.getElementById('homeRestNextBtn').textContent = isNext ? 'Voir la prochaine séance' : 'Voir la séance chargée';
         const sd = parseISODateLocal(sess.dateISO);
