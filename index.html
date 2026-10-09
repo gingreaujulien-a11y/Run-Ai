@@ -158,6 +158,8 @@
     body.running .pocket-btn { display: flex; }
     body.started:not(.ctl-stopped) .pocket-btn { display: flex; }
     #btnCtlMic.vc-on { animation: vcPulse 1s ease-in-out infinite; }
+    .saved-pop { background:#10b981; color:#03140d; font-weight:900; font-size:26px; padding:22px 34px; border-radius:24px; box-shadow:0 20px 60px rgba(16,185,129,.45); text-align:center; animation:savedPop 1.8s ease forwards; }
+    @keyframes savedPop { 0% { opacity:0; transform:scale(.8); } 12% { opacity:1; transform:scale(1.04); } 20% { transform:scale(1); } 80% { opacity:1; } 100% { opacity:0; transform:scale(.97); } }
     @keyframes vcPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(168,85,247,.7); } 50% { box-shadow: 0 0 0 10px rgba(168,85,247,0); } }
     body.home #homeScreen { display: flex; }
     body.home #topBar, body.home #mainArea { display: none !important; }
@@ -396,6 +398,39 @@
           </button>
         </div>
 
+        <!-- Type de sortie -->
+        <div id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
+          <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
+          <div id="cfgKindChips" class="grid grid-cols-4 gap-1.5"></div>
+        </div>
+        <div id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+          <div class="grid grid-cols-2 gap-2 text-center">
+            <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Durée totale (min)</label>
+              <input type="number" id="cfgSimpleDur" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()"></div>
+            <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse (km/h)</label>
+              <input type="number" id="cfgSimpleSpeed" min="4" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()"></div>
+          </div>
+          <span id="cfgSimpleHint" class="text-[10px] text-slate-400 block"></span>
+        </div>
+        <div id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
+          <span class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
+          <div class="flex gap-1.5 flex-wrap"><button type="button" onclick="setTestKm(1)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">1 km</button><button type="button" onclick="setTestKm(3)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">3 km</button><button type="button" onclick="setTestKm(5)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">5 km</button><button type="button" onclick="setTestKm(10)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">10 km</button></div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Distance (km)</label>
+              <input type="number" id="cfgTestKm" min="0.4" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-fuchsia-400" oninput="onTestInput('km')"></div>
+            <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Temps visé</label>
+              <input type="text" inputmode="numeric" id="cfgTestTime" placeholder="mm:ss" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-fuchsia-400" oninput="onTestInput('time')"></div>
+            <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse</label>
+              <input type="number" id="cfgTestSpeed" min="4" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-fuchsia-400" oninput="onTestInput('speed')"></div>
+          </div>
+          <span id="cfgTestHint" class="text-[10px] text-slate-400 block"></span>
+        </div>
+        <div id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+          <span class="text-[12px] text-slate-300 block">🏃 Pas de durée ni d'allure imposées : tu règles tout pendant la course.</span>
+          <div id="cfgLibreSpeedBox" class="flex items-center justify-between gap-2"><span class="text-[11px] text-slate-400">Vitesse de départ (km/h)</span>
+            <input type="number" id="cfgLibreSpeed" min="4" step="0.5" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500"></div>
+        </div>
+
         <!-- Informations générales -->
         <div id="cfgInfoBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <div class="grid grid-cols-2 gap-2">
@@ -444,14 +479,14 @@
             </label>
             <button onclick="clearRoute()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Retirer</button>
           </div>
-          <div class="text-[11px] font-bold text-emerald-300 pt-1">📍 Mes parcours</div>
+          <div class="text-[11px] font-bold text-emerald-300 pt-1">📍 Mes parcours <span class="text-slate-500 font-semibold">· touche un parcours pour le choisir</span></div>
           <div id="myRoutesList" class="space-y-1.5"></div>
           <div id="gpxStatus" class="text-[10px] font-semibold text-slate-400"></div>
-          <div id="routeInfo" class="space-y-1.5"></div>
+          <div id="routeInfoHome"><div id="routeInfo" class="space-y-1.5"></div></div>
         </div>
 
         <!-- Blocs -->
-        <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
+        <div id="cfgBlocsBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
           <span class="text-xs font-bold text-slate-300 block text-left">Blocs</span>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -474,7 +509,7 @@
         </div>
 
         <!-- Paliers de la Pyramide -->
-        <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+        <div id="cfgSegBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold text-slate-300">Segments (1 répétition)</span>
             <button onclick="addPyramidRow()" class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-1 rounded-md font-bold hover:bg-sky-500/30">
@@ -487,11 +522,11 @@
 
         <!-- Totaux calculés -->
         <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono bg-slate-900 p-2 rounded-xl border border-slate-800">
-          <div>
+          <div class="cfg-struct-only">
             <span class="text-[9px] text-slate-500 block uppercase">1 Répétition</span>
             <span id="cfgTotalPyr" class="font-bold text-slate-300">9'00"</span>
           </div>
-          <div>
+          <div class="cfg-struct-only">
             <span class="text-[9px] text-slate-500 block uppercase">1 Bloc</span>
             <span id="cfgTotalCircuit" class="font-bold text-slate-300">18'00"</span>
           </div>
@@ -503,15 +538,10 @@
         </div>
       </div>
 
-      <button onclick="duplicateSessionFromConfig()" class="w-full mt-2 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold rounded-xl text-xs">📄 Créer une séance en copie de celle-ci</button>
-      <button onclick="openScriptModal()" class="hidden w-full mt-2 py-2.5 bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/50 text-purple-100 font-bold rounded-xl text-xs">🧪 Tester les annonces de la séance (script)</button>
-      <div class="pt-3 border-t border-slate-800 flex gap-2">
-        <button onclick="saveActiveSessionConfig()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
-          Enregistrer & Charger
-        </button>
-        <button onclick="quickValidateFromConfig()" class="py-3 px-3 bg-teal-600/30 hover:bg-teal-600/50 border border-teal-500 text-teal-300 font-bold rounded-xl transition active:scale-95 text-xs">
-          Valider dans suivi
-        </button>
+      <button onclick="openScriptModal()" class="hidden"></button>
+      <div class="pt-3 mt-2 border-t border-slate-800 flex gap-2">
+        <button onclick="saveSessionConfig()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-xl transition shadow active:scale-95 text-sm">💾 Sauvegarder</button>
+        <button onclick="askCopyDate()" class="py-3 px-5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl transition active:scale-95 text-sm">📄 Copier</button>
       </div>
     </div>
   </div>
@@ -555,11 +585,12 @@
   <!-- Copie de séance : date -->
   <div id="copyDateModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[75] flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-4 space-y-3 text-center">
-      <div class="text-base font-bold text-white">📄 Date de la copie</div>
+      <div class="text-base font-bold text-white">📄 Copier la séance</div>
+      <p class="text-xs text-slate-400">Pour quel jour ? Le coach donnera son avis avant de créer la copie.</p>
       <input type="date" id="copyDateInput" onclick="openDatePicker(this)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-center font-bold text-white">
       <div class="grid grid-cols-2 gap-2">
         <button onclick="confirmCopyDate(false)" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-xs">Annuler</button>
-        <button onclick="confirmCopyDate(true)" class="py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl text-xs">Créer la copie</button>
+        <button onclick="confirmCopyDate(true)" class="py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl text-xs">Continuer</button>
       </div>
     </div>
   </div>
@@ -634,6 +665,7 @@
       </div>
       <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 96px">
         <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
+        <button onclick="openOffModal()" class="w-full mt-3 flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74">🚫 Jours sans sport · décaler le planning</button>
         <div class="grid grid-cols-3 gap-1 my-3.5" style="padding:4px;border-radius:16px;background:#0f172a;border:1px solid #1e293b">
           <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
           <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
@@ -735,7 +767,8 @@
             <div class="pm-row" style="border-top:0"><div class="pm-rt">Course avec dénivelé<small>Pente moyenne et VAP (effort équivalent sur le plat)</small></div><input type="checkbox" id="goalHilly" class="sw" onchange="onGoalHillyChange()"></div>
             <div id="goalHillyBox" class="grid grid-cols-2 gap-2">
               <label class="pm-lbl">Pente moyenne (%)<input type="number" id="goalPenteInput" value="0" min="0" max="15" step="0.5" class="pm-in c" oninput="updateGoalVAPCalculation()"></label>
-              <div class="pm-lbl">VAP · <span id="vapPaceLabel">–</span><div id="goalVapDisplay" class="pm-in c flex items-center justify-center" style="color:#6ee7b7;border-color:rgba(16,185,129,.5)">–</div></div>
+              <div class="pm-lbl">VAP<div id="goalVapDisplay" class="pm-in c flex items-center justify-center" style="color:#6ee7b7;border-color:rgba(16,185,129,.5)">–</div></div>
+              <span class="col-span-2 text-[12px] text-slate-400 -mt-1">Allure équivalente sur le plat : <b id="vapPaceLabel" class="text-emerald-300">–</b></span>
             </div>
           </div>
           <div class="pm-card">
@@ -769,6 +802,13 @@
 
         <!-- ===== PLAN ===== -->
         <div class="pm-panel pm-off" data-p="plan">
+          <div class="pm-card" style="border-color:rgba(52,211,153,.4)">
+            <span class="pm-cap" style="color:#6ee7b7">Mon plan actuel</span>
+            <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
+            <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
+            <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
+            <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
+          </div>
           <div class="pm-card" style="border-color:#3b2a63">
             <span class="pm-cap" style="color:#a78bfa">Générer mon plan avec le coach</span>
             <span class="text-[12px] text-slate-400 -mt-1">Le coach crée les séances jusqu'au jour J à partir de ton profil, ton niveau et ton objectif.</span>
@@ -830,6 +870,39 @@
         <div class="flex gap-2">
           <input id="reName" class="pm-in flex-1" placeholder="Nom du parcours" style="font-weight:600">
           <button onclick="reSave()" class="pm-save" style="width:auto;padding:0 18px;height:44px;font-size:15px">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jours sans sport : décaler / adapter / supprimer -->
+  <div id="offModal" class="pm hidden" style="--acc:#fb923c;z-index:85">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 class="pm-title">Jours sans sport</h2><button onclick="closeOffModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
+      <div class="pm-body custom-scroll">
+        <div class="pm-card">
+          <span class="pm-cap" style="color:#fdba74">Quand ?</span>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="pm-lbl">Du<input type="date" id="offFrom" class="pm-in" onchange="if(document.getElementById('offTo').value<this.value)document.getElementById('offTo').value=this.value;renderOffImpact()"></label>
+            <label class="pm-lbl">Au<input type="date" id="offTo" class="pm-in" onchange="renderOffImpact()"></label>
+          </div>
+          <div id="offImpact" class="flex flex-col gap-1.5"></div>
+        </div>
+        <div class="pm-card">
+          <span class="pm-cap" style="color:#c4b5fd">Que faire des séances ?</span>
+          <span class="text-[12px] text-slate-400 -mt-1">Le coach choisit entre décaler, adapter ou supprimer, selon les tests prévus et ton objectif.</span>
+          <button id="offCoachBtn" type="button" onclick="askOffCoach()" class="pm-btn" style="height:48px;border:none;background:#a78bfa;color:#13092b;font-weight:800;font-size:14px">🧠 Demander l'avis du coach</button>
+          <div id="offCoachStatus" class="text-[12px] font-semibold text-purple-300"></div>
+          <div id="offCoachBox" class="hidden flex flex-col gap-2"></div>
+        </div>
+        <div class="pm-card">
+          <span class="pm-cap">Ou décider moi-même</span>
+          <div class="flex gap-2 items-center">
+            <select id="offWeeks" class="pm-in" style="width:130px"><option value="1">1 semaine</option><option value="2">2 semaines</option></select>
+            <button type="button" onclick="shiftPlanManual()" class="pm-btn flex-1" style="border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800">📅 Décaler le planning</button>
+          </div>
+          <span class="text-[11px] text-slate-500">Toutes les séances à partir du premier jour sans sport glissent, en gardant le même jour de la semaine.</span>
+          <button type="button" onclick="deleteOffSessions()" class="pm-btn" style="color:#fda4af;border-color:rgba(251,113,133,.4)">🗑 Supprimer seulement les séances de ces jours</button>
         </div>
       </div>
     </div>
@@ -1280,7 +1353,7 @@
           <input type="checkbox" id="chkKeepAlive" class="hidden">
         </div>
       </div>
-      <div class="pm-foot"><button onclick="closeAudioModal()" class="pm-save">Enregistrer</button></div>
+      <div class="pm-foot"><button onclick="saveAudioModal()" class="pm-save">Enregistrer</button></div>
     </div>
   </div>
 
@@ -1658,11 +1731,14 @@
       return (sess.pyramide || []).reduce((a, p) => a + (parseFloat(p.duration) || 0), 0);
     }
     function computeSessionTotalMin(sess) {
+      sess = routeRunSess(sess);
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       return (sess.chauffe || 0) + pyramidSum(sess) * reps * nb + (nb - 1) * (sess.recupBloc || 0) + (sess.recup || 0) + ((sess.extension && sess.extension.minutes) || 0);
     }
     function computeSessionDistanceKm(sess) {
+      const ri = routeRunInfo(sess);
+      if (ri) return ri.km + (sess.extension && sess.extension.minutes ? sess.extension.minutes * (sess.extension.speed || runnerEF()) / 60 : 0);
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       const pyrKm = (sess.pyramide || []).reduce((a, p) => a + (parseFloat(p.speed) || 0) * (parseFloat(p.duration) || 0) / 60, 0);
@@ -1741,7 +1817,7 @@
       return false;
     }
     function buildCurrentSessionStages() {
-      const sess = window.__buildOverride || getActiveSession();
+      const sess = routeRunSess(window.__buildOverride || getActiveSession());
       const stages = [];
 
       if (sess.chauffe > 0) {
@@ -3932,8 +4008,228 @@
     // ==================== MODALE PARAMÉTRAGE ====================
     let modalPyramid = [];
 
-    function openConfigModal() {
-      const sess = getActiveSession();
+    // ==================== TYPE DE SORTIE (paramétrage) ====================
+    const CFG_KINDS = [['endu', '🌿', 'Endurance'], ['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '🫧', 'Récup'], ['test', '⏱️', 'Test'], ['libre', '🏃', 'Libre']];
+    const KIND_CONT = ['endu', 'longue', 'recup'], KIND_STRUCT = ['fractionne', 'seuil', 'cotes'];
+    let cfgKind = 'endu', cfgSessId = null;
+    function cfgSess() { return (appData.sessions || []).find(s => s.id === cfgSessId) || getActiveSession(); }
+    function inferKind(s) {
+      if (!s) return 'endu';
+      if (s.kind && CFG_KINDS.some(k => k[0] === s.kind)) return s.kind;
+      if (s.free) return 'libre';
+      if (/\btest\b/i.test(s.notes || '') && (s.pyramide || []).length === 1 && s.pyramide[0].unit === 'km') return 'test';
+      const L = sessionKind(s).label;
+      return { 'FRACTIONNÉ': 'fractionne', 'SEUIL': 'seuil', 'SORTIE LONGUE': 'longue' }[L] || 'endu';
+    }
+    function parseClock(t) {
+      const s = String(t || '').trim().replace(/[hH]/g, ':').replace(/['’]/g, ':').replace(/"/g, '');
+      if (!s) return 0;
+      if (!s.includes(':')) return parseFloat(s.replace(',', '.')) || 0;
+      const p = s.split(':').map(x => parseFloat(x) || 0);
+      return p.length === 3 ? p[0] * 60 + p[1] + p[2] / 60 : p[0] + p[1] / 60;
+    }
+    function fmtClock(min) {
+      const t = Math.round((min || 0) * 60), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+      return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+    }
+    function renderKindChips() {
+      const box = document.getElementById('cfgKindChips');
+      if (!box) return;
+      box.innerHTML = CFG_KINDS.map(([k, ic, l]) => `<button type="button" onclick="setCfgKind('${k}')" class="flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-[11px] font-bold transition active:scale-95" style="${k === cfgKind ? 'background:rgba(56,189,248,.18);border:2px solid #38bdf8;color:#e0f2fe' : 'background:#0f172a;border:1px solid #334155;color:#94a3b8'}"><span class="text-[17px] leading-none">${ic}</span>${l}</button>`).join('');
+    }
+    function cfgTypeIsExt() { return !document.getElementById('btnTypeTapis').classList.contains('border-2'); }
+    function cfgStructTemplate(k) {
+      const ef = runnerEF(), vma = (estimateVma() || {}).vma || ef * 1.45;
+      const r5 = v => Math.round(v * 2) / 2, rec = Math.max(6, r5(ef - 1));
+      const T = {
+        fractionne: { repet: 6, segs: [{ speed: r5(vma * 0.92), duration: 2, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] },
+        seuil: { repet: 3, segs: [{ speed: r5(vma * 0.85), duration: 8, unit: 'min' }, { speed: rec, duration: 2, unit: 'min' }] },
+        cotes: { repet: 8, segs: [{ speed: r5(ef + 0.5), duration: 1, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] }
+      }[k];
+      return T;
+    }
+    function setCfgKind(k, prefill = true) {
+      const prev = cfgKind;
+      cfgKind = k;
+      const ext = cfgTypeIsExt();
+      const show = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
+      show('cfgBlocsBox', KIND_STRUCT.includes(k));
+      show('cfgSegBox', KIND_STRUCT.includes(k));
+      show('cfgSimpleBox', KIND_CONT.includes(k));
+      show('cfgTestBox', k === 'test');
+      show('cfgLibreBox', k === 'libre');
+      document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
+      if (prefill && prev !== k) {
+        const ef = runnerEF();
+        if (KIND_CONT.includes(k)) {
+          const wasCont = KIND_CONT.includes(prev);
+          if (!wasCont) document.getElementById('cfgSimpleDur').value = { endu: 45, longue: 75, recup: 30 }[k];
+          else if (k === 'longue' && (+document.getElementById('cfgSimpleDur').value || 0) < 65) document.getElementById('cfgSimpleDur').value = 75;
+          document.getElementById('cfgSimpleSpeed').value = formatSpeed(k === 'recup' ? Math.max(6, Math.round((ef - 1) * 2) / 2) : ef);
+        } else if (KIND_STRUCT.includes(k)) {
+          const T = cfgStructTemplate(k);
+          modalPyramid = T.segs.map(x => Object.assign({}, x));
+          document.getElementById('cfgRepet').value = T.repet;
+          document.getElementById('cfgNbBlocs').value = 1;
+          document.getElementById('cfgRecupBloc').value = 0;
+          if (k === 'cotes' && !ext) document.getElementById('cfgPente').value = 5;
+          renderPyramidRows();
+        } else if (k === 'test') {
+          const lv = (runnerProfile().levels || {})['5'];
+          const km = 5, min = lv ? lv / 60 : km / (ef + 2.5) * 60;
+          document.getElementById('cfgTestKm').value = km;
+          document.getElementById('cfgTestTime').value = fmtClock(min);
+          document.getElementById('cfgTestSpeed').value = (km / (min / 60)).toFixed(1);
+        } else if (k === 'libre') {
+          document.getElementById('cfgLibreSpeed').value = formatSpeed(ef);
+        }
+      }
+      const lsp = document.getElementById('cfgLibreSpeedBox'); if (lsp) lsp.classList.toggle('hidden', ext);
+      renderKindChips();
+      recalculateModalTotals();
+    }
+    function onTestInput(src) {
+      const km = parseFloat(String(document.getElementById('cfgTestKm').value).replace(',', '.')) || 0;
+      const tEl = document.getElementById('cfgTestTime'), sEl = document.getElementById('cfgTestSpeed');
+      if (src === 'speed') { const v = parseFloat(String(sEl.value).replace(',', '.')) || 0; if (km > 0 && v > 0) tEl.value = fmtClock(km / v * 60); }
+      else { const min = parseClock(tEl.value); if (km > 0 && min > 0) sEl.value = (km / (min / 60)).toFixed(1); }
+      recalculateModalTotals();
+    }
+    function setTestKm(km) { document.getElementById('cfgTestKm').value = km; onTestInput('km'); }
+    // Partie principale selon le type choisi
+    function kindPyramid(v) {
+      const k = cfgKind;
+      if (KIND_CONT.includes(k)) {
+        const T = parseFloat(document.getElementById('cfgSimpleDur').value) || 0;
+        const sp = parseFloat(String(document.getElementById('cfgSimpleSpeed').value).replace(',', '.')) || runnerEF();
+        v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
+        return [{ speed: sp, unit: 'min', duration: Math.round(Math.max(1, T - v.chauffe - v.recup) * 100) / 100 }];
+      }
+      if (k === 'test') {
+        const km = parseFloat(String(document.getElementById('cfgTestKm').value).replace(',', '.')) || 0;
+        const sp = parseFloat(String(document.getElementById('cfgTestSpeed').value).replace(',', '.')) || 0;
+        v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
+        return km > 0 && sp > 0 ? [{ speed: sp, unit: 'km', distance: km, duration: Math.round(km / sp * 60 * 10000) / 10000 }] : [];
+      }
+      if (k === 'libre') {
+        const sp = parseFloat(String(document.getElementById('cfgLibreSpeed').value).replace(',', '.')) || runnerEF();
+        v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
+        return [{ speed: sp, unit: 'min', duration: 30 }];
+      }
+      return null;
+    }
+    function updateKindHints(v) {
+      const h = document.getElementById('cfgSimpleHint');
+      if (h && KIND_CONT.includes(cfgKind)) {
+        const ri = cfgTypeIsExt() && modalRoute && modalRoute.review ? modalRoute.totalKm / modalRoute.review.kmh * 60 : 0;
+        const durEl = document.getElementById('cfgSimpleDur');
+        if (ri) { durEl.value = Math.round(ri); durEl.readOnly = true; durEl.style.opacity = .6; }
+        else { durEl.readOnly = false; durEl.style.opacity = 1; }
+        h.textContent = ri ? `⏱ Durée estimée par le coach d'après le parcours, dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme.`
+          : `Dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme (réglables dans ton profil).`;
+      }
+      const th = document.getElementById('cfgTestHint');
+      if (th && cfgKind === 'test') {
+        const km = parseFloat(document.getElementById('cfgTestKm').value) || 0, sp = parseFloat(document.getElementById('cfgTestSpeed').value) || 0;
+        th.textContent = km && sp ? `Allure ${Math.floor(Math.round(3600 / sp) / 60)}'${String(Math.round(3600 / sp) % 60).padStart(2, '0')}"/km · + ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme` : 'Indique la distance et le temps visé';
+      }
+    }
+    // Sauvegarde sans charger la séance
+    function saveSessionConfig() {
+      const ok = saveActiveSessionConfig({ keepOpen: true });
+      if (ok) showSavedBig('Séance enregistrée');
+    }
+    // ---------- Copier une séance : date puis avis du coach ----------
+    let copyCheck = null;
+    function askCopyDate() {
+      document.getElementById('copyDateInput').value = todayISO();
+      document.getElementById('copyDateModal').classList.remove('hidden');
+    }
+    function confirmCopyDate(ok) {
+      document.getElementById('copyDateModal').classList.add('hidden');
+      if (!ok) return;
+      const iso = document.getElementById('copyDateInput').value;
+      if (!parseISODateLocal(iso)) { showToast("Choisis une date"); return; }
+      const v = readModalSessionValues();
+      const pyr = v.pyramide.filter(p => p.speed > 0 && p.duration > 0);
+      if (!pyr.length) { showToast("Ajoute au moins un segment"); return; }
+      const copy = JSON.parse(JSON.stringify(cfgSess()));
+      applyModalToSession(copy, v, pyr);
+      delete copy.planOriginal; delete copy.adapted; delete copy.dayFeel; delete copy.extensionOffer; delete copy.doneHistId;
+      const d = parseISODateLocal(iso);
+      copy.id = `sess_${Date.now()}`; copy.dateISO = iso; copy.date = toDDMM(d); copy.jour = weekdayName(d);
+      openCopyCheck(copy);
+    }
+    async function openCopyCheck(copy) {
+      copyCheck = { copy, prop: null };
+      const s = copy, iso = s.dateISO;
+      const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      const today = iso === todayISO();
+      const when = today ? "aujourd'hui" : 'le ' + parseISODateLocal(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const src = cfgSess();
+      const srcWhen = src.dateISO ? parseISODateLocal(src.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+      m.querySelector('.pm-title').textContent = 'Copier la séance';
+      const head = `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · copie pour ${when}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km</span></div>`;
+      const btns = (mod) => `<div class="grid grid-cols-1 gap-2">
+          <button onclick="doCopy(false)" class="pm-save" style="background:#38bdf8">📄 Copier telle quelle</button>
+          ${mod ? `<button onclick="doCopy(true)" class="pm-save" style="background:#fbbf24">✏️ Copier la version modifiée</button>` : ''}
+          <button onclick="document.getElementById('chkModal').classList.add('hidden')" class="pm-btn" style="height:48px">Annuler</button>
+        </div>`;
+      m.classList.remove('hidden');
+      if (!getGeminiKey()) { body.innerHTML = head + `<div class="pm-card text-[14px] text-slate-300">Sans clé Gemini, pas d'avis du coach.</div>`; foot.innerHTML = btns(false); return; }
+      body.innerHTML = head + `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach vérifie si c'est une bonne idée ${when}…</div></div>`;
+      foot.innerHTML = '';
+      const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
+      const s0 = appData.sessions.find(x => x.dayFeel && x.dayFeel.at === t);
+      const past = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const around = appData.sessions.filter(x => x.dateISO && x.dateISO >= t && !isSessionDone(x)).slice(0, 8).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}${x.id === src.id ? ' (séance copiée)' : ''}`).join('\n') || '- aucune';
+      const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
+      const prompt = `Tu es un coach de course à pied prudent et précis. ${coachToneText()}
+Le coureur veut ajouter une copie de cette séance ${when} (${iso})${srcWhen ? `, la séance d'origine est prévue le ${srcWhen}` : ''}.
+Séance : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : 'tapis'}.
+Détail JSON : {"chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"pente":${s.pente},"segments":[${segs}]}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.${s0 ? ` Sensations du jour : ${feelSummary(s0.dayFeel)}.` : ''}
+Séances récentes :
+${past}
+Séances prévues :
+${around}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Est-ce pertinent de la faire ${when} (enchaînement avec les séances voisines, fatigue, place dans le plan, doublon avec l'originale) ? Va droit au but.
+Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","avis":"2 phrases courtes en tutoyant","resume":"si modifiée : la modification en une phrase","seance":{même format que le détail JSON, seulement si modifiée}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        const v = String(j.verdict || '').toLowerCase();
+        const mod = v.startsWith('modif') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        if (mod) copyCheck.prop = proposalToSession(s, j.seance);
+        const V = v.startsWith('ne') ? ['⛔ Mieux vaut ne pas la faire', '#fb7185'] : mod ? ['✏️ Oui, mais modifiée', '#fbbf24'] : ['✅ Bonne idée, tu peux la copier', '#34d399'];
+        const after = mod ? `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, copyCheck.prop, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(copyCheck.prop))} min)</span>` : '';
+        body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
+        foot.innerHTML = btns(!!mod);
+      } catch (e) {
+        body.innerHTML = head + `<div class="pm-card text-rose-400">Avis impossible : ${plEsc(e.message || e)}</div>`;
+        foot.innerHTML = btns(false);
+      }
+    }
+    function doCopy(useMod) {
+      if (!copyCheck) return;
+      const c = useMod && copyCheck.prop ? Object.assign({}, copyCheck.prop, { id: copyCheck.copy.id, dateISO: copyCheck.copy.dateISO, date: copyCheck.copy.date, jour: copyCheck.copy.jour, kind: undefined }) : copyCheck.copy;
+      if (useMod) delete c.kind;
+      document.getElementById('chkModal').classList.add('hidden');
+      const actId = activeSessId();
+      appData.sessions.push(c);
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      const today = c.dateISO === todayISO();
+      appData.activeSessionIndex = Math.max(0, appData.sessions.findIndex(s => s.id === (today ? c.id : actId)));
+      saveAppData(); reloadChrono(); updateHistoryTable();
+      try { renderHome(); } catch (e) { }
+      copyCheck = null;
+      closeConfigModal();
+      showSavedBig(today ? "Copie prête pour aujourd'hui" : `Copie ajoutée le ${fmtDateShort(c.dateISO)}`);
+    }
+
+    function openConfigModal(idx) {
+      const sess = (typeof idx === 'number' && appData.sessions[idx]) ? appData.sessions[idx] : getActiveSession();
+      cfgSessId = sess.id;
       setSessionType(sess.type || 'tapis', false);
       document.getElementById('cfgSemaine').value = sess.semaine;
       document.getElementById('cfgDate').value = sess.dateISO || guessISOFromDDMM(sess.date) || '';
@@ -3955,7 +4251,17 @@
 
       modalPyramid = JSON.parse(JSON.stringify(sess.pyramide));
       renderPyramidRows();
-      recalculateModalTotals();
+      // Type de sortie
+      cfgKind = inferKind(sess);
+      const p0 = (sess.pyramide || [])[0] || { speed: runnerEF(), duration: 30 };
+      document.getElementById('cfgSimpleDur').value = Math.round(computeSessionTotalMin(Object.assign({}, sess, { route: null })));
+      document.getElementById('cfgSimpleSpeed').value = formatSpeed(p0.speed);
+      document.getElementById('cfgLibreSpeed').value = formatSpeed(p0.speed);
+      const tk = p0.unit === 'km' ? p0.distance : 5;
+      document.getElementById('cfgTestKm').value = tk;
+      document.getElementById('cfgTestSpeed').value = formatSpeed(p0.speed);
+      document.getElementById('cfgTestTime').value = fmtClock(tk / (p0.speed || 10) * 60);
+      setCfgKind(cfgKind, false);
 
       document.getElementById('configModal').classList.remove('hidden');
       refreshAllIcons();
@@ -4004,6 +4310,7 @@
       const gpx = document.getElementById('cfgGpxBox'); if (gpx) gpx.classList.toggle('hidden', type !== 'exterieur');
       const info = document.getElementById('cfgInfoBox'); if (info) info.classList.toggle('hidden', type === 'exterieur');
       if (triggerCalc) recalculateModalTotals();
+      if (triggerCalc && document.getElementById('cfgKindChips')) setCfgKind(cfgKind, false);
     }
 
     function renderPyramidRows() {
@@ -4092,7 +4399,7 @@
         const v = parseFloat(document.getElementById(id).value);
         return isNaN(v) ? def : v;
       };
-      return {
+      const out = {
         chauffe: Math.max(0, num('cfgChauffe', 0)),
         repet: Math.max(1, Math.round(num('cfgRepet', 1))),
         nbBlocs: Math.max(1, Math.round(num('cfgNbBlocs', 1))),
@@ -4102,10 +4409,15 @@
 
         pyramide: readPyramidFromDOM()
       };
+      const kp = (typeof kindPyramid === 'function') ? kindPyramid(out) : null;
+      if (kp) out.pyramide = kp;
+      return out;
     }
+    function readModalSessionValuesKind() { return readModalSessionValues(); }
 
     function recalculateModalTotals() {
       const v = readModalSessionValues();
+      try { updateKindHints(v); } catch (e) { }
 
       // Indications de conversion sur chaque ligne
       const rows = document.querySelectorAll('#pyramidRowsContainer .pyr-row');
@@ -4155,6 +4467,11 @@
       sess.recup = v.recup;
       sess.route = modalRoute;
       sess.pyramide = pyr;
+      sess.kind = cfgKind;
+      if (cfgKind === 'libre') { sess.free = true; sess.plannedFree = true; }
+      else if (sess.plannedFree || sess.free) { delete sess.free; delete sess.plannedFree; }
+      if (cfgKind === 'test') { sess.test = { km: pyr[0].distance, min: pyr[0].duration }; if (!/test/i.test(sess.notes || '')) sess.notes = `Test ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
+      else delete sess.test;
     }
 
     function sortSessionsKeep(sess) {
@@ -4177,20 +4494,22 @@
         document.getElementById('dateChoiceModal').classList.remove('hidden');
         return false;
       }
-      let sess = getActiveSession();
+      let sess = cfgSess();
+      const actId = activeSessId();
       if (opts.dateMode === 'copy') {
         sess = JSON.parse(JSON.stringify(sess));
         sess.id = `sess_${Date.now()}`;
         appData.sessions.push(sess);
       }
       applyModalToSession(sess, v, pyr);
-      sortSessionsKeep(sess);
+      appData.sessions.sort((x, y) => (x.dateISO || '9999').localeCompare(y.dateISO || '9999'));
+      appData.activeSessionIndex = Math.max(0, appData.sessions.findIndex(x => x.id === actId));
 
       saveAppData();
-      reloadChrono();
+      if (sess.id === actId) reloadChrono();
       updateHistoryTable();
-      closeConfigModal();
-      showToast(opts.dateMode === 'copy' ? "Nouvelle séance créée (l'originale est conservée)" : "Séance enregistrée et chargée !");
+      try { renderHome(); } catch (e) { }
+      if (!opts.keepOpen) closeConfigModal();
       const next = afterSaveAction;
       afterSaveAction = null;
       if (next) next();
@@ -4209,7 +4528,7 @@
       const v = readModalSessionValues();
       const pyr = v.pyramide.filter(p => p.speed > 0 && p.duration > 0);
       if (!pyr.length) { showToast("Ajoutez au moins un segment"); return; }
-      const copy = JSON.parse(JSON.stringify(getActiveSession()));
+      const copy = JSON.parse(JSON.stringify(cfgSess()));
       copy.id = `sess_${Date.now()}`;
       applyModalToSession(copy, v, pyr);
       delete copy.planOriginal; delete copy.adapted; delete copy.dayFeel; delete copy.extensionOffer;
@@ -4301,13 +4620,14 @@
         extendedMin: timerState.extendedMin || 0,
         dayFeel: sess.dayFeel && sess.dayFeel.at === toISODateLocal(new Date()) ? sess.dayFeel : undefined,
         summary,
+        km: Math.round((parseFloat(summary.distKm) || kmDistanceNow() || 0) * 100) / 100,
         track: timerState.finished ? (timerState.runTrack || []) : [],
         seg: timerState.finished ? (timerState.runSeg || []) : [],
         analysis: lastAnalysis || ''
       };
 
       appData.history.unshift(newEntry);
-      if (!sess.free) sess.doneHistId = newEntry.id; // la séance prévue est faite
+      if (!sess.free || sess.plannedFree) sess.doneHistId = newEntry.id; // la séance prévue est faite
       saveAppData();
       updateHistoryTable();
       closeValidationModal();
@@ -4342,7 +4662,10 @@
     function sessionKind(s) {
       if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
-      if (s.free || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
+      if (s.kind === 'test') return { label: 'TEST', color: '#e879f9' };
+      if (s.free || s.kind === 'libre' || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
+      if (s.kind === 'cotes') return { label: 'CÔTES', color: '#f97316' };
+      if (s.kind === 'recup') return { label: 'RÉCUPÉRATION', color: '#67e8f9' };
       if (!s.pyramide) return { label: 'COURSE', color: '#38bdf8' };
       const segs = (s.pyramide || []).filter(p => p.speed > 0);
       const speeds = segs.map(p => +p.speed);
@@ -4452,7 +4775,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const best = (fn) => { let b = null; H.forEach(h => { const v = fn(h); if (v && (!b || v > b.v)) b = { v, iso: h._iso }; }); return b; };
       const segBest = minSec => h => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
       return {
-        dist: best(h => parseFloat(h.summary && h.summary.distKm) || 0),
+        dist: best(h => histKm(h)),
         dur: best(h => +h.durationMin || 0),
         v3: best(segBest(180)),
         v10: best(segBest(600)),
@@ -4476,9 +4799,21 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         const d = parseISODateLocal(w0); d.setDate(d.getDate() - 7 * i);
         const a = toISODateLocal(d); const e = new Date(d); e.setDate(e.getDate() + 6); const b = toISODateLocal(e);
         const list = H.filter(h => h._iso && h._iso >= a && h._iso <= b);
-        out.push({ start: a, km: list.reduce((x, h) => x + (parseFloat(h.summary && h.summary.distKm) || computeKmFromHist(h)), 0), n: list.length });
+        out.push({ start: a, km: list.reduce((x, h) => x + histKm(h), 0), n: list.length });
       }
       return out;
+    }
+    // Distance d'une séance faite : GPS ou tapis (vitesse × temps), sinon estimée d'après la séance prévue
+    function histKm(h) {
+      if (!h || h.cross) return 0;
+      const d = parseFloat(h.summary && h.summary.distKm) || parseFloat(h.km) || computeKmFromHist(h);
+      if (d > 0) return d;
+      const s = (appData.sessions || []).find(x => x.doneHistId && x.doneHistId === h.id);
+      if (s) {
+        const pm = computeSessionTotalMin(s), km = computeSessionDistanceKm(s);
+        return pm > 0 && +h.durationMin ? km * Math.min(1.5, +h.durationMin / pm) : km;
+      }
+      return 0;
     }
     function computeKmFromHist(h) { // séances sans capteur : distance estimée d'après les segments
       return (h.seg || []).reduce((x, sg) => x + (sg.avgKmh || 0) * (sg.sec || 0) / 3600, 0);
@@ -4566,7 +4901,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const plannedLeft = planned.filter(x => !isSessionDone(x));
       const done = items.filter(i => i.type === 'validated' && i.iso >= w0 && i.iso <= w6);
       const doneRun = done.filter(i => !i.cross);
-      const kmDone = doneRun.reduce((a, i) => a + (parseFloat(i.summary && i.summary.distKm) || 0), 0);
+      const kmDone = doneRun.reduce((a, i) => a + histKm(appData.history[i.rawIdx]), 0);
       const kmPlan = planned.reduce((a, x) => a + computeSessionDistanceKm(x), 0);
       const nPlan = Math.max(planned.length, doneRun.length + plannedLeft.length);
       const pct = kmPlan > 0 ? Math.min(100, Math.round(kmDone / kmPlan * 100)) : (nPlan ? Math.round(doneRun.length / nPlan * 100) : 0);
@@ -4782,6 +5117,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     async function openSessionCheck(idx) {
       const s = appData.sessions[idx];
       const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      m.querySelector('.pm-title').textContent = 'Faire cette séance ?';
       const when = parseISODateLocal(s.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       const head = `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · prévue ${when}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km</span></div>`;
       m.classList.remove('hidden');
@@ -4872,9 +5208,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         renderEditShots();
         showEditAnalysis(h.analysis || '');
       } else {
-        appData.activeSessionIndex = rawIdx;
         closeHistoryModal();
-        openConfigModal();
+        openConfigModal(rawIdx);
         return;
       }
       document.getElementById('editHistoryModal').classList.remove('hidden');
@@ -5032,8 +5367,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       saveAudioSettingsFromUI();
 
       saveAppData();
-      closeGoalModal();
-      showToast("Objectif enregistré avec succès !");
+      renderGoalSummary && renderGoalSummary();
+      showSavedBig('Profil enregistré');
     }
 
     function openCoachModal() { openGoalModal(); setPmTab('goalModal', 'coach'); }
@@ -5045,6 +5380,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
       if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
       if (tab === 'progres') renderProgress();
+      if (tab === 'plan') renderPlanSummary();
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
     function mergeSensorsIntoAudio() {
@@ -5163,6 +5499,356 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       saveAppData();
       renderPlanDays();
     }
+    // ==================== ANALYSE DU PLAN PAR LE COACH ====================
+    let planReview = null;
+    function upcomingPlanSessions() {
+      const t = todayISO();
+      return (appData.sessions || []).filter(s => s && (!s.free || s.plannedFree) && s.dateISO && s.dateISO >= t && !isSessionDone(s))
+        .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+    }
+    function renderPlanSummary() {
+      const el = document.getElementById('planSummaryLine');
+      if (!el) return;
+      const up = upcomingPlanSessions();
+      if (!up.length) el.textContent = "Aucune séance prévue : génère ou importe un plan ci-dessous.";
+      else {
+        const km = up.reduce((a, s) => a + computeSessionDistanceKm(s), 0);
+        el.textContent = `${up.length} séance${up.length > 1 ? 's' : ''} à venir jusqu'au ${fmtDateShort(up[up.length - 1].dateISO)} • ≈ ${Math.round(km)} km au total`;
+      }
+      const btn = document.getElementById('planAnaBtn');
+      if (btn) btn.disabled = !up.length;
+      if (!planReview && appData.planReview && !appData.planReview.done) planReview = appData.planReview;
+      renderPlanReview();
+    }
+    function planSessLine(s) {
+      return `${s.dateISO} (${s.jour || ''}) | ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`} | ${Math.round(computeSessionTotalMin(s))} min ≈ ${computeSessionDistanceKm(s).toFixed(1)} km | ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.notes ? ` | ${s.notes}` : ''}`;
+    }
+    async function analyzePlanWithCoach() {
+      const st = document.getElementById('planAnaStatus');
+      const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
+      if (!getGeminiKey()) { say("Renseigne ta clé Gemini (Réglages › Données)", true); return; }
+      const up = upcomingPlanSessions();
+      if (!up.length) { say("Aucune séance prévue à analyser", true); return; }
+      const g = appData.goal || {}, r = runnerProfile();
+      const refs = {};
+      const lines = up.slice(0, 90).map((s, i) => { refs['S' + (i + 1)] = s.id; return `S${i + 1} | ${planSessLine(s)}`; }).join('\n');
+      const hist = runHistory().slice(0, 10).map(h => `- ${h._iso || h.date} : ${h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.summary && h.summary.hrAvg ? ` ; FC moy ${h.summary.hrAvg}` : ''}`).join('\n') || '- aucune';
+      const wk = weeklyKm(6).map(w => `${fmtDateShort(w.start)} : ${w.km.toFixed(0)} km (${w.n})`).join(' ; ');
+      let prob = '';
+      try { const p = computeGoalProbability(); if (p && !p.noData) prob = `Probabilité estimée d'atteindre l'objectif le jour J : ${p.pDay} %.`; } catch (e) { }
+      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
+Analyse le plan d'entraînement à venir de ton coureur par rapport à son objectif, et propose des modifications seulement si elles sont vraiment utiles.
+Aujourd'hui : ${todayISO()}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${guessISOFromDDMM(g.date) || g.date || '?'}${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Niveau actuel : ${runnerLevelsText()}.
+${prob}
+Km par semaine (6 dernières) : ${wk}.
+Séances récentes :
+${hist}
+Jours habituels de course : ${planDays().map(i => jours[i]).join(', ') || '?'}.${offDaysText() ? `\nJours sans sport prévus (aucune séance ces jours-là) : ${offDaysText()}.` : ''}${(document.getElementById('coachCustomInstructions')?.value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
+Plan à venir (référence | date | lieu | durée | contenu hors échauffement et retour au calme | notes) :
+${lines}
+Vérifie : cohérence avec l'objectif (allures spécifiques, sortie longue suffisante), progression du volume (pas plus de +10 % par semaine), semaines allégées, équilibre intensité / endurance, récupération entre séances dures, affûtage avant la course, adaptation au niveau actuel et aux séances récentes.
+Format JSON strict :
+{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["2 à 3 constats très courts"],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}}]}
+Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. 8 modifications au maximum, les plus importantes d'abord. "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
+      const btn = document.getElementById('planAnaBtn'); if (btn) btn.disabled = true;
+      say("🧠 Le coach étudie ton plan… (20 à 60 s)");
+      try {
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const j = parseJsonLoose(txt) || {};
+        const mods = parseCoachMods(j.modifications, refs);
+        const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
+        planReview = { at: todayISO(), verdict, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 3).map(String), mods, done: false };
+        appData.planReview = planReview; saveAppData();
+        say('');
+        renderPlanReview();
+        setTimeout(() => document.getElementById('planAnaBox')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      } catch (e) {
+        say(`Analyse impossible : ${e.message || e}`, true);
+      } finally { if (btn) btn.disabled = false; }
+    }
+    function renderPlanReview() {
+      const box = document.getElementById('planAnaBox');
+      if (!box) return;
+      const pr = planReview;
+      if (!pr || pr.done) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      const C = { ok: ['#34d399', 'rgba(52,211,153,.12)', '✅ Plan validé'], ajuster: ['#fb923c', 'rgba(251,146,60,.12)', '🛠️ À ajuster'], revoir: ['#fb7185', 'rgba(251,113,133,.12)', '⚠️ À revoir'] }[pr.verdict];
+      const mods = coachModsHtml(pr, 'planReview', 'renderPlanReviewFoot');
+      box.innerHTML = coachVerdictHtml(C, pr.titre, pr.points) + (mods ? `<span class="pm-cap" style="margin-top:4px">Modifications proposées</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="planAnaFoot" class="flex flex-col gap-2"></div>';
+      box.classList.remove('hidden');
+      renderPlanReviewFoot();
+    }
+    function renderPlanReviewFoot() {
+      const f = document.getElementById('planAnaFoot');
+      if (!f || !planReview) return;
+      const n = countOnMods(planReview);
+      f.innerHTML = planReview.mods.length
+        ? `<button onclick="applyPlanReview()" ${n ? '' : 'disabled'} class="pm-btn" style="height:48px;border:none;background:${n ? '#34d399' : '#1e293b'};color:${n ? '#04140d' : '#64748b'};font-weight:800;font-size:14px">✅ Appliquer ${n} modification${n > 1 ? 's' : ''}</button>
+           <button onclick="dismissPlanReview()" class="pm-btn" style="font-weight:700">Garder mon plan tel quel</button>`
+        : `<button onclick="dismissPlanReview()" class="pm-btn" style="font-weight:700">OK</button>`;
+    }
+    function dismissPlanReview() {
+      if (planReview) planReview.done = true;
+      appData.planReview = planReview; saveAppData();
+      renderPlanReview();
+    }
+    function applyPlanReview() {
+      if (!planReview) return;
+      const act = activeSessId();
+      const n = applyCoachMods(planReview.mods);
+      planReview.done = true;
+      appData.planReview = planReview;
+      afterPlanChange(act);
+      showSavedBig(`Plan mis à jour (${n} modif.)`);
+    }
+    // ==================== MODIFICATIONS PROPOSÉES PAR LE COACH (commun) ====================
+    function parseCoachMods(list, refs, isBad) {
+      return (Array.isArray(list) ? list : []).slice(0, 8).map((m, i) => {
+        const action = /suppr/i.test(m.action) ? 'supprimer' : /ajout/i.test(m.action) ? 'ajouter' : 'modifier';
+        const refId = refs[String(m.ref || '').trim().toUpperCase()] || null;
+        if (action !== 'ajouter' && !refId) return null;
+        let sess = null;
+        if (action !== 'supprimer') {
+          const n = normalizeImportedSessions([m.session || {}]);
+          if (!n.length || !n[0].dateISO || n[0].dateISO < todayISO()) return null;
+          if (isBad && isBad(n[0].dateISO)) return null;
+          sess = n[0];
+        }
+        return { i, action, refId, raison: String(m.raison || '').slice(0, 240), sess, on: true };
+      }).filter(Boolean);
+    }
+    function coachModsHtml(rv, varName, footFn) {
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const byId = id => (appData.sessions || []).find(s => s.id === id);
+      const sDesc = s => s ? `${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.type === 'exterieur' ? ' • extérieur' : ''} (${Math.round(computeSessionTotalMin(s))}')` : '';
+      const day = iso => { const d = parseISODateLocal(iso); return d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })) : ''; };
+      return rv.mods.map((m, k) => {
+        const old = m.refId ? byId(m.refId) : null;
+        if (m.action !== 'ajouter' && !old) return '';
+        const ic = { modifier: ['✏️ Modifier', '#fbbf24'], supprimer: ['🗑 Supprimer', '#fb7185'], ajouter: ['➕ Ajouter', '#34d399'] }[m.action];
+        const moved = old && m.sess && m.sess.dateISO !== old.dateISO;
+        if (moved) ic[0] = '📅 Déplacer';
+        return `<label class="flex gap-3 items-start p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #1e293b">
+          <input type="checkbox" ${m.on ? 'checked' : ''} onchange="${varName}.mods[${k}].on=this.checked;${footFn}()" class="accent-emerald-500 w-5 h-5 mt-0.5 shrink-0">
+          <span class="flex flex-col gap-1 min-w-0">
+            <span class="text-[13px] font-extrabold" style="color:${ic[1]}">${ic[0]} · <span class="text-slate-200">${day((old || m.sess).dateISO)}${moved ? ` → ${day(m.sess.dateISO)}` : ''}</span></span>
+            ${old && m.action === 'modifier' && sDesc(old) !== sDesc(m.sess) ? `<span class="text-[12px] text-slate-500 line-through">${esc(sDesc(old))}</span>` : ''}
+            ${old && m.action === 'supprimer' ? `<span class="text-[12px] text-slate-400">${esc(sDesc(old))}</span>` : ''}
+            ${m.sess ? `<span class="text-[13px] text-white font-semibold">${esc(sDesc(m.sess))}</span>` : ''}
+            ${m.raison ? `<span class="text-[12px] text-slate-400 italic">${esc(m.raison)}</span>` : ''}
+          </span></label>`;
+      }).join('');
+    }
+    function coachVerdictHtml(C, titre, points) {
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      return `<div class="flex flex-col gap-2 p-3 rounded-2xl" style="background:${C[1]};border:1px solid ${C[0]}">
+          <span class="text-[12px] font-black uppercase tracking-wide" style="color:${C[0]}">${C[2]}</span>
+          <span class="text-[17px] font-black text-white leading-snug">${esc(titre)}</span>
+          ${points.length ? `<div class="flex flex-col gap-1">${points.map(p => `<span class="text-[13px] text-slate-300">• ${esc(p)}</span>`).join('')}</div>` : ''}
+        </div>`;
+    }
+    function countOnMods(rv) { return rv.mods.filter(m => m.on && (m.action === 'ajouter' || (appData.sessions || []).some(s => s.id === m.refId))).length; }
+    function applyCoachMods(mods) {
+      let n = 0;
+      mods.filter(m => m.on).forEach(m => {
+        const idx = appData.sessions.findIndex(s => s.id === m.refId);
+        if (m.action === 'supprimer' && idx >= 0) { appData.sessions.splice(idx, 1); n++; }
+        else if (m.action === 'modifier' && idx >= 0) {
+          const old = appData.sessions[idx];
+          appData.sessions[idx] = Object.assign({}, m.sess, { id: old.id, semaine: old.semaine, route: old.route, coachEdited: true }); n++;
+        } else if (m.action === 'ajouter' && m.sess) {
+          const prev = appData.sessions.filter(s => s.dateISO && s.dateISO <= m.sess.dateISO).pop();
+          appData.sessions.push(Object.assign({}, m.sess, { id: `sess_coach_${Date.now()}_${m.i}`, semaine: prev ? prev.semaine : 1, coachEdited: true })); n++;
+        }
+      });
+      applyRunnerWarmCool(appData.sessions.filter(s => s.coachEdited));
+      return n;
+    }
+    function afterPlanChange(actId) {
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      const ai = actId ? appData.sessions.findIndex(s => s.id === actId) : -1;
+      if (ai >= 0) appData.activeSessionIndex = ai;
+      else { const t = todayISO(); const k = appData.sessions.findIndex(s => s.dateISO && s.dateISO >= t && !isSessionDone(s)); appData.activeSessionIndex = Math.max(0, k); }
+      sanitizeData(); saveAppData(); reloadChrono(); updateHistoryTable();
+      try { renderPlanSummary(); } catch (e) { }
+      try { renderHome(); } catch (e) { }
+    }
+    function activeSessId() { const a = appData.sessions[appData.activeSessionIndex]; return a && a.id; }
+
+    // ==================== JOURS SANS SPORT : DÉCALER / ADAPTER / SUPPRIMER ====================
+    let offReview = null;
+    function raceISO() { const g = appData.goal || {}; return guessISOFromDDMM(g.date) || ''; }
+    function openOffModal() {
+      const m = document.getElementById('offModal');
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      const f = document.getElementById('offFrom'), t = document.getElementById('offTo');
+      if (!f.value || f.value < todayISO()) { f.value = toISODateLocal(d); t.value = f.value; }
+      offReview = null;
+      document.getElementById('offCoachBox').classList.add('hidden');
+      document.getElementById('offCoachStatus').textContent = '';
+      renderOffImpact();
+      m.classList.remove('hidden');
+      refreshAllIcons();
+    }
+    function closeOffModal() { document.getElementById('offModal').classList.add('hidden'); }
+    function offRange() {
+      let a = document.getElementById('offFrom').value, b = document.getElementById('offTo').value || a;
+      if (b < a) { b = a; document.getElementById('offTo').value = a; }
+      return [a, b];
+    }
+    function offSessions() {
+      const [a, b] = offRange();
+      return upcomingPlanSessions().filter(s => s.dateISO >= a && s.dateISO <= b);
+    }
+    function renderOffImpact() {
+      const el = document.getElementById('offImpact');
+      if (!el) return;
+      const [a, b] = offRange();
+      if (!a) { el.innerHTML = ''; return; }
+      const L = offSessions();
+      const after = upcomingPlanSessions().filter(s => s.dateISO > b).length;
+      const n = Math.round((parseISODateLocal(b) - parseISODateLocal(a)) / 864e5) + 1;
+      el.innerHTML = `<span class="text-[13px] font-bold text-white">${n} jour${n > 1 ? 's' : ''} sans sport · ${L.length ? `${L.length} séance${L.length > 1 ? 's' : ''} concernée${L.length > 1 ? 's' : ''}` : 'aucune séance prévue'}</span>
+        ${L.map(s => `<div class="text-[12px] text-slate-300 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5"><b class="text-amber-300">${capFirst(parseISODateLocal(s.dateISO).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }))}</b> · ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.notes ? ` <i class="text-slate-500">(${plEsc(s.notes)})</i>` : ''}</div>`).join('')}
+        <span class="text-[11px] text-slate-500">${after} séance${after > 1 ? 's' : ''} prévue${after > 1 ? 's' : ''} ensuite${raceISO() ? ` · course le ${fmtDateShort(raceISO())}` : ''}</span>`;
+    }
+    function rememberOffDays() {
+      const [a, b] = offRange();
+      if (!Array.isArray(appData.offDays)) appData.offDays = [];
+      appData.offDays = appData.offDays.filter(o => o.to >= todayISO() && !(o.from === a && o.to === b));
+      appData.offDays.push({ from: a, to: b });
+    }
+    function offDaysText() {
+      const L = (appData.offDays || []).filter(o => o.to >= todayISO());
+      return L.length ? L.map(o => o.from === o.to ? o.from : `${o.from} → ${o.to}`).join(', ') : '';
+    }
+    function shiftPlanFrom(fromIso, weeks) {
+      let n = 0;
+      const mv = o => { const d = parseISODateLocal(o.dateISO); d.setDate(d.getDate() + 7 * weeks); o.dateISO = toISODateLocal(d); if ('date' in o) o.date = toDDMM(d); if ('jour' in o) o.jour = weekdayName(d); };
+      appData.sessions.forEach(s => { if (!s.dateISO || (s.free && !s.plannedFree) || s.dateISO < fromIso || isSessionDone(s)) return; mv(s); s.semaine = (+s.semaine || 1) + weeks; n++; });
+      (appData.crossPlan || []).forEach(c => { if (c.dateISO && c.dateISO >= fromIso) mv(c); });
+      return n;
+    }
+    function afterRaceCount() { const r = raceISO(); return r ? upcomingPlanSessions().filter(s => s.dateISO > r).length : 0; }
+    function shiftPlanManual(weeksArg) {
+      const [a] = offRange();
+      const w = weeksArg || parseInt(document.getElementById('offWeeks').value) || 1;
+      const n0 = upcomingPlanSessions().filter(s => s.dateISO >= a).length;
+      if (!n0) { showToast('Aucune séance à décaler'); return; }
+      if (!weeksArg && !confirm(`Décaler ${n0} séance${n0 > 1 ? 's' : ''} de ${w} semaine${w > 1 ? 's' : ''} (même jour de la semaine) ?`)) return;
+      const act = activeSessId();
+      rememberOffDays();
+      const n = shiftPlanFrom(a, w);
+      afterPlanChange(act);
+      renderOffImpact();
+      const late = afterRaceCount();
+      showToast(`📅 ${n} séance${n > 1 ? 's' : ''} décalée${n > 1 ? 's' : ''} de ${w} semaine${w > 1 ? 's' : ''}${late ? ` · ⚠ ${late} après la course` : ''}`);
+    }
+    function deleteOffSessions() {
+      const L = offSessions();
+      if (!L.length) { showToast('Aucune séance ces jours-là'); return; }
+      if (!confirm(`Supprimer ${L.length} séance${L.length > 1 ? 's' : ''} ?`)) return;
+      const act = activeSessId(), ids = L.map(s => s.id);
+      rememberOffDays();
+      appData.sessions = appData.sessions.filter(s => !ids.includes(s.id));
+      afterPlanChange(act);
+      renderOffImpact();
+      showToast(`🗑 ${L.length} séance${L.length > 1 ? 's' : ''} supprimée${L.length > 1 ? 's' : ''}`);
+    }
+    async function askOffCoach() {
+      const st = document.getElementById('offCoachStatus');
+      const say = (t, err) => { st.textContent = t; st.className = `text-[12px] font-semibold ${err ? 'text-rose-400' : 'text-purple-300'}`; };
+      if (!getGeminiKey()) { say('Renseigne ta clé Gemini (Réglages › Données)', true); return; }
+      const [a, b] = offRange();
+      const up = upcomingPlanSessions();
+      const inOff = up.filter(s => s.dateISO >= a && s.dateISO <= b);
+      const lim = (() => { const d = parseISODateLocal(b); d.setDate(d.getDate() + 42); return toISODateLocal(d); })();
+      const nextS = up.filter(s => s.dateISO > b && s.dateISO <= lim);
+      const before = up.filter(s => s.dateISO < a).slice(-3);
+      const refs = {}; let k = 0;
+      const line = s => { k++; refs['S' + k] = s.id; return `S${k} | ${planSessLine(s)}`; };
+      const g = appData.goal || {}, r = runnerProfile(), race = raceISO();
+      const wk = weeklyKm(4).map(w => `${fmtDateShort(w.start)} : ${w.km.toFixed(0)} km`).join(' ; ');
+      const n = Math.round((parseISODateLocal(b) - parseISODateLocal(a)) / 864e5) + 1;
+      const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
+Ton coureur ne pourra pas faire de sport du ${a} au ${b} (${n} jour${n > 1 ? 's' : ''}). Aujourd'hui : ${todayISO()}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min, course le ${race || '?'}${race ? ` (dans ${Math.round((parseISODateLocal(race) - parseISODateLocal(todayISO())) / 864e5)} jours)` : ''}.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, endurance fondamentale ${formatSpeed(runnerEF())} km/h. Niveau actuel : ${runnerLevelsText()}.
+Km par semaine (4 dernières) : ${wk}.
+Séances juste avant (pour info) :
+${before.map(s => `- ${planSessLine(s)}`).join('\n') || '- aucune'}
+Séances prévues pendant l'indisponibilité :
+${inOff.map(line).join('\n') || '- aucune'}
+Séances prévues ensuite (6 semaines) :
+${nextS.map(line).join('\n') || '- aucune'}${afterRaceCount() ? '' : ''}
+Choisis la meilleure option :
+- "decaler" : tout le planning glisse de 1 ou 2 semaines en gardant les mêmes jours ; seulement si la date de course le permet (l'affûtage et la course ne doivent pas être repoussés au-delà du jour J) ;
+- "adapter" : déplacer ou modifier quelques séances clés (tests, sorties longues, séances spécifiques à l'objectif) et alléger la reprise ;
+- "supprimer" : les séances manquées ne sont pas rattrapées (absence courte ou séances secondaires).
+Donne la priorité aux tests prévus et à l'objectif final, sans surcharger la semaine de reprise.
+Format JSON strict :
+{"choix":"decaler|adapter|supprimer","semaines":1,"titre":"une phrase courte : ta recommandation","points":["2 à 3 raisons très courtes"],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S2","raison":"une phrase courte","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif en une phrase"}}]}
+Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pour "supprimer", une modification "supprimer" par séance concernée ; pour "adapter", 8 modifications au maximum (déplacer une séance = "modifier" avec sa nouvelle date et son contenu). Aucune nouvelle date entre le ${a} et le ${b}, ni dans le passé. Vitesses en km/h. Réponds uniquement avec le JSON.`;
+      const btn = document.getElementById('offCoachBtn'); btn.disabled = true;
+      say('🧠 Le coach réfléchit… (10 à 40 s)');
+      try {
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const j = parseJsonLoose(txt) || {};
+        const choix = ['decaler', 'adapter', 'supprimer'].includes(j.choix) ? j.choix : 'adapter';
+        offReview = { choix, semaines: Math.max(1, Math.min(3, parseInt(j.semaines) || 1)), titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 3).map(String),
+          mods: parseCoachMods(j.modifications, refs, iso => iso >= a && iso <= b), from: a, to: b };
+        say('');
+        renderOffReview();
+        setTimeout(() => document.getElementById('offCoachBox').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      } catch (e) {
+        say(`Avis impossible : ${e.message || e}`, true);
+      } finally { btn.disabled = false; }
+    }
+    function renderOffReview() {
+      const box = document.getElementById('offCoachBox');
+      const rv = offReview;
+      if (!rv) { box.classList.add('hidden'); return; }
+      const C = { decaler: ['#38bdf8', 'rgba(56,189,248,.12)', `📅 Décaler de ${rv.semaines} semaine${rv.semaines > 1 ? 's' : ''}`], adapter: ['#fb923c', 'rgba(251,146,60,.12)', '🛠️ Adapter quelques séances'], supprimer: ['#fb7185', 'rgba(251,113,133,.12)', '🗑 Ne pas rattraper'] }[rv.choix];
+      const mods = coachModsHtml(rv, 'offReview', 'renderOffReviewFoot');
+      box.innerHTML = coachVerdictHtml(C, rv.titre, rv.points) + (mods ? `<span class="pm-cap" style="margin-top:4px">${rv.choix === 'decaler' ? 'Retouches proposées' : 'Modifications proposées'}</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="offCoachFoot" class="flex flex-col gap-2"></div>';
+      box.classList.remove('hidden');
+      renderOffReviewFoot();
+    }
+    function renderOffReviewFoot() {
+      const f = document.getElementById('offCoachFoot');
+      if (!f || !offReview) return;
+      const n = countOnMods(offReview), sh = offReview.choix === 'decaler';
+      const lbl = sh ? `✅ Décaler de ${offReview.semaines} semaine${offReview.semaines > 1 ? 's' : ''}${n ? ` + ${n} retouche${n > 1 ? 's' : ''}` : ''}` : `✅ Appliquer ${n} modification${n > 1 ? 's' : ''}`;
+      const ok = sh || n > 0;
+      if (!ok && !offReview.mods.length) { f.innerHTML = `<button onclick="rememberOffDays();saveAppData();offReview=null;renderOffReview();showSavedBig('Jours sans sport notés')" class="pm-btn" style="height:48px;font-weight:800">OK, je garde mon planning</button>`; return; }
+      f.innerHTML = `<button onclick="applyOffReview()" ${ok ? '' : 'disabled'} class="pm-btn" style="height:48px;border:none;background:${ok ? '#34d399' : '#1e293b'};color:${ok ? '#04140d' : '#64748b'};font-weight:800;font-size:14px">${lbl}</button>`;
+    }
+    function applyOffReview() {
+      const rv = offReview;
+      if (!rv) return;
+      const act = activeSessId();
+      rememberOffDays();
+      let n = applyCoachMods(rv.mods);
+      let sh = 0;
+      if (rv.choix === 'decaler') sh = shiftPlanFrom(rv.from, rv.semaines);
+      afterPlanChange(act);
+      offReview = null;
+      renderOffReview();
+      renderOffImpact();
+      showSavedBig(sh ? `Planning décalé de ${rv.semaines} sem.` : 'Planning mis à jour');
+    }
+
+    // ==================== ENREGISTRÉ (grand message) ====================
+    function showSavedBig(txt) {
+      let el = document.getElementById('savedBig');
+      if (!el) { el = document.createElement('div'); el.id = 'savedBig'; el.style.cssText = 'position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:24px'; document.body.appendChild(el); }
+      el.innerHTML = `<div class="saved-pop">✅ ${String(txt || 'Enregistré').replace(/</g, '&lt;')}</div>`;
+      clearTimeout(el._t); el._t = setTimeout(() => { el.innerHTML = ''; }, 1900);
+    }
+
     async function generatePlanWithCoach() {
       const st = document.getElementById('planGenStatus');
       const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
@@ -5340,6 +6026,12 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       updateGeminiStatusBadge(!!getGeminiKey());
       document.getElementById('audioModal').classList.remove('hidden');
       refreshAllIcons();
+    }
+    function saveAudioModal() {
+      saveAudioSettingsFromUI();
+      if (document.getElementById('gpsModeSelect')) saveSensorsFromUI();
+      if (aiVoiceActive()) prepareAIVoice();
+      showSavedBig('Réglages enregistrés');
     }
     function closeAudioModal() {
       saveAudioSettingsFromUI();
@@ -6002,6 +6694,8 @@ Réponds uniquement avec le JSON.`;
       document.getElementById('pdfImportPreview').classList.add('hidden');
       setPdfStatus(`✓ ${pdfImportResult.length} séances importées`);
       pdfImportResult = [];
+      planReview = null; if (appData.planReview) appData.planReview.done = true; saveAppData();
+      renderPlanSummary();
       showToast("Planning importé ✓");
     }
 
@@ -6666,11 +7360,13 @@ Réponds uniquement avec le JSON.`;
           renderRouteInfo();
           try {
             if (!Array.isArray(appData.myRoutes)) appData.myRoutes = [];
-            appData.myRoutes.unshift({ id: `rt_${Date.now()}`, name: route.name, km: route.totalKm, gain: route.gainM, at: todayISO(), wps: null,
+            route.myId = `rt_${Date.now()}`;
+            appData.myRoutes.unshift({ id: route.myId, name: route.name, km: route.totalKm, gain: route.gainM, at: todayISO(), wps: null,
               segs: [route.pts.map(p => [p[0], p[1]])], eles: route.hasEle ? route.pts.map(p => [p[2], p[3]]) : null });
             saveAppData(); renderMyRoutes();
           } catch (e) {}
           setGpxStatus(`✓ Parcours chargé : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m, ${route.turns.length} virages — enregistrez la séance`);
+          reviewRoute(route);
         } catch (e) {
           setGpxStatus(`⚠ ${e.message || 'Fichier GPX illisible'}`, true);
         }
@@ -6679,8 +7375,8 @@ Réponds uniquement avec le JSON.`;
     }
     function clearRoute() {
       modalRoute = null;
-      renderRouteInfo();
-      setGpxStatus('Parcours retiré (enregistrez la séance)');
+      renderRouteInfo(); renderMyRoutes(); recalculateModalTotals();
+      setGpxStatus('Parcours retiré (sauvegarde la séance)');
     }
     function parseGpx(xml, name) {
       const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -6721,25 +7417,8 @@ Réponds uniquement avec le JSON.`;
         const a = Math.max(0, i - 2), b = Math.min(prof.length - 1, i + 2);
         return b > a ? (prof[b] - prof[a]) / ((b - a) * step * 1000) * 100 : 0;
       });
-      // Montées et descentes marquées (≥ 3 % sur au moins 300 m)
-      const climbs = [];
-      const scan = (sign) => {
-        let s = -1;
-        for (let i = 0; i <= gr.length; i++) {
-          const on = i < gr.length && sign * gr[i] >= 3;
-          if (on && s < 0) s = i;
-          if (!on && s >= 0) {
-            const len = (i - 1 - s) * step;
-            if (len >= 0.3) {
-              const grade = (prof[i - 1] - prof[s]) / (len * 1000) * 100;
-              if (sign * grade >= 2.5) climbs.push({ type: sign > 0 ? 'up' : 'down', startKm: s * step, lenKm: len, grade: Math.round(Math.abs(grade)) });
-            }
-            s = -1;
-          }
-        }
-      };
-      if (hasEle) { scan(1); scan(-1); }
-      climbs.sort((a, b) => a.startKm - b.startKm);
+      // Montées significatives (≥ 500 m, petites coupures regroupées)
+      const climbs = hasEle ? computeClimbs(prof, gr, step) : [];
       // Points allégés pour le suivi de position
       const maxPts = 1500;
       const keep = pts.length > maxPts ? pts.filter((_, i) => i % Math.ceil(pts.length / maxPts) === 0 || i === pts.length - 1) : pts;
@@ -6750,7 +7429,7 @@ Réponds uniquement avec le JSON.`;
         turns: computeTurns(keep.map(p => [p.lat, p.lon, p.cum])),
         gr: gr.map(v => Math.round(v * 10) / 10),
         prof: prof.map(v => Math.round(v)),
-        climbs
+        climbs, climbsV: 2
       };
     }
     function routeGradeAt(km) {
@@ -6789,6 +7468,142 @@ Réponds uniquement avec le JSON.`;
       return (Math.atan2(y, x) / r + 360) % 360;
     }
     // pts : [lat, lon, km cumulés, alt]
+    // ==================== MONTÉES SIGNIFICATIVES ====================
+    // Montées d'au moins 500 m ; deux montées séparées par un court replat ou une petite descente sont regroupées
+    function computeClimbs(prof, gr, step) {
+      if (!prof || !gr || prof.length < 3) return [];
+      const raw = []; let s = -1;
+      for (let i = 0; i <= gr.length; i++) {
+        const on = i < gr.length && gr[i] >= 2;
+        if (on && s < 0) s = i;
+        if (!on && s >= 0) { if ((i - 1 - s) * step >= 0.1) raw.push([s, i - 1]); s = -1; }
+      }
+      const merged = [];
+      raw.forEach(seg => {
+        const last = merged[merged.length - 1];
+        if (last) {
+          const gapKm = (seg[0] - last[1]) * step;
+          let lo = Infinity; for (let k = last[1]; k <= seg[0]; k++) lo = Math.min(lo, prof[k]);
+          if (gapKm <= 0.4 && prof[last[1]] - lo <= 8) { last[1] = seg[1]; return; }
+        }
+        merged.push(seg.slice());
+      });
+      return merged.map(([a, b]) => {
+        // départ au point le plus bas, arrivée au point le plus haut
+        let lo = a, hi = b;
+        for (let k = a; k <= Math.min(a + 4, b); k++) if (prof[k] < prof[lo]) lo = k;
+        for (let k = b; k >= Math.max(b - 4, lo); k--) if (prof[k] > prof[hi]) hi = k;
+        const len = (hi - lo) * step, gain = prof[hi] - prof[lo];
+        return { type: 'up', startKm: +(lo * step).toFixed(2), lenKm: +len.toFixed(2), grade: len > 0 ? Math.round(gain / (len * 1000) * 1000) / 10 : 0, gainM: Math.round(gain) };
+      }).filter(c => c.lenKm >= 0.5 && c.grade >= 2).map(c => Object.assign(c, { grade: c.grade >= 5 ? Math.round(c.grade) : Math.round(c.grade * 2) / 2 }));
+    }
+    function fixClimbs(r) {
+      if (r && r.climbsV !== 2) { r.climbs = r.hasEle ? computeClimbs(r.prof, r.gr, 0.05) : []; r.climbsV = 2; }
+      return r;
+    }
+
+    // ==================== PARCOURS : AVIS DU COACH & TEMPS ESTIMÉ ====================
+    function fmtHM(min) {
+      const m = Math.round(min);
+      return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+    }
+    // Estimation immédiate (sans coach) : 100 m de D+ ≈ 1 km de plat, à l'allure d'endurance
+    function routeLocalEstimate(km, gain) {
+      const ef = runnerEF() || 9;
+      return (km + (gain || 0) / 100) / ef * 60;
+    }
+    // Séance continue en extérieur sur un parcours : durée = parcours ÷ vitesse moyenne estimée par le coach
+    function routeRunInfo(sess) {
+      if (!sess || sess.free || sess.type !== 'exterieur' || !sess.route || !sess.route.review) return null;
+      const kmh = parseFloat(sess.route.review.kmh);
+      if (!(kmh > 3)) return null;
+      const reps = Math.max(1, parseInt(sess.repet) || 1) * Math.max(1, parseInt(sess.nbBlocs) || 1);
+      const segs = (sess.pyramide || []).filter(p => p.speed > 0);
+      if (reps > 1 || segs.length > 1) return null;
+      const km = sess.route.totalKm;
+      return { kmh, km, min: km / kmh * 60, name: sess.route.name, gain: sess.route.gainM };
+    }
+    function routeRunSess(sess) {
+      const ri = routeRunInfo(sess);
+      if (!ri) return sess;
+      const main = Math.max(5, ri.min - (sess.chauffe || 0) - (sess.recup || 0));
+      return Object.assign({}, sess, { repet: 1, nbBlocs: 1, pyramide: [{ speed: Math.round(ri.kmh * 10) / 10, duration: Math.round(main * 10) / 10, unit: 'min' }] });
+    }
+    function routeElevSummary(r) {
+      const prof = r.prof || [];
+      if (!r.hasEle || !prof.length) return 'altitude inconnue';
+      const pts = [];
+      for (let i = 0; i < prof.length; i += 10) pts.push(`km ${(i * 0.05).toFixed(1)} : ${prof[i]} m`);
+      return pts.slice(0, 60).join(' ; ');
+    }
+    async function reviewRoute(route, opts = {}) {
+      if (!route || route._reviewing) return;
+      if (!getGeminiKey()) { if (opts.manual) showToast('Renseigne ta clé Gemini (Réglages › Données)'); return; }
+      fixClimbs(route);
+      route._reviewing = true; renderRouteInfo();
+      const r = runnerProfile(), g = appData.goal || {};
+      const recent = runHistory().slice(0, 6).map(h => `- ${h._iso || h.date} : ${h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km${h.summary && h.summary.avgKmh ? ` ; moy. ${h.summary.avgKmh} km/h` : ''} ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const climbs = (route.climbs || []).map(c => `km ${c.startKm.toFixed(1)} : ${c.lenKm.toFixed(1)} km à ${c.grade} % (D+ ${c.gainM} m)`).join(' ; ') || 'aucune montée significative';
+      const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
+Ton coureur a créé un parcours pour courir en extérieur. Donne ton avis et estime son temps.
+Parcours « ${route.name} » : ${route.totalKm.toFixed(2)} km, D+ ${Math.round(route.gainM)} m, D- ${Math.round(route.lossM)} m.
+Montées significatives : ${climbs}.
+Altitude : ${routeElevSummary(route)}.
+Coureur : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Niveau actuel : ${runnerLevelsText()}.
+Séances récentes (forme du moment) :
+${recent}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}${g.hilly ? `, course vallonnée (pente moyenne ${g.pente} %)` : ', course plate'}.
+Format JSON strict :
+{"difficulte":"facile|moderee|difficile|tres_difficile","titre":"une phrase courte : ton avis global","adapte":"une phrase : est-il adapté à son niveau, à sa forme et à son objectif ?","vitesse_kmh":9.8,"conseils":["2 à 4 conseils très courts et concrets : gestion des montées (avec le km), allure, hydratation…"]}
+Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour une sortie en endurance, échauffement et retour au calme compris, en tenant compte du dénivelé et de sa forme actuelle. Réponds uniquement avec le JSON.`;
+      try {
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true });
+        const j = parseJsonLoose(txt) || {};
+        let kmh = parseFloat(String(j.vitesse_kmh).replace(',', '.'));
+        if (!(kmh > 3 && kmh < 25)) kmh = route.totalKm / routeLocalEstimate(route.totalKm, route.gainM) * 60;
+        const diff = String(j.difficulte || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_');
+        const rv = {
+          at: todayISO(), kmh: Math.round(kmh * 10) / 10, min: route.totalKm / kmh * 60,
+          difficulte: ['facile', 'moderee', 'difficile', 'tres_difficile'].includes(diff) ? diff : 'moderee',
+          titre: String(j.titre || ''), adapte: String(j.adapte || ''), conseils: (Array.isArray(j.conseils) ? j.conseils : []).slice(0, 4).map(String)
+        };
+        route.review = rv;
+        if (route.myId) {
+          const it = (appData.myRoutes || []).find(x => x.id === route.myId); if (it) it.review = rv;
+          (appData.sessions || []).forEach(s => { if (s.route && s.route.myId === route.myId) s.route.review = rv; });
+        }
+        saveAppData();
+        renderMyRoutes();
+        try { renderHome(); } catch (e) { }
+      } catch (e) {
+        if (opts.manual) showToast(`Avis impossible : ${e.message || e}`);
+      } finally {
+        route._reviewing = false;
+        renderRouteInfo();
+      }
+    }
+    function routeReviewHtml(r) {
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      if (r._reviewing) return `<div class="pm-card" style="border-color:rgba(167,139,250,.45)"><span class="text-[13px] font-bold text-purple-300">🧠 Le coach étudie ton parcours…</span><span class="text-[12px] text-slate-400">Estimation rapide : ≈ ${fmtHM(routeLocalEstimate(r.totalKm, r.gainM))}</span></div>`;
+      const rv = r.review;
+      if (!rv) return `<button type="button" onclick="reviewRoute(modalRoute,{manual:true})" class="pm-btn w-full" style="height:46px;border:none;background:#a78bfa;color:#13092b;font-weight:800">🧠 Avis du coach et temps estimé</button>`;
+      const D = { facile: ['Facile', '#34d399'], moderee: ['Modéré', '#fbbf24'], difficile: ['Difficile', '#fb923c'], tres_difficile: ['Très difficile', '#fb7185'] }[rv.difficulte] || ['Modéré', '#fbbf24'];
+      const old = rv.at && (parseISODateLocal(todayISO()) - parseISODateLocal(rv.at)) / 864e5 > 14;
+      return `<div class="flex flex-col gap-2 p-3 rounded-2xl" style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.4)">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[12px] font-black uppercase tracking-wide text-purple-300">🧠 Avis du coach</span>
+          <span class="text-[12px] font-extrabold px-2.5 py-1 rounded-full" style="color:${D[1]};border:1px solid ${D[1]}">${D[0]}</span>
+        </div>
+        <div class="flex items-baseline gap-2"><span class="text-[26px] font-black text-white">⏱ ${fmtHM(r.totalKm / rv.kmh * 60)}</span><span class="text-[13px] font-bold text-slate-400">à ${formatSpeed(rv.kmh).replace('.', ',')} km/h de moyenne</span></div>
+        <span class="text-[11px] text-slate-400 -mt-1">Échauffement et retour au calme compris</span>
+        ${rv.titre ? `<span class="text-[15px] font-extrabold text-white leading-snug">${esc(rv.titre)}</span>` : ''}
+        ${rv.adapte ? `<span class="text-[13px] text-slate-300">${esc(rv.adapte)}</span>` : ''}
+        ${rv.conseils.length ? `<div class="flex flex-col gap-1">${rv.conseils.map(c => `<span class="text-[13px] text-slate-200">• ${esc(c)}</span>`).join('')}</div>` : ''}
+        <button type="button" onclick="reviewRoute(modalRoute,{manual:true})" class="text-[12px] font-bold self-start ${old ? 'text-amber-300' : 'text-slate-400'}">🔄 ${old ? 'Avis de plus de 2 semaines : actualiser selon ma forme' : `Actualiser l'avis (du ${fmtDateShort(rv.at)})`}</button>
+      </div>`;
+    }
+
     function computeTurns(pts) {
       const n = pts.length;
       if (n < 3) return [];
@@ -6854,7 +7669,7 @@ Réponds uniquement avec le JSON.`;
     function climbAheadText(c) {
       const en = appData.audioSettings.voiceLang === 'en';
       if (en) return `In 250 metres, ${c.type === 'up' ? 'climb' : 'descent'} of ${c.grade} percent over ${fmtDistSpeech(c.lenKm)}.`;
-      return `Dans 250 mètres, ${c.type === 'up' ? 'montée' : 'descente'} de ${c.grade} % sur ${fmtDistSpeech(c.lenKm)}.`;
+      return `Dans 250 mètres, ${c.type === 'up' ? 'montée' : 'descente'} de ${String(c.grade).replace('.', ',')} % sur ${fmtDistSpeech(c.lenKm)}.`;
     }
     function kmText(n) {
       return appData.audioSettings.voiceLang === 'en' ? `Kilometre ${n}.` : `Kilomètre ${n}.`;
@@ -6980,6 +7795,11 @@ Réponds uniquement avec le JSON.`;
         out.distKm = Math.round(runData.gps.distKm * 100) / 100;
         const min = (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
         if (min > 1) out.avgKmh = Math.round(out.distKm / (min / 60) * 10) / 10;
+      } else if (!gpsWanted() && (runData.tmKm || 0) > 0.05) {
+        out.distKm = Math.round(runData.tmKm * 100) / 100;
+        out.tapis = true;
+        const min = (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
+        if (min > 1) out.avgKmh = Math.round(out.distKm / (min / 60) * 10) / 10;
       }
       return out;
     }
@@ -7045,14 +7865,14 @@ Réponds uniquement avec le JSON.`;
     let modalRoute = null;
     function activeRoute() {
       const s = getActiveSession();
-      const r = (s && s.route) || null;
+      const r = fixClimbs((s && s.route) || null);
       if (r && !Array.isArray(r.turns) && Array.isArray(r.pts)) r.turns = computeTurns(r.pts);
       return r;
     }
     function renderRouteInfo() {
       const box = document.getElementById('routeInfo');
       if (!box) return;
-      const r = modalRoute;
+      const r = fixClimbs(modalRoute);
       if (!r) { box.innerHTML = '<span class="text-slate-500 text-[10px]">Aucun parcours chargé.</span>'; return; }
       const W = 300, H = 70;
       const prof = r.prof || [];
@@ -7060,17 +7880,20 @@ Réponds uniquement avec le JSON.`;
       const span = Math.max(10, max - min);
       const pt = (i, v) => `${(i / Math.max(1, prof.length - 1) * W).toFixed(1)},${(H - (v - min) / span * (H - 6) - 3).toFixed(1)}`;
       const poly = prof.map((v, i) => pt(i, v)).join(' ');
-      const climbsSvg = r.climbs.filter(c => c.type === 'up').map(c => {
+      const ups = r.climbs.filter(c => c.type === 'up');
+      const climbsSvg = ups.map(c => {
         const x1 = c.startKm / r.totalKm * W, x2 = (c.startKm + c.lenKm) / r.totalKm * W;
-        return `<rect x="${x1.toFixed(1)}" y="0" width="${Math.max(1, x2 - x1).toFixed(1)}" height="${H}" fill="rgba(244,63,94,0.15)"></rect>`;
+        return `<rect x="${x1.toFixed(1)}" y="0" width="${Math.max(1, x2 - x1).toFixed(1)}" height="${H}" fill="rgba(244,63,94,0.18)"></rect>`;
       }).join('');
+      const dist = km => km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1).replace('.', ',') + ' km';
       box.innerHTML = `
-        <div class="text-[11px] font-bold text-white">${r.name.replace(/</g, '&lt;')} — ${r.totalKm.toFixed(1)} km • D+ ${Math.round(r.gainM)} m • D- ${Math.round(r.lossM)} m</div>
+        <div class="text-[12px] font-bold text-white">${r.name.replace(/</g, '&lt;')} — ${r.totalKm.toFixed(1).replace('.', ',')} km • D+ ${Math.round(r.gainM)} m • D- ${Math.round(r.lossM)} m</div>
         ${r.hasEle ? `<svg viewBox="0 0 ${W} ${H}" class="w-full h-16 bg-slate-950 rounded-lg border border-slate-800" preserveAspectRatio="none">${climbsSvg}
           <polyline points="${poly}" fill="none" stroke="#38bdf8" stroke-width="1.5"></polyline></svg>` : '<div class="text-[10px] text-amber-300">Pas d\'altitude dans ce fichier : pas d\'annonce de pente.</div>'}
-        <div class="text-[10px] text-slate-300 space-y-0.5">${r.climbs.length ? r.climbs.map(c =>
-          `<div>${c.type === 'up' ? '⛰️ Montée' : '↘️ Descente'} au km ${c.startKm.toFixed(1)} : ${c.grade}% sur ${c.lenKm < 1 ? Math.round(c.lenKm * 1000) + ' m' : c.lenKm.toFixed(1) + ' km'}</div>`).join('')
-          : '<div class="text-slate-500">Aucune côte marquée (≥ 3 %).</div>'}</div>`;
+        <div class="text-[12px] text-slate-300 space-y-0.5">${ups.length ? ups.map(c =>
+          `<div>⛰️ <b>Montée au km ${c.startKm.toFixed(1).replace('.', ',')}</b> : ${dist(c.lenKm)} à ${String(c.grade).replace('.', ',')} % (D+ ${c.gainM ?? Math.round(c.lenKm * c.grade * 10)} m)</div>`).join('')
+          : (r.hasEle ? '<div class="text-slate-500">Aucune montée significative (≥ 500 m).</div>' : '')}</div>
+        ${routeReviewHtml(r)}`;
     }
 
 
@@ -7181,7 +8004,21 @@ Réponds uniquement avec le JSON.`;
       reRenderBar();
     }
     // Altitudes (Open-Meteo) le long du tracé
+    // Ajoute des points intermédiaires sur les longues lignes droites (tous les 25 m)
+    function reDensify(coords, stepKm = 0.025) {
+      const out = [];
+      coords.forEach((p, i) => {
+        if (i) {
+          const a = coords[i - 1], d = haversineM({ lat: a[0], lon: a[1] }, { lat: p[0], lon: p[1] }) / 1000;
+          const n = Math.floor(d / stepKm);
+          for (let k = 1; k < n; k++) out.push([a[0] + (p[0] - a[0]) * k / n, a[1] + (p[1] - a[1]) * k / n]);
+        }
+        out.push(p);
+      });
+      return out;
+    }
     function reSamples(coords, maxN) {
+      coords = reDensify(coords, 0.05);
       const km = reLenKm(coords);
       if (coords.length < 2) return [];
       const step = Math.max(0.025, km / maxN), out = [];
@@ -7219,7 +8056,7 @@ Réponds uniquement avec le JSON.`;
     function reRenderBar() {
       if (!re) return;
       const c = reCoords(), km = reLenKm(c);
-      document.getElementById('reStats').innerHTML = `<span>${km.toFixed(2).replace('.', ',')} km</span><span>D+ ${re.eles ? Math.round(reGain(re.eles)) + ' m' : '…'}</span>${re.busy ? '<span style="color:#fbbf24">calcul…</span>' : ''}`;
+      document.getElementById('reStats').innerHTML = `<span>${km.toFixed(2).replace('.', ',')} km</span><span>D+ ${re.eles ? Math.round(reGain(re.eles)) + ' m' : '…'}</span>${km > 0.2 ? `<span style="color:#c4b5fd">⏱ ≈ ${fmtHM(routeLocalEstimate(km, re.eles ? reGain(re.eles) : 0))}</span>` : ''}${re.busy ? '<span style="color:#fbbf24">calcul…</span>' : ''}`;
       document.getElementById('reProfile').innerHTML = reProfileSvg(re.eles);
       const f = document.getElementById('reFollow'); if (f) f.checked = re.follow;
     }
@@ -7285,7 +8122,7 @@ Réponds uniquement avec le JSON.`;
       if (re.busy) { reStatus('Calcul en cours, patiente une seconde…', true); return; }
       const name = (document.getElementById('reName').value || '').trim() || re.name || `Parcours ${reLenKm(c).toFixed(1).replace('.', ',')} km`;
       if (!re.eles) { reStatus('Récupération des altitudes…'); await reFetchEles(); }
-      const route = parseGpx(reGpx(name, c, re.eles), name);
+      const route = parseGpx(reGpx(name, reDensify(c), re.eles), name);
       // Mes parcours
       if (!Array.isArray(appData.myRoutes)) appData.myRoutes = [];
       const step = Math.max(1, Math.ceil(c.length / 1500));
@@ -7296,39 +8133,60 @@ Réponds uniquement avec le JSON.`;
         eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null
       };
       const k = appData.myRoutes.findIndex(r => r.id === item.id);
+      const prevRv = k >= 0 ? appData.myRoutes[k].review : null;
+      if (prevRv && Math.abs((appData.myRoutes[k].km || 0) - item.km) < 0.05 && Math.abs((appData.myRoutes[k].gain || 0) - item.gain) < 5) item.review = prevRv;
       if (k >= 0) appData.myRoutes[k] = item; else appData.myRoutes.unshift(item);
       saveAppData();
+      route.myId = item.id;
+      if (item.review) route.review = item.review;
       modalRoute = route;
       renderRouteInfo(); renderMyRoutes();
       setGpxStatus(`✓ « ${name} » : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m — enregistre la séance pour le garder`);
       closeRouteEditor();
-      showToast('🗺️ Parcours enregistré dans Mes parcours');
+      showSavedBig('Parcours enregistré');
+      if (!route.review) reviewRoute(route);
     }
     // Mes parcours (dans le paramétrage de la séance)
     function myRouteToRoute(it) {
       const c = []; (it.segs || []).forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; c.push(p); }));
-      return parseGpx(reGpx(it.name, c, it.eles), it.name);
+      return parseGpx(reGpx(it.name, reDensify(c), it.eles), it.name);
     }
     function useMyRoute(id) {
       const it = (appData.myRoutes || []).find(r => r.id === id);
       if (!it) return;
-      try { modalRoute = myRouteToRoute(it); renderRouteInfo(); setGpxStatus(`✓ « ${it.name} » choisi — enregistre la séance pour le garder`); } catch (e) { setGpxStatus('⚠ Parcours illisible', true); }
+      if (modalRoute && modalRoute.myId === id) return;
+      try {
+        modalRoute = myRouteToRoute(it); modalRoute.myId = it.id; if (it.review) modalRoute.review = it.review;
+        renderRouteInfo();
+        renderMyRoutes(); recalculateModalTotals();
+        if (!it.review || (parseISODateLocal(todayISO()) - parseISODateLocal(it.review.at)) / 864e5 > 14) reviewRoute(modalRoute); setGpxStatus(`✓ « ${it.name} » choisi — enregistre la séance pour le garder`); } catch (e) { setGpxStatus('⚠ Parcours illisible', true); }
     }
     function deleteMyRoute(id) {
       if (!confirm('Supprimer ce parcours de Mes parcours ?')) return;
       appData.myRoutes = (appData.myRoutes || []).filter(r => r.id !== id);
+      if (modalRoute && modalRoute.myId === id) { modalRoute = null; renderRouteInfo(); }
       saveAppData(); renderMyRoutes();
     }
     function renderMyRoutes() {
       const box = document.getElementById('myRoutesList');
       if (!box) return;
+      const info = document.getElementById('routeInfo'), home = document.getElementById('routeInfoHome');
+      if (info && home && info.parentNode !== home) home.appendChild(info);
       const L0 = appData.myRoutes || [];
-      box.innerHTML = L0.length ? L0.map(r => `<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-2">
-          <div class="flex-1 min-w-0"><div class="text-[13px] font-bold text-white truncate">${plEsc(r.name)}</div><div class="text-[11px] text-slate-400">${r.km.toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m</div></div>
-          <button onclick="useMyRoute('${r.id}')" class="px-2.5 py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-bold">Utiliser</button>
-          ${r.wps ? '' : '<!--'}<button onclick="openRouteEditor('${r.id}')" aria-label="Modifier" class="px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">✏️</button>${r.wps ? '' : '-->'}
-          <button onclick="deleteMyRoute('${r.id}')" aria-label="Supprimer" class="px-2.5 py-2 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[11px] font-bold">🗑</button>
-        </div>`).join('') : '<span class="text-[11px] text-slate-500">Aucun parcours enregistré. Dessine-en un ou importe un GPX.</span>';
+      const selId = modalRoute && modalRoute.myId;
+      box.innerHTML = L0.length ? L0.map(r => {
+        const sel = r.id === selId;
+        return `<div data-rt="${r.id}" onclick="useMyRoute('${r.id}')" class="rounded-xl p-2 cursor-pointer transition" style="border:2px solid ${sel ? '#34d399' : '#1e293b'};background:${sel ? 'rgba(52,211,153,.08)' : '#0f172a'}">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 min-w-0"><div class="text-[13px] font-bold text-white truncate">${sel ? '✓ ' : ''}${plEsc(r.name)}</div><div class="text-[11px] text-slate-400">${r.km.toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m${r.review ? ` · <span class="text-purple-300 font-bold">⏱ ${fmtHM(r.km / r.review.kmh * 60)}</span>` : ''}</div></div>
+            ${r.wps ? `<button onclick="event.stopPropagation();openRouteEditor('${r.id}')" aria-label="Modifier" class="px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">✏️</button>` : ''}
+            <button onclick="event.stopPropagation();deleteMyRoute('${r.id}')" aria-label="Supprimer" class="px-2.5 py-2 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[11px] font-bold">🗑</button>
+          </div>
+          ${sel ? '<div class="rt-slot mt-2" onclick="event.stopPropagation()"></div>' : ''}
+        </div>`;
+      }).join('') : '<span class="text-[11px] text-slate-500">Aucun parcours enregistré. Dessine-en un ou importe un GPX.</span>';
+      const slot = box.querySelector('.rt-slot');
+      if (slot && info) slot.appendChild(info);
     }
 
     // ==================== FIN ANTICIPÉE ====================
@@ -7424,8 +8282,8 @@ Réponds uniquement avec le JSON.`;
       const runs = (others || []).filter(h => h && !h.cross && h.isVal !== false);
       if (!runs.length) return "Première séance enregistrée : c'est la référence de départ.";
       const out = [];
-      const dist = parseFloat(cur.summary && cur.summary.distKm) || 0;
-      const maxDist = Math.max(0, ...runs.map(h => parseFloat(h.summary && h.summary.distKm) || 0));
+      const dist = histKm(cur);
+      const maxDist = Math.max(0, ...runs.map(h => histKm(h)));
       if (dist > 0 && dist > maxDist) out.push(`plus longue distance (${dist.toFixed(1)} km, ancien record ${maxDist ? maxDist.toFixed(1) + ' km' : 'aucun'})`);
       const dur = +cur.durationMin || 0;
       const maxDur = Math.max(0, ...runs.map(h => +h.durationMin || 0));
@@ -7569,7 +8427,7 @@ ${analysisFormatPrompt()}`;
 Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
-Records et progrès (calculés par l'app) : ${recordsText({ summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
+Records et progrès (calculés par l'app) : ${recordsText({ id: h.id, km: h.km, summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
 Autres séances récentes :
 ${others}
 Prochaines séances du plan :
@@ -8516,6 +9374,10 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
     function spTxt(v) { return formatSpeed(v).replace('.', ','); }
 
     function describeSessionHuman(sess) {
+      if (sess && sess.free && sess.plannedFree) return `séance libre${sess.type === 'exterieur' ? ' en extérieur' : ' sur tapis'}`;
+      if (sess && sess.kind === 'test' && (sess.pyramide || [])[0]) { const p = sess.pyramide[0]; return `test ${formatSpeed(p.distance || p.duration * p.speed / 60).replace('.', ',')} km en ${fmtClock(p.duration)} (${formatSpeed(p.speed).replace('.', ',')} km/h)`; }
+      const ri = routeRunInfo(sess);
+      if (ri) return `sortie de ${ri.km.toFixed(1).replace('.', ',')} km « ${ri.name} » (≈ ${fmtHM(ri.min)} à ${formatSpeed(ri.kmh).replace('.', ',')} km/h${ri.gain > 20 ? `, D+ ${Math.round(ri.gain)} m` : ''})`;
       const segs = (sess.pyramide || []).filter(p => p.speed > 0);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
@@ -9767,20 +10629,6 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
 
     // ==================== COPIE DE SÉANCE : CHOIX DE LA DATE ====================
-    function askCopyDate() {
-      const d = parseISODateLocal(document.getElementById('cfgDate').value) || new Date();
-      d.setDate(d.getDate() + 7);
-      document.getElementById('copyDateInput').value = toISODateLocal(d);
-      document.getElementById('copyDateModal').classList.remove('hidden');
-    }
-    function confirmCopyDate(ok) {
-      document.getElementById('copyDateModal').classList.add('hidden');
-      if (!ok) return;
-      const iso = document.getElementById('copyDateInput').value;
-      if (!parseISODateLocal(iso)) { showToast("Choisissez une date"); return; }
-      duplicateSessionFromConfig(iso);
-    }
-
     // ==================== PARLER AU COACH PENDANT LA SÉANCE ====================
     const vc = { rec: null, mode: 'idle', timer: null, lastStart: 0, checkinDone: false, original: null };
     function voiceCoachOn() { return appData.audioSettings.voiceCoach !== false; }
