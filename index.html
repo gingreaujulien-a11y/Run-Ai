@@ -62,6 +62,41 @@
     .modal-sticky-top { position: sticky; top: 0; z-index: 5; background: #0f172a; }
     .modal-sticky-bottom { position: sticky; bottom: 0; z-index: 5; background: #0f172a; box-shadow: 0 -8px 12px -6px rgba(0,0,0,0.6); }
     body.home { background: #000; }
+    /* Fenêtres à onglets (Profil, Réglages) */
+    .pm { position: fixed; inset: 0; z-index: 50; background: #050a16; color: #f1f5f9; }
+    .pm > .pm-wrap { height: 100% !important; max-height: none !important; max-width: 28rem; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; background: transparent !important; }
+    .pm-head { padding: 22px 20px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pm-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+    .pm-x { width: 44px; height: 44px; border-radius: 22px; border: 1px solid #1e293b; background: #0f172a; color: #94a3b8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pm-tabs { margin: 0 16px 12px; padding: 4px; border-radius: 16px; background: #0f172a; border: 1px solid #1e293b; display: grid; gap: 4px; }
+    .pm-tab { height: 40px; border-radius: 12px; font-weight: 700; font-size: 13px; color: #94a3b8; background: transparent; }
+    .pm-tab.on { background: var(--acc); color: #0b0f19; font-weight: 800; }
+    .pm-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+    .pm-panel { display: flex; flex-direction: column; gap: 12px; }
+    .pm-panel.pm-off { display: none !important; }
+    .pm-card { padding: 14px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 10px; }
+    .pm-cap { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase; }
+    .pm-lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #94a3b8; font-weight: 700; }
+    .pm-in { height: 44px; border-radius: 12px; border: 1px solid #334155; background: #0b1324; color: #f1f5f9; font-size: 15px; font-weight: 700; padding: 0 12px; width: 100%; box-sizing: border-box; }
+    .pm-in:focus { outline: none; border-color: var(--acc); }
+    .pm-in.c { text-align: center; padding: 0 6px; }
+    select.pm-in { padding-right: 8px; }
+    .pm-row { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #172338; }
+    .pm-rt { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; font-size: 14px; font-weight: 700; color: #f1f5f9; }
+    .pm-rt small { font-size: 12px; color: #94a3b8; font-weight: 500; }
+    .pm-btn { min-height: 44px; border-radius: 12px; border: 1px solid #334155; background: #111c30; color: #e2e8f0; font-weight: 700; font-size: 13px; padding: 0 14px; }
+    .pm-foot { padding: 10px 16px 20px; }
+    .pm-save { width: 100%; height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; background: var(--acc); color: #0b0f19; }
+    .pm-det summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #cbd5e1; }
+    .pm-lvl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 96px; align-items: center; gap: 8px; }
+    .pm-lvl > span:first-child { font-size: 14px; font-weight: 800; }
+    .pm-lvl > span:last-child { font-size: 12px; color: #94a3b8; font-weight: 600; line-height: 1.25; }
+    .sw { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 46px; height: 28px; border-radius: 14px; background: #334155; position: relative; cursor: pointer; transition: background .2s; }
+    .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; transition: left .2s; }
+    .sw:checked { background: var(--acc, #38bdf8); }
+    .sw:checked::after { left: 21px; }
+    .pl-day { height: 40px; border-radius: 10px; font-weight: 800; font-size: 13px; border: 1px solid #334155; background: #0b1324; color: #94a3b8; }
+    .pl-day.on { background: #a78bfa; border-color: #a78bfa; color: #13092b; }
     button, input, select, textarea { font-family: inherit; }
     /* Planning */
     #historyModal .pl-sec { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 4px 0; }
@@ -172,44 +207,9 @@
     <div class="flex items-center gap-2">
       <!-- Retour à l'accueil -->
       <button onclick="showHome()" title="Accueil" class="w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition"><img class="runai-logo" style="width:40px;height:40px" alt="Accueil"></button>
-
-      <!-- Bouton Paramétrer la séance (Curseurs) -->
-      <button onclick="openConfigModal()" title="Paramétrer la séance" class="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-sky-500/25">
-        <span class="icon-slot" data-icon="sliders"></span>
-      </button>
-
-      <!-- Bouton Suivi & Planning (Presse-papier) -->
-      <button onclick="openHistoryModal()" title="Suivi & Planning" class="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-emerald-500/25 relative">
-        <span class="icon-slot" data-icon="clipboard"></span>
-        <span id="badgeHistCount" class="absolute -top-1 -right-1 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-full px-1.5 py-0.2 shadow">0</span>
-      </button>
-
-      <!-- Bouton Définir Objectif (Cible) -->
-      <button onclick="openGoalModal()" title="Définir mon objectif" class="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-amber-500/25">
-        <span class="icon-slot" data-icon="target"></span>
-      </button>
-
-      <!-- Bouton Coach IA (Puce IA) -->
-      <button onclick="openCoachModal()" title="Coach IA & Périodisation" class="w-10 h-10 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-purple-500/25">
-        <span class="icon-slot" data-icon="cpu"></span>
-      </button>
     </div>
-
     <div class="flex items-center gap-2">
-      <!-- Bouton Plein écran -->
-      <button onclick="toggleFullscreen()" title="Plein écran" class="w-10 h-10 rounded-2xl bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-slate-700">
-        <span class="icon-slot fs-icon" data-icon="maximize"></span>
-      </button>
-
-      <!-- Bouton Valider séance active (Coche) -->
-      <button onclick="openValidationModal()" title="Valider la séance en cours" class="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-teal-500/25">
-        <span class="icon-slot" data-icon="check-circle"></span>
-      </button>
-
-      <!-- Bouton Réglages Audio (Engrenage) -->
-      <button onclick="openAudioModal()" title="Réglages audio & puissance" class="w-10 h-10 rounded-2xl bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center justify-center active:scale-95 transition shadow-sm hover:bg-slate-700">
-        <span class="icon-slot" data-icon="settings"></span>
-      </button>
+      <span id="badgeHistCount" class="hidden">0</span>
     </div>
   </header>
 
@@ -475,7 +475,7 @@
       </div>
 
       <button onclick="duplicateSessionFromConfig()" class="w-full mt-2 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold rounded-xl text-xs">📄 Créer une séance en copie de celle-ci</button>
-      <button onclick="openScriptModal()" class="w-full mt-2 py-2.5 bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/50 text-purple-100 font-bold rounded-xl text-xs">🧪 Tester les annonces de la séance (script)</button>
+      <button onclick="openScriptModal()" class="hidden w-full mt-2 py-2.5 bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/50 text-purple-100 font-bold rounded-xl text-xs">🧪 Tester les annonces de la séance (script)</button>
       <div class="pt-3 border-t border-slate-800 flex gap-2">
         <button onclick="saveActiveSessionConfig()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
           Enregistrer & Charger
@@ -619,188 +619,152 @@
   </div>
 
   <!-- ==================== MODALE 3 : OBJECTIF & VAP (MINETTI) ==================== -->
-  <div id="goalModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 pt-0 pb-0 shadow-2xl space-y-3">
-      <div class="modal-sticky-top flex items-center justify-between pt-4 pb-2 border-b border-slate-800">
-        <div>
-          <span class="text-base font-bold text-white block">Profil & objectif</span>
-          <span class="text-[10px] text-slate-400">Allure cible et équivalence physiologique</span>
-        </div>
-        <button onclick="closeGoalModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-          <span class="icon-slot" data-icon="x"></span>
-        </button>
+  <div id="goalModal" class="pm hidden" style="--acc:#fbbf24">
+    <div class="pm-wrap">
+      <div class="pm-head">
+        <h2 class="pm-title">Mon profil</h2>
+        <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
+      <div class="pm-tabs" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
+        <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
+        <button type="button" class="pm-tab" data-t="coach" onclick="setPmTab('goalModal','coach')">Coach</button>
+        <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')">Plan</button>
+      </div>
+      <div class="pm-body custom-scroll">
 
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Date cible (JJ/MM/AAAA)</label>
-          <input type="text" id="goalDateInput" placeholder="Ex: 20/12/2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="updateGoalVAPCalculation()">
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Distance (km)</label>
-            <input type="number" id="goalDistInput" value="10" min="1" max="100" step="0.5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="updateGoalVAPCalculation()">
-          </div>
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Durée voulue (min)</label>
-            <input type="number" id="goalDurInput" value="50" min="5" max="600" step="1" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="updateGoalVAPCalculation()">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[9px] text-slate-400 uppercase font-semibold">Vitesse (km/h)</label>
-              <span id="goalPaceLabel" class="text-[9px] font-mono text-slate-400">5'00"/km</span>
+        <!-- ===== MOI ===== -->
+        <div class="pm-panel" data-p="moi">
+          <div class="pm-card">
+            <span class="pm-cap">Identité</span>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="pm-lbl">Prénom<input id="firstNameInput" type="text" autocomplete="given-name" maxlength="20" placeholder="ex. Julien" class="pm-in"></label>
+              <div class="pm-lbl">Sexe<div id="sexChips" class="flex gap-1"><button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button><button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button></div></div>
             </div>
-            <input type="number" id="goalSpeedInput" value="12.0" min="4" max="25" step="0.1" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="onGoalSpeedChange()">
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[9px] text-emerald-400 uppercase font-bold">VAP (Minetti)</label>
-              <span id="vapPaceLabel" class="text-[9px] font-mono text-emerald-400">4'44"/km</span>
-            </div>
-            <div id="goalVapDisplay" class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-2 text-emerald-300 font-mono font-black text-center text-sm">
-              12.7 km/h
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Pente cible (%)</label>
-          <input type="number" id="goalPenteInput" value="1" min="0" max="15" step="0.5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500" oninput="updateGoalVAPCalculation()">
-          <span class="text-[9px] text-slate-500 block mt-1">La VAP traduit votre allure tapis avec pente en équivalent effort sur le plat.</span>
-        </div>
-      </div>
-
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5 text-xs">
-        <span class="font-bold text-emerald-300 block">🎯 Probabilité de réussite</span>
-        <div id="goalProbBox"></div>
-        <button type="button" onclick="coachGoalOpinion()" class="w-full py-2 bg-purple-600/25 border border-purple-500/50 text-purple-100 font-bold rounded-lg text-[11px]">🧠 Avis du coach sur mes chances</button>
-        <div id="goalCoachOut" class="text-[11px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-lg p-2 hidden"></div>
-      </div>
-
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-cyan-500/30 space-y-2 text-xs">
-        <span class="font-bold text-cyan-300 block">🏃 Profil coureur</span>
-        <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-0.5">Prénom (pour les encouragements)</label>
-          <input id="firstNameInput" type="text" autocomplete="given-name" maxlength="20" placeholder="ex. Julien" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 font-bold text-white"></div>
-        <div id="sexChips" class="flex gap-1">
-          <button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button>
-          <button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button>
-        </div>
-        <div class="grid grid-cols-3 gap-1.5 text-center">
-          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Âge</label><input id="ageInput" type="number" min="10" max="100" oninput="readRunnerBody(); renderRunnerBody()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
-          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Taille (cm)</label><input id="heightInput" type="number" min="120" max="230" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
-          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Poids (kg)</label><input id="weightInput" type="number" min="30" max="200" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="text-[10px] text-slate-300 flex-1">FC max (bpm)<br><span class="text-[9px] text-slate-500">Vide = théorique ; modifiable</span></label>
-          <input type="number" id="fcMaxProfile" min="120" max="230" oninput="readRunnerBody(); renderRunnerBody()" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white">
-        </div>
-        <div id="fcMaxNote" class="text-[10px] text-slate-400"></div>
-        <div id="hrZonesBox" class="bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-0.5"></div>
-        <div class="flex items-center gap-2">
-          <label class="text-[10px] text-slate-300 flex-1">Endurance fondamentale (km/h)<br><span class="text-[9px] text-slate-500">Vitesse de la chauffe et du retour au calme</span></label>
-          <input type="number" id="efInput" step="0.5" min="4" max="18" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Échauffement (min)</label><input id="warmInput" type="number" min="0" max="40" step="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
-          <div><label class="text-[9px] text-slate-400 uppercase font-semibold block">Retour au calme (min)</label><input id="coolInput" type="number" min="0" max="40" step="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white"></div>
-        </div>
-        <div class="text-[9px] text-slate-500 -mt-1">Appliqués à toutes tes séances à venir (sauf celles adaptées par le coach).</div>
-        <label class="flex items-center justify-between text-[10px] text-slate-300">Recalcul automatique par le coach après chaque séance <input type="checkbox" id="efAuto" class="accent-cyan-500 w-4 h-4"></label>
-        <div id="efNote" class="text-[10px] text-slate-400"></div>
-        <button type="button" onclick="computeEfWithAI(true)" class="w-full py-2 bg-cyan-500/15 border border-cyan-500/40 text-cyan-200 font-bold rounded-lg text-[11px]">🧠 Recalculer avec le coach</button>
-      </div>
-
-      <div class="modal-sticky-bottom pt-2 pb-4 grid grid-cols-3 gap-2">
-        <button onclick="closeGoalModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-xs">Fermer</button>
-        <button onclick="saveGoalSettings()" class="col-span-2 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow active:scale-95 text-xs">
-          Enregistrer
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== MODALE 4 : COACH IA & PÉRIODISATION 3+1 ==================== -->
-  <div id="coachModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col p-4 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div>
-          <span class="text-base font-bold text-white block">Coach IA & Périodisation</span>
-          <span class="text-[10px] text-slate-400">Cycles 3+1 (3 semaines charge + 1 semaine récup)</span>
-        </div>
-        <button onclick="closeCoachModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-          <span class="icon-slot" data-icon="x"></span>
-        </button>
-      </div>
-
-      <div class="space-y-3 overflow-y-auto custom-scroll pr-1 text-xs">
-        <!-- Connexion Gemini -->
-        <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="font-bold text-slate-300">Connexion Gemini</span>
-            <span id="geminiConnStatus" class="text-[9px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-400 border border-slate-700">Moteur Autonome</span>
-          </div>
-          <div class="flex gap-1.5">
-            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" style="-webkit-text-security: disc;" id="geminiApiKeyInput" placeholder="Clé API Gemini (Optionnel)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono text-[10px]">
-            <button onclick="saveGeminiKey()" class="px-2.5 py-1 bg-purple-600 text-white font-bold rounded-lg text-[10px]">Sauver</button>
-            <button onclick="testGeminiConnection()" class="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 font-bold rounded-lg text-[10px]">Tester</button>
-          </div>
-        </div>
-
-        <!-- Import du planning depuis un PDF -->
-        <div class="bg-slate-950 p-2.5 rounded-2xl border border-sky-500/30 space-y-2">
-          <span class="font-bold text-sky-300 block">📄 Importer un planning PDF</span>
-          <span class="text-[10px] text-slate-400 block">Le coach IA lit le PDF (dates, échauffement, fractions, allures ou % VMA, récups) et le convertit en séances. Nécessite la clé Gemini.</span>
-          <div class="flex gap-3 text-[10px] text-slate-300">
-            <label class="flex items-center gap-1"><input type="radio" name="pdfImportMode" value="replace" checked class="accent-sky-500"> Remplacer les séances prévues</label>
-            <label class="flex items-center gap-1"><input type="radio" name="pdfImportMode" value="append" class="accent-sky-500"> Ajouter</label>
-          </div>
-          <label class="block w-full py-2.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/50 text-sky-200 font-bold rounded-xl text-center cursor-pointer">
-            Choisir le PDF
-            <input type="file" accept="application/pdf,.pdf" class="hidden" onchange="importPlanFromPdf(this)">
-          </label>
-          <div id="pdfImportStatus" class="text-[10px] font-semibold text-sky-300"></div>
-          <div id="pdfImportPreview" class="space-y-2 hidden">
-            <div id="pdfImportList" class="space-y-1 max-h-56 overflow-y-auto custom-scroll pr-1 text-[10px]"></div>
-            <button onclick="confirmPdfImport()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Valider l'import</button>
-          </div>
-        </div>
-
-        <!-- Planificateur Blocs 3+1 -->
-        <div class="bg-slate-950 p-2.5 rounded-2xl border border-purple-500/30 space-y-2.5">
-          <div>
-            <span class="font-bold text-purple-300 block mb-0.5">Planifier jusqu'au jour Objectif</span>
-            <span class="text-[10px] text-slate-400 block">Pentes variées de 1 à 10%, vitesses jusqu'à 14 km/h max, et test intermédiaire VMA le dimanche de la semaine de décharge.</span>
-          </div>
-          
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Jours de course dans la semaine :</label>
-            <div class="grid grid-cols-4 gap-1 text-[10px]">
-              <label class="flex items-center gap-1 bg-slate-900 p-1.5 rounded-lg border border-slate-800"><input type="checkbox" id="chkMardi" checked class="accent-purple-500"> Mar</label>
-              <label class="flex items-center gap-1 bg-slate-900 p-1.5 rounded-lg border border-slate-800"><input type="checkbox" id="chkJeudi" checked class="accent-purple-500"> Jeu</label>
-              <label class="flex items-center gap-1 bg-slate-900 p-1.5 rounded-lg border border-slate-800"><input type="checkbox" id="chkDimanche" checked class="accent-purple-500"> Dim</label>
-              <label class="flex items-center gap-1 bg-slate-900 p-1.5 rounded-lg border border-slate-800"><input type="checkbox" id="chkSamedi" class="accent-purple-500"> Sam</label>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="pm-lbl">Âge<input id="ageInput" type="number" min="10" max="100" oninput="readRunnerBody(); renderRunnerBody()" class="pm-in c"></label>
+              <label class="pm-lbl">Taille (cm)<input id="heightInput" type="number" min="120" max="230" class="pm-in c"></label>
+              <label class="pm-lbl">Poids (kg)<input id="weightInput" type="number" min="30" max="200" step="0.5" class="pm-in c"></label>
             </div>
           </div>
 
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Consignes particulières pour l'IA (Optionnel) :</label>
-            <textarea id="coachCustomInstructions" rows="2" placeholder="Ex: Max 35 min par séance, insister sur la côte à 8-10%, vitesse max 13 km/h..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-purple-500"></textarea>
+          <div class="pm-card">
+            <span class="pm-cap">Cardio</span>
+            <div class="flex items-center justify-between gap-3">
+              <div class="pm-rt">FC max (bpm)<small>Vide = théorique</small></div>
+              <input type="number" id="fcMaxProfile" min="120" max="230" oninput="readRunnerBody(); renderRunnerBody()" class="pm-in c" style="width:96px">
+            </div>
+            <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
+            <details class="pm-det"><summary>Mes zones cardio</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-0.5 text-[12px]"></div></details>
           </div>
 
-          <button onclick="generateFullPlanToGoal()" class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow active:scale-95 transition text-xs">
-            Générer le plan complet
-          </button>
+          <div class="pm-card">
+            <span class="pm-cap">Mon niveau actuel</span>
+            <span class="text-[12px] text-slate-400 -mt-1">Le temps que tu pourrais faire aujourd'hui. Laisse vide si tu ne peux pas encore courir la distance.</span>
+            <div class="pm-lvl"><span>5 km</span><input id="lvl5" class="pm-in c" placeholder="mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl5Info"></span></div>
+            <div class="pm-lvl"><span>10 km</span><input id="lvl10" class="pm-in c" placeholder="mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl10Info"></span></div>
+            <div class="pm-lvl"><span>Semi</span><input id="lvl21" class="pm-in c" placeholder="h:mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl21Info"></span></div>
+            <div class="pm-lvl"><span>Marathon</span><input id="lvl42" class="pm-in c" placeholder="h:mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl42Info"></span></div>
+            <div id="lvlNote" class="text-[12px] text-cyan-300"></div>
+          </div>
+
+          <div class="pm-card">
+            <span class="pm-cap">Allures et routine</span>
+            <div class="flex items-center justify-between gap-3">
+              <div class="pm-rt">Endurance fondamentale (km/h)<small>Vitesse de l'échauffement et du retour au calme</small></div>
+              <input type="number" id="efInput" step="0.5" min="4" max="18" class="pm-in c" style="width:96px">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="pm-lbl">Échauffement (min)<input id="warmInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
+              <label class="pm-lbl">Retour au calme (min)<input id="coolInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
+            </div>
+            <span class="text-[11px] text-slate-500 -mt-1">Appliqués à toutes tes séances à venir (sauf celles adaptées par le coach).</span>
+            <div class="pm-row"><div class="pm-rt">Mise à jour par le coach<small>Endurance et niveau, après chaque séance</small></div><input type="checkbox" id="efAuto" class="sw"></div>
+            <div id="efNote" class="text-[12px] text-slate-400"></div>
+            <button type="button" onclick="computeEfWithAI(true)" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour avec le coach</button>
+          </div>
         </div>
 
-        <div id="coachAdviceCard" class="bg-purple-950/30 border border-purple-800/40 p-2.5 rounded-2xl hidden">
-          <span class="font-bold text-purple-300 block mb-1">Bilan du Coach :</span>
-          <p id="coachAdviceText" class="text-slate-300 text-[11px] leading-relaxed"></p>
+        <!-- ===== OBJECTIF ===== -->
+        <div class="pm-panel pm-off" data-p="objectif">
+          <div id="goalSummary" class="pm-card" style="background:linear-gradient(180deg,#2a1d06 0%,#17120a 100%);border-color:#78501a"></div>
+          <div class="pm-card">
+            <span class="pm-cap">Modifier</span>
+            <label class="pm-lbl">Date (JJ/MM/AAAA)<input type="text" id="goalDateInput" placeholder="ex. 20/12/2026" class="pm-in" oninput="updateGoalVAPCalculation()"></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="pm-lbl">Distance (km)<input type="number" id="goalDistInput" value="10" min="1" max="100" step="0.5" class="pm-in c" oninput="updateGoalVAPCalculation()"></label>
+              <label class="pm-lbl">Temps visé (min)<input type="number" id="goalDurInput" value="50" min="5" max="600" step="1" class="pm-in c" oninput="updateGoalVAPCalculation()"></label>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="pm-rt">Vitesse (km/h)<small>Allure <span id="goalPaceLabel">5'00"/km</span></small></div>
+              <input type="number" id="goalSpeedInput" value="12.0" min="4" max="25" step="0.1" class="pm-in c" style="width:96px" oninput="onGoalSpeedChange()">
+            </div>
+          </div>
+          <div class="pm-card">
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Course avec dénivelé<small>Pente moyenne et VAP (effort équivalent sur le plat)</small></div><input type="checkbox" id="goalHilly" class="sw" onchange="onGoalHillyChange()"></div>
+            <div id="goalHillyBox" class="grid grid-cols-2 gap-2">
+              <label class="pm-lbl">Pente moyenne (%)<input type="number" id="goalPenteInput" value="0" min="0" max="15" step="0.5" class="pm-in c" oninput="updateGoalVAPCalculation()"></label>
+              <div class="pm-lbl">VAP · <span id="vapPaceLabel">–</span><div id="goalVapDisplay" class="pm-in c flex items-center justify-center" style="color:#6ee7b7;border-color:rgba(16,185,129,.5)">–</div></div>
+            </div>
+          </div>
+          <div class="pm-card">
+            <span class="pm-cap">Mes chances</span>
+            <div id="goalProbBox"></div>
+            <button type="button" onclick="coachGoalOpinion()" class="pm-btn" style="border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd">🧠 Avis du coach sur mes chances</button>
+            <div id="goalCoachOut" class="text-[12px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-xl p-2.5 hidden"></div>
+          </div>
+        </div>
+
+        <!-- ===== COACH ===== -->
+        <div class="pm-panel pm-off" data-p="coach">
+          <div id="coachProfileBox" class="pm-card" style="border-color:#3b2a63">
+            <div class="flex items-center justify-between gap-2"><span class="pm-cap" style="color:#a78bfa">Personnalité du coach</span>
+              <button type="button" onclick="previewCoachProfile()" class="pm-btn" style="height:36px">🔊 Écouter</button></div>
+            <div id="coachProfileChips" class="grid grid-cols-3 gap-1.5"></div>
+            <div id="coachProfileDesc" class="text-[12px] text-slate-400 leading-snug"></div>
+          </div>
+          <div class="pm-card" style="gap:0">
+            <span class="pm-cap" style="padding-bottom:6px">Pendant la séance</span>
+            <div class="pm-row"><div class="pm-rt">Conseil avant la séance<small>Lu au départ, selon tes sensations</small></div><input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Parler au coach<small>Bouton micro et point à mi-séance</small></div><input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Compte à rebours au départ<small>5, 4, 3, 2, 1</small></div><input type="checkbox" id="chkStartCd" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Rappels boire / manger<small>Chaque km, et toutes les 45 min</small></div><input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Prénom du coach<small>Optionnel</small></div><input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="pm-in c" style="width:120px"></div>
+          </div>
+        </div>
+
+        <!-- ===== PLAN ===== -->
+        <div class="pm-panel pm-off" data-p="plan">
+          <div class="pm-card" style="border-color:#3b2a63">
+            <span class="pm-cap" style="color:#a78bfa">Générer mon plan avec le coach</span>
+            <span class="text-[12px] text-slate-400 -mt-1">Le coach crée les séances jusqu'au jour J à partir de ton profil, ton niveau et ton objectif.</span>
+            <div class="pm-lbl">Jours où je peux courir<div id="planDays" class="grid grid-cols-7 gap-1"></div></div>
+            <label class="pm-lbl">Où ?<select id="planPlace" class="pm-in"><option value="mixte">Tapis et extérieur</option><option value="tapis">Tapis uniquement</option><option value="exterieur">Extérieur uniquement</option></select></label>
+            <label class="pm-lbl">Consignes pour le coach (optionnel)<textarea id="coachCustomInstructions" rows="2" placeholder="ex. 45 min maximum en semaine, sortie longue le dimanche…" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px"></textarea></label>
+            <button type="button" onclick="generatePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#a78bfa;color:#13092b;font-weight:800;font-size:14px">🧠 Générer le plan</button>
+            <div id="planGenStatus" class="text-[12px] font-semibold text-purple-300"></div>
+          </div>
+          <div class="pm-card">
+            <span class="pm-cap">Importer un plan PDF</span>
+            <span class="text-[12px] text-slate-400 -mt-1">Le coach lit le PDF (dates, échauffements, fractions, allures ou % VMA) et le convertit en séances.</span>
+            <label class="pm-btn flex items-center justify-center cursor-pointer" style="border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc">📄 Choisir le PDF
+              <input type="file" accept="application/pdf,.pdf" class="hidden" onchange="importPlanFromPdf(this)">
+            </label>
+            <div id="pdfImportStatus" class="text-[12px] font-semibold text-sky-300"></div>
+          </div>
+          <div id="pdfImportPreview" class="pm-card hidden" style="border-color:rgba(56,189,248,.45)">
+            <span class="pm-cap" style="color:#7dd3fc">Séances proposées</span>
+            <div id="coachAdviceCard" class="hidden"><p id="coachAdviceText" class="text-[12px] text-slate-300 leading-relaxed"></p></div>
+            <div id="pdfImportList" class="space-y-1 max-h-72 overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
+            <div class="flex gap-4 text-[12px] text-slate-300">
+              <label class="flex items-center gap-1.5"><input type="radio" name="pdfImportMode" value="replace" checked class="accent-sky-500"> Remplacer les séances prévues</label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="pdfImportMode" value="append" class="accent-sky-500"> Ajouter</label>
+            </div>
+            <button onclick="confirmPdfImport()" class="pm-btn" style="height:48px;border:none;background:#38bdf8;color:#04121f;font-weight:800">Valider ces séances</button>
+          </div>
         </div>
       </div>
+      <div class="pm-foot"><button onclick="saveGoalSettings()" class="pm-save">Enregistrer</button></div>
     </div>
   </div>
 
@@ -973,50 +937,6 @@
     </div>
   </div>
 
-  <div id="sensorsModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 text-xs max-h-[92vh] overflow-y-auto custom-scroll">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <span class="text-base font-bold text-white">⌚ Cardio, GPS & parcours</span>
-        <button onclick="closeSensorsModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><span class="icon-slot" data-icon="x"></span></button>
-      </div>
-
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-rose-500/30 space-y-2">
-        <span class="font-bold text-rose-300 block">❤️ Cardio (montre ou ceinture Bluetooth)</span>
-        <p class="text-[10px] text-slate-400">Garmin : activez « Diffuser la fréquence cardiaque », ou mieux « Diffuser pendant l'activité » (la montre émet alors dès que vous lancez une course). Une fois autorisée, la montre se reconnecte seule à l'ouverture de l'app quand le navigateur le permet. Fonctionne aussi avec Polar, Coros, Suunto, ceintures et capteurs de foulée Bluetooth.</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="connectHeartRate()" class="py-2 bg-rose-600 text-white font-bold rounded-lg text-[11px]">Connecter</button>
-          <button onclick="disconnectHeartRate()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[11px]">Déconnecter</button>
-        </div>
-        <div id="btStatus" class="text-[10px] font-semibold text-slate-400">Aucun capteur connecté</div>
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[10px] text-slate-300">FC max (alerte si trop haut)</span>
-          <input id="fcMaxInput" type="number" min="120" max="230" placeholder="ex. 190" class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center text-white font-bold">
-        </div>
-      </div>
-
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-sky-500/30 space-y-2">
-        <span class="font-bold text-sky-300 block">📍 GPS du téléphone</span>
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[10px] text-slate-300">Utiliser le GPS</span>
-          <select id="gpsModeSelect" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold text-[11px]">
-            <option value="auto">Auto (séances extérieur)</option>
-            <option value="on">Toujours</option>
-            <option value="off">Jamais</option>
-          </select>
-        </div>
-        <label class="flex items-center justify-between text-[10px] text-slate-300">Conseils d'allure (accélère / ralentis)<input type="checkbox" id="chkPaceAdvice" class="accent-sky-500 w-4 h-4"></label>
-        <label class="flex items-center justify-between text-[10px] text-slate-300">Annoncer la VAP (vitesse ajustée à la pente)<input type="checkbox" id="chkAnnounceVap" class="accent-sky-500 w-4 h-4"></label>
-        <label class="flex items-center justify-between text-[10px] text-slate-300">Bilan à chaque km (vitesse, cardio, rythme, forme)<input type="checkbox" id="chkKmAnnounce" class="accent-sky-500 w-4 h-4"></label>
-        <button onclick="testGps()" class="w-full py-2 bg-sky-500/20 border border-sky-500/40 text-sky-200 font-bold rounded-lg text-[11px]">Tester le GPS</button>
-        <div id="gpsStatus" class="text-[10px] font-semibold text-slate-400"></div>
-        <p class="text-[9px] text-slate-500">Le GPS ne fonctionne qu'écran allumé : utilisez le 🌙 mode poche plutôt que de verrouiller. Sur tapis, la VAP est calculée avec la pente réglée.</p>
-      </div>
-
-      <p class="text-[10px] text-slate-400">🗺️ Le parcours GPX s'importe maintenant dans les paramètres de chaque séance.</p>
-
-      <button data-sensors-save onclick="closeSensorsModal()" class="w-full py-2.5 bg-sky-500 text-slate-950 font-black rounded-xl">Enregistrer</button>
-    </div>
-  </div>
 
   <div id="scriptModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md p-4 shadow-2xl flex flex-col gap-3" style="max-height:92vh">
@@ -1069,205 +989,164 @@
     </div>
   </div>
 
-  <div id="audioModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div>
-          <span class="text-base font-bold text-white block">Réglages</span>
-          <span class="text-[10px] text-slate-400">Voix, cardio, GPS, carillon et musique</span>
-        </div>
-        <button onclick="closeAudioModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-          <span class="icon-slot" data-icon="x"></span>
-        </button>
+  <div id="audioModal" class="pm hidden" style="--acc:#38bdf8">
+    <div class="pm-wrap">
+      <div class="pm-head">
+        <h2 class="pm-title">Réglages</h2>
+        <button onclick="closeAudioModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
+      <div class="pm-tabs" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <button type="button" class="pm-tab on" data-t="voix" onclick="setPmTab('audioModal','voix')">Voix</button>
+        <button type="button" class="pm-tab" data-t="montre" onclick="setPmTab('audioModal','montre')">Montre</button>
+        <button type="button" class="pm-tab" data-t="donnees" onclick="setPmTab('audioModal','donnees')">Données</button>
+        <button type="button" class="pm-tab" data-t="avance" onclick="setPmTab('audioModal','avance')">Avancé</button>
+      </div>
+      <div class="pm-body custom-scroll">
 
-      <div class="space-y-3 text-xs max-h-[65vh] overflow-y-auto custom-scroll pr-1">
-        <!-- Installation -->
-        <button onclick="installApp()" class="w-full py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
-          📲 Ajouter l'application à l'écran d'accueil
-        </button>
-
-        <!-- Stockage & consommation -->
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">💾 Stockage & 💶 consommation IA</span>
-            <button onclick="computeStorageUsage(); renderUsageInfo()" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-bold">Calculer</button>
-          </div>
-          <div id="storageInfo" class="text-[10px] text-slate-400 whitespace-pre-line"></div>
-          <div id="usageInfo" class="text-[10px] text-slate-400 whitespace-pre-line"></div>
-        </div>
-
-        <!-- Langue + encouragements -->
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-bold text-slate-300">Langue des annonces</span>
-            <select id="voiceLangSelect" onchange="onVoiceLangChange()" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold text-[11px]">
-              <option value="fr">🇫🇷 Français</option>
-              <option value="en">🇬🇧 English</option>
-            </select>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Encouragements & conseils de récup</span>
-            <input type="checkbox" id="chkEncouragements" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <p class="text-[9px] text-slate-400">Quelques encouragements sur les segments rapides et des conseils sur les récups, espacés pour ne pas saturer.</p>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">🎙️ Parler au coach pendant la séance</span>
-            <input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] text-slate-300">Écoute du mot « Coach » (mains libres)</span>
-            <input type="checkbox" id="chkWakeWord" onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-[11px] text-slate-300 flex-1">Prénom du coach (optionnel)</label>
-            <input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-bold text-white text-[11px]">
-          </div>
-          <p class="text-[9px] text-slate-400">Dites « Coach » (ou son prénom) puis votre question : douleur, envie d'alléger, d'ajouter une série, de ralentir… Le coach répond et peut modifier la séance en direct. Écoute mains libres désactivée par défaut : sur Android, le téléphone émet un bip à chaque relance du micro et peut couper la musique. Le plus confortable : le bouton « Parler au coach » ou un double appui sur l'écran en mode poche.</p>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Compte à rebours 5-4-3-2-1 au départ</span>
-            <input type="checkbox" id="chkStartCd" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Conseil du coach avant la séance</span>
-            <input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Rappels boire (chaque km) / manger (45 min)</span>
-            <input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <p class="text-[9px] text-slate-400">Boire à chaque kilomètre (annoncé avec le bilan du km) et manger toutes les 45 min.</p>
-        </div>
-
-        <!-- Voix IA Gemini -->
-        <div class="bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/40 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-purple-200">🎙️ Voix IA Gemini (humaine)</span>
-            <input type="checkbox" id="chkAiVoice" onchange="onAiSettingsChange()" class="accent-purple-500 w-4 h-4">
-          </div>
-          <div class="flex gap-1.5">
-            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" style="-webkit-text-security: disc;" id="aiKeyInput" placeholder="Clé API Gemini" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white font-mono text-[10px]">
-            <button onclick="saveAiKey()" class="px-2.5 py-1 bg-purple-600 text-white font-bold rounded-lg text-[10px]">Sauver</button>
-          </div>
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <label class="text-[9px] text-slate-400 uppercase font-semibold">Voix IA</label>
-              <span class="text-[9px] text-slate-500">▶ = aperçu prêt</span>
-            </div>
+        <!-- ===== VOIX ===== -->
+        <div class="pm-panel" data-p="voix">
+          <div class="pm-card">
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Voix humaine (IA)<small>Sinon, voix du téléphone</small></div><input type="checkbox" id="chkAiVoice" onchange="onAiSettingsChange()" class="sw"></div>
             <div id="aiGenderTabs" class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
               <button type="button" data-g="H" onclick="setVoiceGenderTab('H')">👨 Hommes</button>
               <button type="button" data-g="F" onclick="setVoiceGenderTab('F')">👩 Femmes</button>
             </div>
             <div id="aiVoicePicker" class="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto custom-scroll pr-1"></div>
             <select id="aiVoiceSelect" class="hidden"></select>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block">Ton</label>
-            <div id="aiStyleChips" class="grid grid-cols-4 gap-1">
-              <button type="button" data-style="coach" onclick="setAiStyleChip('coach')">Énergique</button>
-              <button type="button" data-style="warm" onclick="setAiStyleChip('warm')">Chaleureux</button>
-              <button type="button" data-style="calm" onclick="setAiStyleChip('calm')">Calme</button>
-              <button type="button" data-style="none" onclick="setAiStyleChip('none')">Neutre</button>
+            <div class="pm-lbl">Ton de la voix
+              <div id="aiStyleChips" class="grid grid-cols-4 gap-1">
+                <button type="button" data-style="coach" onclick="setAiStyleChip('coach')">Énergique</button>
+                <button type="button" data-style="warm" onclick="setAiStyleChip('warm')">Chaleureux</button>
+                <button type="button" data-style="calm" onclick="setAiStyleChip('calm')">Calme</button>
+                <button type="button" data-style="none" onclick="setAiStyleChip('none')">Neutre</button>
+              </div>
             </div>
-            <select id="aiStyleSelect" class="hidden">
-              <option value="coach">Coach énergique</option>
-              <option value="warm">Chaleureux</option>
-              <option value="calm">Calme</option>
-              <option value="none">Neutre</option>
+            <select id="aiStyleSelect" class="hidden"><option value="coach">Coach énergique</option><option value="warm">Chaleureux</option><option value="calm">Calme</option><option value="none">Neutre</option></select>
+            <div id="aiPreviewProgress" class="text-[11px] text-slate-400"></div>
+            <div id="aiVoiceStatus" class="text-[12px] font-semibold text-sky-300">Voix IA désactivée</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="previewAIVoice()" class="pm-btn">▶ Aperçu de la voix</button>
+              <button type="button" onclick="testBeepSound()" class="pm-btn">🔊 Tester une annonce</button>
+            </div>
+          </div>
+          <div class="pm-card">
+            <div>
+              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Vitesse de parole</span><span id="lblAiRate" class="text-sky-300">×0.90</span></div>
+              <input type="range" id="aiRate" min="0.75" max="1.1" step="0.05" value="0.9" class="w-full accent-sky-500"
+                oninput="document.getElementById('lblAiRate').textContent='×'+(+this.value).toFixed(2); saveAudioSettingsFromUI()" onchange="previewAIVoice()">
+            </div>
+            <div>
+              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Volume de la voix</span><span id="lblVolVoice" class="text-sky-300">100%</span></div>
+              <input type="range" id="volVoice" min="0.2" max="1.0" step="0.05" value="1.0" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVolVoice', this.value); saveAudioSettingsFromUI()">
+            </div>
+            <label class="pm-lbl">Langue des annonces
+              <select id="voiceLangSelect" onchange="onVoiceLangChange()" class="pm-in"><option value="fr">Français</option><option value="en">English</option></select>
+            </label>
+          </div>
+        </div>
+
+        <!-- ===== MONTRE ===== -->
+        <div class="pm-panel pm-off" data-p="montre">
+          <div class="pm-card" style="border-color:#4c1d2b">
+            <span class="pm-cap" style="color:#fb7185">Montre ou ceinture cardio</span>
+            <div id="btStatus" class="text-[13px] font-semibold text-slate-400">Aucun capteur connecté</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="connectHeartRate()" class="pm-btn" style="border:none;background:#e11d48;color:#fff;font-weight:800">Connecter</button>
+              <button type="button" onclick="disconnectHeartRate()" class="pm-btn">Déconnecter</button>
+            </div>
+            <details class="pm-det"><summary>Aide (Garmin, Polar, Coros…)</summary><p class="text-[12px] text-slate-400 mt-1">Garmin : activez « Diffuser la fréquence cardiaque », ou mieux « Diffuser pendant l'activité ». Une fois autorisée, la montre se reconnecte seule au lancement d'une séance. Fonctionne aussi avec Polar, Coros, Suunto et les ceintures Bluetooth.</p></details>
+            <input id="fcMaxInput" type="number" class="hidden">
+          </div>
+          <div class="pm-card" style="gap:0">
+            <span class="pm-cap" style="padding-bottom:6px">GPS du téléphone</span>
+            <div class="pm-row"><div class="pm-rt">Utiliser le GPS</div>
+              <select id="gpsModeSelect" class="pm-in" style="width:auto"><option value="auto">Séances extérieur</option><option value="on">Toujours</option><option value="off">Jamais</option></select></div>
+            <div class="pm-row"><div class="pm-rt">Conseils d'allure<small>Accélère / ralentis</small></div><input type="checkbox" id="chkPaceAdvice" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Annoncer la VAP<small>Vitesse ajustée à la pente</small></div><input type="checkbox" id="chkAnnounceVap" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Bilan à chaque km<small>Vitesse, cardio, rythme, forme</small></div><input type="checkbox" id="chkKmAnnounce" class="sw"></div>
+            <button type="button" onclick="testGps()" class="pm-btn mt-2" style="border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc">Tester le GPS</button>
+            <div id="gpsStatus" class="text-[12px] font-semibold text-slate-400 mt-1"></div>
+            <p class="text-[11px] text-slate-500 mt-1">Le GPS ne fonctionne qu'écran allumé : utilise le mode poche plutôt que de verrouiller.</p>
+          </div>
+        </div>
+
+        <!-- ===== DONNÉES ===== -->
+        <div class="pm-panel pm-off" data-p="donnees">
+          <div class="pm-card">
+            <div class="flex items-center justify-between"><span class="pm-cap">Clé Gemini (IA)</span><span id="geminiConnStatus" class="text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-400 border border-slate-700">Non connectée</span></div>
+            <div class="flex gap-2">
+              <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" style="-webkit-text-security: disc;" id="geminiApiKeyInput" placeholder="Colle ta clé API Gemini" class="pm-in flex-1 min-w-0" aria-label="Clé Gemini">
+              <button type="button" onclick="saveGeminiKey(); onAiSettingsChange()" class="pm-btn" style="border:none;background:#38bdf8;color:#04121f;font-weight:800">Sauver</button>
+            </div>
+            <button type="button" onclick="testGeminiConnection()" class="pm-btn">Tester la connexion</button>
+            <span class="text-[11px] text-slate-500">La clé reste sur ce téléphone, elle n'est jamais exportée.</span>
+            <input type="text" id="aiKeyInput" class="hidden">
+          </div>
+          <div class="pm-card">
+            <div class="flex items-center justify-between"><span class="pm-cap">Consommation et stockage</span>
+              <button type="button" onclick="computeStorageUsage(); renderUsageInfo()" class="pm-btn" style="height:36px">Calculer</button></div>
+            <div id="storageInfo" class="text-[12px] text-slate-400 whitespace-pre-line"></div>
+            <div id="usageInfo" class="text-[12px] text-slate-400 whitespace-pre-line"></div>
+          </div>
+          <div class="pm-card">
+            <span class="pm-cap">Sauvegarde de mes données</span>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="exportAppData()" class="pm-btn">⬇️ Exporter</button>
+              <label class="pm-btn flex items-center justify-center cursor-pointer">⬆️ Importer<input type="file" accept="application/json,.json" class="hidden" onchange="importAppData(this)"></label>
+            </div>
+            <button type="button" onclick="installApp()" class="pm-btn">📲 Installer sur l'écran d'accueil (aide)</button>
+          </div>
+        </div>
+
+        <!-- ===== AVANCÉ ===== -->
+        <div class="pm-panel pm-off" data-p="avance">
+          <div class="pm-card">
+            <span class="pm-cap">Voix IA</span>
+            <label class="pm-lbl">Modèle
+              <select id="aiModelSelect" onchange="onAiSettingsChange()" class="pm-in">
+                <option value="">Automatique (conseillé)</option>
+                <option value="gemini-3.8-flash-lite-tts">Flash-Lite TTS — 3× moins cher</option>
+                <option value="gemini-3.8-flash-tts">Flash TTS — un peu plus expressif</option>
+                <option value="gemini-3.1-flash-tts-preview">3.1 Flash TTS (ancien)</option>
+              </select>
+            </label>
+            <span class="text-[12px] font-bold text-slate-300">Voix enregistrées sur ce téléphone</span>
+            <div id="aiStoredList" class="text-[12px] space-y-0.5"></div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="prepareAndTestAI()" class="pm-btn">Préparer les annonces</button>
+              <button type="button" onclick="clearAiCache()" class="pm-btn">Vider le cache</button>
+            </div>
+          </div>
+          <div class="pm-card">
+            <span class="pm-cap">Voix du téléphone (secours)</span>
+            <select id="voiceSelect" onchange="saveAudioSettingsFromUI()" class="pm-in" aria-label="Voix du téléphone"></select>
+            <div>
+              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Débit</span><span id="lblVoiceRate" class="text-sky-300">×1.00</span></div>
+              <input type="range" id="voiceRate" min="0.8" max="1.3" step="0.05" value="1.0" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVoiceRate', this.value); saveAudioSettingsFromUI()">
+            </div>
+          </div>
+          <div class="pm-card" style="gap:8px">
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Carillon avant annonce<small>Réveille les écouteurs Bluetooth</small></div><input type="checkbox" id="chkDuckTone" checked onchange="saveAudioSettingsFromUI()" class="sw"></div>
+            <div>
+              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Volume du carillon</span><span id="lblVolBip" class="text-sky-300">180% (Boosté)</span></div>
+              <input type="range" id="volBip" min="0.2" max="2.0" step="0.1" value="1.8" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVolBip', this.value); saveAudioSettingsFromUI()">
+            </div>
+            <select id="bipTypeSelect" onchange="saveAudioSettingsFromUI()" class="pm-in" aria-label="Son du carillon">
+              <option value="horn">Cloche sportive perçante</option><option value="square">Signal carré net</option><option value="sawtooth">Double fréquence</option><option value="sine">Bip doux</option>
             </select>
           </div>
-          <div>
-            <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Modèle de voix</label>
-            <select id="aiModelSelect" onchange="onAiSettingsChange()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold text-[11px]">
-              <option value="">Automatique — Flash-Lite (économique), Flash si quota atteint</option>
-              <option value="gemini-3.8-flash-lite-tts">Flash-Lite TTS — 3× moins cher</option>
-              <option value="gemini-3.8-flash-tts">Flash TTS — un peu plus expressif</option>
-              <option value="gemini-3.1-flash-tts-preview">3.1 Flash TTS (ancien)</option>
-            </select>
+          <div class="pm-card" style="gap:4px">
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Mot-clé « Coach » mains libres<small>Sur Android, bip à chaque relance du micro</small></div><input type="checkbox" id="chkWakeWord" onchange="onAiSettingsChange()" class="sw"></div>
           </div>
-          <div>
-            <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-              <span>Vitesse de la voix IA</span>
-              <span id="lblAiRate" class="font-mono text-purple-300 font-bold">×0.90</span>
-            </div>
-            <input type="range" id="aiRate" min="0.75" max="1.1" step="0.05" value="0.9" class="w-full accent-purple-500"
-              oninput="document.getElementById('lblAiRate').textContent='×'+(+this.value).toFixed(2); saveAudioSettingsFromUI()" onchange="previewAIVoice()">
+          <div class="pm-card">
+            <span class="pm-cap">Tester les annonces</span>
+            <button type="button" onclick="closeAudioModal(); openScriptModal()" class="pm-btn">🧪 Script de la séance chargée</button>
           </div>
-          <div id="aiPreviewProgress" class="text-[9px] text-slate-400"></div>
-          <div id="aiVoiceStatus" class="text-[10px] font-semibold text-purple-300">Voix IA désactivée</div>
-          <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-2 space-y-1">
-            <span class="text-[9px] uppercase font-bold text-slate-400 block">Voix enregistrées sur ce téléphone</span>
-            <div id="aiStoredList" class="text-[10px] space-y-0.5"></div>
-          </div>
-          <div class="flex gap-1.5">
-            <button onclick="previewAIVoice()" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-[10px]">▶ Aperçu</button>
-            <button onclick="prepareAndTestAI()" class="flex-1 py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-purple-200 font-bold rounded-lg text-[10px]">Préparer toutes les annonces</button>
-            <button onclick="clearAiCache()" class="px-2.5 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-[10px]">Vider le cache</button>
-          </div>
-          <p class="text-[9px] text-slate-400">Touchez « ▶ Aperçu » (ou changez de voix) pour écouter une voix en une seule requête. Une fois choisie, « Préparer toutes les annonces » les génère. Chaque combinaison langue / voix / ton est générée une seule fois puis gardée sur le téléphone : revenir à une combinaison déjà enregistrée est instantané, sans rien retélécharger. Une nouvelle langue, voix ou ton demande d'enregistrer ses propres annonces (les mots ou le timbre changent). Seul « Vider le cache » efface tout.</p>
+          <input type="checkbox" id="chkEncouragements" checked class="hidden">
+          <input type="checkbox" id="chkKeepAlive" class="hidden">
         </div>
-
-        <div>
-          <label class="text-[10px] text-slate-400 block mb-1">Voix du téléphone (secours, langue choisie ci-dessus) :</label>
-          <select id="voiceSelect" onchange="saveAudioSettingsFromUI()" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"></select>
-          <p class="text-[9px] text-slate-500 mt-1">Les voix « Naturelle », « Neural », « Premium » ou Google sont les plus humaines. Sur iPhone, téléchargez une voix « Améliorée » dans Réglages › Accessibilité › Contenu énoncé.</p>
-        </div>
-
-        <div>
-          <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-            <span>Débit de la voix</span>
-            <span id="lblVoiceRate" class="font-mono text-purple-400 font-bold">×1.00</span>
-          </div>
-          <input type="range" id="voiceRate" min="0.8" max="1.3" step="0.05" value="1.0" class="w-full accent-purple-500" oninput="updateAudioLabel('lblVoiceRate', this.value); saveAudioSettingsFromUI()">
-        </div>
-
-        <div>
-          <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-            <span>Volume de la voix</span>
-            <span id="lblVolVoice" class="font-mono text-purple-400 font-bold">100%</span>
-          </div>
-          <input type="range" id="volVoice" min="0.2" max="1.0" step="0.05" value="1.0" class="w-full accent-purple-500" oninput="updateAudioLabel('lblVolVoice', this.value); saveAudioSettingsFromUI()">
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Carillon avant annonce</span>
-            <input type="checkbox" id="chkDuckTone" checked onchange="saveAudioSettingsFromUI()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <p class="text-[9px] text-slate-400">Petit signal juste avant la voix : réveille les écouteurs Bluetooth pour que le premier mot ne soit pas avalé.</p>
-          <div>
-            <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-              <span>Volume du carillon</span>
-              <span id="lblVolBip" class="font-mono text-sky-400 font-bold">180% (Boosté)</span>
-            </div>
-            <input type="range" id="volBip" min="0.2" max="2.0" step="0.1" value="1.8" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVolBip', this.value); saveAudioSettingsFromUI()">
-          </div>
-          <select id="bipTypeSelect" onchange="saveAudioSettingsFromUI()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold">
-            <option value="horn">Cloche sportive perçante</option>
-            <option value="square">Signal carré net</option>
-            <option value="sawtooth">Double fréquence</option>
-            <option value="sine">Bip doux</option>
-          </select>
-        </div>
-
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-slate-300">Maintien en arrière-plan</span>
-            <input type="checkbox" id="chkKeepAlive" onchange="saveAudioSettingsFromUI()" class="accent-sky-500 w-4 h-4">
-          </div>
-          <p class="text-[9px] text-slate-400">Désactivé par défaut : la musique garde son volume normal et ne baisse que pendant les annonces. À activer seulement si le chrono s'arrête quand l'écran se met en veille (peut baisser la musique sur certains téléphones).</p>
-        </div>
-
-        <button onclick="testBeepSound()" class="w-full py-2.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5">
-          <span class="icon-slot" data-icon="volume-1"></span> Tester la voix
-        </button>
       </div>
-
-      <div class="pt-1">
-        <button onclick="closeAudioModal()" class="w-full py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition text-xs">
-          Enregistrer les réglages
-        </button>
-      </div>
+      <div class="pm-foot"><button onclick="closeAudioModal()" class="pm-save">Enregistrer</button></div>
     </div>
   </div>
 
@@ -4604,6 +4483,9 @@
 
     function openGoalModal() {
       updateGoalModalUI();
+      fillCoachTabUI();
+      renderPlanDays();
+      renderGoalSummary();
       document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
       refreshAllIcons();
@@ -4619,16 +4501,49 @@
       document.getElementById('goalDateInput').value = g.date;
       document.getElementById('goalDistInput').value = g.distanceKm;
       document.getElementById('goalDurInput').value = g.durationMin;
-      document.getElementById('goalSpeedInput').value = g.speedKmh.toFixed(1);
-      document.getElementById('goalPenteInput').value = g.pente || 1;
+      document.getElementById('goalSpeedInput').value = (parseFloat(g.speedKmh) || 12).toFixed(1);
+      const pe = parseFloat(g.pente) || 0;
+      document.getElementById('goalPenteInput').value = pe;
+      document.getElementById('goalHilly').checked = g.hilly === true;
+      onGoalHillyChange(true);
       calculateVAP();
+    }
+    function onGoalHillyChange(silent) {
+      const on = document.getElementById('goalHilly').checked;
+      document.getElementById('goalHillyBox').classList.toggle('hidden', !on);
+      if (on && !silent && !(parseFloat(document.getElementById('goalPenteInput').value) > 0)) document.getElementById('goalPenteInput').value = 2;
+      calculateVAP();
+    }
+    function renderGoalSummary() {
+      const el = document.getElementById('goalSummary');
+      if (!el) return;
+      const dist = parseFloat(document.getElementById('goalDistInput').value) || 0;
+      const dur = parseFloat(document.getElementById('goalDurInput').value) || 0;
+      const iso = guessISOFromDDMM(document.getElementById('goalDateInput').value);
+      const d = parseISODateLocal(iso);
+      const days = d ? Math.round((d - parseISODateLocal(todayISO())) / 864e5) : null;
+      const sp = dist && dur ? dist / (dur / 60) : 0;
+      const hilly = document.getElementById('goalHilly').checked;
+      el.innerHTML = `<span class="pm-cap" style="color:#fbbf24">Ma course</span>
+        <span style="font-size:26px;font-weight:800">${dist ? String(dist).replace('.', ',') : '?'} km en ${dur ? formatMinSec(dur).replace(/'00"$/, "'") : '?'}</span>
+        <span style="font-size:14px;color:#fde68a;font-weight:700">${d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : 'Date à préciser'}${days !== null ? (days > 0 ? ` · dans ${days} jour${days > 1 ? 's' : ''}` : days === 0 ? " · c'est aujourd'hui !" : ' · passée') : ''}</span>
+        ${sp ? `<span style="font-size:13px;color:#cbd5e1;font-weight:600">Allure ${paceText(sp)}/km · ${formatSpeed(Math.round(sp * 10) / 10)} km/h${hilly ? ` · pente ${String(document.getElementById('goalPenteInput').value).replace('.', ',')} %` : ' · course plate'}</span>` : ''}`;
+    }
+    function paceText(kmh) { const s = Math.round(3600 / kmh); return `${Math.floor(s / 60)}'${String(s % 60).padStart(2, '0')}"`; }
+    function fillCoachTabUI() {
+      const s = appData.audioSettings;
+      document.getElementById('chkCoachTip').checked = s.coachTip !== false;
+      document.getElementById('chkVoiceCoach').checked = s.voiceCoach !== false;
+      document.getElementById('chkStartCd').checked = s.startCountdown !== false;
+      document.getElementById('chkFuel').checked = s.fuelReminders !== false;
+      document.getElementById('coachNameInput').value = s.coachName || '';
     }
 
     function calculateVAP() {
       const dist = parseFloat(document.getElementById('goalDistInput').value) || 10;
       const dur = parseFloat(document.getElementById('goalDurInput').value) || 50;
       const speed = parseFloat(document.getElementById('goalSpeedInput').value) || 12;
-      const pentePct = parseFloat(document.getElementById('goalPenteInput').value) || 1;
+      const pentePct = document.getElementById('goalHilly') && !document.getElementById('goalHilly').checked ? 0 : (parseFloat(document.getElementById('goalPenteInput').value) || 0);
 
       const secPerKm = Math.round((3600 / speed));
       const mPace = Math.floor(secPerKm / 60);
@@ -4647,6 +4562,7 @@
       const mVap = Math.floor(secPerKmVap / 60);
       const sVap = secPerKmVap % 60;
       document.getElementById('vapPaceLabel').textContent = `${mVap}'${String(sVap).padStart(2, '0')}"/km`;
+      renderGoalSummary();
     }
 
     function updateGoalVAPCalculation() {
@@ -4670,17 +4586,23 @@
       appData.goal.distanceKm = parseFloat(document.getElementById('goalDistInput').value) || 10;
       appData.goal.durationMin = parseFloat(document.getElementById('goalDurInput').value) || 50;
       appData.goal.speedKmh = parseFloat(document.getElementById('goalSpeedInput').value) || 12.0;
-      appData.goal.pente = parseFloat(document.getElementById('goalPenteInput').value) || 1;
+      appData.goal.hilly = document.getElementById('goalHilly').checked;
+      appData.goal.pente = appData.goal.hilly ? (parseFloat(document.getElementById('goalPenteInput').value) || 0) : 0;
+      saveAudioSettingsFromUI();
 
       saveAppData();
       closeGoalModal();
       showToast("Objectif enregistré avec succès !");
     }
 
-    function openCoachModal() {
-      openGoalModal();
-      const sec = document.getElementById('coachMerged');
-      if (sec) setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    function openCoachModal() { openGoalModal(); setPmTab('goalModal', 'coach'); }
+    function setPmTab(modalId, tab) {
+      const m = document.getElementById(modalId);
+      if (!m) return;
+      m.querySelectorAll('.pm-tab').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+      m.querySelectorAll('.pm-panel').forEach(p => p.classList.toggle('pm-off', p.dataset.p !== tab));
+      const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
+      if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
     function mergeSensorsIntoAudio() {
@@ -4734,12 +4656,13 @@
 
     function updateGeminiStatusBadge(isConnected) {
       const badge = document.getElementById('geminiConnStatus');
+      if (!badge) return;
       if (isConnected) {
-        badge.className = "text-[9px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
-        badge.textContent = "Connecté à Gemini";
+        badge.className = "text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        badge.textContent = "Connectée";
       } else {
-        badge.className = "text-[9px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-400 border border-slate-700";
-        badge.textContent = "Moteur Autonome";
+        badge.className = "text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-400 border border-slate-700";
+        badge.textContent = "Non connectée";
       }
     }
 
@@ -4783,6 +4706,63 @@
       }
     }
 
+    function planDays() { const p = appData.planDays; return Array.isArray(p) && p.length ? p : [1, 3, 6]; }
+    function renderPlanDays() {
+      const box = document.getElementById('planDays');
+      if (!box) return;
+      const sel = planDays();
+      box.innerHTML = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((l, i) => `<button type="button" class="pl-day ${sel.includes(i) ? 'on' : ''}" onclick="togglePlanDay(${i})" aria-label="${['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][i]}">${l}</button>`).join('');
+    }
+    function togglePlanDay(i) {
+      const sel = planDays().slice();
+      const k = sel.indexOf(i);
+      if (k >= 0) { if (sel.length > 1) sel.splice(k, 1); } else sel.push(i);
+      appData.planDays = sel.sort((a, b) => a - b);
+      saveAppData();
+      renderPlanDays();
+    }
+    async function generatePlanWithCoach() {
+      const st = document.getElementById('planGenStatus');
+      const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
+      if (!getGeminiKey()) { say("Renseigne ta clé Gemini (Réglages › Données)", true); return; }
+      saveRunnerProfile();
+      const g = appData.goal || {};
+      const gIso = guessISOFromDDMM(document.getElementById('goalDateInput').value || g.date);
+      if (!gIso || gIso <= todayISO()) { say("Indique d'abord la date de ta course (onglet Objectif)", true); return; }
+      const r = runnerProfile();
+      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      const days = planDays().map(i => jours[i]).join(', ');
+      const place = { mixte: 'tapis ou extérieur (choisis selon la séance)', tapis: 'uniquement sur tapis', exterieur: 'uniquement en extérieur' }[document.getElementById('planPlace').value] || 'tapis ou extérieur';
+      const hist = (appData.history || []).slice(0, 8).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}`).join('\n') || '- aucune';
+      const weeks = Math.ceil((parseISODateLocal(gIso) - parseISODateLocal(todayISO())) / (7 * 864e5));
+      const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
+Construis mon plan d'entraînement de demain (${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}) jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines${weeks > 20 ? ' : planifie seulement les 16 prochaines semaines' : ''}).
+Objectif : ${g.distanceKm} km en ${g.durationMin} min${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Niveau actuel (temps possibles aujourd'hui) : ${runnerLevelsText()}.
+Séances récentes :
+${hist}
+Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
+Format JSON strict :
+{"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}]}
+Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois (une récupération entre fractions est un segment lent) ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
+      say("🧠 Le coach prépare ton plan… (20 à 60 s)");
+      try {
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const data = parseJsonLoose(txt);
+        const list = Array.isArray(data) ? data : (data.sessions || []);
+        pdfImportResult = normalizeImportedSessions(list);
+        if (!pdfImportResult.length) { say("Le coach n'a proposé aucune séance, réessaie", true); return; }
+        pdfImportResult.forEach(x => { if (!x.chauffe) x.chauffe = r.warmMin ?? 10; if (!x.recup) x.recup = r.coolMin ?? 5; });
+        const adv = document.getElementById('coachAdviceCard');
+        if (adv) { adv.classList.toggle('hidden', !data.resume); document.getElementById('coachAdviceText').textContent = String(data.resume || ''); }
+        renderPdfImportPreview();
+        say(`✓ ${pdfImportResult.length} séances proposées : vérifie-les ci-dessous puis valide.`);
+        setTimeout(() => document.getElementById('pdfImportPreview').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      } catch (e) {
+        say(`Plan impossible : ${e.message || e}`, true);
+      }
+    }
     function generateFullPlanToGoal() {
       const selectedDays = [];
       if (document.getElementById('chkMardi').checked) selectedDays.push({ name: 'mardi' });
@@ -4913,7 +4893,9 @@
       loadVoices();
       updateAudioModalUI();
       fillSensorsUI();
-      const sec = document.getElementById('sensorsSection'); if (sec) sec.open = false;
+      const kIn = document.getElementById('geminiApiKeyInput');
+      if (kIn) kIn.value = getGeminiKey();
+      updateGeminiStatusBadge(!!getGeminiKey());
       document.getElementById('audioModal').classList.remove('hidden');
       refreshAllIcons();
     }
@@ -5007,7 +4989,7 @@
         aiLoadFromDbOnly().then(() => { if (aiVoiceReadyForSession()) setAiStatus(`✓ Voix IA prête (${aiAllPiecesForSession().length} annonces, enregistrées sur le téléphone)`); });
       }
       if (!appData.audioSettings.aiVoice) return setAiStatus("Voix IA désactivée");
-      if (!getGeminiKey()) return setAiStatus("Renseignez votre clé Gemini puis touchez Sauver", true);
+      if (!getGeminiKey()) return setAiStatus("Renseigne ta clé Gemini (onglet Données)", true);
       if (aiPrep.running) return setAiStatus(aiPrep.status || "Préparation…");
       if (aiVoiceReadyForSession()) return setAiStatus(`✓ Voix IA prête (${aiAllPiecesForSession().length} annonces)`);
       if (aiPrep.error && aiPrep.status) return setAiStatus(aiPrep.status, true);
@@ -5487,6 +5469,7 @@ Réponds uniquement avec le JSON.`;
         const list = Array.isArray(data) ? data : (data.sessions || []);
         pdfImportResult = normalizeImportedSessions(list);
         if (!pdfImportResult.length) { setPdfStatus("Aucune séance reconnue dans ce PDF", true); return; }
+        { const adv = document.getElementById('coachAdviceCard'); if (adv) adv.classList.add('hidden'); }
         renderPdfImportPreview();
         setPdfStatus(`${pdfImportResult.length} séances trouvées : vérifiez puis validez.`);
       } catch (e) {
@@ -5553,7 +5536,7 @@ Réponds uniquement avec le JSON.`;
       list.innerHTML = pdfImportResult.map(s => `
         <div class="bg-slate-900 border border-slate-800 rounded-lg p-1.5">
           <div class="flex justify-between font-bold text-slate-200"><span>${formatSessTitle(s)}</span><span class="font-mono text-sky-400">${Math.round(computeSessionTotalMin(s))}'</span></div>
-          <div class="text-[9px] text-slate-400">${describeSessionProgram(s)}${s.type === 'tapis' ? ` • pente ${s.pente}%` : ' • extérieur'}</div>
+          <div class="text-[11px] text-slate-300">${capFirst(describeSessionHuman(s))}${s.type === 'tapis' ? '' : ' • extérieur'}</div>
           ${s.notes ? `<div class="text-[9px] text-slate-500 italic">${s.notes.replace(/</g, '&lt;')}</div>` : ''}
         </div>`).join('');
       box.classList.remove('hidden');
@@ -6573,8 +6556,7 @@ Réponds uniquement avec le JSON.`;
       if (!btDevice) setBtStatus(navigator.bluetooth ? 'Aucun capteur connecté' : "Bluetooth indisponible sur ce navigateur (Chrome Android + https requis)", !navigator.bluetooth);
       renderRouteInfo();
       openAudioModal();
-      const sec = document.getElementById('sensorsSection');
-      if (sec) { sec.open = true; setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120); }
+      setPmTab('audioModal', 'montre');
     }
     function closeSensorsModal() {
       closeAudioModal();
@@ -7608,6 +7590,10 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const inp = document.getElementById('efInput');
       if (!inp) return;
       inp.value = formatSpeed(runnerEF());
+      { const L = runnerLevels(); LEVEL_DISTS.forEach(([d, id]) => { const el = document.getElementById(id); if (el) el.value = L[d] ? fmtTime(L[d]) : ''; });
+        renderLevelInfo();
+        const ln = document.getElementById('lvlNote');
+        if (ln) ln.textContent = r.levelsSrc === 'coach' && r.levelsAt ? `🧠 Mis à jour par le coach le ${parseISODateLocal(r.levelsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}${r.levelsNote ? ` : ${r.levelsNote}` : ''}` : ''; }
       { const a = getActiveSession() || {}; const w = document.getElementById('warmInput'), c = document.getElementById('coolInput');
         if (w) w.value = r.warmMin ?? (a.chauffe ?? 10); if (c) c.value = r.coolMin ?? (a.recup ?? 5); }
       document.getElementById('efAuto').checked = r.efAuto !== false;
@@ -7653,7 +7639,9 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
 FC max connue : ${sensors().fcMax || 'inconnue'}. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min. Valeur actuelle : ${formatSpeed(runnerEF())} km/h.
 Séances :
 ${lines}
-Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "une phrase courte, en tutoyant"}`;
+Mon niveau actuel déclaré (temps possibles aujourd'hui) : ${runnerLevelsText()}.
+Estime aussi mon niveau actuel sur 5 km, 10 km, semi-marathon (21,1 km) et marathon (42,2 km) : le temps que je pourrais réaliser aujourd'hui. Pars du niveau déclaré et ajuste-le seulement si les séances le justifient. Mets null pour une distance que je ne suis pas capable de courir aujourd'hui (d'après mes plus longues sorties et mon niveau).
+Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "une phrase courte, en tutoyant", "niveaux": {"5": "mm:ss" ou null, "10": "mm:ss" ou null, "21": "h:mm:ss" ou null, "42": "h:mm:ss" ou null}, "niveaux_explication": "une phrase courte"}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
         const v = parseFloat(String(j.ef_kmh).replace(',', '.'));
@@ -7661,10 +7649,18 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
         r.efKmh = Math.round(v * 2) / 2;
         r.efNote = String(j.explication || '').slice(0, 200);
         r.efAt = toISODateLocal(new Date());
+        if (j.niveaux && typeof j.niveaux === 'object') {
+          const L = {};
+          [[5, '5'], [10, '10'], [21.1, '21'], [42.2, '42']].forEach(([d, k]) => {
+            const sec = parseTimeStr(j.niveaux[k]);
+            if (sec && d / (sec / 3600) > 5 && d / (sec / 3600) < 26) L[d] = sec;
+          });
+          if (Object.keys(L).length) { r.levels = L; r.levelsSrc = 'coach'; r.levelsAt = todayISO(); r.levelsNote = String(j.niveaux_explication || '').slice(0, 160); }
+        }
         saveAppData();
         reloadChrono();
         renderRunnerProfile();
-        if (manual) showToast(`Endurance fondamentale : ${formatSpeed(r.efKmh)} km/h`);
+        if (manual) showToast(`Endurance ${formatSpeed(r.efKmh)} km/h · niveau mis à jour`);
       } catch (e) {
         if (manual && el) el.textContent = `Calcul impossible : ${e.message || e}`;
       }
@@ -7970,7 +7966,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const r = runnerProfile();
       document.querySelectorAll('#sexChips button').forEach(b => {
         const on = b.dataset.s === r.sex;
-        b.className = `flex-1 py-1.5 rounded-lg text-[11px] font-bold border ${on ? 'bg-cyan-500 border-cyan-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-300'}`;
+        b.className = `flex-1 h-11 rounded-xl text-[13px] font-bold border ${on ? 'bg-amber-400 border-amber-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-300'}`;
       });
       const th = theoreticalFcMax(), obs = maxObservedHr(), fc = runnerFcMax();
       document.getElementById('fcMaxProfile').value = r.fcMax || '';
@@ -7990,6 +7986,32 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       document.getElementById('fcMaxProfile').value = obs;
       renderRunnerBody();
     }
+    const LEVEL_DISTS = [[5, 'lvl5'], [10, 'lvl10'], [21.1, 'lvl21'], [42.2, 'lvl42']];
+    // « 23:45 », « 1:52:30 », « 52 » (minutes) → secondes
+    function parseTimeStr(t) {
+      const p = String(t || '').trim().replace(/[hH'’]/g, ':').replace(/["”]/g, '').replace(/[^\d:]/g, '').split(':').filter(x => x !== '').map(Number);
+      if (!p.length || p.some(isNaN)) return null;
+      let sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : p[0] * 60;
+      return sec > 0 ? sec : null;
+    }
+    function fmtTime(sec) {
+      sec = Math.round(sec);
+      const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = sec % 60;
+      return h ? `${h}:${String(m).padStart(2, '0')}:${String(s2).padStart(2, '0')}` : `${m}:${String(s2).padStart(2, '0')}`;
+    }
+    function renderLevelInfo() {
+      LEVEL_DISTS.forEach(([d, id]) => {
+        const sec = parseTimeStr((document.getElementById(id) || {}).value);
+        const info = document.getElementById(id + 'Info');
+        if (info) info.innerHTML = sec ? `${formatSpeed(Math.round(d / (sec / 3600) * 10) / 10)} km/h<br>${paceText(d / (sec / 3600))}/km` : '';
+      });
+    }
+    function runnerLevels() { const r = runnerProfile(); return r.levels && typeof r.levels === 'object' ? r.levels : {}; }
+    function runnerLevelsText() {
+      const L = runnerLevels();
+      const parts = LEVEL_DISTS.filter(([d]) => L[d]).map(([d]) => `${d === 21.1 ? 'semi' : d === 42.2 ? 'marathon' : d + ' km'} en ${fmtTime(L[d])}`);
+      return parts.length ? parts.join(', ') : 'non renseigné';
+    }
     function readRunnerBody() {
       const r = runnerProfile();
       const n = id => { const v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return isNaN(v) ? null : v; };
@@ -8000,6 +8022,12 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const fc = n('fcMaxProfile');
       r.fcMax = fc && fc >= 120 && fc <= 230 ? Math.round(fc) : null;
       syncFcMax();
+      if (document.getElementById('lvl5')) {
+        const before = JSON.stringify(runnerLevels());
+        const L = {};
+        LEVEL_DISTS.forEach(([d, id]) => { const sec = parseTimeStr(document.getElementById(id).value); if (sec) L[d] = sec; });
+        if (JSON.stringify(L) !== before) { r.levels = L; r.levelsSrc = 'moi'; r.levelsAt = todayISO(); }
+      }
     }
 
     // ==================== HYDRATATION : QUANTITÉ D'EAU ====================
@@ -8049,13 +8077,18 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           }
         });
       });
-      if (!n) return null;
+      // Niveau actuel déclaré ou mis à jour par le coach
+      const L = runnerLevels();
+      const vLev = Object.keys(L).map(Number).filter(d => L[d]).map(d => (d / (L[d] / 3600)) / Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(d / 5))));
+      const vL = vLev.length ? Math.max(...vLev) : 0;
+      if (!n) return vL ? { vma: vL, n: 3, withHr: 0, fromLevels: true } : null;
       const lbMax = Math.max(...lb);
       let vma;
       if (hrEst.length >= 2) {
         const top = hrEst.sort((a, b) => b - a).slice(0, 5);
         vma = Math.max(top[Math.floor(top.length / 2)], lbMax);
       } else vma = lbMax * 1.05; // séances d'entraînement : effort pas maximal
+      if (vL) { vma = (vma + vL) / 2; n += 2; }
       return { vma, n, withHr: hrEst.length };
     }
     function computeGoalProbability() {
@@ -8127,7 +8160,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const prompt = `Tu es un entraîneur de course à pied. ${coachToneText()}
 Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${g.date}.
 Calcul de l'app : ${p && !p.noData ? `VMA estimée ${p.vma.toFixed(1)} km/h, temps prédit aujourd'hui ${formatMinSec(p.tNow)}, le jour J ${formatMinSec(p.tDay)}, probabilité ${p.pDay} % (aujourd'hui ${p.pNow} %), fiabilité ${p.conf}` : 'pas assez de données'}.
-Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}.
+Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}. Niveau actuel : ${runnerLevelsText()}.
 Séances récentes :
 ${hist}
 Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabilité de réussite (en %), ce qui la soutient ou la limite, et 2 leviers concrets pour l'augmenter.`;
