@@ -95,6 +95,9 @@
     .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; transition: left .2s; }
     .sw:checked { background: var(--acc, #38bdf8); }
     .sw:checked::after { left: 21px; }
+    .act-tile { min-height: 120px; border-radius: 20px; border: 1.5px solid #1e293b; background: #0c1424; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px; text-align: center; }
+    .act-tile:active { transform: scale(.97); }
+    .act-tile.on { border-color: #34d399; background: rgba(52,211,153,.1); }
     .pl-day { height: 40px; border-radius: 10px; font-weight: 800; font-size: 13px; border: 1px solid #334155; background: #0b1324; color: #94a3b8; }
     .pl-day.on { background: #a78bfa; border-color: #a78bfa; color: #13092b; }
     button, input, select, textarea { font-family: inherit; }
@@ -280,7 +283,7 @@
       </button>
     </div>
 
-    <button id="homeFreeBtn" onclick="openFreeModal()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">🏃 SÉANCE LIBRE</button>
+    <button id="homeFreeBtn" onclick="openActivityWizard()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">➕ CRÉER UNE ACTIVITÉ</button>
 
 
   </section>
@@ -612,7 +615,7 @@
         </div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
-      <button onclick="closeHistoryModal(); openAddSession()" aria-label="Ajouter une séance" class="absolute flex items-center gap-2 font-extrabold active:scale-95 transition" style="right:max(20px,calc(50% - 204px));bottom:24px;height:56px;padding:0 22px;border-radius:28px;background:#34d399;color:#03140d;font-size:15px;box-shadow:0 10px 30px rgba(52,211,153,.35)">
+      <button onclick="closeHistoryModal(); openActivityWizard()" aria-label="Ajouter une activité" class="absolute flex items-center gap-2 font-extrabold active:scale-95 transition" style="right:max(20px,calc(50% - 204px));bottom:24px;height:56px;padding:0 22px;border-radius:28px;background:#34d399;color:#03140d;font-size:15px;box-shadow:0 10px 30px rgba(52,211,153,.35)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
       </button>
     </div>
@@ -727,7 +730,7 @@
             <span class="pm-cap" style="padding-bottom:6px">Pendant la séance</span>
             <div class="pm-row"><div class="pm-rt">Conseil avant la séance<small>Lu au départ, selon tes sensations</small></div><input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="sw"></div>
             <div class="pm-row"><div class="pm-rt">Parler au coach<small>Bouton micro et point à mi-séance</small></div><input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="sw"></div>
-            <div class="pm-row"><div class="pm-rt">Compte à rebours au départ<small>5, 4, 3, 2, 1</small></div><input type="checkbox" id="chkStartCd" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <input type="checkbox" id="chkStartCd" class="hidden">
             <div class="pm-row"><div class="pm-rt">Rappels boire / manger<small>Chaque km, et toutes les 45 min</small></div><input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="sw"></div>
             <div class="pm-row"><div class="pm-rt">Prénom du coach<small>Optionnel</small></div><input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="pm-in c" style="width:120px"></div>
           </div>
@@ -768,6 +771,47 @@
     </div>
   </div>
 
+
+  <!-- ==================== CRÉER UNE ACTIVITÉ ==================== -->
+  <div id="actModal" class="pm hidden" style="--acc:#34d399;z-index:66">
+    <div class="pm-wrap">
+      <div class="pm-head">
+        <div class="flex items-center gap-2 min-w-0">
+          <button id="actBackBtn" onclick="actBack()" aria-label="Retour" class="pm-x"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <div class="flex flex-col min-w-0"><span id="actStepLbl" class="text-[12px] font-bold text-emerald-300"></span><h2 id="actTitle" class="pm-title" style="font-size:24px">Créer une activité</h2></div>
+        </div>
+        <button onclick="closeActivityWizard()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
+      </div>
+      <div id="actBody" class="pm-body custom-scroll flex flex-col gap-3"></div>
+      <div id="actFoot" class="pm-foot"></div>
+    </div>
+  </div>
+
+  <!-- Vélo / musculation en cours -->
+  <div id="crossRun" class="pm hidden" style="--acc:#2dd4bf;z-index:60">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 id="crossTitle" class="pm-title" style="font-size:22px"></h2></div>
+      <div class="px-4 flex flex-col items-center gap-3">
+        <div id="crossTime" class="font-black text-white" style="font-size:72px;line-height:1;font-variant-numeric:tabular-nums">00:00</div>
+        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden"><div id="crossBar" class="h-2 rounded-full bg-teal-400" style="width:0"></div></div>
+      </div>
+      <div class="pm-body custom-scroll mt-4"><div id="crossContent" class="pm-card"></div></div>
+      <div id="crossFinish" class="hidden px-4 pb-2 flex flex-col gap-2">
+        <span class="pm-cap">Mon ressenti</span>
+        <div id="crossFeel" class="grid grid-cols-3 gap-2">
+          <button type="button" data-f="green" onclick="crossSetFeel('green')">😊 Bien</button>
+          <button type="button" data-f="yellow" onclick="crossSetFeel('yellow')">😐 Moyen</button>
+          <button type="button" data-f="red" onclick="crossSetFeel('red')">😫 Dur</button>
+        </div>
+        <button onclick="crossSave()" class="pm-save">💾 Enregistrer l'activité</button>
+      </div>
+      <div class="pm-foot grid grid-cols-3 gap-3">
+        <button onclick="crossCancel()" aria-label="Annuler l'activité" class="py-4 rounded-2xl flex items-center justify-center bg-rose-500/15 border border-rose-500/60 text-rose-200 active:scale-95"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <button id="crossPauseBtn" onclick="crossPause()" aria-label="Pause"></button>
+        <button onclick="crossStop()" aria-label="Terminer l'activité" class="py-4 rounded-2xl flex items-center justify-center bg-rose-600 text-white active:scale-95"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg></button>
+      </div>
+    </div>
+  </div>
   <!-- ==================== MODALE 5 : VALIDATION DU RESSENTI ==================== -->
   <div id="validationModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto custom-scroll">
@@ -3438,9 +3482,16 @@
         setCtl(stop, 'stop', 'bg-rose-600 text-white shadow-lg shadow-rose-600/30', 'Arrêter la séance');
       } else {
         // Arrêtée (pas encore enregistrée) ou terminée : Recommencer • Sauvegarder • Reprendre / Accueil
-        icon.setAttribute('data-icon', 'rotate-ccw');
-        btn.setAttribute('aria-label', 'Recommencer');
-        btn.className = big + 'ctl-big bg-slate-200 shadow-lg shadow-slate-200/20';
+        if (st === 'stopped') {
+          // Annuler la séance (rien n'est enregistré) et revenir à l'accueil
+          icon.setAttribute('data-icon', 'x');
+          btn.setAttribute('aria-label', 'Annuler la séance et revenir à l\'accueil');
+          btn.className = 'py-4 active:scale-95 transition rounded-2xl flex items-center justify-center ctl-big bg-rose-500/15 border border-rose-500/60 text-rose-200';
+        } else {
+          icon.setAttribute('data-icon', 'rotate-ccw');
+          btn.setAttribute('aria-label', 'Recommencer');
+          btn.className = big + 'ctl-big bg-slate-200 shadow-lg shadow-slate-200/20';
+        }
         setCtl(mic, 'save', 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30', 'Sauvegarder la séance');
         if (st === 'stopped') setCtl(stop, 'play', 'bg-sky-500/20 border border-sky-500/60 text-sky-200', 'Reprendre la séance');
         else setCtl(stop, 'home', 'bg-slate-800 border border-slate-600 text-slate-200', 'Accueil');
@@ -3451,8 +3502,8 @@
     function mainCtlLeft() {
       const st = ctlState();
       if (st === 'stopped') {
-        if (!confirm("Recommencer depuis le début ? La séance en cours ne sera pas enregistrée.")) return;
-        timerState.stopped = false; clearLiveRun(); resetTimer(); return;
+        if (!confirm("Annuler la séance ? Rien ne sera enregistré.")) return;
+        timerState.stopped = false; clearLiveRun(); stopGps(); freeSession = null; reloadChrono(); showHome(); return;
       }
       if (st === 'finished') { resetTimer(); return; }
       toggleTimer();
@@ -3485,7 +3536,7 @@
         return;
       }
       // Compte à rebours 5, 4, 3, 2, 1 avant le départ du chrono
-      if (!timerState.sessionStarted && !opts.skipCountdown && appData.audioSettings.startCountdown !== false) {
+      if (false && !timerState.sessionStarted && !opts.skipCountdown && appData.audioSettings.startCountdown !== false) { // compte à rebours 5-4-3-2-1 supprimé
         requestFullscreenSafe();
         aiUnlock();
         getAudioContext();
@@ -4280,6 +4331,28 @@
       }
       return `<div class="pl-card ${past ? 'past' : ''}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
     }
+    function plCrossCard(i) {
+      const c = i.item, T = ACT_TYPES[c.type] || { label: 'ACTIVITÉ', color: '#94a3b8' };
+      const title = c.titre || (c.type === 'muscu' ? (c.exos || []).map(e => e.nom).filter(Boolean).slice(0, 3).join(', ') : `${T.label} ${({ facile: 'facile', moderee: 'modéré', soutenue: 'soutenu' })[c.intensite] || ''}`) || T.label;
+      return `<div class="pl-card ${i.iso < todayISO() ? 'past' : ''}">
+        <div class="flex items-center gap-3">${plDateChip(i.iso)}
+          <div class="flex-1 flex flex-col gap-1 min-w-0">
+            <span style="align-self:flex-start;font-size:10px;font-weight:800;color:${T.color};letter-spacing:.6px">${c.type === 'velo' ? 'VÉLO' : 'MUSCULATION'}</span>
+            <span class="pl-clamp" style="font-size:15px;font-weight:800;line-height:1.25">${plEsc(title)}</span>
+            <span style="font-size:12px;color:#94a3b8;font-weight:600">${c.dur || '?'} min</span>
+          </div>
+          <button onclick="toggleDetailRow('${c.id}')" aria-label="Plus d'options" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        <div id="detail_${c.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
+          ${c.detail ? `<div style="font-size:12px;color:#94a3b8">${plEsc(c.detail)}</div>` : ''}
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="startCrossActivity('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.45);color:#5eead4">▶ Lancer</button>
+            <button onclick="deleteCrossPlan('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    function deleteCrossPlan(id) { appData.crossPlan = (appData.crossPlan || []).filter(x => x.id !== id); saveAppData(); updateHistoryTable(); }
     function plDoneCard(item) {
       const k = sessionKind(item);
       const feel = { green: ['bien', '#6ee7b7'], yellow: ['moyen', '#fcd34d'], red: ['dur', '#fda4af'] }[item.feeling] || null;
@@ -4301,7 +4374,7 @@
           <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(item.details)}</div>
           ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
           ${item.cross ? '' : runDataBlockHtml(item.track, item.seg)}
-          ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0"><b style="color:#d8b4fe">🧠 Analyse du coach</b><br>${mdLite(item.analysis)}</div>` : ''}
+          ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
           <div class="grid grid-cols-3 gap-2">
             ${item.cross ? '<span></span>' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? 'Refaire' : 'Analyse IA'}</button>`}
             <button onclick="editHistoryItem('${item.id}', 'validated', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
@@ -4323,8 +4396,9 @@
         type: 'planned', rawIdx: sIdx, id: s.id, title: formatSessTitle(s), date: s.date || '--/--', iso: s.dateISO || guessISOFromDDMM(s.date), pente: s.pente,
         duration: computeSessionTotalMin(s), details: describeSessionHuman(s)
       }));
+      (appData.crossPlan || []).forEach(c => items.push({ type: 'crossplan', id: c.id, iso: c.dateISO, item: c }));
       const done = items.filter(i => i.type === 'validated');
-      const planned = items.filter(i => i.type === 'planned').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
+      const planned = items.filter(i => i.type === 'planned' || i.type === 'crossplan').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
       document.getElementById('cntAll').textContent = items.length;
       document.getElementById('cntVal').textContent = done.length;
@@ -4350,7 +4424,7 @@
           else if (iso) g = `Semaine du ${parseISODateLocal(weekStartISO(iso)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
           else g = 'Sans date';
           if (g !== cur) { sec(g); cur = g; }
-          out.push(plPlannedCard(i, iso === t));
+          out.push(i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, iso === t));
         });
       };
       if (currentFilter === 'planned') {
@@ -6702,6 +6776,62 @@ Réponds uniquement avec le JSON.`;
         .replace(/^\s*[-*]\s+/gm, '• ')
         .replace(/\n/g, '<br>');
     }
+    // Format de l'analyse : court et direct, détail sur demande
+    // Records et progrès calculés par l'app (comparaison avec les séances enregistrées)
+    function recordsText(cur, others) {
+      const runs = (others || []).filter(h => h && !h.cross && h.isVal !== false);
+      if (!runs.length) return "Première séance enregistrée : c'est la référence de départ.";
+      const out = [];
+      const dist = parseFloat(cur.summary && cur.summary.distKm) || 0;
+      const maxDist = Math.max(0, ...runs.map(h => parseFloat(h.summary && h.summary.distKm) || 0));
+      if (dist > 0 && dist > maxDist) out.push(`plus longue distance (${dist.toFixed(1)} km, ancien record ${maxDist ? maxDist.toFixed(1) + ' km' : 'aucun'})`);
+      const dur = +cur.durationMin || 0;
+      const maxDur = Math.max(0, ...runs.map(h => +h.durationMin || 0));
+      if (dur > maxDur + 0.5) out.push(`plus longue séance (${Math.round(dur)} min, ancien record ${Math.round(maxDur)} min)`);
+      // Meilleure vitesse moyenne tenue sur un segment d'au moins 3 min
+      const bestSeg = seg => Math.max(0, ...(seg || []).filter(x => x.sec >= 180 && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const vNow = bestSeg(cur.seg), vOld = Math.max(0, ...runs.map(h => bestSeg(h.seg)));
+      if (vNow > 0 && vOld > 0 && vNow > vOld + 0.05) out.push(`meilleure vitesse tenue 3 min ou plus (${formatSpeed(vNow)} km/h, ancien record ${formatSpeed(vOld)} km/h)`);
+      // Cardio plus bas à vitesse comparable (±0,5 km/h)
+      const pairs = (cur.seg || []).filter(x => x.sec >= 180 && x.avgKmh && x.avgHr);
+      for (const p of pairs) {
+        const ref = runs.flatMap(h => (h.seg || []).filter(x => x.sec >= 180 && x.avgHr && x.avgKmh && Math.abs(x.avgKmh - p.avgKmh) <= 0.5)).map(x => x.avgHr);
+        if (ref.length >= 2) {
+          const m = ref.reduce((a, b) => a + b, 0) / ref.length;
+          if (p.avgHr <= m - 4) { out.push(`cardio plus bas à ${formatSpeed(p.avgKmh)} km/h (${p.avgHr} bpm contre ${Math.round(m)} habituellement)`); break; }
+        }
+      }
+      return out.length ? out.join(' ; ') : 'aucun record mesuré par l\'app (cherche un progrès dans les données si tu en vois un, sinon laisse vide)';
+    }
+    function analysisFormatPrompt() {
+      return `Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
+Réponds uniquement en JSON :
+{"verdict":"bonne|correcte|difficile","titre":"le bilan en une phrase de 12 mots maximum","points":["3 points clés de 12 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller"],"action":"LA chose à faire pour la suite, 15 mots maximum","record":"le record ou progrès du jour en une phrase avec le chiffre (d'après les records calculés par l'app ou un progrès net visible dans les données), sinon vide","alerte":"signal santé ou surmenage (douleur, cardio anormal, fatigue qui s'accumule) en une phrase, sinon vide","details":[
+{"titre":"Exécution","texte":"respect de la séance et intensité (trop douce, juste, trop forte), chiffres à l'appui, 2 phrases"},
+{"titre":"Forme et progression","texte":"forme du jour et tendance par rapport aux séances précédentes comparables, 2 phrases"},
+{"titre":"Objectif","texte":"ce que la séance dit de l'objectif, seulement si ça change quelque chose, 1 à 2 phrases"},
+{"titre":"Récupération","texte":"quoi faire dans les 24 à 48 h (sommeil, hydratation, alimentation, activité), 1 à 2 phrases"},
+{"titre":"Plan","texte":"faut-il ajuster les prochaines séances ? quoi précisément, ou rien, 1 à 2 phrases"}]}`;
+    }
+    function analysisHtml(raw) {
+      if (!raw) return '';
+      let j = null;
+      try { const t = String(raw).trim(); if (t.startsWith('{')) j = parseJsonLoose(t); } catch (e) {}
+      if (!j || !j.titre) return mdLite(raw); // anciennes analyses en texte
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const v = String(j.verdict || '').toLowerCase();
+      const col = v.startsWith('bon') ? '#34d399' : v.startsWith('diff') ? '#fb7185' : '#fbbf24';
+      const lbl = v.startsWith('bon') ? 'Bonne séance' : v.startsWith('diff') ? 'Séance difficile' : 'Séance correcte';
+      const pts = (Array.isArray(j.points) ? j.points : []).slice(0, 4).map(p => `<li style="margin:2px 0">${esc(p)}</li>`).join('');
+      const det = (Array.isArray(j.details) ? j.details : []).filter(d => d && d.texte).map(d => `<div style="margin-top:8px"><b style="color:#d8b4fe">${esc(d.titre)}</b><br><span style="color:#cbd5e1">${esc(d.texte)}</span></div>`).join('');
+      return `<div style="font-size:12px;font-weight:800;color:${col};text-transform:uppercase;letter-spacing:1px">${lbl}</div>
+        <div style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;margin-top:2px">${esc(j.titre)}</div>
+        ${j.record ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:linear-gradient(90deg,rgba(251,191,36,.22),rgba(251,191,36,.08));border:1px solid rgba(251,191,36,.55);color:#fde68a;font-size:13px;font-weight:800">🏆 ${esc(j.record)}</div>` : ''}
+        ${pts ? `<ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:#e2e8f0">${pts}</ul>` : ''}
+        ${j.alerte ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4);color:#fecdd3;font-size:13px;font-weight:600">🚨 ${esc(j.alerte)}</div>` : ''}
+        ${j.action ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e0f2fe;font-size:13px;font-weight:700">👉 ${esc(j.action)}</div>` : ''}
+        ${det ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#c4b5fd">Voir le détail</summary><div style="font-size:13px;line-height:1.45">${det}</div></details>` : ''}`;
+    }
     async function analyzeSessionWithAI() {
       const out = document.getElementById('valAnalysis');
       if (!getGeminiKey()) { out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'analyse.</span>'; out.classList.remove('hidden'); return; }
@@ -6718,20 +6848,19 @@ Analyse la séance que je viens de faire${valShots.length ? ' à partir des capt
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h.
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
 ${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg }, appData.history)}.
 Séances précédentes :
 ${hist}
 Prochaines séances du plan :
 ${next}
-Réponds en français, en tutoyant, 230 mots maximum, avec exactement ces rubriques (titre en gras puis 1 à 3 phrases) :
-**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive cardiaque, régularité par segment… si disponibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
-Si une donnée manque, dis-le simplement sans inventer.`;
+${analysisFormatPrompt()}`;
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
       try {
         const parts = valShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
         parts.push({ text: prompt });
-        lastAnalysis = await geminiText(parts, { tier: 'full' });
-        out.innerHTML = mdLite(lastAnalysis);
+        lastAnalysis = await geminiText(parts, { tier: 'full', json: true });
+        out.innerHTML = analysisHtml(lastAnalysis);
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
       }
@@ -6770,7 +6899,7 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       const out = document.getElementById('editAnalysis');
       if (!out) return;
       out.classList.toggle('hidden', !text);
-      out.innerHTML = text ? mdLite(text) : '';
+      out.innerHTML = text ? analysisHtml(text) : '';
     }
     async function analyzeHistoryEntryWithAI() {
       const out = document.getElementById('editAnalysis');
@@ -6787,19 +6916,18 @@ Si une donnée manque, dis-le simplement sans inventer.`;
 Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Records et progrès (calculés par l'app) : ${recordsText({ summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
 Autres séances récentes :
 ${others}
 Prochaines séances du plan :
 ${next}
-Réponds en français, en tutoyant, 230 mots maximum, avec exactement ces rubriques (titre en gras puis 1 à 3 phrases) :
-**✅ Respect de la séance** **🎚️ Intensité** (trop douce, adaptée ou trop forte ?) **📊 Ce que montrent les stats** (FC, allure, cadence, dérive cardiaque, régularité par segment… si disponibles) **💪 Forme du moment** **🔮 Projection sur l'objectif** **🛠️ Faut-il ajuster le plan ?** (concret : quoi changer sur les prochaines séances, ou rien).
-Si une donnée manque, dis-le simplement sans inventer.`;
+${analysisFormatPrompt()}`;
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
       try {
         const parts = editShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
         parts.push({ text: prompt });
-        editAnalysisPending = await geminiText(parts, { tier: 'full' });
+        editAnalysisPending = await geminiText(parts, { tier: 'full', json: true });
         showEditAnalysis(editAnalysisPending);
         showToast("Analyse prête — touchez Sauvegarder pour la garder");
       } catch (e) {
@@ -6850,6 +6978,13 @@ Si une donnée manque, dis-le simplement sans inventer.`;
         const e1 = currentEle();
         const grade = (runData.kmStartEle !== null && e1 !== null) ? (e1 - runData.kmStartEle) / (10 * count) : 0;
         runData.kmPending = { n, avgKmh, hr, target, grade, measured: measuredSpeed(), at: now };
+        // Voix IA : on génère l'annonce tout de suite (jusqu'à 1 min si le réseau est faible)
+        const kp = runData.kmPending;
+        kp.text = kmSummaryText(kp);
+        if (aiVoiceActive() && kp.text) {
+          kp.wait = true;
+          aiFetchWithRetry(kp.text, now + 60000).then(ok => { kp.wait = false; kp.ai = ok; });
+        }
         runData.kmAnnounced = n;
         runData.kmStartAt = now;
         runData.kmStartIdx = runData.track.length;
@@ -6857,10 +6992,15 @@ Si une donnée manque, dis-le simplement sans inventer.`;
       }
       const p = runData.kmPending;
       if (!p) return;
-      // On parle hors compte à rebours ; on n'attend pas plus de 40 s
-      if ((remMs > 8500 && !isSpeaking()) || now - p.at > 40000) {
+      // Voix IA en cours de génération : on attend (1 min max, ensuite voix du téléphone)
+      if (p.wait) return;
+      // On parle hors compte à rebours ; on n'attend pas plus de 40 s une fois l'annonce prête
+      p.readyAt = p.readyAt || now;
+      if ((remMs > 8500 && !isSpeaking()) || now - p.readyAt > 40000) {
         runData.kmPending = null;
-        speakLive(kmSummaryText(p));
+        const txt = p.text || kmSummaryText(p);
+        if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]);
+        else if (!tl.active) systemSpeak(txt);
       }
     }
 
@@ -6915,6 +7055,20 @@ Si une donnée manque, dis-le simplement sans inventer.`;
     }
 
     // Annonce dont le texte change à chaque fois (chiffres) : voix IA générée sur le moment (Flash-Lite), sinon voix du téléphone
+    // Génère un clip de voix IA en réessayant jusqu'à l'échéance (réseau faible en extérieur)
+    async function aiFetchWithRetry(text, deadline) {
+      const k = aiClipKey(text);
+      while (Date.now() < deadline) {
+        if (aiClips.has(k)) return true;
+        try {
+          const clip = await Promise.race([aiFetchClip(text), sleep(Math.max(1000, Math.min(20000, deadline - Date.now()))).then(() => null)]);
+          if (clip) { aiClips.set(k, clip); return true; }
+        } catch (e) {}
+        if (Date.now() + 4000 >= deadline) break;
+        await sleep(4000);
+      }
+      return aiClips.has(k);
+    }
     async function speakLive(text) {
       if (tl.active || !text) return;
       if (aiVoiceActive()) {
@@ -8341,6 +8495,374 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       feelMode = mode;
       feelExpanded = false; // replié par défaut
       openFeelModal(true);
+    }
+
+
+    // ==================== CRÉER UNE ACTIVITÉ (assistant) ====================
+    const ACT_TYPES = {
+      tapis: { icon: '🏃', label: 'Tapis', color: '#38bdf8' },
+      exterieur: { icon: '🌳', label: 'Extérieur', color: '#34d399' },
+      velo: { icon: '🚴', label: 'Vélo', color: '#2dd4bf' },
+      muscu: { icon: '🏋️', label: 'Muscu', color: '#f472b6' }
+    };
+    let act = null;
+    function actEsc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+    function openActivityWizard(preType) {
+      if (timerState.sessionStarted && !timerState.finished) { showToast("Une séance est déjà en cours"); return; }
+      act = { step: preType ? 2 : 1, type: preType || '', when: 'now', date: '', mode: '', dur: 45, wish: '', prop: null, form: null, advice: '' };
+      document.getElementById('actModal').classList.remove('hidden');
+      renderAct();
+    }
+    function closeActivityWizard() { document.getElementById('actModal').classList.add('hidden'); act = null; }
+    function actBack() { if (!act) return; if (act.step <= 1) { closeActivityWizard(); return; } act.step--; if (act.step < 4) act.advice = ''; renderAct(); }
+    function actIsRun() { return act && (act.type === 'tapis' || act.type === 'exterieur'); }
+    function actTile(onclick, icon, title, sub, on) {
+      return `<button type="button" onclick="${onclick}" class="act-tile ${on ? 'on' : ''}"><span class="text-3xl leading-none">${icon}</span><span class="text-[16px] font-extrabold">${title}</span>${sub ? `<span class="text-[12px] font-semibold text-slate-400">${sub}</span>` : ''}</button>`;
+    }
+    function renderAct() {
+      if (!act) return;
+      const body = document.getElementById('actBody');
+      const title = document.getElementById('actTitle');
+      const foot = document.getElementById('actFoot');
+      const T = ACT_TYPES[act.type] || {};
+      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, 4)} sur 4${act.type ? ` · ${T.icon} ${T.label}` : ''}`;
+      foot.innerHTML = '';
+      if (act.step === 1) {
+        title.textContent = 'Quelle activité ?';
+        body.innerHTML = `<div class="grid grid-cols-2 gap-3">${Object.entries(ACT_TYPES).map(([k, t]) => actTile(`act.type='${k}';act.step=2;renderAct()`, t.icon, t.label, { tapis: 'Course sur tapis', exterieur: 'Course dehors', velo: 'Route, VTT ou home-trainer', muscu: 'Renforcement' }[k], act.type === k)).join('')}</div>`;
+      } else if (act.step === 2) {
+        title.textContent = 'Quand ?';
+        const tmr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })();
+        body.innerHTML = `<div class="grid grid-cols-2 gap-3">
+            ${actTile(`act.when='now';act.step=3;renderAct()`, '⚡', 'Maintenant', "C'est parti tout de suite", act.when === 'now')}
+            ${actTile(`act.when='later';renderAct()`, '📅', 'Plus tard', 'Ajouter au planning', act.when === 'later')}
+          </div>
+          ${act.when === 'later' ? `<div class="pm-card mt-3"><label class="pm-lbl">Date de l'activité<input type="date" id="actDate" class="pm-in" value="${act.date || tmr}" min="${todayISO()}" onclick="openDatePicker && openDatePicker(this)" onchange="act.date=this.value"></label></div>` : ''}`;
+        if (act.when === 'later') foot.innerHTML = `<button onclick="act.date=document.getElementById('actDate').value||act.date;if(!act.date){showToast('Choisis une date');return;}act.step=3;renderAct()" class="pm-save">Continuer</button>`;
+      } else if (act.step === 3) {
+        title.textContent = 'Comment ?';
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
+            ${actTile(`actChooseMode('coach')`, '🧠', 'Proposition du coach', 'Selon ton profil, ton objectif et tes sensations', false)}
+            ${actTile(`actChooseMode('manual')`, '✍️', 'Je la règle moi-même', actIsRun() ? 'Séance libre ou programme' : 'Durée et contenu', false)}
+          </div>
+          <div class="pm-card mt-3">
+            <label class="pm-lbl">Durée souhaitée
+              <select id="actDur" class="pm-in" onchange="act.dur=+this.value">${[20, 30, 45, 60, 75, 90].map(m => `<option value="${m}" ${act.dur === m ? 'selected' : ''}>${m} min</option>`).join('')}<option value="0" ${!act.dur ? 'selected' : ''}>Peu importe</option></select></label>
+            <label class="pm-lbl">Envie ou consigne (optionnel)<input id="actWish" class="pm-in" placeholder="${actIsRun() ? 'ex. du fractionné, une sortie tranquille…' : act.type === 'velo' ? 'ex. récupération, sortie longue…' : 'ex. gainage, haut du corps…'}" value="${actEsc(act.wish)}" oninput="act.wish=this.value"></label>
+          </div>`;
+      } else {
+        title.textContent = act.mode === 'coach' ? 'Proposition du coach' : 'Mon activité';
+        if (act.loading) { body.innerHTML = `<div class="flex items-center gap-3 text-purple-300 font-bold p-4"><div class="w-5 h-5 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach prépare ta séance…</div>`; return; }
+        body.innerHTML = (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
+          + actFormHtml()
+          + `<div id="actAdvice">${act.advice || ''}</div>`;
+        if (act.type === 'muscu') setTimeout(loadExerciseImages, 50);
+        foot.innerHTML = `<div class="grid grid-cols-1 gap-2">
+            <button onclick="askCoachOnActivity()" class="pm-btn" style="height:46px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd">🧠 Avis du coach sur ${act.mode === 'coach' ? 'ma version modifiée' : 'ma séance'}</button>
+            <button onclick="launchActivity()" class="pm-save">${act.when === 'later' ? '📅 Ajouter au planning' : "▶ Lancer l'activité"}</button>
+          </div>`;
+      }
+      const back = document.getElementById('actBackBtn');
+      if (back) back.style.visibility = act.step > 1 ? 'visible' : 'hidden';
+    }
+    function actDefaultForm() {
+      const r = runnerProfile();
+      if (actIsRun()) return { libre: act.mode === 'manual', speed: runnerEF(), pente: act.type === 'tapis' ? 1 : 0, chauffe: r.warmMin ?? 10, recup: r.coolMin ?? 5, repet: 1, segs: [{ v: runnerEF(), d: Math.max(10, (act.dur || 45) - 15) }], notes: '' };
+      if (act.type === 'velo') return { dur: act.dur || 45, intensite: 'moderee', detail: '' };
+      return { dur: act.dur || 30, exos: [{ nom: 'Gainage planche', nom_en: 'plank', dosage: '3 × 40 s' }], detail: '' };
+    }
+    function actChooseMode(mode) {
+      act.mode = mode;
+      act.dur = +(document.getElementById('actDur') || {}).value || 0;
+      act.wish = (document.getElementById('actWish') || {}).value || '';
+      act.step = 4; act.advice = ''; act.prop = null;
+      act.form = actDefaultForm();
+      if (mode === 'coach') { proposeActivityWithCoach(); return; }
+      renderAct();
+    }
+    // ----- Formulaire modifiable -----
+    function actFormHtml() {
+      const f = act.form;
+      if (actIsRun()) {
+        const sess = actFormToSession();
+        const libreSwitch = `<div class="pm-row" style="border-top:0"><div class="pm-rt">Séance libre<small>Sans programme, à ton rythme</small></div><input type="checkbox" class="sw" ${f.libre ? 'checked' : ''} onchange="actReadForm();act.form.libre=this.checked;renderAct()"></div>`;
+        if (f.libre) {
+          return `<div class="pm-card">${libreSwitch}
+            ${act.type === 'tapis' ? `<div class="grid grid-cols-2 gap-2"><label class="pm-lbl">Vitesse (km/h)<input id="af_speed" type="number" step="0.5" class="pm-in c" value="${f.speed}"></label><label class="pm-lbl">Pente (%)<input id="af_pente" type="number" step="0.5" class="pm-in c" value="${f.pente}"></label></div>` : '<span class="text-[12px] text-slate-400">Le chrono compte le temps et les km (GPS), avec bilans et conseils.</span>'}
+          </div>`;
+        }
+        return `<div class="pm-card">${libreSwitch}
+          <div class="grid grid-cols-${act.type === 'tapis' ? 4 : 3} gap-2">
+            <label class="pm-lbl">Échauf.<input id="af_chauffe" type="number" class="pm-in c" value="${f.chauffe}" oninput="actLive()"></label>
+            <label class="pm-lbl">Séries<input id="af_repet" type="number" min="1" class="pm-in c" value="${f.repet}" oninput="actLive()"></label>
+            <label class="pm-lbl">Calme<input id="af_recup" type="number" class="pm-in c" value="${f.recup}" oninput="actLive()"></label>
+            ${act.type === 'tapis' ? `<label class="pm-lbl">Pente %<input id="af_pente" type="number" step="0.5" class="pm-in c" value="${f.pente}" oninput="actLive()"></label>` : ''}
+          </div>
+          <span class="pm-cap" style="margin-top:4px">Segments (une série)</span>
+          ${f.segs.map((sg, i) => `<div class="grid gap-2 items-center" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px">
+              <label class="pm-lbl">Vitesse km/h<input id="af_v${i}" type="number" step="0.5" class="pm-in c" value="${sg.v}" oninput="actLive()"></label>
+              <label class="pm-lbl">Durée min<input id="af_d${i}" type="number" step="0.5" class="pm-in c" value="${sg.d}" oninput="actLive()"></label>
+              <button onclick="actReadForm();act.form.segs.splice(${i},1);if(!act.form.segs.length)act.form.segs.push({v:runnerEF(),d:10});renderAct()" aria-label="Retirer" class="pm-btn" style="margin-top:18px;padding:0;color:#fda4af">✕</button>
+            </div>`).join('')}
+          <button onclick="actReadForm();act.form.segs.push({v:act.form.segs[act.form.segs.length-1].v,d:1});renderAct()" class="pm-btn">+ Ajouter un segment</button>
+          <div id="actSummary" class="text-[13px] font-bold text-sky-200">${actEsc(capFirst(describeSessionHuman(sess)))} · ${Math.round(computeSessionTotalMin(sess))} min · ≈ ${computeSessionDistanceKm(sess).toFixed(1).replace('.', ',')} km</div>
+        </div>`;
+      }
+      if (act.type === 'velo') {
+        return `<div class="pm-card">
+          <div class="grid grid-cols-2 gap-2">
+            <label class="pm-lbl">Durée (min)<input id="af_dur" type="number" class="pm-in c" value="${f.dur}"></label>
+            <label class="pm-lbl">Intensité<select id="af_int" class="pm-in">${[['facile', 'Facile'], ['moderee', 'Modérée'], ['soutenue', 'Soutenue']].map(([v, l]) => `<option value="${v}" ${f.intensite === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          </div>
+          <label class="pm-lbl">Déroulé<textarea id="af_detail" rows="6" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="ex. 10' facile, 3 × 8' tempo, 5' retour au calme">${actEsc(f.detail)}</textarea></label>
+        </div>`;
+      }
+      return `<div class="pm-card">
+          <label class="pm-lbl">Durée (min)<input id="af_dur" type="number" class="pm-in c" value="${f.dur}" style="width:120px"></label>
+          <span class="pm-cap" style="margin-top:4px">Exercices</span>
+          ${f.exos.map((e, i) => `<div class="grid gap-2 items-end" style="grid-template-columns:56px minmax(0,1.4fr) minmax(0,1fr) 44px">
+              <div class="w-14 h-14 rounded-lg bg-slate-800 overflow-hidden flex items-center justify-center text-xl" data-ex-img="${actEsc(e.nom_en || '')}">🏋️</div>
+              <label class="pm-lbl">Exercice<input id="af_en${i}" class="pm-in" value="${actEsc(e.nom)}"></label>
+              <label class="pm-lbl">Dosage<input id="af_ed${i}" class="pm-in" value="${actEsc(e.dosage)}"></label>
+              <button onclick="actReadForm();act.form.exos.splice(${i},1);renderAct()" aria-label="Retirer" class="pm-btn" style="padding:0;color:#fda4af">✕</button>
+            </div>`).join('')}
+          <button onclick="actReadForm();act.form.exos.push({nom:'',nom_en:'',dosage:'3 × 12'});renderAct()" class="pm-btn">+ Ajouter un exercice</button>
+          <label class="pm-lbl">Consignes<textarea id="af_detail" rows="3" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="ex. 45 s de récup entre les séries">${actEsc(f.detail)}</textarea></label>
+        </div>`;
+    }
+    function actReadForm() {
+      if (!act || !act.form) return;
+      const f = act.form, v = id => { const el = document.getElementById(id); return el ? el.value : null; };
+      const n = (id, d) => { const x = parseFloat(String(v(id) ?? '').replace(',', '.')); return isNaN(x) ? d : x; };
+      if (actIsRun()) {
+        f.speed = n('af_speed', f.speed); f.pente = n('af_pente', f.pente);
+        f.chauffe = n('af_chauffe', f.chauffe); f.recup = n('af_recup', f.recup); f.repet = Math.max(1, Math.round(n('af_repet', f.repet)));
+        f.segs = f.segs.map((sg, i) => ({ v: n(`af_v${i}`, sg.v), d: n(`af_d${i}`, sg.d) }));
+      } else if (act.type === 'velo') {
+        f.dur = n('af_dur', f.dur); f.intensite = v('af_int') || f.intensite; f.detail = v('af_detail') ?? f.detail;
+      } else {
+        f.dur = n('af_dur', f.dur); f.detail = v('af_detail') ?? f.detail;
+        f.exos = f.exos.map((e, i) => { const nom = v(`af_en${i}`) ?? e.nom; return { nom, nom_en: nom === e.nom ? e.nom_en : '', dosage: v(`af_ed${i}`) ?? e.dosage }; });
+      }
+    }
+    function actLive() {
+      actReadForm();
+      const el = document.getElementById('actSummary');
+      if (!el) return;
+      const s = actFormToSession();
+      el.textContent = `${capFirst(describeSessionHuman(s))} · ${Math.round(computeSessionTotalMin(s))} min · ≈ ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km`;
+    }
+    function actFormToSession() {
+      const f = act.form;
+      const d = act.when === 'later' && act.date ? parseISODateLocal(act.date) : new Date();
+      const next = appData.sessions.find(s => s.dateISO && s.dateISO >= todayISO());
+      return {
+        id: `sess_${Date.now()}`, semaine: next ? next.semaine : 1, dateISO: toISODateLocal(d), date: toDDMM(d), jour: weekdayName(d),
+        type: act.type, pente: act.type === 'tapis' ? (f.pente || 0) : 0, chauffe: Math.max(0, f.chauffe), recup: Math.max(0, f.recup),
+        repet: f.repet, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(),
+        pyramide: f.segs.filter(sg => sg.v > 0 && sg.d > 0).map(sg => ({ speed: sg.v, duration: round2(sg.d), unit: 'min' })),
+        notes: act.prop && act.prop.titre ? String(act.prop.titre) : ''
+      };
+    }
+    function actFormText() {
+      actReadForm();
+      const f = act.form;
+      if (actIsRun()) return f.libre ? `course libre ${act.type === 'tapis' ? `sur tapis à ${f.speed} km/h, pente ${f.pente} %` : 'en extérieur'}` : `${act.type === 'tapis' ? 'tapis' : 'extérieur'} : ${describeSessionHuman(actFormToSession())} (${Math.round(computeSessionTotalMin(actFormToSession()))} min)`;
+      if (act.type === 'velo') return `vélo ${f.dur} min, intensité ${f.intensite} : ${f.detail || 'sans détail'}`;
+      return `musculation ${f.dur} min : ${f.exos.map(e => `${e.nom} ${e.dosage}`).join(', ')}${f.detail ? ` ; ${f.detail}` : ''}`;
+    }
+    function actContextText() {
+      const r = runnerProfile(), g = appData.goal || {}, t = todayISO();
+      const s0 = getActiveSession();
+      const feel = s0 && s0.dayFeel && s0.dayFeel.at === t ? feelSummary(s0.dayFeel) : '';
+      const past = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const next = appData.sessions.filter(s => s.dateISO && s.dateISO >= t).slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionHuman(s)}`).join('\n') || '- aucune';
+      const when = act.when === 'later' && act.date ? `le ${parseISODateLocal(act.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : `maintenant (${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})`;
+      return `Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h. Niveau actuel : ${runnerLevelsText()}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Activité prévue ${when}.${feel ? ` Sensations du jour : ${feel}.` : ''}
+Séances récentes :
+${past}
+Prochaines séances prévues :
+${next}`;
+    }
+    async function proposeActivityWithCoach() {
+      if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données) : réglage manuel"); act.mode = 'manual'; renderAct(); return; }
+      act.loading = true; renderAct();
+      const kind = { tapis: 'une séance de course sur tapis', exterieur: 'une séance de course en extérieur', velo: 'une séance de vélo', muscu: 'une séance de musculation / renforcement utile au coureur, sans matériel ou avec peu' }[act.type];
+      const fmt = actIsRun()
+        ? `{"avis":"2 phrases en tutoyant","titre":"titre court","seance":{"pente":1,"chauffe":10,"recup":5,"repet":1,"segments":[{"vitesse":12,"duree_min":3}]}}`
+        : act.type === 'velo'
+          ? `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":45,"intensite":"facile|moderee|soutenue","detail":"déroulé, une ligne par étape"}`
+          : `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":30,"detail":"consignes (échauffement, récupérations)","exercices":[{"nom":"Pont fessier","nom_en":"glute bridge","dosage":"3 × 15"}]}`;
+      const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
+${actContextText()}
+Propose ${kind}${act.dur ? ` d'environ ${act.dur} minutes au total` : ''}${act.wish ? `. Souhait du coureur : « ${act.wish} »` : ''}. Tiens compte de la fatigue et des séances autour.
+${actIsRun() ? `Vitesses en km/h ; "segments" = la partie principale répétée "repet" fois (une récupération entre fractions est un segment lent) ; échauffement et retour au calme à l'endurance fondamentale ; ${act.type === 'tapis' ? '"pente" en % (1 par défaut)' : '"pente" = 0'}.` : ''}
+Réponds uniquement en JSON : ${fmt}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
+        act.prop = j;
+        const f = act.form;
+        if (actIsRun() && j.seance) {
+          const se = j.seance, num = (x, d) => { const y = parseFloat(String(x).replace(',', '.')); return isNaN(y) ? d : y; };
+          f.libre = false;
+          f.chauffe = num(se.chauffe, f.chauffe); f.recup = num(se.recup, f.recup); f.repet = Math.max(1, Math.round(num(se.repet, 1)));
+          if (act.type === 'tapis') f.pente = num(se.pente, 1);
+          const segs = (se.segments || []).map(x => ({ v: num(x.vitesse ?? x.speed, 0), d: num(x.duree_min ?? x.duration, 0) || (num(x.distance_km, 0) && num(x.vitesse, 0) ? round2(num(x.distance_km, 0) / num(x.vitesse, 1) * 60) : 0) })).filter(x => x.v > 0 && x.d > 0);
+          if (segs.length) f.segs = segs;
+        } else if (act.type === 'velo') {
+          f.dur = Math.round(+j.duree_min || f.dur); f.intensite = ['facile', 'moderee', 'soutenue'].includes(j.intensite) ? j.intensite : 'moderee'; f.detail = String(j.detail || '');
+        } else if (act.type === 'muscu') {
+          f.dur = Math.round(+j.duree_min || f.dur); f.detail = String(j.detail || '');
+          if (Array.isArray(j.exercices) && j.exercices.length) f.exos = j.exercices.slice(0, 15).map(e => ({ nom: String(e.nom || ''), nom_en: String(e.nom_en || ''), dosage: String(e.dosage || '') }));
+        }
+      } catch (e) {
+        showToast(`Proposition impossible : ${e.message || e}`);
+      }
+      act.loading = false;
+      renderAct();
+    }
+    async function askCoachOnActivity() {
+      const box = document.getElementById('actAdvice');
+      if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données)"); return; }
+      const txt = actFormText();
+      box.innerHTML = `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach regarde ta séance…</div></div>`;
+      const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
+${actContextText()}
+Le coureur veut faire : ${txt}.
+Donne ton avis : est-ce adapté aujourd'hui (fatigue, séances autour, objectif) ? Si besoin, une modification concrète.
+Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à 2 phrases courtes en tutoyant","conseil":"une modification concrète, ou vide"}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        const v = String(j.verdict || 'ok').toLowerCase();
+        const V = v.startsWith('dec') ? ['⛔ Déconseillé', '#fb7185'] : v.startsWith('att') ? ['⚠️ À ajuster', '#fbbf24'] : ['✅ Bonne séance', '#34d399'];
+        act.advice = `<div class="pm-card" style="border-color:${V[1]}66"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(j.avis || '')}</span>${j.conseil ? `<span class="text-[13px] text-slate-400">💡 ${actEsc(j.conseil)}</span>` : ''}</div>`;
+        box.innerHTML = act.advice;
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) { box.innerHTML = `<div class="pm-card text-rose-400">Avis impossible : ${actEsc(e.message || e)}</div>`; }
+    }
+    // ----- Lancement -----
+    function launchActivity() {
+      actReadForm();
+      const f = act.form;
+      if (actIsRun()) {
+        if (f.libre) {
+          if (act.when === 'later') { showToast("Une séance libre se lance au moment voulu : désactive « Séance libre » pour la planifier"); return; }
+          const ty = act.type;
+          closeActivityWizard();
+          freeType = ty;
+          document.getElementById('freeSpeed').value = f.speed;
+          document.getElementById('freePente').value = f.pente;
+          startFreeSession();
+          return;
+        }
+        const s = actFormToSession();
+        if (!s.pyramide.length) { showToast("Ajoute au moins un segment"); return; }
+        if (act.when === 'later') {
+          appData.sessions.push(s); sortSessionsKeep(s); saveAppData(); updateHistoryTable(); renderHome();
+          closeActivityWizard();
+          showToast(`📅 Séance ajoutée au ${parseISODateLocal(s.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}`);
+          return;
+        }
+        const s0 = getActiveSession();
+        if (s0 && s0.dayFeel && s0.dayFeel.at === todayISO()) s.dayFeel = s0.dayFeel;
+        appData.sessions.push(s); sortSessionsKeep(s);
+        appData.activeSessionIndex = appData.sessions.indexOf(s);
+        saveAppData(); reloadChrono(); updateHistoryTable();
+        closeActivityWizard();
+        launchFromHome();
+        return;
+      }
+      const item = { id: `cross_${Date.now()}`, type: act.type, dateISO: act.when === 'later' ? act.date : todayISO(), dur: f.dur, intensite: f.intensite || '', detail: f.detail || '', exos: f.exos || [], titre: act.prop && act.prop.titre ? String(act.prop.titre) : '' };
+      if (act.when === 'later') {
+        if (!Array.isArray(appData.crossPlan)) appData.crossPlan = [];
+        appData.crossPlan.push(item); saveAppData(); updateHistoryTable();
+        closeActivityWizard();
+        showToast(`📅 ${ACT_TYPES[item.type].label} ajouté au planning`);
+        return;
+      }
+      closeActivityWizard();
+      startCrossActivity(item);
+    }
+
+    // ----- Vélo / muscu en cours : chrono simple + contenu -----
+    let crossRun = null;
+    function startCrossActivity(item) {
+      if (typeof item === 'string') {
+        const it = (appData.crossPlan || []).find(x => x.id === item);
+        if (!it) return;
+        appData.crossPlan = appData.crossPlan.filter(x => x.id !== item); saveAppData();
+        item = it;
+        closeHistoryModal();
+      }
+      crossRun = { item, start: Date.now(), acc: 0, running: true, timer: null, feel: 'green' };
+      const T = ACT_TYPES[item.type];
+      document.getElementById('crossTitle').textContent = `${T.icon} ${item.titre || T.label}`;
+      const f = item;
+      document.getElementById('crossContent').innerHTML = item.type === 'muscu'
+        ? `${f.detail ? `<div class="text-[14px] text-slate-300 leading-snug">${mdLite(f.detail)}</div>` : ''}${exercisesHtml(f.exos)}`
+        : `<div class="text-[13px] font-bold text-teal-300">${f.dur} min · intensité ${({ facile: 'facile', moderee: 'modérée', soutenue: 'soutenue' })[f.intensite] || 'modérée'}</div>${f.detail ? `<div class="text-[14px] text-slate-300 leading-relaxed">${mdLite(f.detail)}</div>` : ''}`;
+      document.getElementById('crossFinish').classList.add('hidden');
+      document.getElementById('crossRun').classList.remove('hidden');
+      acquireWakeLock();
+      crossRun.timer = setInterval(crossTick, 500);
+      crossTick(); crossButtons();
+      speakLive(item.type === 'muscu' ? "C'est parti pour le renforcement !" : "C'est parti, bonne sortie à vélo !");
+    }
+    function crossElapsed() { return crossRun ? crossRun.acc + (crossRun.running ? Date.now() - crossRun.start : 0) : 0; }
+    function crossTick() {
+      if (!crossRun) return;
+      const s = Math.floor(crossElapsed() / 1000);
+      document.getElementById('crossTime').textContent = s >= 3600 ? `${Math.floor(s / 3600)}:${formatMMSS(s % 3600)}` : formatMMSS(s);
+      const goal = (crossRun.item.dur || 0) * 60;
+      const p = goal ? Math.min(1, s / goal) : 0;
+      document.getElementById('crossBar').style.width = `${Math.round(p * 100)}%`;
+    }
+    function crossButtons() {
+      const b = document.getElementById('crossPauseBtn');
+      b.innerHTML = crossRun.running ? CTL_SVG.stop.replace('<rect x="5" y="5" width="14" height="14" rx="2.5"/>', '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>') : CTL_SVG.play;
+      b.className = `py-4 rounded-2xl flex items-center justify-center active:scale-95 ${crossRun.running ? 'bg-amber-500 text-slate-950' : 'bg-sky-500 text-slate-950'}`;
+      b.setAttribute('aria-label', crossRun.running ? 'Pause' : 'Reprendre');
+    }
+    function crossPause() {
+      if (!crossRun) return;
+      if (crossRun.running) { crossRun.acc += Date.now() - crossRun.start; crossRun.running = false; }
+      else { crossRun.start = Date.now(); crossRun.running = true; }
+      crossButtons();
+    }
+    function crossStop() {
+      if (!crossRun) return;
+      if (crossRun.running) crossPause();
+      document.getElementById('crossFinish').classList.remove('hidden');
+      crossSetFeel(crossRun.feel);
+    }
+    function crossSetFeel(v) {
+      crossRun.feel = v;
+      document.querySelectorAll('#crossFeel button').forEach(b => { b.className = `h-12 rounded-xl font-bold text-[14px] border ${b.dataset.f === v ? 'bg-amber-400 border-amber-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-300'}`; });
+    }
+    function crossSave() {
+      const it = crossRun.item, T = ACT_TYPES[it.type], d = new Date();
+      const label = it.type === 'velo' ? 'Vélo' : 'Musculation';
+      appData.history.unshift({
+        id: 'hist_' + Date.now(), sessionTitle: `${label} • ${weekdayName(d).toUpperCase()}`, date: toDDMM(d),
+        durationMin: Math.max(1, Math.round(crossElapsed() / 60000)), pente: 0, feeling: crossRun.feel, note: it.titre || label,
+        isVal: true, details: `${label} : ${it.titre || (it.type === 'velo' ? `${it.dur}' ${it.intensite}` : (it.exos || []).map(e => e.nom).join(', '))}`.trim(),
+        cross: true, crossDetail: it.detail || '', exercises: it.exos || []
+      });
+      saveAppData(); updateHistoryTable();
+      crossClose();
+      showToast(`✅ ${T.label} enregistré dans le suivi`);
+    }
+    function crossCancel() {
+      if (!confirm("Annuler l'activité ? Rien ne sera enregistré.")) return;
+      crossClose();
+    }
+    function crossClose() {
+      if (crossRun && crossRun.timer) clearInterval(crossRun.timer);
+      crossRun = null;
+      document.getElementById('crossRun').classList.add('hidden');
+      showHome();
     }
 
     // ==================== SÉANCE EN COURS : SAUVEGARDE / REPRISE ====================
