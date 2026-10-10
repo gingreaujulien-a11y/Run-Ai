@@ -272,10 +272,10 @@
         <button onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
       </div>
       <div id="homeRestTitle" class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
-      <div id="homeRestText" class="text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
-      <div id="homeRestNext" class="text-sm text-slate-200 leading-snug"></div>
+      <div id="homeRestText" class="hidden text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
+      <div id="homeRestNext" class="hidden text-sm text-slate-200 leading-snug"></div>
       <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
-      <button id="homeRestNextBtn" onclick="launchNextAnyway()" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
+      <button id="homeRestNextBtn" onclick="launchNextAnyway()" style="display:none" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
 
     <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
@@ -402,6 +402,7 @@
         <div id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
           <div id="cfgKindChips" class="grid grid-cols-4 gap-1.5"></div>
+          <div id="cfgEstLine" class="flex items-center justify-center gap-3 pt-1 text-[15px] font-black text-white"></div>
         </div>
         <div id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <div class="grid grid-cols-2 gap-2 text-center">
@@ -521,7 +522,7 @@
         </div>
 
         <!-- Totaux calculés -->
-        <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono bg-slate-900 p-2 rounded-xl border border-slate-800">
+        <div id="cfgTotalsBox" class="grid grid-cols-3 gap-2 text-center text-xs font-mono bg-slate-900 p-2 rounded-xl border border-slate-800">
           <div class="cfg-struct-only">
             <span class="text-[9px] text-slate-500 block uppercase">1 Répétition</span>
             <span id="cfgTotalPyr" class="font-bold text-slate-300">9'00"</span>
@@ -667,9 +668,9 @@
         <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
         <button onclick="openOffModal()" class="w-full mt-3 flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74">🚫 Jours sans sport · décaler le planning</button>
         <div class="grid grid-cols-3 gap-1 my-3.5" style="padding:4px;border-radius:16px;background:#0f172a;border:1px solid #1e293b">
+          <button onclick="setHistoryFilter('week')" id="fltWeek" class="pl-tab">Semaine</button>
           <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
           <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
-          <button onclick="setHistoryFilter('all')" id="fltAll" class="pl-tab">Tout · <span id="cntAll">0</span></button>
         </div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
@@ -1593,7 +1594,7 @@
     let lastEncouragementAt = { fast: -1e15, push: -1e15, easy: -1e15, tip: -1e15, any: -1e15 };
     let displayMode = 'total';
     try { if (localStorage.getItem('tapis_display_mode') === 'segment') displayMode = 'segment'; } catch (e) {}
-    let currentFilter = 'planned';
+    let currentFilter = 'week';
     let selectedValidationFeeling = 'green';
     let selectedEditFeelingVal = 'green';
     let currentEditingHistoryId = null;
@@ -4017,7 +4018,7 @@
       if (!s) return 'endu';
       if (s.kind && CFG_KINDS.some(k => k[0] === s.kind)) return s.kind;
       if (s.free) return 'libre';
-      if (/\btest\b/i.test(s.notes || '') && (s.pyramide || []).length === 1 && s.pyramide[0].unit === 'km') return 'test';
+      if (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && (s.pyramide || []).length === 1) return 'test';
       const L = sessionKind(s).label;
       return { 'FRACTIONNÉ': 'fractionne', 'SEUIL': 'seuil', 'SORTIE LONGUE': 'longue' }[L] || 'endu';
     }
@@ -4058,6 +4059,7 @@
       show('cfgSimpleBox', KIND_CONT.includes(k));
       show('cfgTestBox', k === 'test');
       show('cfgLibreBox', k === 'libre');
+      show('cfgTotalsBox', KIND_STRUCT.includes(k));
       document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
       if (prefill && prev !== k) {
         const ef = runnerEF();
@@ -4228,6 +4230,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     }
 
     function openConfigModal(idx) {
+      cfgFrom = null;
       const sess = (typeof idx === 'number' && appData.sessions[idx]) ? appData.sessions[idx] : getActiveSession();
       cfgSessId = sess.id;
       setSessionType(sess.type || 'tapis', false);
@@ -4266,8 +4269,10 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       document.getElementById('configModal').classList.remove('hidden');
       refreshAllIcons();
     }
+    let cfgFrom = null;
     function closeConfigModal() {
       document.getElementById('configModal').classList.add('hidden');
+      if (cfgFrom === 'planning') { cfgFrom = null; openHistoryModal(true); }
     }
 
     function openDatePicker(input) {
@@ -4418,6 +4423,16 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     function recalculateModalTotals() {
       const v = readModalSessionValues();
       try { updateKindHints(v); } catch (e) { }
+      try {
+        const el = document.getElementById('cfgEstLine');
+        if (el) {
+          if (cfgKind === 'libre') el.innerHTML = '<span class="text-slate-300">⏱ Durée libre</span>';
+          else {
+            const tmp = Object.assign({}, cfgSess(), v, { type: cfgTypeIsExt() ? 'exterieur' : 'tapis', route: modalRoute, kind: cfgKind, free: false });
+            el.innerHTML = `<span>⏱ ${fmtHM(computeSessionTotalMin(tmp))}</span><span class="text-emerald-300">≈ ${computeSessionDistanceKm(tmp).toFixed(1).replace('.', ',')} km</span>`;
+          }
+        }
+      } catch (e) { }
 
       // Indications de conversion sur chaque ligne
       const rows = document.querySelectorAll('#pyramidRowsContainer .pyr-row');
@@ -4621,6 +4636,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         dayFeel: sess.dayFeel && sess.dayFeel.at === toISODateLocal(new Date()) ? sess.dayFeel : undefined,
         summary,
         km: Math.round((parseFloat(summary.distKm) || kmDistanceNow() || 0) * 100) / 100,
+        kind: sess.kind || undefined, notes: sess.notes || undefined, type: sess.type,
         track: timerState.finished ? (timerState.runTrack || []) : [],
         seg: timerState.finished ? (timerState.runSeg || []) : [],
         analysis: lastAnalysis || ''
@@ -4640,8 +4656,10 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       if (timerState.finished) { freeSession = null; reloadChrono(); showHome(); }
     }
 
-    function openHistoryModal() {
-      currentFilter = 'planned';
+    let plWeekOff = 0;
+    function openHistoryModal(keep) {
+      if (keep !== true) { currentFilter = 'week'; plWeekOff = 0; }
+      setupPlSwipe();
       updateHistoryTable();
       document.getElementById('historyModal').classList.remove('hidden');
       refreshAllIcons();
@@ -4652,7 +4670,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
 
     function setHistoryFilter(f) {
       currentFilter = f;
-      [['all', 'fltAll'], ['validated', 'fltVal'], ['planned', 'fltPlan']].forEach(([k, id]) => {
+      [['week', 'fltWeek'], ['validated', 'fltVal'], ['planned', 'fltPlan']].forEach(([k, id]) => {
         const b = document.getElementById(id); if (b) b.classList.toggle('on', f === k);
       });
       updateHistoryTable();
@@ -4662,7 +4680,11 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     function sessionKind(s) {
       if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
-      if (s.kind === 'test') return { label: 'TEST', color: '#e879f9' };
+      if (s.kind === 'test' || (!s.kind && (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
+      if (s.kind === 'endu') return { label: 'ENDURANCE', color: '#38bdf8' };
+      if (s.kind === 'longue') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
+      if (s.kind === 'fractionne') return { label: 'FRACTIONNÉ', color: '#fb923c' };
+      if (s.kind === 'seuil') return { label: 'SEUIL', color: '#fbbf24' };
       if (s.free || s.kind === 'libre' || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
       if (s.kind === 'cotes') return { label: 'CÔTES', color: '#f97316' };
       if (s.kind === 'recup') return { label: 'RÉCUPÉRATION', color: '#67e8f9' };
@@ -4804,16 +4826,29 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       return out;
     }
     // Distance d'une séance faite : GPS ou tapis (vitesse × temps), sinon estimée d'après la séance prévue
+    function histLinkedSession(h) {
+      const S = appData.sessions || [];
+      return S.find(x => x.doneHistId && x.doneHistId === h.id) || S.find(x => `Semaine ${x.semaine} • ${String(x.jour || '').toUpperCase()}` === h.sessionTitle && (x.date === h.date || x.dateISO === histISO(h))) || null;
+    }
     function histKm(h) {
       if (!h || h.cross) return 0;
-      const d = parseFloat(h.summary && h.summary.distKm) || parseFloat(h.km) || computeKmFromHist(h);
+      let d = parseFloat(h.summary && h.summary.distKm) || parseFloat(h.km);
+      if (!(d > 0) && Array.isArray(h.track) && h.track.length > 1) {
+        const last = h.track[h.track.length - 1];
+        d = parseFloat(last && last[5]) || 0;
+        if (!(d > 0)) for (let i = 1; i < h.track.length; i++) { const a = h.track[i - 1], b = h.track[i]; if (b && a && b[2] > 0) d += b[2] * Math.min(15, Math.max(0, b[0] - a[0])) / 3600; }
+      }
+      if (!(d > 0)) d = computeKmFromHist(h);
       if (d > 0) return d;
-      const s = (appData.sessions || []).find(x => x.doneHistId && x.doneHistId === h.id);
+      const title = h.sessionTitle;
+      const s = (appData.sessions || []).find(x => x.doneHistId && x.doneHistId === h.id)
+        || (appData.sessions || []).find(x => `Semaine ${x.semaine} • ${String(x.jour || '').toUpperCase()}` === title && (x.date === h.date || x.dateISO === histISO(h)));
       if (s) {
         const pm = computeSessionTotalMin(s), km = computeSessionDistanceKm(s);
         return pm > 0 && +h.durationMin ? km * Math.min(1.5, +h.durationMin / pm) : km;
       }
-      return 0;
+      // dernier recours : durée × vitesse d'endurance
+      return (+h.durationMin || 0) * runnerEF() / 60;
     }
     function computeKmFromHist(h) { // séances sans capteur : distance estimée d'après les segments
       return (h.seg || []).reduce((x, sg) => x + (sg.avgKmh || 0) * (sg.sec || 0) / 3600, 0);
@@ -4893,7 +4928,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       }
       const wk = document.getElementById('plWeek');
       if (!wk) return;
-      const t = todayISO(), w0 = weekStartISO(t);
+      const t = todayISO(), w0 = plWeekRange()[0];
       const d0 = parseISODateLocal(w0);
       const dayIso = [...Array(7)].map((_, i) => { const d = new Date(d0); d.setDate(d.getDate() + i); return toISODateLocal(d); });
       const w6 = dayIso[6];
@@ -4919,7 +4954,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       wk.innerHTML = `
         <div class="flex items-center justify-between gap-2">
           <div class="flex flex-col gap-0.5">
-            <span style="font-size:12px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.2px">Semaine · ${parseISODateLocal(w0).getDate()} au ${fmt(w6)}</span>
+            <span style="font-size:12px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.2px">${plWeekOff === 0 ? 'Cette semaine' : plWeekOff === 1 ? 'Semaine prochaine' : plWeekOff === -1 ? 'Semaine dernière' : 'Semaine'} · ${parseISODateLocal(w0).getDate()} au ${fmt(w6)}</span>
             <span style="font-size:20px;font-weight:800">${doneRun.length} séance${doneRun.length > 1 ? 's' : ''} sur ${nPlan}</span>
           </div>
           <div class="flex flex-col items-end gap-0.5 shrink-0">
@@ -4928,7 +4963,43 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           </div>
         </div>
         <div style="height:8px;border-radius:4px;background:#1e293b;overflow:hidden"><div style="width:${pct}%;height:8px;border-radius:4px;background:#34d399"></div></div>
-        <div class="grid grid-cols-7 gap-1.5">${strip}</div>`;
+        <div class="flex items-center gap-1">
+          <button onclick="plShiftWeek(-1)" aria-label="Semaine précédente" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">‹</button>
+          <div class="grid grid-cols-7 gap-1.5 flex-1">${strip}</div>
+          <button onclick="plShiftWeek(1)" aria-label="Semaine suivante" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">›</button>
+        </div>
+        ${plWeekOff !== 0 ? `<button onclick="plShiftWeek(0)" class="self-center text-[12px] font-bold" style="color:#7dd3fc">↺ Revenir à cette semaine</button>` : ''}`;
+    }
+    function plWeekRange() {
+      const d = parseISODateLocal(weekStartISO(todayISO())); d.setDate(d.getDate() + 7 * plWeekOff);
+      const e = new Date(d); e.setDate(e.getDate() + 6);
+      return [toISODateLocal(d), toISODateLocal(e)];
+    }
+    function plShiftWeek(n) {
+      plWeekOff = n === 0 ? 0 : plWeekOff + n;
+      currentFilter = 'week';
+      updateHistoryTable();
+      const wk = document.getElementById('plWeek');
+      if (wk && n) { wk.style.transition = 'none'; wk.style.transform = `translateX(${n > 0 ? 24 : -24}px)`; wk.style.opacity = .4; requestAnimationFrame(() => { wk.style.transition = 'transform .2s ease, opacity .2s ease'; wk.style.transform = ''; wk.style.opacity = 1; }); }
+    }
+    function setupPlSwipe() {
+      const wk = document.getElementById('plWeek');
+      if (!wk || wk.dataset.swipe) return;
+      wk.dataset.swipe = '1';
+      let x0 = null, y0 = null;
+      wk.addEventListener('touchstart', e => { const p = e.touches[0]; x0 = p.clientX; y0 = p.clientY; }, { passive: true });
+      wk.addEventListener('touchend', e => {
+        if (x0 === null) return;
+        const p = e.changedTouches[0], dx = p.clientX - x0, dy = p.clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) plShiftWeek(dx < 0 ? 1 : -1);
+      }, { passive: true });
+    }
+    const PL_ICON_EDIT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+    const PL_ICON_DEL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
+    function plIconBtns(editJs, delJs) {
+      const b = 'width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
+      return `<div class="shrink-0 flex gap-1.5">${editJs ? `<button onclick="${editJs}" aria-label="Modifier" style="${b}background:#111c30;border:1px solid #334155;color:#cbd5e1">${PL_ICON_EDIT}</button>` : ''}<button onclick="${delJs}" aria-label="Supprimer" style="${b}background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">${PL_ICON_DEL}</button></div>`;
     }
     function plPlannedCard(item, isToday) {
       const s = appData.sessions[item.rawIdx];
@@ -4939,22 +5010,16 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const past = item.iso && item.iso < todayISO();
       const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · PASSÉE' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
       const body = `<div class="flex-1 flex flex-col gap-1 min-w-0">${tag}<span class="pl-clamp" style="${isToday ? '-webkit-line-clamp:3;' : ''}font-size:${isToday ? 16 : 15}px;font-weight:800;line-height:1.25">${plEsc(item.details)}</span><span style="font-size:12px;color:#94a3b8;font-weight:600">${stats}</span></div>`;
-      const more = `<button onclick="toggleDetailRow('${item.id}')" aria-label="Plus d'options" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>`;
-      const actions = `
+      const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`);
+      const actions = s.notes ? `
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
-          ${s.notes ? `<div style="font-size:12px;color:#94a3b8">📝 ${plEsc(s.notes)}</div>` : ''}
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="loadPlannedSessionToChrono(${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#7dd3fc">▶ La faire</button>
-            <button onclick="editHistoryItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
-            <button onclick="deleteItem('${item.id}', 'planned', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
-          </div>
-        </div>`;
+          <div style="font-size:12px;color:#94a3b8">📝 ${plEsc(s.notes)}</div>
+        </div>` : '';
       if (isToday) {
         return `<div class="pl-card today">
           <div class="flex items-center gap-3">${plDateChip(item.iso, '', 'background:#38bdf8;color:#04121f;width:52px;height:56px;border-radius:16px')}${body}${more}</div>
           <div class="flex gap-2 mt-3">
             <button onclick="closeHistoryModal(); appData.activeSessionIndex=${item.rawIdx}; saveAppData(); reloadChrono(); launchFromHome()" class="flex-1 flex items-center justify-center gap-2 font-extrabold" style="height:46px;border-radius:14px;background:#38bdf8;color:#04121f;font-size:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>Lancer</button>
-            <button onclick="editHistoryItem('${item.id}', 'planned', ${item.rawIdx})" class="font-bold" style="height:46px;padding:0 16px;border-radius:14px;border:1px solid #334155;background:#111c30;color:#e2e8f0;font-size:14px">Modifier</button>
           </div>${actions}</div>`;
       }
       return `<div class="pl-card ${past ? 'past' : ''}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
@@ -4969,45 +5034,40 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
             <span class="pl-clamp" style="font-size:15px;font-weight:800;line-height:1.25">${plEsc(title)}</span>
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${c.dur || '?'} min</span>
           </div>
-          <button onclick="toggleDetailRow('${c.id}')" aria-label="Plus d'options" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+          ${plIconBtns('', `deleteCrossPlan('${c.id}')`)}
         </div>
         <div id="detail_${c.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
           ${c.detail ? `<div style="font-size:12px;color:#94a3b8">${plEsc(c.detail)}</div>` : ''}
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="startCrossActivity('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.45);color:#5eead4">▶ Lancer</button>
-            <button onclick="deleteCrossPlan('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
-          </div>
+          <button onclick="startCrossActivity('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.45);color:#5eead4">▶ Lancer</button>
         </div>
       </div>`;
     }
-    function deleteCrossPlan(id) { appData.crossPlan = (appData.crossPlan || []).filter(x => x.id !== id); saveAppData(); updateHistoryTable(); }
+    function deleteCrossPlan(id) { if (!confirm('Supprimer cette activité ?')) return; appData.crossPlan = (appData.crossPlan || []).filter(x => x.id !== id); saveAppData(); updateHistoryTable(); }
     function plDoneCard(item) {
-      const k = sessionKind(item);
+      const k = sessionKind(item.linked || item);
+      const wn = (String(item.title || '').match(/^Semaine (\d+)/) || [])[1];
       const feel = { green: ['bien', '#6ee7b7'], yellow: ['moyen', '#fcd34d'], red: ['dur', '#fda4af'] }[item.feeling] || null;
       const d = parseISODateLocal(item.iso);
       const dTxt = d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })) : item.date;
-      const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, summaryText(item.summary).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
+      const sm = Object.assign({}, item.summary || {}); delete sm.distKm;
+      const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, !item.cross && item.km > 0 ? `${item.km.toFixed(1).replace('.', ',')} km` : '', summaryText(sm).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
       const title = item.cross ? (item.note || item.title) : (stripWarmCool(String(item.details || '').split(' — ')[0]) || item.title);
       return `<div class="pl-card done">
         <div class="flex items-center gap-3">
           <div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="flex-1 flex flex-col gap-1 min-w-0">
-            <span style="font-size:12px;font-weight:700;color:#6ee7b7">${dTxt}${feel ? ` · ressenti : <span style="color:${feel[1]}">${feel[0]}</span>` : ''} · <span style="color:${k.color}">${k.label}</span></span>
+            <span style="font-size:12px;font-weight:700;color:#6ee7b7">${dTxt}${feel ? ` · ressenti : <span style="color:${feel[1]}">${feel[0]}</span>` : ''} · <span style="color:${k.color}">${k.label}${wn ? ` · S${wn}` : ''}</span></span>
             <span class="pl-clamp" style="font-size:15px;font-weight:700;line-height:1.25">${plEsc(title)}</span>
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats)}</span>
           </div>
-          <button onclick="toggleDetailRow('${item.id}')" aria-label="Détails" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:14px;color:#64748b"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+          ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`)}
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
           <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(stripWarmCool(item.details))}</div>
           ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
           ${item.cross ? '' : runDataBlockHtml(item.track, item.seg)}
           ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
-          <div class="grid grid-cols-3 gap-2">
-            ${item.cross ? '<span></span>' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? 'Refaire' : 'Analyse IA'}</button>`}
-            <button onclick="editHistoryItem('${item.id}', 'validated', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:#111c30;border:1px solid #334155;color:#e2e8f0">Modifier</button>
-            <button onclick="deleteItem('${item.id}', 'validated', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">Supprimer</button>
-          </div>
+          ${item.cross ? '' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? "Refaire l'analyse" : 'Analyse IA'}</button>`}
         </div>
       </div>`;
     }
@@ -5018,7 +5078,8 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const items = [];
       appData.history.forEach((h, idx) => items.push({
         type: 'validated', rawIdx: idx, id: h.id, title: h.sessionTitle, date: h.date, iso: histISO(h), pente: h.pente, duration: h.durationMin,
-        feeling: h.feeling, note: h.note, details: h.details, summary: h.summary, track: h.track, seg: h.seg, analysis: h.analysis, cross: h.cross, sessionTitle: h.sessionTitle
+        feeling: h.feeling, note: h.note, details: h.details, summary: h.summary, track: h.track, seg: h.seg, analysis: h.analysis, cross: h.cross, sessionTitle: h.sessionTitle,
+        kind: h.kind, notes: h.notes, km: histKm(h), linked: h.kind || h.cross ? null : histLinkedSession(h)
       }));
       appData.sessions.forEach((s, sIdx) => isSessionDone(s) ? null : items.push({
         type: 'planned', rawIdx: sIdx, id: s.id, title: formatSessTitle(s), date: s.date || '--/--', iso: s.dateISO || guessISOFromDDMM(s.date), pente: s.pente,
@@ -5028,11 +5089,10 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const done = items.filter(i => i.type === 'validated');
       const planned = items.filter(i => i.type === 'planned' || i.type === 'crossplan').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
-      document.getElementById('cntAll').textContent = items.length;
       document.getElementById('cntVal').textContent = done.length;
       document.getElementById('cntPlan').textContent = upcoming.length;
       const badge = document.getElementById('badgeHistCount'); if (badge) badge.textContent = done.length;
-      setTimeout(() => ['all', 'validated', 'planned'].forEach(k => { const b = document.getElementById({ all: 'fltAll', validated: 'fltVal', planned: 'fltPlan' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
+      setTimeout(() => ['week', 'validated', 'planned'].forEach(k => { const b = document.getElementById({ week: 'fltWeek', validated: 'fltVal', planned: 'fltPlan' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
       renderPlanningHeader(items);
 
       const out = [];
@@ -5068,8 +5128,11 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           out.push(plDoneCard(i));
         });
       } else {
-        groupPlanned(planned);
-        if (done.length) { sec('Séances faites'); done.forEach(i => out.push(plDoneCard(i))); }
+        const [w0, w6] = plWeekRange();
+        const inW = i => i.iso && i.iso >= w0 && i.iso <= w6;
+        const wl = done.filter(inW).concat(planned.filter(inW)).sort((a, b) => String(a.iso).localeCompare(String(b.iso)) || (a.type === 'validated' ? -1 : 1));
+        if (!wl.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance cette semaine.</div>');
+        wl.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
       }
       box.innerHTML = out.join('');
       box.onclick = e => {
@@ -5164,6 +5227,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     }
 
     function deleteItem(id, type, rawIdx) {
+      if (!confirm(type === 'validated' ? 'Supprimer cette séance faite ?' : 'Supprimer cette séance ?')) return;
       if (type === 'validated') {
         appData.history = appData.history.filter(h => h.id !== id);
       } else {
@@ -5210,6 +5274,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       } else {
         closeHistoryModal();
         openConfigModal(rawIdx);
+        cfgFrom = 'planning';
         return;
       }
       document.getElementById('editHistoryModal').classList.remove('hidden');
@@ -9028,7 +9093,7 @@ ${analysisFormatPrompt()}`;
       if (!fromSync || feelExpanded) document.getElementById('feelAdvice').classList.add('hidden');
       document.getElementById('feelRestore').classList.toggle('hidden', feelMode === 'add' || !sess.planOriginal);
       const recordedT = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
-      document.getElementById('feelTitle').innerHTML = (feelMode === 'add' ? '🙂 Mes sensations • ajouter une séance ?' : '🙂 Mes sensations du jour')
+      document.getElementById('feelTitle').innerHTML = '🙂 Mes sensations du jour'
         + (recordedT ? ' <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black align-middle">✓</span>' : '');
       document.getElementById('feelAskBtn').textContent = feelMode === 'add' ? "🧠 Le coach décide" : "🧠 Avis du coach";
       document.getElementById('feelSaveBtn').classList.add('hidden'); // seulement « Avis du coach »
@@ -9040,18 +9105,23 @@ ${analysisFormatPrompt()}`;
         body.classList.toggle('hidden', !feelExpanded);
         sum.classList.toggle('hidden', feelExpanded);
         const recorded = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
-        sum.textContent = recorded
-          ? `${capFirst(feelSummary(sess.dayFeel))}  •  ✏️ Modifier`
-          : (feelMode === 'add' ? "💬 Envie de courir quand même ? Dis au coach comment tu te sens  ›" : "💬 Comment te sens-tu ? Dis-le au coach, il adapte ta séance  ›");
-        sum.className = recorded
-          ? 'w-full text-left text-[11px] text-amber-200 font-semibold'
-          : 'w-full text-left px-3 py-3 rounded-2xl bg-amber-500/15 border border-amber-500/50 text-amber-100 font-bold text-[13px]';
-        sum.classList.toggle('hidden', feelExpanded);
+        sum.textContent = recorded ? capFirst(feelSummary(sess.dayFeel)) : '';
+        sum.className = 'w-full text-left text-[12px] text-amber-200 font-semibold';
+        sum.classList.toggle('hidden', feelExpanded || !recorded);
         const hdr = document.getElementById('feelPanel') && document.getElementById('feelPanel').firstElementChild;
         if (hdr && hdr !== sum) {
           hdr.classList.remove('hidden'); // le titre reste toujours visible
           const xb = hdr.querySelector('button');
-          if (xb) { xb.textContent = feelExpanded ? '▴' : '▾'; xb.title = feelExpanded ? 'Replier' : 'Déplier'; }
+          const recorded2 = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
+          if (xb) {
+            if (!xb.dataset.base) xb.dataset.base = xb.className;
+            if (feelExpanded) { xb.textContent = '▴'; xb.title = 'Replier'; xb.className = xb.dataset.base; xb.style.cssText = ''; }
+            else {
+              xb.textContent = recorded2 ? '✏️ Modifier' : '✍️ Renseigner'; xb.title = 'Renseigner mes sensations';
+              xb.className = 'shrink-0 font-extrabold active:scale-95';
+              xb.style.cssText = 'height:36px;padding:0 14px;border-radius:12px;background:#f59e0b;color:#1a1204;font-size:13px;white-space:nowrap';
+            }
+          }
         }
       }
       const m = document.getElementById('feelModal');
