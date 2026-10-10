@@ -272,6 +272,7 @@
         <button onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
       </div>
       <div id="homeRestTitle" class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
+      <div id="homeCrossToday" class="flex flex-col gap-2"></div>
       <div id="homeRestText" class="hidden text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
       <div id="homeRestNext" class="hidden text-sm text-slate-200 leading-snug"></div>
       <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
@@ -295,9 +296,12 @@
       <div id="homeSessDesc" class="text-sm text-slate-200 leading-snug"></div>
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
-      <button onclick="launchFromHome()" class="w-full mt-2 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
+      <div class="flex gap-2 mt-2">
+      <button onclick="launchFromHome()" class="flex-1 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">C'EST PARTI !</span>
       </button>
+      <button id="homeScriptBtn" onclick="openScriptModal()" title="Script de la séance" aria-label="Script de la séance" class="shrink-0 w-16 rounded-2xl bg-purple-500/20 border border-purple-400/60 text-purple-100 text-2xl flex items-center justify-center active:scale-95">📜</button>
+      </div>
     </div>
 
     <button id="homeNutBtn" onclick="openNutrition()" class="order-last w-full py-4 bg-orange-500 hover:bg-orange-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2">🍽️ MES REPAS DU JOUR</button>
@@ -401,7 +405,7 @@
         <!-- Type de sortie -->
         <div id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
-          <div id="cfgKindChips" class="grid grid-cols-4 gap-1.5"></div>
+          <div id="cfgKindChips" class="grid grid-cols-3 gap-1.5"></div>
           <div id="cfgEstLine" class="flex items-center justify-center gap-3 pt-1 text-[15px] font-black text-white"></div>
         </div>
         <div id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
@@ -414,7 +418,7 @@
           <span id="cfgSimpleHint" class="text-[10px] text-slate-400 block"></span>
         </div>
         <div id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
-          <span class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
+          <span id="cfgTestTitle" class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
           <div class="flex gap-1.5 flex-wrap"><button type="button" onclick="setTestKm(1)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">1 km</button><button type="button" onclick="setTestKm(3)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">3 km</button><button type="button" onclick="setTestKm(5)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">5 km</button><button type="button" onclick="setTestKm(10)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">10 km</button></div>
           <div class="grid grid-cols-3 gap-2 text-center">
             <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Distance (km)</label>
@@ -807,6 +811,7 @@
             <span class="pm-cap" style="color:#6ee7b7">Mon plan actuel</span>
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
+            <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'))" class="self-start text-[12px] font-bold text-sky-300">📝 Ma pratique avant l'app</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
           </div>
@@ -1150,17 +1155,15 @@
     <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md p-4 shadow-2xl flex flex-col gap-3" style="max-height:92vh">
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
-          <span class="text-base font-bold text-white block">🧪 Script de la séance</span>
+          <span class="text-base font-bold text-white block">📜 Script de la séance</span>
           <span id="scriptInfo" class="text-[10px] text-slate-400"></span>
         </div>
         <button onclick="closeScriptModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <p class="text-[10px] text-slate-400">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
+      <p class="text-[10px] text-slate-400 hidden">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
       <div id="scriptList" class="flex-1 overflow-y-auto custom-scroll pr-1 min-h-0"></div>
-      <div class="grid grid-cols-2 gap-2">
-        <button id="scriptPlayBtn" onclick="playAllScript()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs">▶ Tout écouter</button>
-        <button onclick="closeScriptModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-xs">Fermer</button>
-      </div>
+      <div id="scriptOptsWrap" class="hidden max-h-[45vh] overflow-y-auto custom-scroll bg-slate-950 border border-slate-800 rounded-2xl p-3"><span class="text-[13px] font-extrabold text-white block mb-1">⚙️ Annonces à inclure</span><div id="scriptOpts"></div></div>
+      <div id="scriptFoot" class="flex flex-col gap-2"></div>
     </div>
   </div>
 
@@ -1348,7 +1351,7 @@
           </div>
           <div class="pm-card">
             <span class="pm-cap">Tester les annonces</span>
-            <button type="button" onclick="closeAudioModal(); openScriptModal()" class="pm-btn">🧪 Script de la séance chargée</button>
+
           </div>
           <input type="checkbox" id="chkEncouragements" checked class="hidden">
           <input type="checkbox" id="chkKeepAlive" class="hidden">
@@ -3485,7 +3488,38 @@
         return true;
       });
     }
+    // Réglages des encouragements : fréquence et moments où insister
+    const ENC_FOCUS = [['fastEnd', '🔥 Fin des segments rapides'], ['fastStart', '🚀 Début des segments rapides'], ['lastReps', '💪 Dernières séries'], ['recup', '🫧 Pendant les récups'], ['longRun', '🌿 Allure régulière (endurance)']];
+    function encFreq() { const v = appData.audioSettings.encFreq; return v === undefined ? 'auto' : v; }
+    function encFocus() { return Array.isArray(appData.audioSettings.encFocus) ? appData.audioSettings.encFocus : []; }
     function computeExtraPointsRaw(st) {
+      if (!st) return [];
+      const base = computeExtraPointsBase(st);
+      const fq = encFreq(), fc = encFocus();
+      if (fq === 'auto' && !fc.length) return base;
+      if (st.type === 'chauffe' || st.isFree) return base;
+      const d = st.durationSec * 1000;
+      const fast = st.intensity === 'fast' && st.type === 'palier';
+      const late = st.type === 'palier' && st.totalReps >= 2 && st.repIndex >= st.totalReps - (st.totalReps >= 3 ? 1 : 0);
+      const isRec = st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy';
+      let p = fq === 'moins' ? base.filter(q => q.kind === 'push' || q.kind === 'praise' || (q.kind === 'mental' && late)) : base.slice();
+      const add = (t, kind) => { if (t >= 4000 && d - t >= 6500 && !p.some(q => Math.abs(q.t - t) < 5000)) p.push({ t, kind }); };
+      // Moments où insister
+      if (fc.includes('fastEnd') && fast) { add(d - 22000, 'push'); add(d - 12000, late ? 'mental' : 'push'); }
+      if (fc.includes('fastStart') && fast) add(5000, 'fast');
+      if (fc.includes('lastReps') && fast && late) { add(d * 0.4, 'mental'); add(d * 0.75, 'mental'); }
+      if (fc.includes('recup') && isRec && st.type !== 'recup') { add(Math.min(8000, d / 3), 'easy'); if (d > 60000) add(d * 0.6, 'easy'); }
+      if (fc.includes('longRun') && !fast && !isRec && d >= 240000) for (let x = 90000; x < d - 30000; x += 150000) add(x, 'praise');
+      // Fréquence fixe
+      const sec = parseFloat(fq);
+      if (sec > 0 && st.type !== 'recup') {
+        const kinds = fast ? (late ? ['mental', 'boost', 'push'] : ['boost', 'fast', 'push']) : isRec ? ['easy', 'praise'] : ['praise', 'easy', 'tip'];
+        let k = 0;
+        for (let x = sec * 1000; x < d - 6500; x += sec * 1000) add(x, kinds[k++ % kinds.length]);
+      }
+      return p.sort((a, b) => a.t - b.t);
+    }
+    function computeExtraPointsBase(st) {
       if (!st) return [];
       const d = st.durationSec * 1000;
       const p = [];
@@ -4010,7 +4044,7 @@
     let modalPyramid = [];
 
     // ==================== TYPE DE SORTIE (paramétrage) ====================
-    const CFG_KINDS = [['endu', '🌿', 'Endurance'], ['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '🫧', 'Récup'], ['test', '⏱️', 'Test'], ['libre', '🏃', 'Libre']];
+    const CFG_KINDS = [['endu', '🌿', 'Endurance'], ['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '🫧', 'Récup'], ['test', '⏱️', 'Test'], ['course', '🏁', 'Course'], ['libre', '🏃', 'Libre']];
     const KIND_CONT = ['endu', 'longue', 'recup'], KIND_STRUCT = ['fractionne', 'seuil', 'cotes'];
     let cfgKind = 'endu', cfgSessId = null;
     function cfgSess() { return (appData.sessions || []).find(s => s.id === cfgSessId) || getActiveSession(); }
@@ -4018,6 +4052,7 @@
       if (!s) return 'endu';
       if (s.kind && CFG_KINDS.some(k => k[0] === s.kind)) return s.kind;
       if (s.free) return 'libre';
+      if (/\b(course|compétition|competition|semi|marathon|10 ?km officiel)\b/i.test(s.notes || '') && /course|compét|semi|marathon/i.test(s.notes || '') && (s.pyramide || []).length === 1 && s.pyramide[0].unit === 'km') return 'course';
       if (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && (s.pyramide || []).length === 1) return 'test';
       const L = sessionKind(s).label;
       return { 'FRACTIONNÉ': 'fractionne', 'SEUIL': 'seuil', 'SORTIE LONGUE': 'longue' }[L] || 'endu';
@@ -4057,7 +4092,8 @@
       show('cfgBlocsBox', KIND_STRUCT.includes(k));
       show('cfgSegBox', KIND_STRUCT.includes(k));
       show('cfgSimpleBox', KIND_CONT.includes(k));
-      show('cfgTestBox', k === 'test');
+      show('cfgTestBox', k === 'test' || k === 'course');
+      { const tt = document.getElementById('cfgTestTitle'); if (tt) tt.textContent = k === 'course' ? '🏁 Course (compétition)' : '⏱️ Test'; }
       show('cfgLibreBox', k === 'libre');
       show('cfgTotalsBox', KIND_STRUCT.includes(k));
       document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
@@ -4079,6 +4115,12 @@
         } else if (k === 'test') {
           const lv = (runnerProfile().levels || {})['5'];
           const km = 5, min = lv ? lv / 60 : km / (ef + 2.5) * 60;
+          document.getElementById('cfgTestKm').value = km;
+          document.getElementById('cfgTestTime').value = fmtClock(min);
+          document.getElementById('cfgTestSpeed').value = (km / (min / 60)).toFixed(1);
+        } else if (k === 'course') {
+          const g = appData.goal || {};
+          const km = parseFloat(g.distanceKm) || 10, min = parseFloat(g.durationMin) || km / (ef + 2.5) * 60;
           document.getElementById('cfgTestKm').value = km;
           document.getElementById('cfgTestTime').value = fmtClock(min);
           document.getElementById('cfgTestSpeed').value = (km / (min / 60)).toFixed(1);
@@ -4107,7 +4149,7 @@
         v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
         return [{ speed: sp, unit: 'min', duration: Math.round(Math.max(1, T - v.chauffe - v.recup) * 100) / 100 }];
       }
-      if (k === 'test') {
+      if (k === 'test' || k === 'course') {
         const km = parseFloat(String(document.getElementById('cfgTestKm').value).replace(',', '.')) || 0;
         const sp = parseFloat(String(document.getElementById('cfgTestSpeed').value).replace(',', '.')) || 0;
         v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
@@ -4131,7 +4173,7 @@
           : `Dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme (réglables dans ton profil).`;
       }
       const th = document.getElementById('cfgTestHint');
-      if (th && cfgKind === 'test') {
+      if (th && (cfgKind === 'test' || cfgKind === 'course')) {
         const km = parseFloat(document.getElementById('cfgTestKm').value) || 0, sp = parseFloat(document.getElementById('cfgTestSpeed').value) || 0;
         th.textContent = km && sp ? `Allure ${Math.floor(Math.round(3600 / sp) / 60)}'${String(Math.round(3600 / sp) % 60).padStart(2, '0')}"/km · + ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme` : 'Indique la distance et le temps visé';
       }
@@ -4487,6 +4529,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       else if (sess.plannedFree || sess.free) { delete sess.free; delete sess.plannedFree; }
       if (cfgKind === 'test') { sess.test = { km: pyr[0].distance, min: pyr[0].duration }; if (!/test/i.test(sess.notes || '')) sess.notes = `Test ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
       else delete sess.test;
+      if (cfgKind === 'course') { sess.race = { km: pyr[0].distance, min: pyr[0].duration }; if (!/course/i.test(sess.notes || '')) sess.notes = `Course ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
+      else delete sess.race;
     }
 
     function sortSessionsKeep(sess) {
@@ -4680,6 +4724,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     function sessionKind(s) {
       if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
+      if (s.kind === 'course') return { label: 'COURSE', color: '#facc15' };
       if (s.kind === 'test' || (!s.kind && (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
       if (s.kind === 'endu') return { label: 'ENDURANCE', color: '#38bdf8' };
       if (s.kind === 'longue') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
@@ -4688,7 +4733,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       if (s.free || s.kind === 'libre' || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
       if (s.kind === 'cotes') return { label: 'CÔTES', color: '#f97316' };
       if (s.kind === 'recup') return { label: 'RÉCUPÉRATION', color: '#67e8f9' };
-      if (!s.pyramide) return { label: 'COURSE', color: '#38bdf8' };
+      if (!s.pyramide) return { label: 'SÉANCE', color: '#38bdf8' };
       const segs = (s.pyramide || []).filter(p => p.speed > 0);
       const speeds = segs.map(p => +p.speed);
       const reps = Math.max(1, parseInt(s.repet) || 1) * Math.max(1, parseInt(s.nbBlocs) || 1);
@@ -4946,7 +4991,9 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const strip = dayIso.map((iso, i) => {
         const isDone = done.some(x => x.iso === iso), isPlan = planned.some(x => x.dateISO === iso);
         let st = base + 'color:#475569;';
-        if (isDone) st = base + 'background:#34d399;color:#03140d;';
+        if (iso === raceISO() || planned.some(x => x.dateISO === iso && x.kind === 'course')) st = base + 'background:#facc15;color:#1a1204;';
+        if (st.includes('#facc15')) { }
+        else if (isDone) st = base + 'background:#34d399;color:#03140d;';
         else if (iso === t) st = base + 'border:2px solid #38bdf8;color:#38bdf8;';
         else if (isPlan) st = base + (iso < t ? 'border:1px dashed #475569;color:#64748b;' : 'background:#172338;color:#e2e8f0;border:1px solid #334155;');
         return `<div class="flex flex-col items-center gap-1.5"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></div>`;
@@ -4999,7 +5046,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     const PL_ICON_DEL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
     function plIconBtns(editJs, delJs) {
       const b = 'width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
-      return `<div class="shrink-0 flex gap-1.5">${editJs ? `<button onclick="${editJs}" aria-label="Modifier" style="${b}background:#111c30;border:1px solid #334155;color:#cbd5e1">${PL_ICON_EDIT}</button>` : ''}<button onclick="${delJs}" aria-label="Supprimer" style="${b}background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">${PL_ICON_DEL}</button></div>`;
+      return `<div class="shrink-0 flex gap-1.5">${editJs ? `<button onclick="${editJs}" aria-label="Modifier" style="${b}background:#111c30;border:1px solid #334155;color:#cbd5e1">${PL_ICON_EDIT}</button>` : ''}${delJs ? `<button onclick="${delJs}" aria-label="Supprimer" style="${b}background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">${PL_ICON_DEL}</button>` : ''}</div>`;
     }
     function plPlannedCard(item, isToday) {
       const s = appData.sessions[item.rawIdx];
@@ -5023,6 +5070,18 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           </div>${actions}</div>`;
       }
       return `<div class="pl-card ${past ? 'past' : ''}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
+    }
+    function plRaceCard(i) {
+      const g = appData.goal || {};
+      return `<div class="pl-card" style="border-color:rgba(250,204,21,.55);background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(15,23,42,.6))">
+        <div class="flex items-center gap-3">${plDateChip(i.iso, '', 'background:#facc15;color:#1a1204')}
+          <div class="flex-1 flex flex-col gap-1 min-w-0">
+            <span style="align-self:flex-start;font-size:10px;font-weight:800;color:#facc15;letter-spacing:.6px">🏁 COURSE · JOUR J</span>
+            <span style="font-size:16px;font-weight:800;line-height:1.25">${g.distanceKm || '?'} km en ${g.durationMin || '?'}'</span>
+            <span style="font-size:12px;color:#94a3b8;font-weight:600">${g.hilly ? `vallonnée, pente ${g.pente} %` : 'Ton objectif'}</span>
+          </div>
+          ${plIconBtns('closeHistoryModal();openGoalModal();setPmTab(\'goalModal\',\'objectif\')', '')}
+        </div></div>`;
     }
     function plCrossCard(i) {
       const c = i.item, T = ACT_TYPES[c.type] || { label: 'ACTIVITÉ', color: '#94a3b8' };
@@ -5086,8 +5145,9 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         duration: computeSessionTotalMin(s), details: capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))
       }));
       (appData.crossPlan || []).forEach(c => items.push({ type: 'crossplan', id: c.id, iso: c.dateISO, item: c }));
+      { const gi = raceISO(); if (gi && gi >= t && !appData.sessions.some(x => x.dateISO === gi && x.kind === 'course')) items.push({ type: 'race', id: 'goalrace', iso: gi }); }
       const done = items.filter(i => i.type === 'validated');
-      const planned = items.filter(i => i.type === 'planned' || i.type === 'crossplan').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
+      const planned = items.filter(i => i.type === 'planned' || i.type === 'crossplan' || i.type === 'race').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
       document.getElementById('cntVal').textContent = done.length;
       document.getElementById('cntPlan').textContent = upcoming.length;
@@ -5112,7 +5172,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           else if (iso) g = `Semaine du ${parseISODateLocal(weekStartISO(iso)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
           else g = 'Sans date';
           if (g !== cur) { sec(g); cur = g; }
-          out.push(i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, iso === t));
+          out.push(i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, iso === t));
         });
       };
       if (currentFilter === 'planned') {
@@ -5132,7 +5192,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         const inW = i => i.iso && i.iso >= w0 && i.iso <= w6;
         const wl = done.filter(inW).concat(planned.filter(inW)).sort((a, b) => String(a.iso).localeCompare(String(b.iso)) || (a.type === 'validated' ? -1 : 1));
         if (!wl.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance cette semaine.</div>');
-        wl.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
+        wl.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
       }
       box.innerHTML = out.join('');
       box.onclick = e => {
@@ -5588,15 +5648,19 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     function planSessLine(s) {
       return `${s.dateISO} (${s.jour || ''}) | ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`} | ${Math.round(computeSessionTotalMin(s))} min ≈ ${computeSessionDistanceKm(s).toFixed(1)} km | ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.notes ? ` | ${s.notes}` : ''}`;
     }
-    async function analyzePlanWithCoach() {
+    async function analyzePlanWithCoach(skipBg) {
       const st = document.getElementById('planAnaStatus');
       const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
       if (!getGeminiKey()) { say("Renseigne ta clé Gemini (Réglages › Données)", true); return; }
       const up = upcomingPlanSessions();
       if (!up.length) { say("Aucune séance prévue à analyser", true); return; }
+      if (skipBg !== true && needsRunBackground()) { planReview = null; say(''); renderBackgroundForm(document.getElementById('planAnaBox')); return; }
+      const cross = (appData.crossPlan || []).filter(c => c.dateISO >= todayISO()).map(c => `- ${c.dateISO} : ${c.type === 'velo' ? 'vélo' : 'renforcement'} ${c.dur || '?'} min${c.titre ? ` (${c.titre})` : ''}`).join('\n');
       const g = appData.goal || {}, r = runnerProfile();
       const refs = {};
-      const lines = up.slice(0, 90).map((s, i) => { refs['S' + (i + 1)] = s.id; return `S${i + 1} | ${planSessLine(s)}`; }).join('\n');
+      const nextRace = [raceISO(), ...up.filter(x => x.kind === 'course').map(x => x.dateISO)].filter(x => x && x >= todayISO()).sort()[0] || '';
+      const upTo = nextRace ? up.filter(x => x.dateISO <= nextRace) : up;
+      const lines = upTo.map((s, i) => { refs['S' + (i + 1)] = s.id; return `S${i + 1} | ${planSessLine(s)}`; }).join('\n');
       const hist = runHistory().slice(0, 10).map(h => `- ${h._iso || h.date} : ${h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.summary && h.summary.hrAvg ? ` ; FC moy ${h.summary.hrAvg}` : ''}`).join('\n') || '- aucune';
       const wk = weeklyKm(6).map(w => `${fmtDateShort(w.start)} : ${w.km.toFixed(0)} km (${w.n})`).join(' ; ');
       let prob = '';
@@ -5610,21 +5674,23 @@ Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg
 Niveau actuel : ${runnerLevelsText()}.
 ${prob}
 Km par semaine (6 dernières) : ${wk}.
-Séances récentes :
+Séances récentes enregistrées dans l'app :
 ${hist}
+${backgroundText()}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
 Jours habituels de course : ${planDays().map(i => jours[i]).join(', ') || '?'}.${offDaysText() ? `\nJours sans sport prévus (aucune séance ces jours-là) : ${offDaysText()}.` : ''}${(document.getElementById('coachCustomInstructions')?.value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Plan à venir (référence | date | lieu | durée | contenu hors échauffement et retour au calme | notes) :
 ${lines}
-Vérifie : cohérence avec l'objectif (allures spécifiques, sortie longue suffisante), progression du volume (pas plus de +10 % par semaine), semaines allégées, équilibre intensité / endurance, récupération entre séances dures, affûtage avant la course, adaptation au niveau actuel et aux séances récentes.
+Vérifie : cohérence avec l'objectif (allures spécifiques, sortie longue suffisante), progression du volume (pas plus de +10 % par semaine), semaines allégées, équilibre intensité / endurance, variété des séances (endurance, seuil, fractionné, côtes, sortie longue, tests), récupération entre séances dures, affûtage avant la course, adaptation au niveau actuel. Ne considère pas que le coureur part de zéro s'il déclare une pratique avant l'app.
+Prochaine course : ${nextRace || '?'}. Tu peux corriger tout le plan jusqu'à cette course, sans limite : modifier autant de séances que nécessaire (y compris toutes), changer leur type pour varier, en supprimer, ou en ajouter (course à pied, vélo ou renforcement musculaire).
 Format JSON strict :
-{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["2 à 3 constats très courts"],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}}]}
-Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. 8 modifications au maximum, les plus importantes d'abord. "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
+{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["2 à 3 constats très courts"],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
+Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. Pas de limite au nombre de modifications ; les plus importantes d'abord. "activite" = "course" par défaut ; pour "velo" ou "renfo", seulement avec "ajouter" (session : dateISO, duree_min, titre, detail). "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
       const btn = document.getElementById('planAnaBtn'); if (btn) btn.disabled = true;
       say("🧠 Le coach étudie ton plan… (20 à 60 s)");
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const j = parseJsonLoose(txt) || {};
-        const mods = parseCoachMods(j.modifications, refs);
+        const mods = parseCoachMods(j.modifications, refs, null, 100000);
         const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
         planReview = { at: todayISO(), verdict, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 3).map(String), mods, done: false };
         appData.planReview = planReview; saveAppData();
@@ -5649,9 +5715,11 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
     function renderPlanReviewFoot() {
       const f = document.getElementById('planAnaFoot');
       if (!f || !planReview) return;
-      const n = countOnMods(planReview);
+      const n = countOnMods(planReview), all = planReview.mods.length;
       f.innerHTML = planReview.mods.length
-        ? `<button onclick="applyPlanReview()" ${n ? '' : 'disabled'} class="pm-btn" style="height:48px;border:none;background:${n ? '#34d399' : '#1e293b'};color:${n ? '#04140d' : '#64748b'};font-weight:800;font-size:14px">✅ Appliquer ${n} modification${n > 1 ? 's' : ''}</button>
+        ? `${all > 1 ? `<div class="grid grid-cols-2 gap-2"><button onclick="setAllMods('planReview', true)" class="pm-btn" style="font-weight:700">☑️ Tout cocher</button><button onclick="setAllMods('planReview', false)" class="pm-btn" style="font-weight:700">⬜ Tout décocher</button></div>` : ''}
+           ${all > 1 ? `<button onclick="planReview.mods.forEach(m=>m.on=true);applyPlanReview()" class="pm-btn" style="height:48px;border:none;background:#0ea5e9;color:#04121f;font-weight:800;font-size:14px">✅ Tout accepter (${all})</button>` : ''}
+           <button onclick="applyPlanReview()" ${n ? '' : 'disabled'} class="pm-btn" style="height:48px;border:none;background:${n ? '#34d399' : '#1e293b'};color:${n ? '#04140d' : '#64748b'};font-weight:800;font-size:14px">✅ Appliquer la sélection (${n})</button>
            <button onclick="dismissPlanReview()" class="pm-btn" style="font-weight:700">Garder mon plan tel quel</button>`
         : `<button onclick="dismissPlanReview()" class="pm-btn" style="font-weight:700">OK</button>`;
     }
@@ -5670,9 +5738,16 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
       showSavedBig(`Plan mis à jour (${n} modif.)`);
     }
     // ==================== MODIFICATIONS PROPOSÉES PAR LE COACH (commun) ====================
-    function parseCoachMods(list, refs, isBad) {
-      return (Array.isArray(list) ? list : []).slice(0, 8).map((m, i) => {
+    function parseCoachMods(list, refs, isBad, max = 8) {
+      return (Array.isArray(list) ? list : []).slice(0, max).map((m, i) => {
         const action = /suppr/i.test(m.action) ? 'supprimer' : /ajout/i.test(m.action) ? 'ajouter' : 'modifier';
+        const actv = String(m.activite || '').toLowerCase();
+        if (action === 'ajouter' && /velo|vélo|renfo|muscu/.test(actv)) {
+          const sx = m.session || {}, iso = /^\d{4}-\d{2}-\d{2}$/.test(sx.dateISO || '') ? sx.dateISO : '';
+          if (!iso || iso < todayISO() || (isBad && isBad(iso))) return null;
+          return { i, action, refId: null, raison: String(m.raison || '').slice(0, 240), sess: null, on: true,
+            cross: { id: `cross_${Date.now()}_${i}`, type: /v/.test(actv[0]) ? 'velo' : 'muscu', dateISO: iso, dur: Math.round(+sx.duree_min || 30), intensite: 'moderee', titre: String(sx.titre || ''), detail: String(sx.detail || ''), exos: [] } };
+        }
         const refId = refs[String(m.ref || '').trim().toUpperCase()] || null;
         if (action !== 'ajouter' && !refId) return null;
         let sess = null;
@@ -5691,6 +5766,16 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
       const sDesc = s => s ? `${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.type === 'exterieur' ? ' • extérieur' : ''} (${Math.round(computeSessionTotalMin(s))}')` : '';
       const day = iso => { const d = parseISODateLocal(iso); return d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })) : ''; };
       return rv.mods.map((m, k) => {
+        if (m.cross) {
+          const T = ACT_TYPES[m.cross.type] || {};
+          return `<label class="flex gap-3 items-start p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #1e293b">
+            <input type="checkbox" ${m.on ? 'checked' : ''} onchange="${varName}.mods[${k}].on=this.checked;${footFn}()" class="accent-emerald-500 w-5 h-5 mt-0.5 shrink-0">
+            <span class="flex flex-col gap-1 min-w-0">
+              <span class="text-[13px] font-extrabold" style="color:#34d399">➕ Ajouter ${T.icon || ''} ${T.label || ''} · <span class="text-slate-200">${day(m.cross.dateISO)}</span></span>
+              <span class="text-[13px] text-white font-semibold">${esc(m.cross.titre || T.label)} (${m.cross.dur}')${m.cross.detail ? ` — ${esc(m.cross.detail)}` : ''}</span>
+              ${m.raison ? `<span class="text-[12px] text-slate-400 italic">${esc(m.raison)}</span>` : ''}
+            </span></label>`;
+        }
         const old = m.refId ? byId(m.refId) : null;
         if (m.action !== 'ajouter' && !old) return '';
         const ic = { modifier: ['✏️ Modifier', '#fbbf24'], supprimer: ['🗑 Supprimer', '#fb7185'], ajouter: ['➕ Ajouter', '#34d399'] }[m.action];
@@ -5716,6 +5801,7 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
         </div>`;
     }
     function countOnMods(rv) { return rv.mods.filter(m => m.on && (m.action === 'ajouter' || (appData.sessions || []).some(s => s.id === m.refId))).length; }
+    function setAllMods(varName, on, footFn) { const rv = window[varName] || (varName === 'planReview' ? planReview : offReview); if (!rv) return; rv.mods.forEach(m => m.on = on); (varName === 'planReview' ? renderPlanReview : renderOffReview)(); }
     function applyCoachMods(mods) {
       let n = 0;
       mods.filter(m => m.on).forEach(m => {
@@ -5724,6 +5810,9 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
         else if (m.action === 'modifier' && idx >= 0) {
           const old = appData.sessions[idx];
           appData.sessions[idx] = Object.assign({}, m.sess, { id: old.id, semaine: old.semaine, route: old.route, coachEdited: true }); n++;
+        } else if (m.action === 'ajouter' && m.cross) {
+          if (!Array.isArray(appData.crossPlan)) appData.crossPlan = [];
+          appData.crossPlan.push(Object.assign({}, m.cross)); n++;
         } else if (m.action === 'ajouter' && m.sess) {
           const prev = appData.sessions.filter(s => s.dateISO && s.dateISO <= m.sess.dateISO).pop();
           appData.sessions.push(Object.assign({}, m.sess, { id: `sess_coach_${Date.now()}_${m.i}`, semaine: prev ? prev.semaine : 1, coachEdited: true })); n++;
@@ -5843,6 +5932,7 @@ Ton coureur ne pourra pas faire de sport du ${a} au ${b} (${n} jour${n > 1 ? 's'
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min, course le ${race || '?'}${race ? ` (dans ${Math.round((parseISODateLocal(race) - parseISODateLocal(todayISO())) / 864e5)} jours)` : ''}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, endurance fondamentale ${formatSpeed(runnerEF())} km/h. Niveau actuel : ${runnerLevelsText()}.
 Km par semaine (4 dernières) : ${wk}.
+${backgroundText()}
 Séances juste avant (pour info) :
 ${before.map(s => `- ${planSessLine(s)}`).join('\n') || '- aucune'}
 Séances prévues pendant l'indisponibilité :
@@ -5935,6 +6025,7 @@ Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg
 Niveau actuel (temps possibles aujourd'hui) : ${runnerLevelsText()}.
 Séances récentes :
 ${hist}
+${backgroundText()}
 Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
 {"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}]}
@@ -6269,6 +6360,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
         if (geminiTextBad.has(model)) continue;
         const body = { contents: [{ role: 'user', parts }] };
         if (opts.json) body.generationConfig = { responseMimeType: 'application/json' };
+        if (opts.maxTokens) body.generationConfig = Object.assign(body.generationConfig || {}, { maxOutputTokens: opts.maxTokens });
         for (let attempt = 0; attempt < 4; attempt++) {
           let resp, json = null;
           try {
@@ -8932,9 +9024,10 @@ ${analysisFormatPrompt()}`;
       return { rows, totalKm, totalT, outdoor, hasRoute: !!r };
     }
 
-    function openScriptModal() {
+    function openScriptModal(keep) {
+      if (keep !== true) scriptDl = null;
       if (document.getElementById('configModal') && !document.getElementById('configModal').classList.contains('hidden')) {
-        if (!saveActiveSessionConfig()) return;
+        if (!saveActiveSessionConfig({ keepOpen: true })) return;
       }
       const s = buildSessionScript();
       scriptRows = s.rows;
@@ -8949,7 +9042,149 @@ ${analysisFormatPrompt()}`;
           ${r.info ? '' : `<button type="button" onclick="playScriptRow(${i})" class="shrink-0 w-6 h-6 rounded-full bg-purple-600/30 text-purple-200 text-[10px]">▶</button>`}
         </div>`).join('');
       document.getElementById('scriptModal').classList.remove('hidden');
+      renderScriptFoot();
     }
+    // ==================== HISTORIQUE DE COURSE (avant le plan) ====================
+    let bgShots = [];
+    function needsRunBackground() {
+      const up = upcomingPlanSessions();
+      const start = up.length ? up[0].dateISO : todayISO();
+      const before = runHistory().filter(h => (h._iso || '') < start || !h._iso);
+      return before.length < 3 && !(appData.runBackground && appData.runBackground.at);
+    }
+    function backgroundText() {
+      const b = appData.runBackground;
+      if (!b || !b.at) return '';
+      const rep = { jamais: "court sans interruption", m1: "a repris il y a moins d'un mois", m3: 'a repris il y a 1 à 3 mois', m6: 'a repris il y a 3 à 6 mois', m12: 'a repris il y a 6 à 12 mois', plus: 'a repris il y a plus d\'un an', debut: 'débute la course à pied' }[b.reprise] || '';
+      return `Pratique avant l'app (déclarée par le coureur) : ${[rep, b.freq ? `${b.freq} sorties par semaine` : '', b.km ? `${b.km} km par semaine` : '', b.longest ? `sortie la plus longue récente ${b.longest} km` : '', b.note || ''].filter(Boolean).join(', ')}.${b.summary ? ` Résumé des captures de sorties : ${b.summary}` : ''}`;
+    }
+    function renderBackgroundForm(box) {
+      const b = appData.runBackground || {};
+      bgShots = [];
+      box.innerHTML = `<div class="flex flex-col gap-2 p-3 rounded-2xl" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.4)">
+          <span class="text-[15px] font-extrabold text-white">Avant d'analyser, parle-moi de ta pratique</span>
+          <span class="text-[12px] text-slate-400 -mt-1">Peu de séances sont enregistrées dans l'app : le coach a besoin de savoir d'où tu pars.</span>
+          <label class="pm-lbl">Depuis quand cours-tu régulièrement ?<select id="bgReprise" class="pm-in">${[['', 'Choisis…'], ['debut', 'Je débute'], ['m1', "Reprise il y a moins d'un mois"], ['m3', 'Reprise il y a 1 à 3 mois'], ['m6', 'Reprise il y a 3 à 6 mois'], ['m12', 'Reprise il y a 6 à 12 mois'], ['plus', "Plus d'un an"], ['jamais', "Je n'ai jamais arrêté"]].map(([v, l]) => `<option value="${v}" ${b.reprise === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="pm-lbl">Sorties / sem.<input id="bgFreq" type="number" min="0" max="14" class="pm-in c" value="${b.freq || ''}"></label>
+            <label class="pm-lbl">Km / sem.<input id="bgKm" type="number" min="0" class="pm-in c" value="${b.km || ''}"></label>
+            <label class="pm-lbl">Plus longue (km)<input id="bgLong" type="number" min="0" step="0.5" class="pm-in c" value="${b.longest || ''}"></label>
+          </div>
+          <label class="pm-lbl">Autre chose à savoir ?<textarea id="bgNote" rows="2" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="ex. semi-marathon il y a 2 ans, blessure au genou cet été…">${plEsc(b.note || '')}</textarea></label>
+          <label class="pm-btn flex items-center justify-center cursor-pointer" style="border-color:rgba(56,189,248,.5);color:#7dd3fc">📷 Ajouter des captures de mes sorties (optionnel)
+            <input type="file" accept="image/*" multiple class="hidden" onchange="addBgShots(this)"></label>
+          <div id="bgShotsInfo" class="text-[12px] text-sky-300"></div>
+          <button onclick="saveBackgroundAndAnalyze()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">Continuer l'analyse</button>
+        </div>`;
+      box.classList.remove('hidden');
+    }
+    async function addBgShots(input) {
+      for (const f of Array.from(input.files || []).slice(0, 6)) { try { bgShots.push(await resizeImageFile(f, 1200)); } catch (e) { showToast(e.message); } }
+      input.value = '';
+      document.getElementById('bgShotsInfo').textContent = bgShots.length ? `${bgShots.length} capture${bgShots.length > 1 ? 's' : ''} ajoutée${bgShots.length > 1 ? 's' : ''}` : '';
+    }
+    async function saveBackgroundAndAnalyze() {
+      const v = id => (document.getElementById(id) || {}).value || '';
+      const prev = appData.runBackground || {};
+      appData.runBackground = { at: todayISO(), reprise: v('bgReprise'), freq: parseFloat(v('bgFreq')) || 0, km: parseFloat(v('bgKm')) || 0, longest: parseFloat(v('bgLong')) || 0, note: v('bgNote').trim(), summary: prev.summary || '' };
+      saveAppData();
+      if (bgShots.length && getGeminiKey()) {
+        const st = document.getElementById('planAnaStatus'); if (st) st.textContent = '🧠 Le coach lit tes captures…';
+        try {
+          const parts = bgShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
+          parts.push({ text: "Ces captures d'écran montrent des sorties de course à pied (montre ou application). Résume en 2 phrases maximum ce qu'elles révèlent du niveau et du volume du coureur : dates, distances, allures, fréquence. Réponds uniquement par le résumé en français." });
+          appData.runBackground.summary = String(await geminiText(parts, { tier: 'full' }) || '').trim().slice(0, 600);
+          saveAppData();
+        } catch (e) { }
+      }
+      bgShots = [];
+      analyzePlanWithCoach(true);
+    }
+
+    // ==================== SCRIPT DE LA SÉANCE AVANT LE DÉPART ====================
+    const SCRIPT_OPTS = [
+      ['encouragements', '💬 Encouragements et conseils', () => appData.audioSettings.encouragements !== false, v => { appData.audioSettings.encouragements = v; }],
+      ['fuel', '💧 Rappels boire / manger', () => fuelRemindersOn(), v => { appData.audioSettings.fuelReminders = v; }],
+      ['km', '📍 Bilan à chaque km', () => !!sensors().kmAnnounce, v => { sensors().kmAnnounce = v; }],
+      ['vap', '⛰️ Vitesse ajustée à la pente (VAP)', () => !!sensors().announceVap, v => { sensors().announceVap = v; }],
+      ['pace', '🏃 Conseils d\'allure (GPS)', () => !!sensors().paceAdvice, v => { sensors().paceAdvice = v; }],
+      ['tip', '🧠 Conseil du coach au départ', () => appData.audioSettings.coachTip !== false, v => { appData.audioSettings.coachTip = v; }],
+      ['voice', '🎙️ Point « comment tu te sens » à mi-séance', () => appData.audioSettings.voiceCoach !== false, v => { appData.audioSettings.voiceCoach = v; }]
+    ];
+    let scriptDl = null;
+    function renderScriptOptions() {
+      const box = document.getElementById('scriptOpts');
+      if (!box) return;
+      const fq = String(encFreq()), fc = encFocus();
+      box.innerHTML = `<div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>
+        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Fréquence des encouragements</span>
+        <div class="grid grid-cols-4 gap-1.5 mt-1">${[['moins', 'Moins'], ['auto', 'Auto'], ['15', '15 s'], ['30', '30 s'], ['45', '45 s'], ['60', '1 min'], ['90', '1 min 30'], ['120', '2 min']].map(([v, l]) => `<button type="button" data-encf="${v}" onclick="scriptPickFreq('${v}')" class="rounded-lg border py-2 text-[12px] font-bold ${fq === v ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
+        <span class="text-[11px] text-slate-500 block mt-1">« Moins » garde seulement les moments clés. Les annonces trop rapprochées sont décalées ou sautées automatiquement.</span>
+        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Insister sur</span>
+        <div class="flex flex-wrap gap-1.5 mt-1">${ENC_FOCUS.map(([k, l]) => `<button type="button" data-encfocus="${k}" onclick="scriptToggleFocus('${k}')" class="rounded-full border px-3 py-1.5 text-[12px] font-bold ${fc.includes(k) ? 'bg-amber-500/25 border-amber-400 text-amber-100' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
+        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
+        <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
+        <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
+        <button onclick="regenScript()" class="w-full mt-2 py-2.5 rounded-xl font-black text-[13px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
+      const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
+    }
+    function applyScriptToggles() { document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); }); }
+    function scriptPickFreq(v) { applyScriptToggles(); appData.audioSettings.encFreq = v; if (v !== 'moins') appData.audioSettings.encouragements = true; saveAppData(); renderScriptOptions(); }
+    function scriptToggleFocus(k) { applyScriptToggles(); const f = encFocus().slice(); const i = f.indexOf(k); if (i >= 0) f.splice(i, 1); else f.push(k); appData.audioSettings.encFocus = f; saveAppData(); renderScriptOptions(); }
+    function scriptPickTone(id) {
+      if (!COACH_PROFILES[id]) return;
+      if (id === 'competition' && coachProfileId() !== 'competition' && !confirm(COMPETITION_WARNING)) return;
+      appData.audioSettings.coachProfile = id;
+      saveAppData();
+      Object.keys(_vtCache).forEach(k => delete _vtCache[k]);
+      renderScriptOptions();
+    }
+    function regenScript() {
+      document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); });
+      saveAppData();
+      Object.keys(_vtCache).forEach(k => delete _vtCache[k]);
+      reloadChrono();
+      openScriptModal(true);
+      document.getElementById('scriptOptsWrap').classList.add('hidden');
+      showToast('Script mis à jour');
+    }
+    function renderScriptFoot() {
+      const f = document.getElementById('scriptFoot');
+      if (!f) return;
+      if (scriptDl && scriptDl.running) {
+        const d = aiPrep.done || 0, tot = aiPrep.total || 0;
+        const el = (Date.now() - scriptDl.t0) / 1000, gen = Math.max(0, d - scriptDl.d0), left = Math.max(0, tot - d);
+        const eta = gen > 0 ? el / gen * left : scriptDl.est;
+        f.innerHTML = `<div class="flex items-center justify-center gap-3 py-3 rounded-xl bg-slate-800 border border-slate-700">
+            <div class="w-6 h-6 rounded-full border-[3px] border-slate-600 border-t-purple-400 animate-spin"></div>
+            <div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Téléchargement des voix… ${tot ? `${d}/${tot}` : ''}</span><span class="text-[12px] text-slate-400">${left ? `≈ ${eta < 60 ? Math.max(5, Math.round(eta / 5) * 5) + ' s' : Math.round(eta / 60) + ' min'} restante${eta >= 120 ? 's' : ''}` : 'Finalisation…'}</span></div>
+          </div>`;
+        return;
+      }
+      if (scriptDl && scriptDl.ok) {
+        f.innerHTML = `<div class="text-center text-[13px] font-bold text-emerald-300">✅ Voix prêtes${scriptDl.err ? ' (certaines annonces utiliseront la voix du téléphone)' : ''}</div>
+          <button onclick="closeScriptModal(); launchFromHome()" class="w-full py-4 rounded-2xl font-black text-[17px]" style="background:#0ea5e9;color:#04121f">▶ C'EST PARTI !</button>`;
+        return;
+      }
+      f.innerHTML = `<div class="grid grid-cols-2 gap-2">
+          <button id="scriptPlayBtn" onclick="playAllScript()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs">▶ Tout écouter</button>
+          <button onclick="document.getElementById('scriptOptsWrap').classList.toggle('hidden'); renderScriptOptions()" class="py-2.5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl text-xs">⚙️ Modifier les annonces</button>
+        </div>
+        <button onclick="scriptValidate()" class="w-full py-3 rounded-xl font-black text-[14px]" style="background:#34d399;color:#04140d">💾 Valider ${aiVoiceActive() ? 'et télécharger les voix' : 'le script'}</button>`;
+    }
+    async function scriptValidate() {
+      if (!aiVoiceActive()) { scriptDl = { ok: true }; renderScriptFoot(); return; }
+      const missing = (() => { try { const pr = aiProfile(); return aiAllPiecesForSession(pr).filter(p => !aiClips.has(aiClipKey(p, pr))).length; } catch (e) { return 0; } })();
+      scriptDl = { running: true, t0: Date.now(), d0: 0, est: Math.max(10, missing * 1.2) };
+      const iv = setInterval(() => { if (scriptDl && scriptDl.running) { if (!scriptDl.started && aiPrep.total) { scriptDl.started = true; scriptDl.d0 = aiPrep.done; scriptDl.t0 = Date.now(); } renderScriptFoot(); } }, 500);
+      renderScriptFoot();
+      let ok = false;
+      try { ok = await prepareAIVoice(true); } catch (e) { ok = false; }
+      clearInterval(iv);
+      scriptDl = { ok: true, err: !ok };
+      renderScriptFoot();
+    }
+
     function closeScriptModal() {
       scriptPlaying = false;
       cancelSpeech();
@@ -9104,22 +9339,22 @@ ${analysisFormatPrompt()}`;
       if (body && sum) {
         body.classList.toggle('hidden', !feelExpanded);
         sum.classList.toggle('hidden', feelExpanded);
-        const recorded = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
-        sum.textContent = recorded ? capFirst(feelSummary(sess.dayFeel)) : '';
+        const recorded = !!curDayFeel();
+        sum.textContent = recorded ? capFirst(feelSummary(curDayFeel())) : '';
         sum.className = 'w-full text-left text-[12px] text-amber-200 font-semibold';
         sum.classList.toggle('hidden', feelExpanded || !recorded);
         const hdr = document.getElementById('feelPanel') && document.getElementById('feelPanel').firstElementChild;
         if (hdr && hdr !== sum) {
           hdr.classList.remove('hidden'); // le titre reste toujours visible
           const xb = hdr.querySelector('button');
-          const recorded2 = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
+          const recorded2 = !!curDayFeel();
           if (xb) {
             if (!xb.dataset.base) xb.dataset.base = xb.className;
             if (feelExpanded) { xb.textContent = '▴'; xb.title = 'Replier'; xb.className = xb.dataset.base; xb.style.cssText = ''; }
             else {
-              xb.textContent = recorded2 ? '✏️ Modifier' : '✍️ Renseigner'; xb.title = 'Renseigner mes sensations';
-              xb.className = 'shrink-0 font-extrabold active:scale-95';
-              xb.style.cssText = 'height:36px;padding:0 14px;border-radius:12px;background:#f59e0b;color:#1a1204;font-size:13px;white-space:nowrap';
+              xb.textContent = recorded2 ? '✏️' : '✍️'; xb.title = recorded2 ? 'Modifier mes sensations' : 'Renseigner mes sensations'; xb.setAttribute('aria-label', xb.title);
+              xb.className = 'shrink-0 active:scale-95 flex items-center justify-center';
+              xb.style.cssText = 'width:44px;height:40px;border-radius:12px;background:#f59e0b;color:#1a1204;font-size:20px';
             }
           }
         }
@@ -9445,6 +9680,7 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
 
     function describeSessionHuman(sess) {
       if (sess && sess.free && sess.plannedFree) return `séance libre${sess.type === 'exterieur' ? ' en extérieur' : ' sur tapis'}`;
+      if (sess && sess.kind === 'course' && (sess.pyramide || [])[0]) { const p = sess.pyramide[0]; return `course ${formatSpeed(p.distance || p.duration * p.speed / 60).replace('.', ',')} km — objectif ${fmtClock(p.duration)} (${formatSpeed(p.speed).replace('.', ',')} km/h)`; }
       if (sess && sess.kind === 'test' && (sess.pyramide || [])[0]) { const p = sess.pyramide[0]; return `test ${formatSpeed(p.distance || p.duration * p.speed / 60).replace('.', ',')} km en ${fmtClock(p.duration)} (${formatSpeed(p.speed).replace('.', ',')} km/h)`; }
       const ri = routeRunInfo(sess);
       if (ri) return `sortie de ${ri.km.toFixed(1).replace('.', ',')} km « ${ri.name} » (≈ ${fmtHM(ri.min)} à ${formatSpeed(ri.kmh).replace('.', ',')} km/h${ri.gain > 20 ? `, D+ ${Math.round(ri.gain)} m` : ''})`;
@@ -9543,6 +9779,7 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
     }
     async function askCoachAddSession() {
       const feel = Object.assign({}, readFeelForm());
+      appData.dayFeelAdd = Object.assign({}, feel); saveAppData();
       const out = document.getElementById('feelAdvice');
       out.classList.remove('hidden');
       if (!getGeminiKey()) {
@@ -9585,11 +9822,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           const s = buildSessionFromProposal(j.seance, feel);
           html += `<div class="text-[10px] text-slate-400 mt-1">Dans l'app : ${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))}')</div>
           <div class="grid grid-cols-2 gap-2 mt-2">
-            <button onclick="acceptAddProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ Ajouter la séance</button>
+            <button onclick="acceptAddProposal()" class="py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">📅 Ajouter au planning du jour</button>
             <button onclick="closeFeelModal()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Non merci</button>
           </div>`;
         } else if (act === 'musculation' || act === 'velo' || act === 'vélo') {
-          html += `<button onclick="logCrossTraining()" class="w-full mt-2 py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px]">✅ C'est fait : l'enregistrer dans le suivi</button>
+          html += `<button onclick="addCrossProposalToday()" class="w-full mt-2 py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">📅 Ajouter au planning du jour</button>
             <button onclick="createOwnSessionToday()" class="w-full mt-1.5 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Je préfère courir quand même</button>`;
         } else {
           html += `<button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Ajouter quand même une séance de course</button>`;
@@ -9605,7 +9842,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (!Array.isArray(list) || !list.length) return '';
       const items = list.slice(0, 15).map((e, i) => {
         const nom = String(e.nom || e.name || '').replace(/</g, '&lt;');
-        const en = String(e.nom_en || '').replace(/"/g, '');
+        const en = String(e.nom_en || e.nom || '').replace(/"/g, '');
         return `<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-1.5">
           <div class="w-14 h-14 shrink-0 rounded-lg bg-slate-800 overflow-hidden flex items-center justify-center text-xl" data-ex-img="${en}">🏋️</div>
           <div class="flex-1 min-w-0">
@@ -9642,6 +9879,20 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       }
     }
 
+    // Ajoute l'activité proposée (musculation, vélo) au planning du jour
+    function addCrossProposalToday() {
+      const j = addProposal || {};
+      const act = String(j.activite || '').toLowerCase();
+      const feel = Object.assign({}, readFeelForm());
+      appData.dayFeelAdd = feel;
+      const item = { id: `cross_${Date.now()}`, type: act.startsWith('v') ? 'velo' : 'muscu', dateISO: todayISO(), dur: Math.round(+j.duree_min || 30), intensite: 'moderee', detail: String(j.detail || ''), exos: Array.isArray(j.exercices) ? j.exercices.slice(0, 15) : [], titre: String(j.titre || ''), dayFeel: feel };
+      if (!Array.isArray(appData.crossPlan)) appData.crossPlan = [];
+      appData.crossPlan.push(item);
+      saveAppData(); updateHistoryTable();
+      closeFeelModal();
+      renderHome();
+      showSavedBig('Ajouté au planning du jour');
+    }
     // Enregistre une activité croisée (musculation, vélo) dans le suivi
     function logCrossTraining() {
       const j = addProposal || {};
@@ -9896,6 +10147,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     function recordGoalProbability() {
       const p = computeGoalProbability();
       if (!p || p.noData) return;
+      if (appData.goalCoachProb && appData.goalCoachProb.at === todayISO()) return;
       if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
       const t = todayISO();
       appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== t);
@@ -9918,14 +10170,18 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (!p) { if (home) home.classList.add('hidden'); if (box) box.innerHTML = ''; return; }
       if (p.noData) {
         if (home) home.classList.add('hidden');
-        if (box) box.innerHTML = '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
+        const cp0 = appData.goalCoachProb;
+        if (box) box.innerHTML = cp0 ? `<div class="text-2xl font-black text-amber-300">${cp0.pDay} % <span class="text-xs font-bold text-slate-400">le jour J</span></div><div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp0.at)} (pas encore assez de séances pour le calcul de l'app)</div>` : '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
         return;
       }
-      const col = p.pDay >= 70 ? 'text-emerald-300' : p.pDay >= 40 ? 'text-amber-300' : 'text-rose-300';
+      const cp = appData.goalCoachProb && (parseISODateLocal(todayISO()) - parseISODateLocal(appData.goalCoachProb.at)) / 864e5 <= 14 ? appData.goalCoachProb : null;
+      const shown = cp ? cp.pDay : p.pDay;
+      const col = shown >= 70 ? 'text-emerald-300' : shown >= 40 ? 'text-amber-300' : 'text-rose-300';
       const g = appData.goal;
       if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
       if (box) box.innerHTML = `
-        <div class="text-2xl font-black ${col}">${p.pDay} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(p.pDay)}</span></div>
+        <div class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(shown)}</span></div>
+        ${cp ? `<div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp.at)} · calcul de l'app : ${p.pDay} %</div>` : ''}
         <div class="text-[10px] text-slate-300">Si la course était aujourd'hui : <b>${p.pNow} %</b> (temps prédit ${formatMinSec(p.tNow)})</div>
         <div class="text-[10px] text-slate-300">Le jour J, dans ${p.weeks} sem. avec la progression attendue : temps prédit ${formatMinSec(p.tDay)} pour ${formatMinSec(+g.durationMin)} visé</div>
         <div class="text-[10px] text-slate-500">VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}</div>`;
@@ -9944,8 +10200,22 @@ Calcul de l'app : ${p && !p.noData ? `VMA estimée ${p.vma.toFixed(1)} km/h, tem
 Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}. Niveau actuel : ${runnerLevelsText()}.
 Séances récentes :
 ${hist}
-Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabilité de réussite (en %), ce qui la soutient ou la limite, et 2 leviers concrets pour l'augmenter.`;
-      try { out.innerHTML = mdLite(await geminiText([{ text: prompt }], { tier: 'full' })); }
+${backgroundText()}
+Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { tier: 'full', json: true })) || {};
+        const pj = Math.max(1, Math.min(99, Math.round(parseFloat(j.proba_jour_j))));
+        const pa = Math.max(1, Math.min(99, Math.round(parseFloat(j.proba_aujourdhui))));
+        if (pj) {
+          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null };
+          if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
+          appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== todayISO());
+          appData.goalProbHist.push({ d: todayISO(), p: pj });
+          saveAppData();
+          renderGoalProbability();
+        }
+        out.innerHTML = `${mdLite(String(j.avis || ''))}${(j.leviers || []).length ? `<div class="mt-1.5 flex flex-col gap-1">${j.leviers.slice(0, 3).map(l => `<span>👉 ${plEsc(l)}</span>`).join('')}</div>` : ''}`;
+      }
       catch (e) { out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`; }
     }
 
@@ -10108,9 +10378,12 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       const busy = timerState.sessionStarted && !timerState.finished;
       return (appData.sessions.some(s => s.dateISO === t && !isSessionDone(s)) || homeShowNextAnyway || busy) ? 'adapt' : 'add';
     }
-    function feelRecordedToday() {
+    function feelRecordedToday() { return !!curDayFeel(); }
+    function curDayFeel() {
+      const t = todayISO();
+      if (feelMode === 'add') { const f = appData.dayFeelAdd; return f && f.at === t ? f : null; }
       const s = getActiveSession();
-      return !!(s && s.dayFeel && s.dayFeel.at === todayISO());
+      return s && s.dayFeel && s.dayFeel.at === t ? s.dayFeel : null;
     }
     // Met à jour le questionnaire intégré seulement quand le contexte change (sans effacer une saisie en cours)
     function syncFeelPanel(force = false) {
@@ -10158,7 +10431,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
       velo: ['Au choix du coach', 'Récupération', 'Endurance', 'Intervalles', 'Côtes'],
       muscu: ['Au choix du coach', 'Gainage', 'Jambes', 'Haut du corps', 'Corps entier', 'Mobilité']
     };
-    const RUN_TYPES = [['fc', '⚡', 'Fractionné court', '30 s à 1 min vite'], ['fl', '🔥', 'Fractionné long', '3 à 5 min soutenu'], ['seuil', '🎯', 'Seuil', 'Allure tempo'], ['endu', '🌿', 'Endurance', 'Allure facile'], ['longue', '🛣️', 'Sortie longue', 'Plus d\'1 h tranquille'], ['cotes', '⛰️', 'Côtes', 'Montées et récups'], ['recup', '🫧', 'Récupération', 'Très facile']];
+    const RUN_TYPES = [['fc', '⚡', 'Fractionné court', '30 s à 1 min vite'], ['fl', '🔥', 'Fractionné long', '3 à 5 min soutenu'], ['seuil', '🎯', 'Seuil', 'Allure tempo'], ['endu', '🌿', 'Endurance', 'Allure facile'], ['longue', '🛣️', 'Sortie longue', 'Plus d\'1 h tranquille'], ['cotes', '⛰️', 'Côtes', 'Montées et récups'], ['recup', '🫧', 'Récupération', 'Très facile'], ['course', '🏁', 'Course', 'Compétition']];
     function wheelHtml(id, vals, cur, fmt) {
       return `<div class="wheel-box"><div class="wheel" id="${id}" onscroll="wheelScroll('${id}')">${vals.map(v => `<div data-v="${v}" class="${v === cur ? 'sel' : ''}" onclick="this.parentNode.scrollTo({top:${vals.indexOf(v)}*44,behavior:'smooth'})">${fmt(v)}</div>`).join('')}</div></div>`;
     }
@@ -10246,7 +10519,8 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
         endu: { repet: 1, segs: [{ v: ef, d: 40 }] },
         longue: { repet: 1, segs: [{ v: ef, d: 70 }] },
         cotes: { repet: 8, pente: 5, segs: [{ v: r5(ef + 0.5), d: 1 }, { v: rec, d: 1.5 }] },
-        recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] }
+        recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] },
+        course: (() => { const g = appData.goal || {}; const km = parseFloat(g.distanceKm) || 10, mn = parseFloat(g.durationMin) || km / (ef + 2.5) * 60; return { repet: 1, segs: [{ v: Math.round(km / mn * 600) / 10, d: Math.round(mn * 10) / 10 }] }; })()
       }[k];
       if (T) { f.repet = T.repet; f.segs = T.segs; if (T.pente !== undefined && act.type === 'tapis') f.pente = T.pente; if (T.chauffe !== undefined) f.chauffe = T.chauffe; if (T.recup !== undefined) f.recup = T.recup; }
       act.runType = k;
@@ -10304,6 +10578,14 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
           <label class="pm-lbl">Déroulé<textarea id="af_detail" rows="6" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="ex. 10' facile, 3 × 8' tempo, 5' retour au calme">${actEsc(f.detail)}</textarea></label>
         </div>`;
       }
+      if (!act.editExos) {
+        return `<div class="pm-card">
+          <label class="pm-lbl">Durée (min)<input id="af_dur" type="number" class="pm-in c" value="${f.dur}" style="width:120px"></label>
+          ${f.detail ? `<div class="text-[13px] text-slate-200 leading-relaxed">${mdLite(f.detail)}</div>` : ''}
+          ${exercisesHtml(f.exos.filter(e => e.nom))}
+          <button onclick="actReadForm();act.editExos=true;renderAct()" class="pm-btn">✏️ Modifier les exercices</button>
+        </div>`;
+      }
       return `<div class="pm-card">
           <label class="pm-lbl">Durée (min)<input id="af_dur" type="number" class="pm-in c" value="${f.dur}" style="width:120px"></label>
           <span class="pm-cap" style="margin-top:4px">Exercices</span>
@@ -10315,6 +10597,7 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
             </div>`).join('')}
           <button onclick="actReadForm();act.form.exos.push({nom:'',nom_en:'',dosage:'3 × 12'});renderAct()" class="pm-btn">+ Ajouter un exercice</button>
           <label class="pm-lbl">Consignes<textarea id="af_detail" rows="3" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="ex. 45 s de récup entre les séries">${actEsc(f.detail)}</textarea></label>
+          <button onclick="actReadForm();act.editExos=false;renderAct()" class="pm-btn" style="border-color:rgba(52,211,153,.5);color:#6ee7b7">✓ Terminer la modification</button>
         </div>`;
     }
     function actReadForm() {
@@ -10348,7 +10631,8 @@ Donne en français, en tutoyant, 120 mots maximum : ton estimation de la probabi
         type: act.type, pente: act.type === 'tapis' ? (f.pente || 0) : 0, chauffe: Math.max(0, f.chauffe), recup: Math.max(0, f.recup),
         repet: f.repet, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(),
         pyramide: f.segs.filter(sg => sg.v > 0 && sg.d > 0).map(sg => ({ speed: sg.v, duration: round2(sg.d), unit: 'min' })),
-        notes: act.prop && act.prop.titre ? String(act.prop.titre) : ''
+        notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : ''),
+        kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course' }[act.runType] || undefined
       };
     }
     function actFormText() {
@@ -11132,7 +11416,14 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         const hasToday = appData.sessions.some(s => s.dateISO === t && !isSessionDone(s));
         const doneToday = appData.sessions.some(s => s.dateISO === t && isSessionDone(s));
         { const rt = document.getElementById('homeRestTitle'), rx = document.getElementById('homeRestText');
-          if (rt) rt.textContent = doneToday ? '✅ Séance du jour faite' : "😴 Repos aujourd'hui";
+          const ct = (appData.crossPlan || []).filter(c => c.dateISO === t);
+          const cbox = document.getElementById('homeCrossToday');
+          if (cbox) cbox.innerHTML = ct.map(c => { const T = ACT_TYPES[c.type] || {}; return `<div class="flex items-center gap-3 p-3 rounded-2xl" style="background:${T.color}14;border:1px solid ${T.color}66">
+              <span class="text-2xl">${T.icon || '🏋️'}</span>
+              <div class="flex-1 min-w-0"><div class="text-[15px] font-extrabold text-white truncate">${plEsc(c.titre || T.label)}</div><div class="text-[12px] text-slate-400">${c.dur || '?'} min${c.exos && c.exos.length ? ` · ${c.exos.length} exercices` : ''}</div></div>
+              <button onclick="startCrossActivity('${c.id}')" class="shrink-0 px-4 py-2.5 rounded-xl font-black text-[13px]" style="background:${T.color};color:#04121f">▶ Lancer</button>
+            </div>`; }).join('');
+          if (rt) rt.textContent = ct.length && !doneToday ? `📅 Au programme aujourd'hui` : doneToday ? '✅ Séance du jour faite' : "😴 Repos aujourd'hui";
           if (rx) rx.textContent = doneToday ? 'Bravo ! Pense à bien récupérer : hydratation, repas, sommeil.' : "Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course."; }
         const busy = timerState.sessionStarted && !timerState.finished;
         const showRest = !hasToday && !busy && !homeShowNextAnyway;
@@ -11157,6 +11448,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE LA SÉANCE' : "C'EST PARTI !";
+      { const sb = document.getElementById('homeScriptBtn'); if (sb) sb.classList.toggle('hidden', !!inProgress || !!sess.free); }
       const goal = appData.goal || {};
       const g = document.getElementById('homeGoal');
       if (g) g.textContent = goal.distanceKm ? `🎯 Objectif : ${goal.distanceKm} km en ${goal.durationMin} min le ${goal.date}` : '';
