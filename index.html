@@ -814,8 +814,9 @@
           <div class="pm-card" style="border-color:rgba(52,211,153,.4)">
             <span class="pm-cap" style="color:#6ee7b7">Mon plan actuel</span>
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
+            <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'), true)" class="pm-btn" style="height:48px;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800;font-size:14px">📝 Ma pratique avant l'app</button>
+            <div class="flex flex-col gap-1"><span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Style du plan</span><div id="planStyleChips" class="grid grid-cols-2 gap-2"></div></div>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
-            <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'))" class="self-start text-[12px] font-bold text-sky-300">📝 Ma pratique avant l'app</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
           </div>
@@ -1164,6 +1165,7 @@
         </div>
         <button onclick="closeScriptModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white"><span class="icon-slot" data-icon="x"></span></button>
       </div>
+      <p class="text-[11px] text-slate-500 -mt-1">Les indications GPS, les bilans de km et le décompte 3, 2, 1 ne sont pas listés mais seront bien dits pendant la séance.</p>
       <p class="text-[10px] text-slate-400 hidden">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
       <div id="scriptList" class="flex-1 overflow-y-auto custom-scroll pr-1 min-h-0"></div>
       <div id="scriptOptsWrap" class="hidden fixed inset-0 z-[80] flex flex-col" style="background:#050a16">
@@ -5668,7 +5670,20 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       return (appData.sessions || []).filter(s => s && (!s.free || s.plannedFree) && s.dateISO && s.dateISO >= t && !isSessionDone(s))
         .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
     }
+    function planStyle() { return appData.planStyle || 'ambitieux'; }
+    function planStyleText() {
+      return planStyle() === 'ambitieux'
+        ? "Style de plan choisi par le coureur : AMBITIEUX. Ne bride pas les vitesses : si le coureur est capable de courir à une vitesse (ou sur une pente forte), utilise dès le début des allures réalistes et exigeantes (VMA, seuil, allure spécifique, côtes à forte pente) ; ajuste la charge par la durée des efforts et le nombre de répétitions, pas en ralentissant. Les courbatures et tiraillements musculaires légers en début de plan sont normaux (adaptation) et ne justifient pas d'alléger ; seule une douleur articulaire, tendineuse ou qui fait boiter le justifie. Le plan doit rester stimulant, pas ennuyeux."
+        : "Style de plan choisi par le coureur : PROGRESSIF. Commence avec des allures modérées et augmente progressivement vitesses et volume, avec prudence.";
+    }
+    function setPlanStyle(v) { appData.planStyle = v; saveAppData(); renderPlanStyleChips(); }
+    function renderPlanStyleChips() {
+      const b = document.getElementById('planStyleChips'); if (!b) return;
+      const cur = planStyle();
+      b.innerHTML = [['ambitieux', '🚀 Ambitieux', 'Vitesses élevées dès le début, on dose par la durée et les répétitions'], ['progressif', '🌱 Progressif', 'Allures modérées au début, montée en douceur']].map(([v, l, d]) => `<button type="button" onclick="setPlanStyle('${v}')" class="rounded-xl p-2.5 text-left flex flex-col gap-0.5" style="${v === cur ? 'background:rgba(52,211,153,.15);border:2px solid #34d399' : 'background:#0f172a;border:1px solid #334155'}"><span class="text-[13px] font-extrabold text-white">${l}</span><span class="text-[11px] text-slate-400 leading-tight">${d}</span></button>`).join('');
+    }
     function renderPlanSummary() {
+      renderPlanStyleChips();
       const el = document.getElementById('planSummaryLine');
       if (!el) return;
       const up = upcomingPlanSessions();
@@ -5717,19 +5732,27 @@ ${backgroundText()}${cross ? `\nActivités complémentaires prévues :\n${cross}
 Jours habituels de course : ${planDays().map(i => jours[i]).join(', ') || '?'}.${offDaysText() ? `\nJours sans sport prévus (aucune séance ces jours-là) : ${offDaysText()}.` : ''}${(document.getElementById('coachCustomInstructions')?.value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Plan à venir (référence | date | lieu | durée | contenu hors échauffement et retour au calme | notes) :
 ${lines}
-Vérifie : cohérence avec l'objectif (allures spécifiques, sortie longue suffisante), progression du volume (pas plus de +10 % par semaine), semaines allégées, équilibre intensité / endurance, variété des séances (endurance, seuil, fractionné, côtes, sortie longue, tests), récupération entre séances dures, affûtage avant la course, adaptation au niveau actuel. Ne considère pas que le coureur part de zéro s'il déclare une pratique avant l'app.
+Allures de référence à utiliser : VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) + ' km/h' : '?'; } catch (e) { return '?'; } })()}, allure objectif ${g.distanceKm && g.durationMin ? formatSpeed(Math.round(g.distanceKm / g.durationMin * 600) / 10) + ' km/h' : '?'}, endurance ${formatSpeed(runnerEF())} km/h.
+${planStyleText()}
+Fais une VRAIE analyse de coach, détaillée, semaine par semaine jusqu'à la course (pas seulement les premières semaines ni jusqu'au prochain test) :
+- volume hebdomadaire (km, nombre de séances) et sa progression (+5 à +10 % par semaine, une semaine allégée toutes les 3 à 4) ;
+- répartition des types : travail VMA (30/30, 200-400 m, 1-3 min à 95-100 % VMA), seuil (blocs de 6 à 20 min à 85-88 % VMA), allure spécifique objectif, sortie longue, endurance, côtes, récupération ;
+- présence et progression des séances clés pour l'objectif (allure spécifique de plus en plus longue, sortie longue suffisante pour la distance) ;
+- récupération entre séances dures, affûtage les 7 à 10 derniers jours, tests bien placés.
+Corrige activement : change le type d'une séance quand c'est utile (ex. un fractionné → seuil, ou endurance → VMA courte), ajoute une séance si la fréquence est trop faible pour l'objectif, ajuste vitesses / durées / répétitions. Ne considère pas que le coureur part de zéro s'il déclare une pratique avant l'app.
 Prochaine course : ${nextRace || '?'}. Tu peux corriger tout le plan jusqu'à cette course, sans limite : modifier autant de séances que nécessaire (y compris toutes), changer leur type pour varier, en supprimer, ou en ajouter (course à pied, vélo ou renforcement musculaire).
 Format JSON strict :
-{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["2 à 3 constats très courts"],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
+{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["4 à 6 constats précis et chiffrés (volume, types, allures, progression)"],"semaines":[{"debut":"AAAA-MM-JJ","km":25,"seances":3,"commentaire":"une phrase : rôle de la semaine et ce qui va ou non"}],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
 Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. Pas de limite au nombre de modifications ; les plus importantes d'abord. "activite" = "course" par défaut ; pour "velo" ou "renfo", seulement avec "ajouter" (session : dateISO, duree_min, titre, detail). "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
       const btn = document.getElementById('planAnaBtn'); if (btn) btn.disabled = true;
-      say("🧠 Le coach étudie ton plan… (20 à 60 s)");
+      say('');
+      st.innerHTML = '<div class="flex items-center gap-3 py-3 px-3 rounded-xl" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.4)"><div class="animate-spin shrink-0" style="width:26px;height:26px;border-radius:50%;border:3px solid #475569;border-top-color:#a78bfa"></div><div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Le coach analyse ton plan…</span><span class="text-[12px] text-slate-400">Semaine par semaine jusqu\'à la course : 30 s à 2 min</span></div></div>';
       try {
         const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const j = parseJsonLoose(txt) || {};
         const mods = parseCoachMods(j.modifications, refs, null, 100000);
         const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
-        planReview = { at: todayISO(), verdict, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 3).map(String), mods, done: false };
+        planReview = { at: todayISO(), verdict, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 6).map(String), weeks: (Array.isArray(j.semaines) ? j.semaines : []).slice(0, 40).map(w => ({ d: String(w.debut || ''), km: Math.round(+w.km || 0), n: Math.round(+w.seances || 0), c: String(w.commentaire || '') })), mods, done: false };
         appData.planReview = planReview; saveAppData();
         say('');
         renderPlanReview();
@@ -5745,7 +5768,8 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
       if (!pr || pr.done) { box.classList.add('hidden'); box.innerHTML = ''; return; }
       const C = { ok: ['#34d399', 'rgba(52,211,153,.12)', '✅ Plan validé'], ajuster: ['#fb923c', 'rgba(251,146,60,.12)', '🛠️ À ajuster'], revoir: ['#fb7185', 'rgba(251,113,133,.12)', '⚠️ À revoir'] }[pr.verdict];
       const mods = coachModsHtml(pr, 'planReview', 'renderPlanReviewFoot');
-      box.innerHTML = coachVerdictHtml(C, pr.titre, pr.points) + (mods ? `<span class="pm-cap" style="margin-top:4px">Modifications proposées</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="planAnaFoot" class="flex flex-col gap-2"></div>';
+      const wk = (pr.weeks || []).length ? `<details class="rounded-xl" style="background:#0b1220;border:1px solid #1e293b"><summary class="px-3 py-2.5 text-[13px] font-extrabold text-sky-200 cursor-pointer">📅 Analyse semaine par semaine (${pr.weeks.length})</summary><div class="flex flex-col gap-1.5 px-3 pb-3">${pr.weeks.map(w => `<div class="flex flex-col gap-0.5 py-1.5" style="border-top:1px solid #1e293b"><span class="text-[12px] font-extrabold text-white">${w.d ? `Sem. du ${fmtDateShort(w.d)}` : 'Semaine'} · ${w.km} km · ${w.n} séance${w.n > 1 ? 's' : ''}</span><span class="text-[12px] text-slate-400">${plEsc(w.c)}</span></div>`).join('')}</div></details>` : '';
+      box.innerHTML = coachVerdictHtml(C, pr.titre, pr.points) + wk + (mods ? `<span class="pm-cap" style="margin-top:4px">Modifications proposées</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="planAnaFoot" class="flex flex-col gap-2"></div>';
       box.classList.remove('hidden');
       renderPlanReviewFoot();
     }
@@ -6063,6 +6087,7 @@ Niveau actuel (temps possibles aujourd'hui) : ${runnerLevelsText()}.
 Séances récentes :
 ${hist}
 ${backgroundText()}
+${planStyleText()}
 Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
 {"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}]}
@@ -9106,8 +9131,10 @@ ${analysisFormatPrompt()}`;
       scriptRows = s.rows;
       const fmt = sec => { const s = Math.round(sec); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
       document.getElementById('scriptInfo').textContent =
-        `${scriptRows.length} annonces • ${fmt(s.totalT)} • ${s.totalKm.toFixed(2)} km${s.outdoor ? (s.hasRoute ? ' • parcours GPX simulé à la vitesse prévue' : ' • GPS simulé (sans parcours)') : ' • tapis'}`;
-      document.getElementById('scriptList').innerHTML = scriptRows.map((r, i) => `
+        `${scriptRows.filter(r => !(r.gps || (r.pieces.length === 1 && [1, 2, 3].some(n => r.pieces[0] === VT().count[n])))).length} annonces affichées • ${fmt(s.totalT)} • ${s.totalKm.toFixed(2)} km${s.outdoor ? (s.hasRoute ? ' • parcours GPX simulé à la vitesse prévue' : ' • GPS simulé (sans parcours)') : ' • tapis'}`;
+      const hideRow = r => r.gps || (r.pieces.length === 1 && [1, 2, 3].some(n => r.pieces[0] === VT().count[n]));
+      scriptRows.forEach(r => { r.hidden = hideRow(r); });
+      document.getElementById('scriptList').innerHTML = scriptRows.map((r, i) => r.hidden ? '' : `
         <div id="scriptRow${i}" class="flex items-start gap-2 py-1.5 border-b border-slate-800 ${r.gps ? 'text-emerald-200' : r.info ? 'text-slate-500 italic' : 'text-slate-200'}">
           <span class="font-mono text-[11px] text-sky-300 shrink-0 w-11">${fmt(r.t)}</span>
           ${s.outdoor ? `<span class="font-mono text-[10px] text-slate-500 shrink-0 w-12">${r.km.toFixed(2)} km</span>` : ''}
@@ -9131,7 +9158,7 @@ ${analysisFormatPrompt()}`;
       const rep = { jamais: "court sans interruption", m1: "a repris il y a moins d'un mois", m3: 'a repris il y a 1 à 3 mois', m6: 'a repris il y a 3 à 6 mois', m12: 'a repris il y a 6 à 12 mois', plus: 'a repris il y a plus d\'un an', debut: 'débute la course à pied' }[b.reprise] || '';
       return `Pratique avant l'app (déclarée par le coureur) : ${[rep, b.freq ? `${b.freq} sorties par semaine` : '', b.km ? `${b.km} km par semaine` : '', b.longest ? `sortie la plus longue récente ${b.longest} km` : '', b.note || ''].filter(Boolean).join(', ')}.${b.summary ? ` Résumé des captures de sorties : ${b.summary}` : ''}`;
     }
-    function renderBackgroundForm(box) {
+    function renderBackgroundForm(box, manual) {
       const b = appData.runBackground || {};
       bgShots = [];
       box.innerHTML = `<div class="flex flex-col gap-2 p-3 rounded-2xl" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.4)">
@@ -9147,7 +9174,10 @@ ${analysisFormatPrompt()}`;
           <label class="pm-btn flex items-center justify-center cursor-pointer" style="border-color:rgba(56,189,248,.5);color:#7dd3fc">📷 Ajouter des captures de mes sorties (optionnel)
             <input type="file" accept="image/*" multiple class="hidden" onchange="addBgShots(this)"></label>
           <div id="bgShotsInfo" class="text-[12px] text-sky-300"></div>
-          <button onclick="saveBackgroundAndAnalyze()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">Continuer l'analyse</button>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="saveBackgroundOnly()" class="pm-btn" style="height:48px;border:none;background:#38bdf8;color:#04121f;font-weight:800;font-size:14px">💾 Enregistrer</button>
+            <button onclick="saveBackgroundAndAnalyze()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">${manual ? '🔎 Enregistrer et analyser' : "Continuer l'analyse"}</button>
+          </div>
         </div>`;
       box.classList.remove('hidden');
     }
@@ -9156,7 +9186,16 @@ ${analysisFormatPrompt()}`;
       input.value = '';
       document.getElementById('bgShotsInfo').textContent = bgShots.length ? `${bgShots.length} capture${bgShots.length > 1 ? 's' : ''} ajoutée${bgShots.length > 1 ? 's' : ''}` : '';
     }
+    async function saveBackgroundOnly() {
+      await storeBackground();
+      const box = document.getElementById('planAnaBox'); if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+      showSavedBig('Pratique enregistrée');
+    }
     async function saveBackgroundAndAnalyze() {
+      await storeBackground();
+      analyzePlanWithCoach(true);
+    }
+    async function storeBackground() {
       const v = id => (document.getElementById(id) || {}).value || '';
       const prev = appData.runBackground || {};
       appData.runBackground = { at: todayISO(), reprise: v('bgReprise'), freq: parseFloat(v('bgFreq')) || 0, km: parseFloat(v('bgKm')) || 0, longest: parseFloat(v('bgLong')) || 0, note: v('bgNote').trim(), summary: prev.summary || '' };
@@ -9171,7 +9210,6 @@ ${analysisFormatPrompt()}`;
         } catch (e) { }
       }
       bgShots = [];
-      analyzePlanWithCoach(true);
     }
 
     // ==================== SCRIPT DE LA SÉANCE AVANT LE DÉPART ====================
@@ -9229,7 +9267,7 @@ ${analysisFormatPrompt()}`;
         const el = (Date.now() - scriptDl.t0) / 1000, gen = Math.max(0, d - scriptDl.d0), left = Math.max(0, tot - d);
         const eta = gen > 0 ? el / gen * left : scriptDl.est;
         f.innerHTML = `<div class="flex items-center justify-center gap-3 py-3 rounded-xl bg-slate-800 border border-slate-700">
-            <div class="w-6 h-6 rounded-full border-[3px] border-slate-600 border-t-purple-400 animate-spin"></div>
+            <div class="animate-spin shrink-0" style="width:26px;height:26px;border-radius:50%;border:3px solid #475569;border-top-color:#a78bfa"></div>
             <div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Téléchargement des voix… ${tot ? `${d}/${tot}` : ''}</span><span class="text-[12px] text-slate-400">${left ? `≈ ${eta < 60 ? Math.max(5, Math.round(eta / 5) * 5) + ' s' : Math.round(eta / 60) + ' min'} restante${eta >= 120 ? 's' : ''}` : 'Finalisation…'}</span></div>
           </div>`;
         return;
@@ -9303,7 +9341,7 @@ ${analysisFormatPrompt()}`;
       aiUnlock();
       document.getElementById('scriptPlayBtn').textContent = '⏹ Arrêter';
       for (let i = 0; i < scriptRows.length && scriptPlaying; i++) {
-        if (scriptRows[i].info) continue;
+        if (scriptRows[i].info || scriptRows[i].hidden) continue;
         playScriptRow(i);
         await sleep(300);
         while (scriptPlaying && isSpeaking()) await sleep(150);
@@ -9525,7 +9563,7 @@ Mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.
 Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionHuman(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h.
 Détail JSON : {"chauffe":${base.chauffe},"recup":${base.recup},"repet":${base.repet},"nbBlocs":${base.nbBlocs || 1},"recupBloc":${base.recupBloc || 0},"vitRecupBloc":${base.vitRecupBloc || 6},"pente":${base.pente},"segments":[${segs}]}
-${guideText(base)} Si tu adaptes, reste dans l'esprit de ces adaptations chiffrées et préserve l'essentiel de la séance.
+${guideText(base)} ${planStyle() === 'ambitieux' ? "Le coureur préfère un entraînement exigeant : en cas de simple fatigue musculaire ou courbatures, garde les vitesses et réduis plutôt le nombre de répétitions ou la durée ; n'allège fortement qu'en cas de douleur articulaire/tendineuse, maladie ou grosse fatigue." : ''} Si tu adaptes, reste dans l'esprit de ces adaptations chiffrées et préserve l'essentiel de la séance.
 Séances récentes :
 ${hist}
 Prochaines séances :
@@ -9763,7 +9801,11 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const A = GUIDE_ADAPT[k];
       const lbl = { fatigue: ['😫 Fatigué', '#fb7185'], moyen: ['😐 Moyen', '#fbbf24'], forme: ['💪 En forme', '#34d399'] };
       if (A) ['fatigue', 'moyen', 'forme'].forEach(f => {
-        const prm = A[f](G.reps);
+        const prm = Object.assign({}, A[f](G.reps));
+        if (planStyle() === 'ambitieux' && ['fractionne', 'pyramide', 'seuil', 'cotes'].includes(k) && prm.v < 0) {
+          delete prm.v;
+          if (!prm.rep && !prm.dur) prm.dur = f === 'fatigue' ? 0.75 : 0.85;
+        }
         const ns = guideApplyParams(s, prm);
         const ch = guideDiff(s, ns, k);
         adapts.push({ key: f, label: lbl[f][0], color: lbl[f][1], changes: ch.length ? ch : [f === 'forme' && k === 'recup' ? 'Ne pas allonger : la récupération reste la priorité' : 'Séance telle quelle'], session: ch.length ? ns : null });
@@ -10455,7 +10497,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (p.noData) {
         if (home) home.classList.add('hidden');
         const cp0 = appData.goalCoachProb;
-        if (box) box.innerHTML = cp0 ? `<div class="text-2xl font-black text-amber-300">${cp0.pDay} % <span class="text-xs font-bold text-slate-400">le jour J</span></div><div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp0.at)} (pas encore assez de séances pour le calcul de l'app)</div>` : '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
+        if (box) box.innerHTML = cp0 ? `<div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black text-amber-300">${cp0.pDay} % <span class="text-xs font-bold text-slate-400">le jour J</span></span>${cp0.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp0.tMin)}${cp0.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp0.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div><div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp0.at)} (pas encore assez de séances pour le calcul de l'app)</div>` : '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
         return;
       }
       const cp = appData.goalCoachProb && (parseISODateLocal(todayISO()) - parseISODateLocal(appData.goalCoachProb.at)) / 864e5 <= 14 ? appData.goalCoachProb : null;
@@ -10464,7 +10506,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const g = appData.goal;
       if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
       if (box) box.innerHTML = `
-        <div class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(shown)}</span></div>
+        <div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(shown)}</span></span>${cp && cp.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp.tMin)}${cp.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div>
         ${cp ? `<div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp.at)} · calcul de l'app : ${p.pDay} %</div>` : ''}
         <div class="text-[10px] text-slate-300">Si la course était aujourd'hui : <b>${p.pNow} %</b> (temps prédit ${formatMinSec(p.tNow)})</div>
         <div class="text-[10px] text-slate-300">Le jour J, dans ${p.weeks} sem. avec la progression attendue : temps prédit ${formatMinSec(p.tDay)} pour ${formatMinSec(+g.durationMin)} visé</div>
@@ -10485,13 +10527,17 @@ Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().a
 Séances récentes :
 ${hist}
 ${backgroundText()}
-Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
+Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { tier: 'full', json: true })) || {};
         const pj = Math.max(1, Math.min(99, Math.round(parseFloat(j.proba_jour_j))));
         const pa = Math.max(1, Math.min(99, Math.round(parseFloat(j.proba_aujourdhui))));
         if (pj) {
-          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null };
+          let cm = parseFloat(String(j.chrono_estime_min).replace(',', '.')), kv = parseFloat(String(j.vitesse_estimee_kmh).replace(',', '.'));
+          const D = parseFloat(g.distanceKm) || 0;
+          if (!(cm > 0) && kv > 0 && D) cm = D / kv * 60;
+          if (!(kv > 0) && cm > 0 && D) kv = D / (cm / 60);
+          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null };
           if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
           appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== todayISO());
           appData.goalProbHist.push({ d: todayISO(), p: pj });
