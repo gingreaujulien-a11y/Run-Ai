@@ -294,6 +294,10 @@
       <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
       <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeSessDesc" class="text-sm text-slate-200 leading-snug"></div>
+      <div id="homeGuide" class="hidden">
+        <button onclick="toggleHomeGuide()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[13px] font-extrabold text-sky-100" style="background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4)"><span id="homeGuideHead">🎯 Objectif · ⚖️ adapter selon ma forme</span><span id="homeGuideArrow">▾</span></button>
+        <div id="homeGuideBody" class="hidden mt-2"></div>
+      </div>
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       <div class="flex gap-2 mt-2">
@@ -1162,7 +1166,13 @@
       </div>
       <p class="text-[10px] text-slate-400 hidden">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
       <div id="scriptList" class="flex-1 overflow-y-auto custom-scroll pr-1 min-h-0"></div>
-      <div id="scriptOptsWrap" class="hidden max-h-[45vh] overflow-y-auto custom-scroll bg-slate-950 border border-slate-800 rounded-2xl p-3"><span class="text-[13px] font-extrabold text-white block mb-1">⚙️ Annonces à inclure</span><div id="scriptOpts"></div></div>
+      <div id="scriptOptsWrap" class="hidden fixed inset-0 z-[80] flex flex-col" style="background:#050a16">
+        <div class="flex items-center justify-between gap-3" style="padding:20px 18px 10px">
+          <span class="text-[22px] font-extrabold text-white">⚙️ Modifier les annonces</span>
+          <button onclick="applyScriptToggles(); saveAppData(); document.getElementById('scriptOptsWrap').classList.add('hidden')" aria-label="Fermer" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8"><span class="icon-slot" data-icon="x"></span></button>
+        </div>
+        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:4px 18px 24px"><span class="text-[12px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Annonces à inclure</span><div id="scriptOpts"></div></div>
+      </div>
       <div id="scriptFoot" class="flex flex-col gap-2"></div>
     </div>
   </div>
@@ -1889,7 +1899,7 @@
         else if (maxS === minS || v > avg) st.intensity = 'fast';
         else if (v === minS && st.durationSec <= 180) st.intensity = 'easy'; // une vraie récup, pas un long palier tempo
         else st.intensity = 'normal';
-        st.isPeak = st.type === 'palier' && maxS > minS && v === maxS;
+        st.isPeak = st.type === 'palier' && maxS > minS && v === maxS && new Set(pal).size >= 3 && !st.isRepStart;
         if (st.isFree) { st.intensity = 'normal'; st.isPeak = false; }
       });
       timerState.totalSessionMs = stages.reduce((a, st) => a + st.durationSec * 1000, 0);
@@ -2351,6 +2361,7 @@
         t.half.forEach(x => set.add(x));
         timerState.stages.forEach(st => { if (halfAlertApplies(st)) halfPhraseList(st).forEach(x => set.add(x)); });
         if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 60)) t.warm.forEach(x => set.add(x));
+        if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 120)) set.add(warmEndText());
         timerState.stages.forEach((st, i) => {
           if (i === 0) set.add(stagePhrase(st, 'label'));
           else { set.add(stagePhrase(st, 'prep')); set.add(stagePhrase(st, 'goS')); goExtras(st).forEach(x => set.add(x)); }
@@ -3442,7 +3453,9 @@
 
     // Tirage sans répéter la phrase précédente
     const lastPicked = {};
+    function warmEndText() { return appData.audioSettings.voiceLang === 'en' ? 'Warm-up almost done, get ready to start the session.' : "On a bientôt fini l'échauffement, prépare-toi à attaquer la séance."; }
     function phraseList(kind) {
+      if (kind === 'warmEnd') return [warmEndText()];
       const t = VT();
       // En côte, on mélange des conseils de technique aux encouragements
       const name = runnerFirstName();
@@ -3463,9 +3476,26 @@
       return t[kind] || [];
     }
     let lastBoostNamed = false;
-    // Tirage sans répéter les dernières phrases du même type
-    function pickNoRepeat(kind) {
-      const arr = phraseList(kind);
+    // Une même phrase d'encouragement : 2 fois maximum par séance
+    let phraseUse = new Map(), pickAtSec = null;
+    function sessElapsedSec() { return Math.max(0, ((timerState.totalSessionMs || 0) - (timerState.totalRemainingMs || 0)) / 1000); }
+    function phraseUsedCount(txt) { return (phraseUse.get(txt) || []).length; }
+    function notePhraseUse(txt) { const at = pickAtSec !== null ? pickAtSec : sessElapsedSec(); const a = phraseUse.get(txt) || []; a.push(at); phraseUse.set(txt, a); }
+    function resetPhraseUse() { phraseUse = new Map(); }
+    const PICK_FALLBACK = { push: ['boost', 'mental', 'fast'], boost: ['fast', 'push', 'mental'], mental: ['boost', 'push'], fast: ['boost', 'push'], easy: ['praise'], praise: ['easy'] };
+    function pickNoRepeat(kind, depth = 0) {
+      const all = phraseList(kind);
+      if (kind === 'warmEnd') return all[0] || '';
+      const arr = all.filter(x => phraseUsedCount(x) < 2);
+      if (!arr.length) {
+        if (depth === 0) for (const k of (PICK_FALLBACK[kind] || [])) { const x = pickNoRepeat(k, 1); if (x) return x; }
+        return '';
+      }
+      const choice0 = pickNoRepeatRaw(kind, arr);
+      if (choice0) notePhraseUse(choice0);
+      return choice0;
+    }
+    function pickNoRepeatRaw(kind, arr) {
       if (!arr.length) return '';
       if (arr.length < 2) return arr[0];
       const recent = lastPicked[kind] || [];
@@ -3489,7 +3519,7 @@
       });
     }
     // Réglages des encouragements : fréquence et moments où insister
-    const ENC_FOCUS = [['fastEnd', '🔥 Fin des segments rapides'], ['fastStart', '🚀 Début des segments rapides'], ['lastReps', '💪 Dernières séries'], ['recup', '🫧 Pendant les récups'], ['longRun', '🌿 Allure régulière (endurance)']];
+ const ENC_FOCUS = [['fastEnd', '🔥 Fin des segments rapides'], ['lastReps', '💪 Dernières séries'], ['recup', '🫧 Pendant les récups'], ['longRun', '🌿 Allure régulière (endurance)']];
     function encFreq() { const v = appData.audioSettings.encFreq; return v === undefined ? 'auto' : v; }
     function encFocus() { return Array.isArray(appData.audioSettings.encFocus) ? appData.audioSettings.encFocus : []; }
     function computeExtraPointsRaw(st) {
@@ -3503,10 +3533,10 @@
       const late = st.type === 'palier' && st.totalReps >= 2 && st.repIndex >= st.totalReps - (st.totalReps >= 3 ? 1 : 0);
       const isRec = st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy';
       let p = fq === 'moins' ? base.filter(q => q.kind === 'push' || q.kind === 'praise' || (q.kind === 'mental' && late)) : base.slice();
-      const add = (t, kind) => { if (t >= 4000 && d - t >= 6500 && !p.some(q => Math.abs(q.t - t) < 5000)) p.push({ t, kind }); };
+      const add = (t, kind) => { if (t >= (fast ? Math.min(15000, d * 0.4) : 4000) && d - t >= 6500 && !p.some(q => Math.abs(q.t - t) < 5000)) p.push({ t, kind }); };
       // Moments où insister
       if (fc.includes('fastEnd') && fast) { add(d - 22000, 'push'); add(d - 12000, late ? 'mental' : 'push'); }
-      if (fc.includes('fastStart') && fast) add(5000, 'fast');
+
       if (fc.includes('lastReps') && fast && late) { add(d * 0.4, 'mental'); add(d * 0.75, 'mental'); }
       if (fc.includes('recup') && isRec && st.type !== 'recup') { add(Math.min(8000, d / 3), 'easy'); if (d > 60000) add(d * 0.6, 'easy'); }
       if (fc.includes('longRun') && !fast && !isRec && d >= 240000) for (let x = 90000; x < d - 30000; x += 150000) add(x, 'praise');
@@ -3520,6 +3550,11 @@
       return p.sort((a, b) => a.t - b.t);
     }
     function computeExtraPointsBase(st) {
+      const out = computeExtraPointsBase0(st);
+      // Pas d'encouragement dans les 15 premières secondes d'un segment rapide
+      return st && st.intensity === 'fast' && st.type === 'palier' ? out.filter(q => q.t >= Math.min(15000, st.durationSec * 1000 * 0.4)) : out;
+    }
+    function computeExtraPointsBase0(st) {
       if (!st) return [];
       const d = st.durationSec * 1000;
       const p = [];
@@ -3544,9 +3579,10 @@
       }
       // Échauffement : consignes de départ tranquille (pas les conseils de course)
       if (st.type === 'chauffe') {
-        for (let x = 75000; x < d - 25000; x += 210000) {
+        for (let x = 75000; x < Math.min(d - 75000, d / 2 - 25000); x += 210000) {
           if (Math.abs(x - d / 2) > 25000) p.push({ t: x, kind: 'warm' });
         }
+        if (d >= 120000) p.push({ t: d - 60000, kind: 'warmEnd' });
         return p.sort((a, b) => a.t - b.t);
       }
       // Segments longs : un conseil du coach toutes les 5 min (première à 2 min), pas pendant le retour au calme
@@ -3775,6 +3811,7 @@
       scheduleAudioSuspend();
 
       const fresh = !timerState.sessionStarted;
+      if (fresh) resetPhraseUse();
       timerState.stopped = false;
       timerState.sessionStarted = true;
       timerState.isRunning = true;
@@ -3911,23 +3948,23 @@
       // Encouragements / conseils de récup, sans chevaucher les autres annonces
       if (f.extra && f.extra.length) {
         const pt = f.extra[0];
-        if (appData.audioSettings.encouragements === false) {
-          f.extra.length = 0;
+        if (appData.audioSettings.encouragements === false && pt.kind !== 'warmEnd') {
+          f.extra.shift();
         } else if (elapsedMs >= pt.t) {
           const halfApplies = halfAlertApplies(curStage);
           const boost = pt.kind === 'boost' || pt.kind === 'mental';
           const minRem = boost ? 7000 : 9500;
           const okWindow = remMs > minRem && elapsedMs >= 4500 && (!halfApplies || Math.abs(elapsedMs - durMs / 2) > 5000);
-          const cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS, boost: 4000, mental: 4000, warm: 60000, praise: 20000 }[pt.kind] || 40000;
+          let cooldown = { fast: 40000, push: 25000, easy: 40000, tip: TIP_GAP_MS, boost: 4000, mental: 4000, warm: 60000, praise: 20000, warmEnd: 0 }[pt.kind] ?? 40000;
+          { const fs = parseFloat(encFreq()); if (fs > 0 && pt.kind !== 'tip') cooldown = Math.min(cooldown, Math.max(4000, fs * 1000 - 3000)); }
           const now = Date.now();
           if (elapsedMs > pt.t + (boost ? 2500 : 4000) || (!okWindow && remMs <= minRem) ||
               now - (lastEncouragementAt[pt.kind] || -1e15) < cooldown || now - lastEncouragementAt.any < (boost ? 4000 : 10000)) {
             f.extra.shift();
           } else if (okWindow && !isSpeaking()) {
             f.extra.shift();
-            lastEncouragementAt[pt.kind] = now;
-            lastEncouragementAt.any = now;
-            speak([pickNoRepeat(pt.kind)]);
+            const ph = pickNoRepeat(pt.kind);
+            if (ph) { lastEncouragementAt[pt.kind] = now; lastEncouragementAt.any = now; speak([ph]); }
           }
         }
       }
@@ -5058,10 +5095,10 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · PASSÉE' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
       const body = `<div class="flex-1 flex flex-col gap-1 min-w-0">${tag}<span class="pl-clamp" style="${isToday ? '-webkit-line-clamp:3;' : ''}font-size:${isToday ? 16 : 15}px;font-weight:800;line-height:1.25">${plEsc(item.details)}</span><span style="font-size:12px;color:#94a3b8;font-weight:600">${stats}</span></div>`;
       const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`);
-      const actions = s.notes ? `
+      const actions = `
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
-          <div style="font-size:12px;color:#94a3b8">📝 ${plEsc(s.notes)}</div>
-        </div>` : '';
+          ${guideHtml(s, item.rawIdx)}
+        </div>`;
       if (isToday) {
         return `<div class="pl-card today">
           <div class="flex items-center gap-3">${plDateChip(item.iso, '', 'background:#38bdf8;color:#04121f;width:52px;height:56px;border-radius:16px')}${body}${more}</div>
@@ -6979,6 +7016,8 @@ Réponds uniquement avec le JSON.`;
     // Liste de toutes les annonces restantes, avec leur heure (en s à partir de maintenant)
     function buildAnnouncementTimeline(opts = {}) {
       const ev = [];
+      if (!opts.estimate) { const now = sessElapsedSec(); phraseUse.forEach((a, k) => { const b = a.filter(x => x <= now + 1); if (b.length) phraseUse.set(k, b); else phraseUse.delete(k); }); }
+      const baseSec = sessElapsedSec();
       const stages = timerState.stages;
       const idx = timerState.currentStageIndex;
       const cur = stages[idx];
@@ -7003,8 +7042,10 @@ Réponds uniquement avec le JSON.`;
             if (at - lastTipAt < TIP_GAP_MS / 1000) return;
             lastTipAt = at;
           }
-          ev.push({ t: at, pieces: [pickNoRepeat(p.kind)], fixed: false, kind: p.kind });
+          pickAtSec = baseSec + at; const ph = pickNoRepeat(p.kind); pickAtSec = null;
+          if (ph) ev.push({ t: at, pieces: [ph], fixed: false, kind: p.kind });
         });
+        if (!enc && st.type === 'chauffe' && d >= 120) ev.push({ t: t0 + d - 60, pieces: [warmEndText()], fixed: false, kind: 'warmEnd' });
         if (d >= 10) {
           const pp = [i + 1 < stages.length ? stagePhrase(stages[i + 1], 'prep') : t.last15];
           ev.push({ t: t0 + d - prepLeadMs(pp[0]) / 1000, pieces: pp, fixed: true });
@@ -7823,6 +7864,25 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const v = (Math.round(km * 10) / 10).toString().replace('.', en ? '.' : ',');
       return `${v} ${en ? (v === '1' ? 'kilometre' : 'kilometres') : (v === '1' ? 'kilomètre' : 'kilomètres')}`;
     }
+    function climbVapText(n, progKm) {
+      const tr = runData.track || [], g = runData.gps || {};
+      const nowKm = parseFloat(g.distKm) || 0;
+      if (tr.length < 3 || nowKm < 0.5) return '';
+      let j = tr.length - 1;
+      while (j > 0 && (tr[j][5] || 0) > nowKm - 0.5) j--;
+      const dt = tr[tr.length - 1][0] - tr[j][0], dk = nowKm - (tr[j][5] || 0);
+      if (!(dt > 30 && dk > 0.3)) return '';
+      const speed = dk / (dt / 3600);
+      const r = activeRoute(), prof = (r && r.prof) || [];
+      const at = k => prof[Math.max(0, Math.min(prof.length - 1, Math.round(k / 0.05)))];
+      const grade = prof.length ? (at(progKm) - at(progKm - 0.5)) / 500 * 100 : 0;
+      const vap = vapKmh(speed, grade);
+      const en = appData.audioSettings.voiceLang === 'en';
+      const dist = n * 0.5;
+      const dTxt = en ? (dist < 1 ? '500 metres' : `${String(dist)} kilometres`) : (dist < 1 ? '500 mètres' : `${String(dist).replace('.', ',')} kilomètre${dist >= 2 ? 's' : ''}`);
+      return en ? `${dTxt} of climbing: average grade adjusted speed ${formatSpeed(roundHalf(vap))} over the last 500 metres.`
+        : `${dTxt} de montée : VAP moyenne ${formatSpeed(Math.round(vap * 10) / 10).replace('.', ',')} sur les 500 derniers mètres.`;
+    }
     function climbAheadText(c) {
       const en = appData.audioSettings.voiceLang === 'en';
       if (en) return `In 250 metres, ${c.type === 'up' ? 'climb' : 'descent'} of ${c.grade} percent over ${fmtDistSpeech(c.lenKm)}.`;
@@ -7881,6 +7941,15 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
           if (!f.ahead && rt.progressKm >= c.startKm - 0.27 && rt.progressKm < c.startKm) { f.ahead = true; speak([climbAheadText(c)]); return; }
           if (!f.start && rt.progressKm >= c.startKm && rt.progressKm < c.startKm + 0.2) { f.start = f.ahead = true; speak([c.type === 'up' ? t.climbStart : t.descentStart]); return; }
           if (c.type === 'up' && !f.top && rt.progressKm >= c.startKm + c.lenKm && rt.progressKm < c.startKm + c.lenKm + 0.2) { f.top = true; speak([t.climbTop]); return; }
+          // Dans la montée : VAP moyenne des 500 derniers mètres, tous les 500 m
+          if (c.type === 'up' && rt.progressKm >= c.startKm + 0.5 && rt.progressKm < c.startKm + c.lenKm + 0.05) {
+            const n = Math.floor((rt.progressKm - c.startKm) / 0.5 + 1e-6);
+            if (n >= 1 && (f.vapN || 0) < n) {
+              f.vapN = n;
+              const txt = climbVapText(n, rt.progressKm);
+              if (txt) { speakLive(txt); return; }
+            }
+          }
         }
       }
       // Cardio trop haut
@@ -8953,6 +9022,10 @@ ${analysisFormatPrompt()}`;
     let scriptPlaying = false;
 
     function buildSessionScript() {
+      const savedUse = phraseUse; phraseUse = new Map();
+      try { return buildSessionScriptInner(); } finally { phraseUse = savedUse; }
+    }
+    function buildSessionScriptInner() {
       const saved = {
         idx: timerState.currentStageIndex, rem: timerState.stageRemainingMs, tot: timerState.totalRemainingMs,
         half: timerState.sessionHalfDone, flags: timerState.flags, fuel: timerState.fuelPlan
@@ -9038,7 +9111,7 @@ ${analysisFormatPrompt()}`;
         <div id="scriptRow${i}" class="flex items-start gap-2 py-1.5 border-b border-slate-800 ${r.gps ? 'text-emerald-200' : r.info ? 'text-slate-500 italic' : 'text-slate-200'}">
           <span class="font-mono text-[11px] text-sky-300 shrink-0 w-11">${fmt(r.t)}</span>
           ${s.outdoor ? `<span class="font-mono text-[10px] text-slate-500 shrink-0 w-12">${r.km.toFixed(2)} km</span>` : ''}
-          <span class="flex-1 text-[11px] leading-snug">${r.pieces.join(' ').replace(/</g, '&lt;')}</span>
+          <span class="flex-1 flex flex-col gap-0.5 min-w-0"><span class="text-[10px] font-bold uppercase tracking-wide" style="color:${scriptCtx(r.t).c}">${scriptCtx(r.t).l}</span><span class="text-[11px] leading-snug">${r.pieces.join(' ').replace(/</g, '&lt;')}</span></span>
           ${r.info ? '' : `<button type="button" onclick="playScriptRow(${i})" class="shrink-0 w-6 h-6 rounded-full bg-purple-600/30 text-purple-200 text-[10px]">▶</button>`}
         </div>`).join('');
       document.getElementById('scriptModal').classList.remove('hidden');
@@ -9125,7 +9198,7 @@ ${analysisFormatPrompt()}`;
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
         <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
-        <button onclick="regenScript()" class="w-full mt-2 py-2.5 rounded-xl font-black text-[13px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
+        <button onclick="regenScript()" class="w-full mt-4 py-4 rounded-2xl font-black text-[16px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
     }
     function applyScriptToggles() { document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); }); }
@@ -9168,7 +9241,7 @@ ${analysisFormatPrompt()}`;
       }
       f.innerHTML = `<div class="grid grid-cols-2 gap-2">
           <button id="scriptPlayBtn" onclick="playAllScript()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs">▶ Tout écouter</button>
-          <button onclick="document.getElementById('scriptOptsWrap').classList.toggle('hidden'); renderScriptOptions()" class="py-2.5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl text-xs">⚙️ Modifier les annonces</button>
+          <button onclick="document.getElementById('scriptOptsWrap').classList.remove('hidden'); renderScriptOptions(); refreshAllIcons()" class="py-2.5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl text-xs">⚙️ Modifier les annonces</button>
         </div>
         <button onclick="scriptValidate()" class="w-full py-3 rounded-xl font-black text-[14px]" style="background:#34d399;color:#04140d">💾 Valider ${aiVoiceActive() ? 'et télécharger les voix' : 'le script'}</button>`;
     }
@@ -9185,6 +9258,27 @@ ${analysisFormatPrompt()}`;
       renderScriptFoot();
     }
 
+    // Moment de la séance correspondant à une annonce (début / milieu / fin de quel segment)
+    function scriptCtx(tSec) {
+      const st = timerState.stages || [];
+      let a = 0;
+      for (let i = 0; i < st.length; i++) {
+        const x = st[i], b = a + x.durationSec;
+        const last = i === st.length - 1;
+        if (tSec < b - 0.01 || last) {
+          if (last && tSec >= b - 0.01) return { l: 'Fin de séance', c: '#34d399' };
+          const f = x.durationSec ? (tSec - a) / x.durationSec : 0;
+          const pos = f < 0.34 ? 'Début' : f < 0.67 ? 'Milieu' : 'Fin';
+          const ser = x.totalReps >= 2 ? ` · série ${x.repIndex}/${x.totalReps}` : '';
+          const blc = x.nbBlocs > 1 ? ` · bloc ${x.blocIndex}/${x.nbBlocs}` : '';
+          const n = x.type === 'chauffe' ? ["de l'échauffement", '#fbbf24'] : x.type === 'recup' ? ['du retour au calme', '#67e8f9'] : x.type === 'recupBloc' ? ['de la récup entre blocs', '#67e8f9']
+            : x.isFree ? ['de la séance libre', '#34d399'] : x.intensity === 'fast' ? [`du segment rapide${ser}${blc}`, '#fb923c'] : x.intensity === 'easy' ? [`de la récup${ser}${blc}`, '#67e8f9'] : [`du segment${ser}${blc}`, '#7dd3fc'];
+          return { l: `${pos} ${n[0]}`, c: n[1] };
+        }
+        a = b;
+      }
+      return { l: '', c: '#94a3b8' };
+    }
     function closeScriptModal() {
       scriptPlaying = false;
       cancelSpeech();
@@ -9431,6 +9525,7 @@ Mes sensations : ${feelSummary(sess.dayFeel) || 'non précisées'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.
 Séance prévue (${base.type === 'exterieur' ? 'extérieur' : 'tapis'}) : ${describeSessionHuman(base)} ; ${Math.round(computeSessionTotalMin(base))} min ; vitesses en km/h.
 Détail JSON : {"chauffe":${base.chauffe},"recup":${base.recup},"repet":${base.repet},"nbBlocs":${base.nbBlocs || 1},"recupBloc":${base.recupBloc || 0},"vitRecupBloc":${base.vitRecupBloc || 6},"pente":${base.pente},"segments":[${segs}]}
+${guideText(base)} Si tu adaptes, reste dans l'esprit de ces adaptations chiffrées et préserve l'essentiel de la séance.
 Séances récentes :
 ${hist}
 Prochaines séances :
@@ -9550,6 +9645,195 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       closeFeelModal();
       showToast("Séance prévue conservée");
     }
+    // ==================== OBJECTIF DE LA SÉANCE & ADAPTATIONS CHIFFRÉES ====================
+    function guideKind(s) {
+      if (!s) return 'endu';
+      if (s.free) return 'libre';
+      if (s.kind) return s.kind === 'fractionne' && pyramidIsPyr(s) ? 'pyramide' : s.kind;
+      const k = inferKind(s);
+      return k === 'fractionne' && pyramidIsPyr(s) ? 'pyramide' : k;
+    }
+    function pyramidIsPyr(s) { return new Set((s.pyramide || []).map(p => +p.speed)).size >= 3; }
+    function gSegs(s) {
+      const segs = (s.pyramide || []).filter(p => p.speed > 0);
+      const vmax = Math.max(...segs.map(p => +p.speed), 0), vmin = Math.min(...segs.map(p => +p.speed), 99);
+      const fast = segs.filter(p => +p.speed === vmax && vmax > vmin);
+      const slow = segs.filter(p => +p.speed === vmin && vmax > vmin);
+      return { segs, vmax, vmin, fast, slow, reps: Math.max(1, parseInt(s.repet) || 1) * Math.max(1, parseInt(s.nbBlocs) || 1) };
+    }
+    const fmtQ = p => p.unit === 'km' ? (p.distance < 1 ? `${Math.round(p.distance * 1000)} m` : `${formatSpeed(p.distance).replace('.', ',')} km`) : (p.duration >= 1 && Number.isInteger(+p.duration) ? `${p.duration}'` : formatMinSec(p.duration));
+    const fmtV = v => formatSpeed(Math.round(v * 10) / 10).replace('.', ',');
+    // Paramètres d'adaptation par type de séance : rep = séries, v = vitesse rapide (km/h), rec = récup (s), dur = facteur de durée, pente = %
+    const GUIDE_ADAPT = {
+      fractionne: { fatigue: R => ({ rep: -Math.max(1, Math.round(R * 0.3)), v: -0.5, rec: 30 }), moyen: () => ({ rep: -1, rec: 15 }), forme: R => R < 12 ? { rep: 1 } : { v: 0.3 } },
+      pyramide: { fatigue: R => R > 1 ? { rep: -1, v: -0.5 } : { v: -0.5 }, moyen: () => ({ v: -0.3 }), forme: R => R < 4 ? { rep: 1 } : { v: 0.3 } },
+      seuil: { fatigue: () => ({ dur: 0.75, v: -0.3 }), moyen: () => ({ dur: 0.85 }), forme: R => R < 4 ? { rep: 1 } : { dur: 1.15 } },
+      cotes: { fatigue: R => ({ rep: -Math.max(1, Math.round(R * 0.25)), pente: -1, rec: 30 }), moyen: () => ({ rep: -1 }), forme: () => ({ rep: 1 }) },
+      endu: { fatigue: () => ({ tot: 0.7, v: -0.5 }), moyen: () => ({ tot: 0.85 }), forme: () => ({ tot: 1.15 }) },
+      longue: { fatigue: () => ({ tot: 0.75, v: -0.3 }), moyen: () => ({ tot: 0.9 }), forme: () => ({ tot: 1.1 }) },
+      recup: { fatigue: () => ({ tot: 0.7, v: -0.5 }), moyen: () => ({}), forme: () => ({}) }
+    };
+    function guideApplyParams(base, prm) {
+      const s = JSON.parse(JSON.stringify(base));
+      const G = gSegs(s);
+      const r2 = x => Math.round(x * 2) / 2;
+      const isFast = s.pyramide.map(p => G.fast.length ? +p.speed === G.vmax : true);
+      const isSlow = s.pyramide.map(p => G.slow.length && +p.speed === G.vmin);
+      if (prm.rep) {
+        if ((s.nbBlocs || 1) > 1 && (s.repet || 1) <= 2) s.nbBlocs = Math.max(1, (s.nbBlocs || 1) + prm.rep);
+        else s.repet = Math.max(1, (parseInt(s.repet) || 1) + prm.rep);
+      }
+      if (prm.v) {
+        const vmax = G.vmax;
+        s.pyramide.forEach(p => {
+          if (G.fast.length ? +p.speed === vmax : true) { p.speed = Math.max(4, Math.round((+p.speed + prm.v) * 10) / 10); if (p.unit === 'km') p.duration = p.distance / p.speed * 60; }
+          else if (G.vmax > G.vmin && +p.speed > G.vmin && prm.v < 0) { p.speed = Math.max(4, Math.round((+p.speed + prm.v) * 10) / 10); if (p.unit === 'km') p.duration = p.distance / p.speed * 60; }
+        });
+      }
+      if (prm.rec) s.pyramide.forEach((p, i) => { if (isSlow[i] && p.unit !== 'km') p.duration = Math.round((+p.duration + prm.rec / 60) * 100) / 100; });
+      if (prm.dur) s.pyramide.forEach((p, i) => { if (isFast[i] && p.unit !== 'km') p.duration = Math.max(1, r2(+p.duration * prm.dur)); });
+      if (prm.tot) {
+        const T = computeSessionTotalMin(base), warm = (s.chauffe || 0) + (s.recup || 0);
+        const target = Math.max(warm + 10, Math.round(T * prm.tot / 5) * 5);
+        const main = s.pyramide.filter(p => p.speed > 0);
+        if (main.length === 1 && main[0].unit !== 'km') main[0].duration = Math.max(5, target - warm);
+        else if (main.length === 1) { main[0].distance = Math.round(main[0].distance * prm.tot * 10) / 10; main[0].duration = main[0].distance / main[0].speed * 60; }
+      }
+      if (prm.pente && s.type === 'tapis') s.pente = Math.max(0, (parseFloat(s.pente) || 0) + prm.pente);
+      return s;
+    }
+    // Liste des changements chiffrés entre deux versions
+    function guideDiff(a, b, kind) {
+      const out = [];
+      const Ga = gSegs(a), Gb = gSegs(b);
+      const w = { seuil: 'blocs', pyramide: 'pyramides', cotes: 'montées' }[kind] || (Ga.fast.length ? 'répétitions' : 'blocs');
+      if (Ga.reps !== Gb.reps) out.push(`${Ga.reps} → ${Gb.reps} ${w}`);
+      if (Ga.vmax !== Gb.vmax) out.push(`${Ga.fast.length ? 'vitesse rapide' : 'vitesse'} ${fmtV(Ga.vmax)} → ${fmtV(Gb.vmax)} km/h`);
+      const fa = Ga.fast[0], fb = Gb.fast[0];
+      if (fa && fb && fa.unit !== 'km' && Math.abs(fa.duration - fb.duration) > 0.01) out.push(`effort ${fmtQ(fa)} → ${fmtQ(fb)}`);
+      const sa = Ga.slow[0], sb = Gb.slow[0];
+      if (kind !== 'pyramide' && sa && sb && Math.abs(sa.duration - sb.duration) > 0.01) out.push(`récup ${formatMinSec(sa.duration)} → ${formatMinSec(sb.duration)}`);
+      if ((a.pente || 0) !== (b.pente || 0) && a.type === 'tapis') out.push(`pente ${String(a.pente).replace('.', ',')} → ${String(b.pente).replace('.', ',')} %`);
+      const ta = Math.round(computeSessionTotalMin(a)), tb = Math.round(computeSessionTotalMin(b));
+      const ka = computeSessionDistanceKm(a), kb = computeSessionDistanceKm(b);
+      if (ta !== tb || Math.abs(ka - kb) > 0.05) out.push(`durée ${ta} → ${tb} min · ${ka.toFixed(1).replace('.', ',')} → ${kb.toFixed(1).replace('.', ',')} km`);
+      return out;
+    }
+    function sessionGuide(s0) {
+      if (!s0) return null;
+      const s = s0.planOriginal ? Object.assign({}, s0, s0.planOriginal) : s0;
+      const k = guideKind(s), G = gSegs(s);
+      const T = Math.round(computeSessionTotalMin(s)), main = G.segs[0];
+      const fcm = runnerFcMax();
+      const fast = G.fast[0], slow = G.slow[0];
+      const Rmin = Math.max(1, G.reps - Math.ceil(G.reps * 0.25));
+      let objectif = '', essentiel = '';
+      switch (k) {
+        case 'fractionne':
+          objectif = `Tenir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h${slow ? ` (récup ${fmtQ(slow)} à ${fmtV(G.vmin)})` : ''}, à la même vitesse jusqu'à la dernière répétition.`;
+          essentiel = `Au minimum ${Rmin} répétitions à ${fmtV(G.vmax)} km/h. Si tu n'arrives plus à tenir la vitesse, arrête plutôt que de ralentir : la qualité compte plus que la quantité.`; break;
+        case 'pyramide':
+          objectif = `Monter progressivement jusqu'à ${fmtV(G.vmax)} km/h puis redescendre, en tenant chaque palier à la vitesse prévue.`;
+          essentiel = `Tenir le palier le plus rapide (${fmtV(G.vmax)} km/h) en entier sur ${G.reps > 1 ? `au moins ${Rmin} pyramide${Rmin > 1 ? 's' : ''}` : 'la pyramide'}, sans partir trop vite sur les premiers paliers.`; break;
+        case 'seuil':
+          objectif = `Courir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h : effort soutenu mais contrôlé (tu peux encore dire quelques mots)${fcm ? `, cardio vers ${Math.round(fcm * 0.85)}-${Math.round(fcm * 0.9)}` : ''}.`;
+          essentiel = `Au moins ${Rmin} bloc${Rmin > 1 ? 's' : ''} complet${Rmin > 1 ? 's' : ''} à ${fmtV(G.vmax)} km/h, régulier du début à la fin, sans finir à bout de souffle.`; break;
+        case 'cotes':
+          objectif = `${G.reps} montées de ${fast ? fmtQ(fast) : ''}${s.type === 'tapis' ? ` à ${String(s.pente).replace('.', ',')} %` : ''} à ${fmtV(G.vmax)} km/h : foulée dynamique, genoux hauts, même vitesse sur toutes.`;
+          essentiel = `Au moins ${Rmin} montées propres, et une vraie récupération entre chaque (souffle revenu).`; break;
+        case 'endu':
+          objectif = `${T} min en aisance à ~${fmtV(main ? main.speed : runnerEF())} km/h : tu dois pouvoir parler en courant${fcm ? `, cardio sous ${Math.round(fcm * 0.75)}` : ''}.`;
+          essentiel = `Rester facile du début à la fin. L'allure compte plus que la durée : ralentis plutôt que de t'essouffler.`; break;
+        case 'longue':
+          objectif = `Aller au bout des ${T} min à ~${fmtV(main ? main.speed : runnerEF())} km/h, sans accélérer sur la fin.`;
+          essentiel = `Au moins ${Math.round(T * 0.8)} min en restant facile ; boire et manger un peu toutes les 20 à 30 min.`; break;
+        case 'recup':
+          objectif = `${T} min très faciles à ~${fmtV(main ? main.speed : runnerEF())} km/h pour récupérer des séances précédentes.`;
+          essentiel = `Ne jamais forcer : au moindre doute, raccourcis ou marche. Cette séance doit te laisser plus frais qu'avant.`; break;
+        case 'test':
+          objectif = `Donner ton maximum sur ${main ? fmtQ(main) : '?'}${main ? ` : objectif ${fmtClock(main.duration)} (${fmtV(main.speed)} km/h)` : ''}, en allure régulière.`;
+          essentiel = `Partir à l'allure visée (pas plus vite), la tenir, et tout donner sur le dernier quart. Le résultat sert à recalculer tes allures.`; break;
+        case 'course':
+          objectif = `Course : ${main ? fmtQ(main) : '?'}${main ? ` en ${fmtClock(main.duration)} (${fmtV(main.speed)} km/h)` : ''}.`;
+          essentiel = `Départ prudent (1er km pas plus vite que l'allure visée), régularité, et accélérer seulement dans le dernier quart.`; break;
+        default:
+          objectif = 'Courir selon tes sensations.'; essentiel = 'Rester à l\'écoute de ton corps.';
+      }
+      const adapts = [];
+      const A = GUIDE_ADAPT[k];
+      const lbl = { fatigue: ['😫 Fatigué', '#fb7185'], moyen: ['😐 Moyen', '#fbbf24'], forme: ['💪 En forme', '#34d399'] };
+      if (A) ['fatigue', 'moyen', 'forme'].forEach(f => {
+        const prm = A[f](G.reps);
+        const ns = guideApplyParams(s, prm);
+        const ch = guideDiff(s, ns, k);
+        adapts.push({ key: f, label: lbl[f][0], color: lbl[f][1], changes: ch.length ? ch : [f === 'forme' && k === 'recup' ? 'Ne pas allonger : la récupération reste la priorité' : 'Séance telle quelle'], session: ch.length ? ns : null });
+      });
+      else if (k === 'test') {
+        adapts.push({ key: 'fatigue', label: lbl.fatigue[0], color: lbl.fatigue[1], changes: ['Reporter le test de 2 à 3 jours : un test fatigué fausse tes allures'], session: null });
+        adapts.push({ key: 'moyen', label: lbl.moyen[0], color: lbl.moyen[1], changes: ['Le faire en test indicatif, sans viser le record'], session: null });
+        adapts.push({ key: 'forme', label: lbl.forme[0], color: lbl.forme[1], changes: ['Tel quel, et viser un peu mieux sur le dernier quart'], session: null });
+      }
+      return { kind: k, objectif, essentiel, coachNote: s0.notes || '', adapts };
+    }
+    function guideText(s) {
+      const g = sessionGuide(s);
+      if (!g) return '';
+      return `Objectif de la séance : ${g.objectif} L'essentiel : ${g.essentiel}${g.adapts.length ? ` Adaptations chiffrées possibles : ${g.adapts.map(a => `${a.label.replace(/^\S+\s/, '')} : ${a.changes.join(', ')}`).join(' ; ')}.` : ''}`;
+    }
+    function guideHtml(s, idx, opts = {}) {
+      const g = sessionGuide(s);
+      if (!g) return '';
+      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const canApply = !opts.readOnly && !isSessionDone(s) && (!s.dateISO || s.dateISO >= todayISO());
+      return `<div class="flex flex-col gap-2 text-left">
+        <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35)">
+          <span class="text-[11px] font-black uppercase tracking-wide text-sky-300">🎯 Objectif</span>
+          <span class="text-[14px] font-bold text-white leading-snug">${esc(g.objectif)}</span>
+          ${g.coachNote && !/^(test|course)\b/i.test(g.coachNote) ? `<span class="text-[12px] text-slate-400 italic">Coach : ${esc(g.coachNote)}</span>` : ''}
+        </div>
+        <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)">
+          <span class="text-[11px] font-black uppercase tracking-wide text-emerald-300">✅ L'essentiel à réussir</span>
+          <span class="text-[13px] text-slate-100 leading-snug">${esc(g.essentiel)}</span>
+        </div>
+        ${g.adapts.length ? `<span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mt-1">⚖️ Adapter selon ma forme</span>
+        ${g.adapts.map(a => `<div class="flex items-center gap-2 p-2.5 rounded-xl" style="background:#0b1220;border:1px solid ${a.color}55">
+            <div class="flex-1 min-w-0 flex flex-col gap-0.5"><span class="text-[13px] font-extrabold" style="color:${a.color}">${a.label}</span>${a.changes.map(c => `<span class="text-[12px] text-slate-300">• ${esc(c)}</span>`).join('')}</div>
+            ${canApply && a.session ? `<button onclick="event.stopPropagation();applyGuideAdapt('${s.id}','${a.key}')" class="shrink-0 px-3 py-2 rounded-lg text-[12px] font-black" style="background:${a.color};color:#04121f">Appliquer</button>` : ''}
+          </div>`).join('')}` : ''}
+        ${s.planOriginal && canApply ? `<button onclick="event.stopPropagation();restoreGuideOriginal('${s.id}')" class="text-[12px] font-bold text-slate-400 underline self-start">↩️ Revenir à la séance d'origine</button>` : ''}
+      </div>`;
+    }
+    function applyGuideAdapt(id, key) {
+      const s = (appData.sessions || []).find(x => x.id === id);
+      if (!s) return;
+      const g = sessionGuide(s);
+      const a = g && g.adapts.find(x => x.key === key);
+      if (!a || !a.session) return;
+      if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
+      ['repet', 'nbBlocs', 'pente', 'pyramide'].forEach(k => { s[k] = JSON.parse(JSON.stringify(a.session[k])); });
+      s.adapted = { at: todayISO(), resume: `${a.label.replace(/^\S+\s/, '')} : ${a.changes.join(', ')}` };
+      saveAppData();
+      if (s.id === activeSessId()) reloadChrono();
+      updateHistoryTable(); renderHome();
+      showSavedBig(`Séance adaptée (${a.label.replace(/^\S+\s/, '').toLowerCase()})`);
+    }
+    function restoreGuideOriginal(id) {
+      const s = (appData.sessions || []).find(x => x.id === id);
+      if (!s || !s.planOriginal) return;
+      ['chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide'].forEach(k => { if (k in s.planOriginal) s[k] = s.planOriginal[k]; });
+      delete s.planOriginal; delete s.adapted;
+      saveAppData();
+      if (s.id === activeSessId()) reloadChrono();
+      updateHistoryTable(); renderHome();
+      showToast("Séance d'origine rétablie");
+    }
+    function toggleHomeGuide() {
+      const b = document.getElementById('homeGuideBody');
+      if (!b) return;
+      b.classList.toggle('hidden');
+      document.getElementById('homeGuideArrow').textContent = b.classList.contains('hidden') ? '▾' : '▴';
+    }
+
     function restoreOriginalPlan() {
       const sess = getActiveSession();
       if (!sess.planOriginal) return;
@@ -11405,7 +11689,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         if (xo) { xo.classList.toggle('hidden', !s0.extensionOffer); if (s0.extensionOffer) xo.textContent = `🎙️ Prolongation de ${s0.extensionOffer.minutes}' à ${formatSpeed(s0.extensionOffer.speed)} proposée pendant la séance`; }
         renderGoalProbability();
         const ad = document.getElementById('homeAdapted');
-        if (ad) { ad.classList.toggle('hidden', !s0.adapted); if (s0.adapted) ad.textContent = '✏️ Séance modifiée selon tes sensations'; }
+        if (ad) { ad.classList.toggle('hidden', !s0.adapted); if (s0.adapted) { const m = /^(Fatigué|Moyen|En forme) :/.exec(s0.adapted.resume || ''); ad.textContent = m ? `✏️ Séance adaptée à ta forme (${m[1].toLowerCase()})` : '✏️ Séance modifiée selon tes sensations'; } }
       }
       const el = document.getElementById('homeSessCard');
       if (!el) return;
@@ -11443,6 +11727,10 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const inProgress = timerState.sessionStarted && !timerState.finished;
       { const k = sessionKind(sess); const el2 = document.getElementById('homeSessTitle'); el2.textContent = homeCardPrefix + k.label; el2.style.color = k.color; }
       document.getElementById('homeSessDesc').textContent = capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 })));
+      { const hg = document.getElementById('homeGuide'), hb = document.getElementById('homeGuideBody');
+        const showG = !!sess && !sess.free && !(timerState.sessionStarted && !timerState.finished);
+        if (hg) hg.classList.toggle('hidden', !showG);
+        if (hb && showG) hb.innerHTML = guideHtml(sess, appData.activeSessionIndex); }
       document.getElementById('homeSessStats').textContent =
         `${total} min • ≈ ${dist} km • ${sess.type === 'exterieur' ? 'extérieur' : `pente ${sess.pente}%`}`;
       const fuelEl = document.getElementById('homeFuel');
