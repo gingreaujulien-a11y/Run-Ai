@@ -9336,6 +9336,188 @@ ${analysisFormatPrompt()}`;
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full h-14 bg-slate-950 rounded-lg border border-slate-800">${area}${target}
           <polyline points="${line}" fill="none" stroke="${opts.color}" stroke-width="1.6" stroke-linejoin="round"></polyline></svg></div>`;
     }
+    // ==================== GRAPHIQUES INTERACTIFS DES RÉSULTATS ====================
+    window.__rc = window.__rc || {};
+    const RC_HR_Z = [[0.6, '#64748b', 'Z1'], [0.7, '#38bdf8', 'Z2'], [0.8, '#34d399', 'Z3'], [0.9, '#fb923c', 'Z4'], [9, '#f43f5e', 'Z5']];
+    function rcSlopeColor(g) { return g <= -3 ? '#10b981' : g <= -1 ? '#6ee7b7' : g < 1.5 ? '#94a3b8' : g < 4 ? '#facc15' : g < 8 ? '#fb923c' : '#ef4444'; }
+    function rcPrep(track, seg, opts) {
+      const T = (track || []).filter(r => r && r.length >= 4);
+      if (T.length < 3) return null;
+      const hasKm = T.some(r => r[5] > 0), hasEle = T.filter(r => r[4] !== null && r[4] !== undefined).length > 5;
+      const rows = T.map((r, i) => ({ i, t: r[0], hr: r[1] || null, v: r[2] || null, seg: r[3], ele: r[4] ?? null, km: r[5] || 0 }));
+      // km cumulés sans capteur : intégration de la vitesse
+      if (!hasKm) { let k = 0; rows.forEach((r, i) => { if (i) k += (r.v || 0) * (r.t - rows[i - 1].t) / 3600; r.km = k; }); }
+      // pente lissée sur ±100 m
+      rows.forEach((r, i) => {
+        if (!hasEle) { r.g = opts.pente ? treadmillGrade(opts.pente) : 0; r.gShow = opts.pente || 0; return; }
+        let a = i, b = i;
+        while (a > 0 && r.km - rows[a - 1].km <= 0.1) a--;
+        while (b < rows.length - 1 && rows[b + 1].km - r.km <= 0.1) b++;
+        const dk = rows[b].km - rows[a].km;
+        r.g = dk > 0.04 && rows[a].ele !== null && rows[b].ele !== null ? Math.max(-20, Math.min(25, (rows[b].ele - rows[a].ele) / (dk * 1000) * 100)) : 0;
+        r.gShow = r.g;
+      });
+      // vitesse et VAP instantanées lissées sur 3 points
+      rows.forEach((r, i) => {
+        const w = rows.slice(Math.max(0, i - 1), i + 2).filter(x => x.v);
+        r.vs = w.length ? w.reduce((a, x) => a + x.v, 0) / w.length : null;
+        r.vap = r.vs ? vapKmh(r.vs, r.g) : null;
+      });
+      return { rows, seg: seg || [], opts, hasEle, fc: runnerFcMax() };
+    }
+    function rcGroups(P, mode) {
+      const R = P.rows, out = [];
+      if (mode === 'km') {
+        let a = 0;
+        for (let i = 1; i <= R.length; i++) if (i === R.length || Math.floor(R[i].km) !== Math.floor(R[a].km)) { out.push({ a, b: i - 1, label: `km ${Math.floor(R[a].km) + 1}` }); a = i; }
+      } else if (mode === 'prof' && P.hasEle) {
+        const cat = g => g <= -6 ? -3 : g <= -3 ? -2 : g <= -1.5 ? -1 : g < 1.5 ? 0 : g < 4 ? 1 : g < 8 ? 2 : 3;
+        let runs = [];
+        R.forEach((r, i) => { const c = cat(r.g), l = runs[runs.length - 1]; if (l && l.c === c) l.b = i; else runs.push({ a: i, b: i, c }); });
+        const m = [];
+        runs.forEach(x => { const l = m[m.length - 1]; if (l && R[x.b].km - R[x.a].km < 0.2) l.b = x.b; else m.push(Object.assign({}, x)); });
+        m.forEach(x => { const st = rcStats(P, x.a, x.b); out.push({ a: x.a, b: x.b, label: Math.abs(st.g) < 1.5 ? 'Plat' : st.g > 0 ? `Montée ${Math.round(st.g)} %` : `Descente ${Math.round(-st.g)} %` }); });
+      } else {
+        let a = 0;
+        for (let i = 1; i <= R.length; i++) if (i === R.length || R[i].seg !== R[a].seg) { const s = P.seg.find(x => x.i === R[a].seg); out.push({ a, b: i - 1, label: s ? s.name : `Segment ${R[a].seg + 1}`, target: s && s.target }); a = i; }
+      }
+      return out;
+    }
+    function rcStats(P, a, b) {
+      const R = P.rows.slice(a, b + 1);
+      const sec = Math.max(5, R[R.length - 1].t - R[0].t + 5);
+      const km = Math.max(0, R[R.length - 1].km - (a > 0 ? P.rows[a - 1].km : R[0].km));
+      const hrs = R.map(r => r.hr).filter(Boolean), vs = R.map(r => r.v).filter(Boolean);
+      const kmh = km > 0.01 ? km / (sec / 3600) : (vs.length ? vs.reduce((x, y) => x + y, 0) / vs.length : 0);
+      let eq = 0;
+      R.forEach((r, i) => { const prev = i ? R[i - 1] : (a > 0 ? P.rows[a - 1] : r); const dk = Math.max(0, r.km - prev.km); eq += dk * minettiCost(r.g / 100) / 3.6; });
+      const e0 = R[0].ele, e1 = R[R.length - 1].ele;
+      const g = P.hasEle && km > 0.03 && e0 !== null && e1 !== null ? (e1 - e0) / (km * 1000) * 100 : (P.opts.pente || 0);
+      return { sec, km, kmh, vap: eq > 0 ? eq / (sec / 3600) : vapKmh(kmh, P.hasEle ? g : treadmillGrade(P.opts.pente || 0)), hr: hrs.length ? Math.round(hrs.reduce((x, y) => x + y, 0) / hrs.length) : null, hrMax: hrs.length ? Math.max(...hrs) : null, g };
+    }
+    function resultChartsHtml(track, seg, opts = {}) {
+      const P = rcPrep(track, seg, opts);
+      if (!P) return '';
+      const uid = 'rc' + Math.random().toString(36).slice(2, 8);
+      window.__rc[uid] = { P, vMode: 'inst', hrZones: false, profSlope: true, sel: null, h: opts.big ? 170 : 120 };
+      setTimeout(() => rcRender(uid), 0);
+      return `<div data-rc="${uid}" class="flex flex-col gap-2"></div>`;
+    }
+    function rcSet(uid, k, v) { const S = window.__rc[uid]; if (!S) return; S[k] = v; if (k === 'vMode') S.sel = null; rcRender(uid); }
+    function rcChart(uid, key, label, color, vals, opt = {}) {
+      const S = window.__rc[uid], P = S.P, R = P.rows, W = 360, H = S.h;
+      const t0 = R[0].t, t1 = R[R.length - 1].t || 1;
+      const X = t => ((t - t0) / Math.max(1, t1 - t0) * W);
+      const good = vals.filter(v => v !== null && v !== undefined && isFinite(v));
+      if (good.length < 2) return '';
+      let lo = Math.min(...good, ...(opt.extra || [])), hi = Math.max(...good, ...(opt.extra || []));
+      const ms = opt.minSpan || 5;
+      if (hi - lo < ms) { const m = (hi + lo) / 2; lo = m - ms / 2; hi = m + ms / 2; }
+      const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+      const Y = v => (H - 6 - (v - lo) / (hi - lo) * (H - 14));
+      let body = '';
+      const pts = R.map((r, i) => vals[i] === null || vals[i] === undefined ? null : [X(r.t), Y(vals[i])]);
+      if (opt.colorFn) {
+        for (let i = 1; i < R.length; i++) { const p = pts[i - 1], q = pts[i]; if (!p || !q) continue; const c = opt.colorFn(i); body += opt.area ? `<polygon points="${p[0].toFixed(1)},${H} ${p[0].toFixed(1)},${p[1].toFixed(1)} ${q[0].toFixed(1)},${q[1].toFixed(1)} ${q[0].toFixed(1)},${H}" fill="${c}" fill-opacity=".6" stroke="${c}" stroke-opacity=".6" stroke-width=".6"></polygon>` : `<line x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"></line>`; }
+      } else {
+        const line = pts.filter(Boolean).map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+        if (opt.area) body += `<polygon points="${pts.find(Boolean)[0].toFixed(1)},${H} ${line} ${pts.filter(Boolean).pop()[0].toFixed(1)},${H}" fill="${color}" opacity=".2"></polygon>`;
+        body += `<polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"></polyline>`;
+      }
+      if (opt.target) body = opt.target.map(([a, b, v]) => `<line x1="${X(R[a].t).toFixed(1)}" x2="${X(R[b].t).toFixed(1)}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 3" opacity=".7"></line>`).join('') + body;
+      const sel = S.sel ? `<rect x="${X(R[S.sel.a].t).toFixed(1)}" y="0" width="${Math.max(2, X(R[S.sel.b].t) - X(R[S.sel.a].t)).toFixed(1)}" height="${H}" fill="#fbbf24" opacity=".14"></rect>` : '';
+      const grid = [lo + (hi - lo) * 0.25, lo + (hi - lo) * 0.75].map(v => `<line x1="0" x2="${W}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#1e293b"></line><text x="3" y="${(Y(v) - 3).toFixed(1)}" font-size="9" fill="#64748b">${Math.round(v * (opt.dec ? 10 : 1)) / (opt.dec ? 10 : 1)}</text>`).join('');
+      return `<div class="flex flex-col gap-0.5"><div class="flex justify-between items-center text-[11px] font-bold"><span style="color:${color}">${label}</span>${opt.tools || ''}</div>
+        <svg data-rcsvg="${uid}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;touch-action:pan-y" class="bg-slate-950 rounded-lg border border-slate-800">${grid}${sel}${body}<line class="rc-cur" x1="-5" x2="-5" y1="0" y2="${H}" stroke="#f8fafc" stroke-width="1.2" opacity=".85"></line></svg></div>`;
+    }
+    function rcRender(uid) {
+      const S = window.__rc[uid];
+      const box = document.querySelector(`[data-rc="${uid}"]`);
+      if (!S || !box) return;
+      const P = S.P, R = P.rows;
+      const modeG = S.vMode === 'inst' ? null : rcGroups(P, S.vMode);
+      const gv = (key) => { if (!modeG) return null; const arr = new Array(R.length).fill(null); modeG.forEach(g => { const st = rcStats(P, g.a, g.b); for (let i = g.a; i <= g.b; i++) arr[i] = key === 'v' ? st.kmh : st.vap; }); return arr; };
+      const vVals = modeG ? gv('v') : R.map(r => r.vs);
+      const vapVals = modeG ? gv('vap') : R.map(r => r.vap);
+      const segG = rcGroups(P, 'seg');
+      const target = segG.filter(g => g.target).map(g => [g.a, g.b, g.target]);
+      const chip = (k, v, l, on) => `<button type="button" onclick="rcSet('${uid}','${k}',${typeof v === 'string' ? `'${v}'` : v})" class="rt-tab px-2 py-0.5 rounded-md text-[10px] font-bold" data-on="${on ? '1' : ''}">${l}</button>`;
+      const vTools = `<span class="flex gap-1">${[['inst', 'Instant'], ['km', 'Km'], ['seg', 'Segment'], ...(P.hasEle ? [['prof', 'Profil']] : [])].map(([v, l]) => chip('vMode', v, l, S.vMode === v)).join('')}</span>`;
+      const fc = P.fc;
+      const zoneOf = hr => { const r = hr / fc; return RC_HR_Z.find(z => r < z[0]); };
+      const charts = [
+        P.hasEle ? rcChart(uid, 'ele', '⛰️ Profil', '#34d399', R.map(r => r.ele), { area: true, minSpan: 10, colorFn: S.profSlope ? (i => rcSlopeColor(R[i].g)) : null, tools: `<span class="flex gap-1">${chip('profSlope', false, 'Simple', !S.profSlope)}${chip('profSlope', true, 'Couleur pente', S.profSlope)}</span>` }) : '',
+        rcChart(uid, 'v', '⚡ Vitesse (km/h)', '#38bdf8', vVals, { minSpan: 3, dec: true, target, extra: target.map(x => x[2]), tools: vTools }),
+        rcChart(uid, 'vap', '🟣 VAP (km/h)', '#a78bfa', vapVals, { minSpan: 3, dec: true, target, extra: target.map(x => x[2]) }),
+        rcChart(uid, 'hr', '❤️ Cardio (bpm)', '#fb7185', R.map(r => r.hr), { minSpan: 20, colorFn: S.hrZones && fc ? (i => { const z = R[i].hr && zoneOf(R[i].hr); return z ? z[1] : '#fb7185'; }) : null, tools: fc ? `<span class="flex gap-1">${chip('hrZones', false, 'Simple', !S.hrZones)}${chip('hrZones', true, 'Zones', S.hrZones)}</span>` : '' })
+      ].filter(Boolean).join('');
+      const legend = [S.hrZones && fc ? `<div class="flex gap-2 flex-wrap text-[10px] font-bold">${RC_HR_Z.map((z, i) => `<span style="color:${z[1]}">● ${z[2]} ${i ? Math.round(RC_HR_Z[i - 1][0] * fc) : ''}${i ? '' : '<'}${i < 4 ? (i ? '–' : '') + Math.round(z[0] * fc) : '+'}</span>`).join('')}</div>` : '',
+        P.hasEle && S.profSlope ? `<div class="flex gap-2 flex-wrap text-[10px] font-bold">${[[-3, 'desc. raide'], [-1, 'descente'], [0, 'plat'], [2, '2-4 %'], [5, '4-8 %'], [9, '> 8 %']].map(([g, l]) => `<span style="color:${rcSlopeColor(g)}">● ${l}</span>`).join('')}</div>` : ''].join('');
+      box.innerHTML = `<div data-rcinfo="${uid}" class="sticky top-0 z-10 rounded-xl px-3 py-2 text-[12px]" style="background:#0b1220;border:1px solid #334155;min-height:44px">${S.sel ? rcSelHtml(uid) : '<span class="text-slate-400">👆 Glisse le doigt sur un graphique pour les valeurs instantanées · touche pour la moyenne du segment</span>'}</div>
+        ${charts}${legend}
+        ${S.h < 150 ? `<button type="button" onclick="rcFull('${uid}')" class="self-end text-[11px] font-bold text-sky-300">⤢ Agrandir les graphiques</button>` : ''}`;
+      box.querySelectorAll(`[data-rcsvg="${uid}"]`).forEach(svg => rcBind(uid, svg));
+    }
+    function rcIdxAt(uid, svg, clientX) {
+      const S = window.__rc[uid], R = S.P.rows;
+      const rc = svg.getBoundingClientRect();
+      const f = Math.max(0, Math.min(1, (clientX - rc.left) / rc.width));
+      const t = R[0].t + f * (R[R.length - 1].t - R[0].t);
+      let best = 0; for (let i = 0; i < R.length; i++) if (Math.abs(R[i].t - t) < Math.abs(R[best].t - t)) best = i;
+      return { i: best, f };
+    }
+    function rcCursor(uid, f) {
+      document.querySelectorAll(`[data-rcsvg="${uid}"] .rc-cur`).forEach(l => { const x = (f * 360).toFixed(1); l.setAttribute('x1', x); l.setAttribute('x2', x); });
+    }
+    function rcInstHtml(uid, i) {
+      const S = window.__rc[uid], r = S.P.rows[i];
+      const mm = s => `${Math.floor(s / 60)}'${String(Math.round(s % 60)).padStart(2, '0')}`;
+      const it = (l, v, c) => `<span class="flex flex-col"><span class="text-[9px] uppercase text-slate-500 font-bold">${l}</span><span class="text-[15px] font-black" style="color:${c}">${v}</span></span>`;
+      return `<div class="flex justify-between gap-2 flex-wrap">${it('Temps', mm(r.t), '#e2e8f0')}${it('Km', r.km.toFixed(2).replace('.', ','), '#e2e8f0')}${it('Vitesse', r.vs ? formatSpeed(Math.round(r.vs * 10) / 10).replace('.', ',') : '–', '#38bdf8')}${it('VAP', r.vap ? formatSpeed(Math.round(r.vap * 10) / 10).replace('.', ',') : '–', '#a78bfa')}${it('Cardio', r.hr || '–', '#fb7185')}${it('Pente', `${r.gShow > 0.05 ? '+' : ''}${(Math.round(r.gShow * 10) / 10).toFixed(1).replace('.', ',')} %`, rcSlopeColor(r.gShow))}</div>`;
+    }
+    function rcSelHtml(uid) {
+      const S = window.__rc[uid], P = S.P, g = S.sel;
+      const st = rcStats(P, g.a, g.b);
+      const mm = s => `${Math.floor(s / 60)}'${String(Math.round(s % 60)).padStart(2, '0')}`;
+      const it = (l, v, c) => `<span class="flex flex-col"><span class="text-[9px] uppercase text-slate-500 font-bold">${l}</span><span class="text-[15px] font-black" style="color:${c}">${v}</span></span>`;
+      return `<div class="flex items-center justify-between gap-2 mb-1"><span class="text-[12px] font-extrabold text-amber-300">📊 ${plEsc(g.label)} · moyenne</span><button type="button" onclick="window.__rc['${uid}'].sel=null;rcRender('${uid}')" class="text-[11px] text-slate-400 font-bold">✕</button></div>
+        <div class="flex justify-between gap-2 flex-wrap">${it('Durée', mm(st.sec), '#e2e8f0')}${it('Distance', st.km < 1 ? Math.round(st.km * 1000) + ' m' : st.km.toFixed(2).replace('.', ',') + ' km', '#e2e8f0')}${it('Vitesse', formatSpeed(Math.round(st.kmh * 10) / 10).replace('.', ','), '#38bdf8')}${it('VAP', formatSpeed(Math.round(st.vap * 10) / 10).replace('.', ','), '#a78bfa')}${it('Cardio', st.hr ? `${st.hr}<span class="text-[10px] text-slate-500">/${st.hrMax}</span>` : '–', '#fb7185')}${it('Pente', `${st.g > 0.05 ? '+' : ''}${(Math.round(st.g * 10) / 10).toFixed(1).replace('.', ',')} %`, rcSlopeColor(st.g))}</div>`;
+    }
+    function rcBind(uid, svg) {
+      let down = null;
+      const info = () => document.querySelector(`[data-rcinfo="${uid}"]`);
+      svg.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, moved: false }; const { i, f } = rcIdxAt(uid, svg, e.clientX); rcCursor(uid, f); const el = info(); if (el) el.innerHTML = rcInstHtml(uid, i); });
+      svg.addEventListener('pointermove', e => {
+        if (!down && e.pointerType === 'mouse') { const { i, f } = rcIdxAt(uid, svg, e.clientX); rcCursor(uid, f); const el = info(); if (el) el.innerHTML = rcInstHtml(uid, i); return; }
+        if (!down) return;
+        if (Math.abs(e.clientX - down.x) > 6) down.moved = true;
+        const { i, f } = rcIdxAt(uid, svg, e.clientX); rcCursor(uid, f); const el = info(); if (el) el.innerHTML = rcInstHtml(uid, i);
+      });
+      const up = e => {
+        if (!down) return;
+        const moved = down.moved; down = null;
+        if (moved) return;
+        // tap : sélection du segment (km, segment ou profil selon le mode)
+        const S = window.__rc[uid];
+        const { i } = rcIdxAt(uid, svg, e.clientX);
+        const G = rcGroups(S.P, S.vMode === 'inst' ? 'seg' : S.vMode);
+        const g = G.find(x => i >= x.a && i <= x.b);
+        if (g) { S.sel = g; rcRender(uid); }
+      };
+      svg.addEventListener('pointerup', up);
+      svg.addEventListener('pointercancel', () => { down = null; });
+    }
+    function rcFull(uid) {
+      const S = window.__rc[uid]; if (!S) return;
+      let m = document.getElementById('rcFullModal');
+      if (!m) { m = document.createElement('div'); m.id = 'rcFullModal'; m.className = 'fixed inset-0 flex flex-col'; m.style.cssText = 'background:#050a16;z-index:200'; document.body.appendChild(m); }
+      const nid = uid + 'f';
+      window.__rc[nid] = Object.assign({}, S, { h: 170, sel: null });
+      m.innerHTML = `<div class="flex items-center justify-between" style="padding:16px 16px 8px"><span class="text-[20px] font-extrabold text-white">📈 Graphiques de la séance</span><button onclick="document.getElementById('rcFullModal').remove()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;font-size:20px">✕</button></div>
+        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 12px 24px"><div data-rc="${nid}" class="flex flex-col gap-3"></div></div>`;
+      rcRender(nid);
+    }
+
     function runChartsHtml(track, seg) {
       if (!track || track.length < 3) return '';
       const t = r => r[0] / 60;
@@ -9364,7 +9546,7 @@ ${analysisFormatPrompt()}`;
         <tbody>${rows}</tbody></table></div>`;
     }
     function runDataBlockHtml(track, seg, opts = {}) {
-      const c = runChartsHtml(track, seg), tb = resultsTableHtml(track, seg, opts) || segTableHtml(seg);
+      const c = resultChartsHtml(track, seg, opts) || runChartsHtml(track, seg), tb = resultsTableHtml(track, seg, opts) || segTableHtml(seg);
       if (!c && !tb) return '';
       return `<details class="bg-slate-950 rounded-xl border border-slate-800 p-2" open>
         <summary class="text-[10px] uppercase font-bold text-sky-300 cursor-pointer">📈 Courbes et résultats (segments, km, profil)</summary>
