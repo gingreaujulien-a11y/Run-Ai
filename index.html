@@ -5062,6 +5062,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         let st = base + 'color:#475569;';
         if (iso === raceISO() || planned.some(x => x.dateISO === iso && x.kind === 'course')) st = base + 'background:#facc15;color:#1a1204;';
         if (st.includes('#facc15')) { }
+        else if (isDone && done.some(x => x.iso === iso && (window.__recIds || {})[x.id])) st = base + 'background:linear-gradient(135deg,#fde047,#f59e0b);color:#3a2300;box-shadow:0 0 0 2px rgba(251,191,36,.35);';
         else if (isDone) st = base + 'background:#34d399;color:#03140d;';
         else if (iso === t) st = base + 'border:2px solid #38bdf8;color:#38bdf8;';
         else if (isPlan) st = base + (iso < t ? 'border:1px dashed #475569;color:#64748b;' : 'background:#172338;color:#e2e8f0;border:1px solid #334155;');
@@ -5171,22 +5172,49 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       </div>`;
     }
     function deleteCrossPlan(id) { if (!confirm('Supprimer cette activité ?')) return; appData.crossPlan = (appData.crossPlan || []).filter(x => x.id !== id); saveAppData(); updateHistoryTable(); }
+    // Séances où un record a été battu (distance, durée, vitesse tenue 3 et 10 min)
+    function recordHistIds() {
+      const H = runHistory().slice().sort((a, b) => String(a._iso || '').localeCompare(String(b._iso || '')) || (a.endAt || 0) - (b.endAt || 0));
+      const segBest = (h, minSec) => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const best = { d: 0, t: 0, v3: 0, v10: 0 }, ids = {};
+      H.forEach((h, i) => {
+        const v = { d: histKm(h), t: +h.durationMin || 0, v3: segBest(h, 180), v10: segBest(h, 600) };
+        const beat = [];
+        if (i > 0) {
+          if (v.d > best.d + 0.05) beat.push(`plus longue distance (${v.d.toFixed(1).replace('.', ',')} km)`);
+          if (v.t > best.t + 0.5) beat.push(`plus longue séance (${Math.round(v.t)} min)`);
+          if (best.v3 && v.v3 > best.v3) beat.push(`vitesse tenue 3 min (${formatSpeed(v.v3).replace('.', ',')} km/h)`);
+          if (best.v10 && v.v10 > best.v10) beat.push(`vitesse tenue 10 min (${formatSpeed(v.v10).replace('.', ',')} km/h)`);
+        }
+        if (beat.length) ids[h.id] = beat;
+        best.d = Math.max(best.d, v.d); best.t = Math.max(best.t, v.t); best.v3 = Math.max(best.v3, v.v3); best.v10 = Math.max(best.v10, v.v10);
+      });
+      return ids;
+    }
     function plDoneCard(item) {
+      const recs = (window.__recIds || {})[item.id];
       const k = sessionKind(item.linked || item);
       const wn = (String(item.title || '').match(/^Semaine (\d+)/) || [])[1];
       const feel = { green: ['bien', '#6ee7b7'], yellow: ['moyen', '#fcd34d'], red: ['dur', '#fda4af'] }[item.feeling] || null;
       const d = parseISODateLocal(item.iso);
       const dTxt = d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })) : item.date;
       const sm = Object.assign({}, item.summary || {}); delete sm.distKm;
+      if (!sm.vapKmh && !item.cross && Array.isArray(item.track) && item.track.length > 5) {
+        const hh = appData.history[item.rawIdx] || {};
+        const vs = trackChunkStats(item.track, { pente: hh.type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0) });
+        if (vs && vs.vap > 0 && (vs.hasEle || hh.type !== 'exterieur')) sm.vapKmh = Math.round(vs.vap * 10) / 10;
+        if (!sm.avgKmh && vs && vs.kmh) sm.avgKmh = Math.round(vs.kmh * 10) / 10;
+      }
       const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, !item.cross && item.km > 0 ? `${item.km.toFixed(1).replace('.', ',')} km` : '', summaryText(sm).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
       const title = item.cross ? (item.note || item.title) : (stripWarmCool(String(item.details || '').split(' — ')[0]) || item.title);
       return `<div class="pl-card done">
         <div class="flex items-center gap-3">
-          <div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          ${recs ? `<div class="pl-date" title="Record : ${plEsc(recs.join(', '))}" style="background:linear-gradient(135deg,#fde047,#f59e0b);color:#3a2300;font-size:26px">🏆</div>` : `<div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`}
           <div class="flex-1 flex flex-col gap-1 min-w-0">
             <span style="font-size:12px;font-weight:700;color:#6ee7b7">${dTxt}${feel ? ` · ressenti : <span style="color:${feel[1]}">${feel[0]}</span>` : ''} · <span style="color:${k.color}">${k.label}${wn ? ` · S${wn}` : ''}</span></span>
             <span class="pl-clamp" style="font-size:15px;font-weight:700;line-height:1.25">${plEsc(title)}</span>
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats)}</span>
+            ${recs ? `<span style="font-size:12px;color:#fbbf24;font-weight:800">🏆 Record : ${plEsc(recs.join(', '))}</span>` : ''}
           </div>
           ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`)}
         </div>
@@ -5202,6 +5230,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     function updateHistoryTable() {
       const box = document.getElementById('historyTableBody');
       if (!box) return;
+      try { window.__recIds = recordHistIds(); } catch (e) { window.__recIds = {}; }
       const t = todayISO();
       const items = [];
       appData.history.forEach((h, idx) => items.push({
@@ -8090,11 +8119,18 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         out.distKm = Math.round(runData.gps.distKm * 100) / 100;
         const min = (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
         if (min > 1) out.avgKmh = Math.round(out.distKm / (min / 60) * 10) / 10;
+        const vs = trackChunkStats(runData.track || []);
+        if (vs && vs.vap > 0 && vs.hasEle) out.vapKmh = Math.round(vs.vap * 10) / 10;
+        if (vs && vs.hasEle) { out.dplus = vs.dplus; out.dminus = vs.dminus; }
       } else if (!gpsWanted() && (runData.tmKm || 0) > 0.05) {
         out.distKm = Math.round(runData.tmKm * 100) / 100;
         out.tapis = true;
         const min = (timerState.totalSessionMs - timerState.totalRemainingMs) / 60000;
         if (min > 1) out.avgKmh = Math.round(out.distKm / (min / 60) * 10) / 10;
+        const pt = parseFloat(getActiveSession().pente) || 0;
+        const vs = trackChunkStats(runData.track || [], { pente: pt });
+        if (vs && vs.vap > 0) out.vapKmh = Math.round(vs.vap * 10) / 10;
+        else if (out.avgKmh) out.vapKmh = Math.round(vapKmh(out.avgKmh, treadmillGrade(pt)) * 10) / 10;
       }
       return out;
     }
@@ -8103,6 +8139,8 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const p = [];
       if (sum.distKm) p.push(`${sum.distKm} km`);
       if (sum.avgKmh) p.push(`moy. ${formatSpeed(sum.avgKmh)} km/h`);
+      if (sum.vapKmh && Math.abs(sum.vapKmh - (sum.avgKmh || 0)) >= 0.1) p.push(`VAP moy. ${formatSpeed(sum.vapKmh)}`);
+      if (sum.dplus >= 5) p.push(`D+ ${sum.dplus} m`);
       if (sum.hrAvg) p.push(`FC moy ${sum.hrAvg} / max ${sum.hrMax}`);
       return p.join(' • ');
     }
@@ -8852,7 +8890,7 @@ ${analysisFormatPrompt()}`;
       const uid = 'rt' + Math.random().toString(36).slice(2, 8);
       const mm = s => `${Math.floor(s / 60)}'${String(Math.round(s % 60)).padStart(2, '0')}`;
       const sp = v => v ? formatSpeed(Math.round(v * 10) / 10) : '–';
-      const table = (rows, first) => `<div class="max-h-60 overflow-y-auto custom-scroll"><table class="w-full text-[10px]"><thead><tr class="text-slate-500 text-[9px] uppercase"><th class="text-left">${first}</th><th class="text-right">Durée</th><th class="text-right">km/h</th><th class="text-right">VAP</th><th class="text-right">D+</th><th class="text-right">FC</th></tr></thead><tbody>${rows.map(r => `<tr class="border-t border-slate-800"><td class="py-0.5 pr-1 text-slate-300">${r.n}</td><td class="text-right font-mono text-slate-400">${mm(r.s.sec)}</td><td class="text-right font-mono ${r.target && Math.abs(r.s.vap - r.target) > 0.6 ? 'text-amber-300' : 'text-sky-300'}">${sp(r.s.kmh)}</td><td class="text-right font-mono text-violet-300">${sp(r.s.vap)}</td><td class="text-right font-mono text-slate-400">${r.s.hasEle ? r.s.dplus : '–'}</td><td class="text-right font-mono text-rose-300">${r.s.hr || '–'}</td></tr>`).join('')}</tbody></table></div>`;
+      const table = (rows, first) => `<div class="max-h-60 overflow-y-auto custom-scroll"><table class="w-full text-[10px]"><thead><tr class="text-slate-500 text-[9px] uppercase"><th class="text-left">${first}</th><th class="text-right">Durée</th><th class="text-right">km/h</th><th class="text-right">VAP</th><th class="text-right">Pente</th><th class="text-right">FC</th></tr></thead><tbody>${rows.map(r => `<tr class="border-t border-slate-800"><td class="py-0.5 pr-1 text-slate-300">${r.n}</td><td class="text-right font-mono text-slate-400">${mm(r.s.sec)}</td><td class="text-right font-mono ${r.target && Math.abs(r.s.vap - r.target) > 0.6 ? 'text-amber-300' : 'text-sky-300'}">${sp(r.s.kmh)}</td><td class="text-right font-mono text-violet-300">${sp(r.s.vap)}</td><td class="text-right font-mono ${(r.s.grade || 0) >= 1.5 ? 'text-orange-300' : (r.s.grade || 0) <= -1.5 ? 'text-emerald-300' : 'text-slate-400'}">${r.s.hasEle ? `${r.s.grade > 0.05 ? '+' : ''}${(Math.round(r.s.grade * 10) / 10).toFixed(1).replace('.', ',')} %` : opts.pente ? `${String(opts.pente).replace('.', ',')} %` : '–'}</td><td class="text-right font-mono text-rose-300">${r.s.hr || '–'}</td></tr>`).join('')}</tbody></table></div>`;
       // Par segment
       const bySeg = (seg || []).map(s => { const rows = T.filter(r => r[3] === s.i); const st = trackChunkStats(rows, opts) || { sec: s.sec, kmh: s.avgKmh, vap: s.avgKmh ? (opts.pente ? vapKmh(s.avgKmh, treadmillGrade(opts.pente)) : s.avgKmh) : null, hr: s.avgHr, hasEle: false }; return { n: s.name, s: st, target: s.target }; });
       // Par km
@@ -8883,8 +8921,9 @@ ${analysisFormatPrompt()}`;
           const st = trackChunkStats(T.slice(r.a, r.b + 1), opts);
           if (!st) return;
           const g = st.grade;
-          const lab = Math.abs(g) < 1.5 ? 'Plat' : g > 0 ? `Montée ${Math.round(g)} %` : `Descente ${Math.round(-g)} %`;
-          byProf.push({ n: `${lab} · ${(T[r.a][5] || 0).toFixed(1).replace('.', ',')}→${(T[r.b][5] || 0).toFixed(1).replace('.', ',')} km`, s: st });
+          const lab = Math.abs(g) < 1.5 ? 'Plat' : g > 0 ? 'Montée' : 'Descente';
+          const dk = (T[r.b][5] || 0) - (T[r.a][5] || 0);
+          byProf.push({ n: `${lab} · ${dk < 1 ? Math.round(dk * 100) * 10 + ' m' : dk.toFixed(1).replace('.', ',') + ' km'}`, s: st });
         });
       }
       const tabs = [['seg', 'Segments', bySeg], ['km', 'Par km', byKm], ['prof', 'Profil', byProf]].filter(t => t[2].length);
@@ -8892,7 +8931,7 @@ ${analysisFormatPrompt()}`;
       return `<div class="flex flex-col gap-1.5">
         <div class="flex gap-1">${tabs.map((t, i) => `<button type="button" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.dataset.on='');this.dataset.on='1';document.querySelectorAll('[data-rtp=${uid}]').forEach(d=>d.style.display=d.dataset.k==='${t[0]}'?'':'none')" data-on="${i ? '' : '1'}" class="rt-tab px-2.5 py-1 rounded-lg text-[11px] font-bold">${t[1]}</button>`).join('')}</div>
         ${tabs.map((t, i) => `<div data-rtp="${uid}" data-k="${t[0]}" style="${i ? 'display:none' : ''}">${table(t[2], t[0] === 'seg' ? 'Segment' : t[0] === 'km' ? 'Km' : 'Profil')}</div>`).join('')}
-        <span class="text-[9px] text-slate-500">VAP : vitesse équivalente sur le plat, calculée avec le dénivelé (D+ et D-) parcouru${opts.pente ? ` ou la pente du tapis (${opts.pente} %)` : ''}.</span>
+        <span class="text-[9px] text-slate-500">Pente : moyenne du tronçon. VAP : vitesse équivalente sur le plat, calculée avec le dénivelé (D+ et D-) parcouru${opts.pente ? ` ou la pente du tapis (${opts.pente} %)` : ''}.</span>
       </div>`;
     }
     // ==================== PENTES : CHANGEMENTS BRUTAUX À VENIR ====================
@@ -9302,7 +9341,7 @@ ${analysisFormatPrompt()}`;
       const t = r => r[0] / 60;
       const hr = track.map(r => [t(r), r[1]]);
       const sp = track.map(r => [t(r), r[2]]);
-      const tgt = seg && seg.length ? track.map(r => { const s = seg.find(x => x.i === r[3]); return [t(r), s ? s.target : null]; }).filter(p => p[1] !== null) : null;
+      const tgt = seg && seg.length ? track.map(r => { const s = seg.find(x => x.i === r[3]); return [t(r), s && s.target ? s.target : null]; }).filter(p => p[1] != null) : null;
       const el = track.map(r => [t(r), r[4]]);
       const charts = [
         miniChart(hr, { label: '❤️ Fréquence cardiaque', unit: 'bpm', color: '#fb7185', minSpan: 20 }),
