@@ -4026,6 +4026,7 @@
       checkExtensionOffer(remMs);
       checkMidSessionCheckin(remMs);
       checkKmSummary(remMs);
+      try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       sensorAnnouncements(curStage, elapsedMs, remMs);
 
       sampleTrack();
@@ -7388,6 +7389,7 @@ Réponds uniquement avec le JSON.`;
       runData.route.offWarned = false;
       runData.kmAnnounced = 0;
       runData.distBuf = [];
+      runData.dbStageIdx = undefined; runData.dbPending = null; runData.dbProfDone = {}; runData.dbProfAt = 0; runData.hrHighSince = 0;
       runData.paceDirCand = 0; runData.paceDirSince = 0; runData.lastPaceDir = 0;
       runData.route.zflags = {};
       runData.lastPaceAt = runData.lastPaceOkAt = runData.lastHrAt = runData.lastVapAt = -1e15;
@@ -8014,6 +8016,71 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     }
 
     // Annonces en direct basées sur les capteurs (appelé à chaque tick)
+    // ---------- Bilans courts : fin de répétition rapide (cardio) et fin de montée / descente (extérieur) ----------
+    function hrVerdict(avg, T, en) {
+      if (!T || !avg) return '';
+      if (avg > T.hi + 3) return en ? `, a bit high: target was up to ${T.hi}` : `, un peu haut : la cible était jusqu'à ${T.hi}`;
+      if (avg < T.lo - 5) return en ? `, a bit low: you can push a little more` : `, un peu bas : tu peux pousser un peu plus`;
+      return en ? ', right in the target zone' : ', dans la cible';
+    }
+    function debriefAnnouncements(cur, remMs) {
+      const now = Date.now(), en = appData.audioSettings.voiceLang === 'en';
+      const idx = timerState.currentStageIndex;
+      // Changement de segment : bilan cardio de la répétition rapide qui vient de finir
+      if (runData.dbStageIdx === undefined) { runData.dbStageIdx = idx; runData.dbStageStart = now; }
+      if (idx !== runData.dbStageIdx) {
+        const prev = timerState.stages[runData.dbStageIdx];
+        const t0 = runData.dbStageStart;
+        runData.dbStageIdx = idx; runData.dbStageStart = now;
+        if (prev && prev.type === 'palier' && prev.intensity === 'fast' && !prev.isFree) {
+          const hs = (runData.hrSamples || []).filter(x => x.t >= t0 && x.t <= now).map(x => x.hr);
+          if (hs.length >= 5) {
+            const T = hrTargetFor(prev);
+            const avg = Math.round(hs.reduce((a, b) => a + b, 0) / hs.length), mx = Math.max(...hs);
+            const txt = prev.durationSec < 90
+              ? (en ? `Peak heart rate on this rep: ${mx}${T && mx > T.hi + 5 ? `, high: target was up to ${T.hi}` : ''}.` : `Cardio max sur la répétition : ${mx}${T && mx > T.hi + 5 ? `, un peu haut : la cible était jusqu'à ${T.hi}` : T ? ', c\'est bien' : ''}.`)
+              : (en ? `Average heart rate on this rep: ${avg}${hrVerdict(avg, T, true)}.` : `Cardio moyen sur la répétition : ${avg}${hrVerdict(avg, T, false)}.`);
+            runData.dbPending = { text: txt, at: now + 5500, until: now + 30000 };
+          }
+        }
+      }
+      // Fin d'une montée ou d'une descente (sortie extérieure avec altitude)
+      if (gpsWanted() && now - (runData.dbProfAt || 0) > 20000 && (runData.track || []).length > 24) {
+        runData.dbProfAt = now;
+        try {
+          const P = rcPrep(runData.track, [], {});
+          if (P && P.hasEle) {
+            const runs = rcProfileRuns(P);
+            if (runs.length >= 2) {
+              const lc = runs[runs.length - 2], curRun = runs[runs.length - 1], R = P.rows;
+              const curLen = R[curRun.b].km - R[curRun.a].km;
+              const st = rcStats(P, lc.a, lc.b);
+              const key = Math.round(R[lc.a].km * 10);
+              runData.dbProfDone = runData.dbProfDone || {};
+              if (curLen >= 0.15 && st.km >= 0.3 && Math.abs(st.g) >= 2.5 && !runData.dbProfDone[key] && R[R.length - 1].t - R[lc.b].t < 180) {
+                runData.dbProfDone[key] = 1;
+                const stg = timerState.stages[R[lc.b].seg] || cur;
+                const tgt = stg && stg.type === 'palier' && !stg.isFree ? parseFloat(stg.speed) : 0;
+                const sp = v => formatSpeed(Math.round(v * 10) / 10).replace('.', en ? '.' : ',');
+                const dist = st.km < 1 ? `${Math.round(st.km * 100) * 10} ${en ? 'metres' : 'mètres'}` : `${sp(st.km)} km`;
+                const what = st.g > 0 ? (en ? 'End of the climb' : 'Fin de la montée') : (en ? 'End of the descent' : 'Fin de la descente');
+                let verdict = '';
+                if (tgt) { const d = st.vap - tgt; verdict = Math.abs(d) <= 0.8 ? (en ? ': well managed' : ' : bien géré') : d < 0 ? (en ? ': a bit under' : ' : un peu en dessous') : (en ? ': a bit fast' : ' : un peu trop vite'); }
+                const T = hrTargetFor(stg);
+                runData.dbPending = { text: en
+                  ? `${what}: ${dist} at ${Math.round(Math.abs(st.g))} percent. Speed ${sp(st.kmh)}, grade adjusted ${sp(st.vap)}${tgt ? ` for ${sp(tgt)} planned${verdict}` : ''}.${st.hr ? ` Average heart rate ${st.hr}${hrVerdict(st.hr, T, true)}.` : ''}`
+                  : `${what} : ${dist} à ${Math.round(Math.abs(st.g))} %. Vitesse ${sp(st.kmh)}, VAP ${sp(st.vap)}${tgt ? ` pour ${sp(tgt)} prévue${verdict}` : ''}.${st.hr ? ` Cardio moyen ${st.hr}${hrVerdict(st.hr, T, false)}.` : ''}`, at: now, until: now + 40000 };
+              }
+            }
+          }
+        } catch (e) { console.warn('debrief', e); }
+      }
+      const p = runData.dbPending;
+      if (p && now >= p.at) {
+        if (now > p.until) { runData.dbPending = null; return; }
+        if (!isSpeaking() && remMs > 7000) { runData.dbPending = null; speakLive(p.text); }
+      }
+    }
     function sensorAnnouncements(cur, elapsedMs, remMs) {
       if (!cur || isSpeaking() || remMs < 9500 || elapsedMs < 6000) return;
       const now = Date.now();
@@ -8047,9 +8114,22 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         }
       }
       // Cardio trop haut
-      if (s.fcMax && runData.hr && now - runData.hrAt < 5000 && now - runData.lastHrAt > 90000) {
-        const lim = cur.intensity === 'fast' ? 0.97 : 0.92;
-        if (runData.hr >= s.fcMax * lim) { runData.lastHrAt = now; speak([t.hrHigh]); return; }
+      {
+        const hT = hrTargetFor(cur);
+        const hrNow = runData.hr && now - runData.hrAt < 5000 ? runData.hr : null;
+        if (hT && hrNow) {
+          if (hrNow > hT.hi + 8) { if (!runData.hrHighSince) runData.hrHighSince = now; } else runData.hrHighSince = 0;
+          if (runData.hrHighSince && now - runData.hrHighSince > 15000 && now - runData.lastHrAt > 90000) {
+            runData.lastHrAt = now;
+            const en = appData.audioSettings.voiceLang === 'en';
+            speakLive(en ? `Heart rate far too high: ${hrNow} for ${hT.hi} maximum planned. Ease off a little.`
+              : `Cardio beaucoup trop haut : ${hrNow} pour ${hT.hi} maximum prévu. ${cur.intensity === 'fast' ? 'Relâche les épaules, souffle, garde la foulée.' : 'Ralentis un peu.'}`);
+            return;
+          }
+        } else if (s.fcMax && hrNow && now - runData.lastHrAt > 90000) {
+          const lim = cur.intensity === 'fast' ? 0.97 : 0.92;
+          if (hrNow >= s.fcMax * lim) { runData.lastHrAt = now; speak([t.hrHigh]); return; }
+        }
       }
       // Allure et VAP : vitesse moyenne sur 30 s et pente lissée (évite les consignes contradictoires)
       if (gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000) {
@@ -8861,7 +8941,7 @@ ${analysisFormatPrompt()}`;
     function trackChunkStats(rows, opts = {}) {
       if (!rows || rows.length < 2) return null;
       const a = rows[0], b = rows[rows.length - 1];
-      const sec = Math.max(5, (b[0] - a[0]) + 5);
+      const sec = Math.max(5, b[0] - a[0]);
       let km = (b[5] || 0) - (a[5] || 0);
       const hrs = rows.map(r => r[1]).filter(Boolean);
       const vs = rows.map(r => r[2]).filter(Boolean);
@@ -9014,6 +9094,8 @@ ${analysisFormatPrompt()}`;
       return gpsWanted() || (runData.rsc && Date.now() - runData.rsc.at < 8000);
     }
 
+    // Bilans au km / au tour : seulement en sortie extérieure libre (pas sur tapis, pas pendant une séance structurée)
+    function lapAnnounceOn() { const ss = getActiveSession(); return !!sensors().kmAnnounce && gpsWanted() && !!(ss && (ss.free || ss.kind === 'libre')); }
     function checkKmSummary(remMs) {
       if (!sensors().kmAnnounce && !fuelRemindersOn()) return;
       const now = Date.now();
@@ -9038,7 +9120,7 @@ ${analysisFormatPrompt()}`;
         runData.kmPending = { n, L, secs, avgKmh, hr, target, grade, vap: lapSt ? lapSt.vap : null, dplus: lapSt && lapSt.hasEle ? lapSt.dplus : 0, hrT: hrTargetFor(curSt), gNow: gpsWanted() ? liveGrade() : 0, measured: measuredSpeed(), at: now };
         // Voix IA : on génère l'annonce tout de suite (jusqu'à 1 min si le réseau est faible)
         const kp = runData.kmPending || {};
-        kp.text = sensors().kmAnnounce ? kmSummaryText(kp) : '';
+        kp.text = lapAnnounceOn() ? kmSummaryText(kp) : '';
         if (!kp.text) { runData.kmPending = null; }
         if (runData.kmPending && aiVoiceActive() && kp.text) {
           kp.wait = true;
@@ -9371,7 +9453,7 @@ ${analysisFormatPrompt()}`;
     }
     function rcStats(P, a, b) {
       const R = P.rows.slice(a, b + 1);
-      const sec = Math.max(5, R[R.length - 1].t - R[0].t + 5);
+      const sec = Math.max(5, R[R.length - 1].t - (a > 0 ? P.rows[a - 1].t : R[0].t));
       const km = Math.max(0, R[R.length - 1].km - (a > 0 ? P.rows[a - 1].km : R[0].km));
       const hrs = R.map(r => r.hr).filter(Boolean), vs = R.map(r => r.v).filter(Boolean);
       const kmh = km > 0.01 ? km / (sec / 3600) : (vs.length ? vs.reduce((x, y) => x + y, 0) / vs.length : 0);
@@ -9657,11 +9739,11 @@ ${analysisFormatPrompt()}`;
       const t = VT();
       // Bilan de chaque km (calculé en direct pendant la course)
       const LP = (parseFloat(sensors().lapM) || 1000) / 1000;
-      if (sensors().kmAnnounce || fuelRemindersOn()) for (let n = LP; n <= totalKm + 1e-9; n = Math.round((n + LP) * 1000) / 1000) {
+      if (lapAnnounceOn() || fuelRemindersOn()) for (let n = LP; n <= totalKm + 1e-9; n = Math.round((n + LP) * 1000) / 1000) {
         const tm = timeAtKm(n);
         if (tm === null) continue;
         const bits = [];
-        if (sensors().kmAnnounce) bits.push(`${LP >= 1 ? `Kilomètre ${n}` : `${String(n).replace('.', ',')} km`} : moyenne, VAP${sensors().btId || runData.hr ? ', cardio (et zone visée)' : ''}, rythme (chiffres réels annoncés en direct).`);
+        if (lapAnnounceOn()) bits.push(`${LP >= 1 ? `Kilomètre ${n}` : `${String(n).replace('.', ',')} km`} : moyenne, VAP${sensors().btId || runData.hr ? ', cardio (et zone visée)' : ''}, rythme (chiffres réels annoncés en direct).`);
         if (fuelRemindersOn()) bits.push(pickNoRepeat('drink'));
         rows.push({ t: tm, pieces: [bits.join(' ')], gps: true, live: true });
       }
