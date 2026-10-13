@@ -294,9 +294,10 @@
         <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
         </div>
       </div>
-      <div id="homeSessStats" class="text-sm font-bold text-sky-200"></div>
-      <div id="homeFuel" class="text-[11px] font-semibold text-cyan-300 hidden"></div>
-      <div id="homeSessDesc" class="text-sm text-slate-200 leading-snug"></div>
+      <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
+      <div id="homeSessRec" class="text-[14px] font-semibold text-slate-300 leading-snug hidden"></div>
+      <div id="homeSessStats" class="text-[14px] font-bold text-sky-200"></div>
+      <div id="homeFuel" class="text-[12px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeGuide" class="hidden">
         <button onclick="toggleHomeGuide()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[13px] font-extrabold text-sky-100" style="background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4)"><span id="homeGuideHead">🎯 Objectif · ⚖️ adapter selon ma forme</span><span id="homeGuideArrow">▾</span></button>
         <div id="homeGuideBody" class="hidden mt-2"></div>
@@ -8041,7 +8042,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
           if (hs.length >= 5) {
             const T = hrTargetFor(prev);
             const avg = Math.round(hs.reduce((a, b) => a + b, 0) / hs.length), mx = Math.max(...hs);
-            const txt = prev.durationSec < 90
+            const txt = prev.durationSec < 120
               ? (en ? `Peak heart rate on this rep: ${mx}${T && mx > T.hi + 5 ? `, high: target was up to ${T.hi}` : ''}.` : `Cardio max sur la répétition : ${mx}${T && mx > T.hi + 5 ? `, un peu haut : la cible était jusqu'à ${T.hi}` : T ? ', c\'est bien' : ''}.`)
               : (en ? `Average heart rate on this rep: ${avg}${hrVerdict(avg, T, true)}.` : `Cardio moyen sur la répétition : ${avg}${hrVerdict(avg, T, false)}.`);
             runData.dbPending = { text: txt, at: now + 5500, until: now + 30000 };
@@ -10645,6 +10646,40 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (!g) return '';
       return `Objectif de la séance : ${g.objectif} L'essentiel : ${g.essentiel}${g.adapts.length ? ` Adaptations chiffrées possibles : ${g.adapts.map(a => `${a.label.replace(/^\S+\s/, '')} : ${a.changes.join(', ')}`).join(' ; ')}.` : ''}`;
     }
+
+    // Lignes de la carte « séance du jour » : détail, récupération
+    function homeSessLines(sess) {
+      const where = sess.type === 'exterieur' ? 'Extérieur' : `Pente ${String(sess.pente || 0).replace('.', ',')} %`;
+      const human = () => capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0, pente: 0 })));
+      if (sess.free || sess.kind === 'test' || sess.kind === 'course' || routeRunInfo(sess)) return { main: sess.type === 'exterieur' ? human() : `${where} : ${human()}`, rec: '' };
+      const G = gSegs(sess), rp = Math.max(1, parseInt(sess.repet) || 1), nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
+      const recB = nb > 1 && +sess.recupBloc > 0 ? `Récup entre blocs : ${fmtQ({ duration: +sess.recupBloc })}${+sess.vitRecupBloc > 0 ? ` à ${fmtV(+sess.vitRecupBloc)} km/h` : ''}` : '';
+      if (G.segs.length === 2 && G.fast.length === 1 && G.slow.length === 1 && G.segs[0] === G.fast[0]) {
+        const reps = `${nb > 1 ? `${nb} blocs de ` : ''}${rp > 1 || nb > 1 ? `${rp} × ` : ''}`;
+        return { main: `${where} : ${reps}${fmtQ(G.fast[0])} à ${fmtV(G.vmax)} km/h`, rec: [`Récup : ${fmtQ(G.slow[0])} à ${fmtV(G.vmin)} km/h entre chaque`, recB].filter(Boolean).join(' · ') };
+      }
+      let main = human();
+      main = main.replace(/\s*\(récup ([^)]*)\)/, '');
+      const m = /\(récup ([^)]*)\)/.exec(human());
+      main = main.replace(/à (\d+(?:,\d)?)$/, 'à $1 km/h');
+      return { main: `${where} : ${main}`, rec: [m ? `Récup : ${m[1]}` : '', recB].filter(Boolean).join(' · ') };
+    }
+    // Cardio cible de la partie rapide (fractionné court : cardio max à ne pas dépasser ; plus long : cardio moyen)
+    function guideHrText(s) {
+      const fc = runnerFcMax(); if (!fc || !s || s.free) return '';
+      const k = guideKind(s), G = gSegs(s);
+      if (k === 'test' || k === 'course' || k === 'libre') return '';
+      const pc = (a, b) => [Math.round(fc * a), Math.round(fc * b)];
+      if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
+        const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60;
+        const [lo, hi] = k === 'seuil' ? pc(0.84, 0.9) : pc(0.88, 0.95);
+        return sec < 120
+          ? `Fractions courtes : cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
+          : `Cardio moyen sur chaque fraction entre ${lo} et ${hi}. S'il dépasse ${hi} dès les premières, la vitesse est trop haute pour aujourd'hui.`;
+      }
+      const [lo, hi] = k === 'recup' ? pc(0.62, 0.74) : pc(0.68, 0.79);
+      return `Cardio moyen entre ${lo} et ${hi} : tu dois pouvoir parler en courant.`;
+    }
     function guideHtml(s, idx, opts = {}) {
       const g = sessionGuide(s);
       if (!g) return '';
@@ -10654,8 +10689,11 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35)">
           <span class="text-[11px] font-black uppercase tracking-wide text-sky-300">🎯 Objectif</span>
           <span class="text-[14px] font-bold text-white leading-snug">${esc(g.objectif)}</span>
-          ${g.coachNote && !/^(test|course)\b/i.test(g.coachNote) ? `<span class="text-[12px] text-slate-400 italic">Coach : ${esc(g.coachNote)}</span>` : ''}
         </div>
+        ${guideHrText(s) ? `<div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.4)">
+          <span class="text-[11px] font-black uppercase tracking-wide text-rose-300">❤️ Cardio cible</span>
+          <span class="text-[13px] text-slate-100 leading-snug">${esc(guideHrText(s))}</span>
+        </div>` : ''}
         <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)">
           <span class="text-[11px] font-black uppercase tracking-wide text-emerald-300">✅ L'essentiel à réussir</span>
           <span class="text-[13px] text-slate-100 leading-snug">${esc(g.essentiel)}</span>
@@ -12598,13 +12636,15 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const dist = computeSessionDistanceKm(sess).toFixed(1);
       const inProgress = timerState.sessionStarted && !timerState.finished;
       { const k = sessionKind(sess); const el2 = document.getElementById('homeSessTitle'); el2.textContent = homeCardPrefix + k.label; el2.style.color = k.color; }
-      document.getElementById('homeSessDesc').textContent = capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 })));
+      { const L = homeSessLines(sess);
+        document.getElementById('homeSessDesc').textContent = L.main;
+        const re = document.getElementById('homeSessRec'); re.textContent = L.rec; re.classList.toggle('hidden', !L.rec); }
       { const hg = document.getElementById('homeGuide'), hb = document.getElementById('homeGuideBody');
         const showG = !!sess && !sess.free && !(timerState.sessionStarted && !timerState.finished);
         if (hg) hg.classList.toggle('hidden', !showG);
         if (hb && showG) hb.innerHTML = guideHtml(sess, appData.activeSessionIndex); }
-      document.getElementById('homeSessStats').textContent =
-        `${total} min • ≈ ${dist} km • ${sess.type === 'exterieur' ? 'extérieur' : `pente ${sess.pente}%`}`;
+      { const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
+        document.getElementById('homeSessStats').textContent = `⏱️ Durée totale ${total} min · ≈ ${String(dist).replace('.', ',')} km${!sess.free && (c || r) ? ` (dont échauff. ${c}' et calme ${r}')` : ''}`; }
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE LA SÉANCE' : "C'EST PARTI !";
