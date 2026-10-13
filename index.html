@@ -5854,6 +5854,49 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       const flags = [sessMissingRecovery(s) ? 'RÉCUP MANQUANTE' : '', !s.free && !s.cardio && s.kind !== 'course' ? 'CARDIO NON PRÉCISÉ' : ''].filter(Boolean);
       return `${s.dateISO} (${s.jour || ''}) | ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`} | ${Math.round(computeSessionTotalMin(s))} min ≈ ${computeSessionDistanceKm(s).toFixed(1)} km | ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${rec && !/récup/.test(describeSessionHuman(s)) ? ` (${rec})` : ''} | cardio ${s.cardio ? cardioText(s.cardio) : '?'}${s.notes ? ` | ${s.notes}` : ''}${flags.length ? ` | ⚠ ${flags.join(', ')}` : ''}`;
     }
+
+    // ==================== COMPOSITION DU PLAN (types de séances, calculée par l'app) ====================
+    const PLAN_KEY_TYPES = ['VMA courte (30/30, 200 m)', 'VMA longue (2 à 5 min)', 'Seuil', 'Allure spécifique', 'Sortie longue'];
+    function planSessCategory(sx, vma, vGoal) {
+      if (sx.kind === 'test' || sx.kind === 'course') return 'Test / course';
+      if (sx.free) return 'Libre';
+      const G = gSegs(sx), total = computeSessionTotalMin(sx);
+      const slope = sx.type === 'tapis' ? (parseFloat(sx.pente) || 0) : 0;
+      const eff = v => slope > 1 ? vapKmh(v, treadmillGrade(slope)) : v;
+      if (G.fast.length) {
+        const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60, pct = eff(G.vmax) / vma;
+        if (sx.kind === 'cotes' || slope >= 4) return 'Côtes / fractionné en pente';
+        if (sec <= 45) return 'VMA courte (30/30, 200 m)';
+        if (sec <= 100) return 'Fractionné 1 min (300-400 m)';
+        if (sec <= 330 && pct >= 0.88) return 'VMA longue (2 à 5 min)';
+        if (vGoal && Math.abs(G.vmax - vGoal) / vGoal <= 0.03 && sec >= 240) return 'Allure spécifique';
+        if (sec >= 300) return 'Seuil';
+        return 'Fractionné (autre)';
+      }
+      const v = G.vmax, pct = eff(v) / vma;
+      if (vGoal && Math.abs(v - vGoal) / vGoal <= 0.03 && total >= 20 && pct >= 0.75) return 'Allure spécifique';
+      if (total >= 65 || sx.kind === 'longue') return 'Sortie longue';
+      if (pct >= 0.8) return 'Seuil';
+      if (sx.kind === 'recup') return 'Récupération';
+      return 'Endurance';
+    }
+    function planComposition(list) {
+      const g = appData.goal || {}, vGoal = g.distanceKm && g.durationMin ? g.distanceKm / (g.durationMin / 60) : 0;
+      const vma = ((estimateVma() || {}).vma) || runnerEF() * 1.45;
+      const counts = {}; let hard = 0, tot = 0;
+      list.forEach(sx => {
+        const c = planSessCategory(sx, vma, vGoal); counts[c] = (counts[c] || 0) + 1;
+        const T = computeSessionTotalMin(sx); tot += T;
+        const G = gSegs(sx);
+        if (G.fast.length) { const f = G.fast[0], m = f.unit === 'km' ? f.distance / G.vmax * 60 : +f.duration; hard += Math.min(T, m * G.reps); }
+        else if (G.vmax / vma >= 0.8 || c === 'Test / course') hard += Math.max(0, T - (+sx.chauffe || 0) - (+sx.recup || 0));
+      });
+      const missing = PLAN_KEY_TYPES.filter(k => !counts[k]);
+      const n = list.length, hardPct = tot ? Math.round(hard / tot * 100) : 0;
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const text = `Composition du plan jusqu'à la course (calculée par l'app, ${n} séances de course) : ${top.map(([k, c]) => `${k} ${c} (${Math.round(c / n * 100)} %)`).join(', ')}. Types clés absents : ${missing.length ? missing.join(', ') : 'aucun'}. Temps en intensité ≈ ${hardPct} % du temps total (repère : 15 à 25 %).${top[0] && top[0][1] / n >= 0.4 && n >= 5 ? ` Attention : « ${top[0][0]} » représente ${Math.round(top[0][1] / n * 100)} % des séances, le plan manque de variété.` : ''}`;
+      return { counts: top, missing, hardPct, n, text };
+    }
     async function analyzePlanWithCoach(skipBg) {
       const st = document.getElementById('planAnaStatus');
       const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
@@ -5870,7 +5913,9 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       const hist = runHistory().slice(0, 10).map(h => `- ${h._iso || h.date} : ${h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.summary && h.summary.hrAvg ? ` ; FC moy ${h.summary.hrAvg}` : ''}`).join('\n') || '- aucune';
       const wk = weeklyKm(6).map(w => `${fmtDateShort(w.start)} : ${w.km.toFixed(0)} km (${w.n})`).join(' ; ');
       let prob = '';
-      try { const p = computeGoalProbability(); if (p && !p.noData) prob = `Probabilité estimée d'atteindre l'objectif le jour J : ${p.pDay} %.`; } catch (e) { }
+      let pApp = null;
+      try { const p = computeGoalProbability(); if (p && !p.noData) { pApp = p.pDay; prob = `Probabilité d'atteindre l'objectif le jour J calculée par l'app : ${p.pDay} % (chrono estimé ${fmtClock(p.tDay)} pour ${g.durationMin} min visées). Ce calcul part de la VMA estimée actuelle et d'une progression standard : il ne tient PAS compte du contenu du plan.`; } } catch (e) { }
+      const compo = planComposition(upTo.filter(x => !x.free));
       const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
       const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
 Analyse le plan d'entraînement à venir de ton coureur par rapport à son objectif, et propose des modifications seulement si elles sont vraiment utiles.
@@ -5884,8 +5929,9 @@ Séances récentes enregistrées dans l'app :
 ${hist}
 ${backgroundText()}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
 Jours habituels de course : ${planDays().map(i => jours[i]).join(', ') || '?'}.${offDaysText() ? `\nJours sans sport prévus (aucune séance ces jours-là) : ${offDaysText()}.` : ''}${(document.getElementById('coachCustomInstructions')?.value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
-Plan à venir (référence | date | lieu | durée | contenu hors échauffement et retour au calme | notes) :
+Plan à venir (référence | date | lieu | durée | contenu hors échauffement et retour au calme | cardio | notes) :
 ${lines}
+${compo.text}
 Allures de référence à utiliser : VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) + ' km/h' : '?'; } catch (e) { return '?'; } })()}, allure objectif ${g.distanceKm && g.durationMin ? formatSpeed(Math.round(g.distanceKm / g.durationMin * 600) / 10) + ' km/h' : '?'}, endurance ${formatSpeed(runnerEF())} km/h.
 ${planStyleText()}
 ${planPrefsText()}
@@ -5897,10 +5943,12 @@ Fais une VRAIE analyse de coach, détaillée, semaine par semaine jusqu'à la co
 - répartition des types : travail VMA (30/30, 200-400 m, 1-3 min à 95-100 % VMA), seuil (blocs de 6 à 20 min à 85-88 % VMA), allure spécifique objectif, sortie longue, endurance, côtes, récupération ;
 - présence et progression des séances clés pour l'objectif (allure spécifique de plus en plus longue, sortie longue suffisante pour la distance) ;
 - récupération entre séances dures, affûtage les 7 à 10 derniers jours, tests bien placés.
+Pour CHAQUE séance, demande-toi si c'est le meilleur type de séance possible à ce moment du plan pour cet objectif ; si une autre séance serait plus efficace (ex. remplacer un fractionné 1 min répété chaque semaine par du 30/30, de la VMA longue, du seuil ou de l'allure spécifique), propose le remplacement en expliquant le gain dans "raison". Un plan sans seuil, sans VMA courte type 30/30, sans allure spécifique ou sans sortie longue adaptée à la distance n'est pas optimal : comble ces manques en remplaçant les séances redondantes.
+Le but est de maximiser les chances de réussir l'objectif : si la probabilité est inférieure à 70 %, le verdict ne peut pas être "ok" ; propose toutes les modifications qui augmentent les chances (types de séances, progression des allures, volume, séances ajoutées sur les jours disponibles, dans la limite des préférences du coureur et sans risque de blessure). Si l'objectif reste hors de portée même avec le meilleur plan, dis-le et donne le chrono réaliste.
 Corrige activement : change le type d'une séance quand c'est utile (ex. un fractionné → seuil, ou endurance → VMA courte), ajoute une séance si la fréquence est trop faible pour l'objectif, ajuste vitesses / durées / répétitions. Ne considère pas que le coureur part de zéro s'il déclare une pratique avant l'app.
 Prochaine course : ${nextRace || '?'}. Tu peux corriger tout le plan jusqu'à cette course, sans limite : modifier autant de séances que nécessaire (y compris toutes), changer leur type pour varier, en supprimer, ou en ajouter (course à pied, vélo ou renforcement musculaire).
 Format JSON strict :
-{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["4 à 6 constats précis et chiffrés (volume, types, allures, progression)"],"semaines":[{"debut":"AAAA-MM-JJ","km":25,"seances":3,"commentaire":"une phrase : rôle de la semaine et ce qui va ou non"}],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
+{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","proba_plan_actuel":30,"proba_plan_modifie":55,"chrono_realiste":"ex. 52:30, chrono le plus probable le jour J avec le plan modifié","types":"une phrase sur la répartition des types de séances et ce qui manque","points":["4 à 6 constats précis et chiffrés (volume, types, allures, progression)"],"semaines":[{"debut":"AAAA-MM-JJ","km":25,"seances":3,"commentaire":"une phrase : rôle de la semaine et ce qui va ou non"}],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
 Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si allure continue), en bpm ; "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. Pas de limite au nombre de modifications ; les plus importantes d'abord. "activite" = "course" par défaut ; pour "velo" ou "renfo", seulement avec "ajouter" (session : dateISO, duree_min, titre, detail). "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
       const btn = document.getElementById('planAnaBtn'); if (btn) btn.disabled = true;
       say('');
@@ -5910,7 +5958,9 @@ Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si
         const j = parseJsonLoose(txt) || {};
         const mods = parseCoachMods(j.modifications, refs, null, 100000);
         const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
-        planReview = { at: todayISO(), verdict, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 6).map(String), weeks: (Array.isArray(j.semaines) ? j.semaines : []).slice(0, 40).map(w => ({ d: String(w.debut || ''), km: Math.round(+w.km || 0), n: Math.round(+w.seances || 0), c: String(w.commentaire || '') })), mods, done: false };
+        const pc = v => { const x = Math.round(parseFloat(v)); return x >= 1 && x <= 99 ? x : null; };
+        const probA = pc(j.proba_plan_actuel), probB = pc(j.proba_plan_modifie);
+        planReview = { at: todayISO(), verdict: verdict === 'ok' && ((pApp !== null && pApp < 70) || (probA !== null && probA < 70)) && mods.length ? 'ajuster' : verdict, pApp, probA, probB: mods.length ? probB : null, chrono: String(j.chrono_realiste || '').slice(0, 40), types: String(j.types || '').slice(0, 300), compo: { counts: compo.counts, missing: compo.missing, hardPct: compo.hardPct }, titre: String(j.titre || ''), points: (Array.isArray(j.points) ? j.points : []).slice(0, 6).map(String), weeks: (Array.isArray(j.semaines) ? j.semaines : []).slice(0, 40).map(w => ({ d: String(w.debut || ''), km: Math.round(+w.km || 0), n: Math.round(+w.seances || 0), c: String(w.commentaire || '') })), mods, done: false };
         appData.planReview = planReview; saveAppData();
         say('');
         renderPlanReview();
@@ -5927,7 +5977,23 @@ Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si
       const C = { ok: ['#34d399', 'rgba(52,211,153,.12)', '✅ Plan validé'], ajuster: ['#fb923c', 'rgba(251,146,60,.12)', '🛠️ À ajuster'], revoir: ['#fb7185', 'rgba(251,113,133,.12)', '⚠️ À revoir'] }[pr.verdict];
       const mods = coachModsHtml(pr, 'planReview', 'renderPlanReviewFoot');
       const wk = (pr.weeks || []).length ? `<details class="rounded-xl" style="background:#0b1220;border:1px solid #1e293b"><summary class="px-3 py-2.5 text-[13px] font-extrabold text-sky-200 cursor-pointer">📅 Analyse semaine par semaine (${pr.weeks.length})</summary><div class="flex flex-col gap-1.5 px-3 pb-3">${pr.weeks.map(w => `<div class="flex flex-col gap-0.5 py-1.5" style="border-top:1px solid #1e293b"><span class="text-[12px] font-extrabold text-white">${w.d ? `Sem. du ${fmtDateShort(w.d)}` : 'Semaine'} · ${w.km} km · ${w.n} séance${w.n > 1 ? 's' : ''}</span><span class="text-[12px] text-slate-400">${plEsc(w.c)}</span></div>`).join('')}</div></details>` : '';
-      box.innerHTML = coachVerdictHtml(C, pr.titre, pr.points) + wk + (mods ? `<span class="pm-cap" style="margin-top:4px">Modifications proposées</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="planAnaFoot" class="flex flex-col gap-2"></div>';
+      const esc2 = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const co = pr.compo;
+      const compoHtml = co && co.counts && co.counts.length ? `<div class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid #1e293b">
+          <span class="text-[12px] font-black uppercase tracking-wide text-sky-300">🧩 Types de séances du plan</span>
+          <div class="flex flex-wrap gap-1.5">${co.counts.map(([k, c]) => `<span class="text-[12px] font-bold px-2 py-1 rounded-lg" style="background:#172338;color:#e2e8f0">${esc2(k)} · ${c}</span>`).join('')}</div>
+          ${co.missing.length ? `<span class="text-[12px] font-bold" style="color:#fb923c">Absents : ${co.missing.map(esc2).join(', ')}</span>` : ''}
+          <span class="text-[12px] text-slate-400">Temps en intensité ≈ ${co.hardPct} % (repère 15 à 25 %)</span>
+          ${pr.types ? `<span class="text-[12px] text-slate-300">${esc2(pr.types)}</span>` : ''}
+        </div>` : '';
+      const pNow = pr.probA ?? pr.pApp;
+      const probHtml = pNow != null ? `<div class="flex items-center gap-3 p-3 rounded-xl" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.45)">
+          <span class="text-[26px]">🎯</span>
+          <div class="flex flex-col gap-0.5"><span class="text-[12px] font-black uppercase tracking-wide" style="color:#c4b5fd">Chances de réussir l'objectif</span>
+          <span class="text-[17px] font-black text-white">${pNow} %${pr.probB ? ` → <span style="color:#34d399">${pr.probB} %</span> avec les modifications` : ''}</span>
+          ${pr.chrono ? `<span class="text-[12px] text-slate-300">Chrono probable : ${esc2(pr.chrono)}</span>` : ''}
+          <span class="text-[11px] text-slate-500">Estimation du coach${pr.pApp != null ? ` · calcul de l'app aujourd'hui : ${pr.pApp} %, basé sur ta VMA actuelle` : ''}</span></div></div>` : '';
+      box.innerHTML = coachVerdictHtml(C, pr.titre, pr.points) + probHtml + compoHtml + wk + (mods ? `<span class="pm-cap" style="margin-top:4px">Modifications proposées</span><div class="flex flex-col gap-2">${mods}</div>` : '') + '<div id="planAnaFoot" class="flex flex-col gap-2"></div>';
       box.classList.remove('hidden');
       renderPlanReviewFoot();
     }
