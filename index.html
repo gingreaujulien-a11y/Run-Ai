@@ -724,8 +724,8 @@
           <div class="pm-card">
             <span class="pm-cap">Cardio</span>
             <div class="flex items-center justify-between gap-3">
-              <div class="pm-rt">FC max (bpm)<small>Vide = théorique</small></div>
-              <input type="number" id="fcMaxProfile" min="120" max="230" oninput="readRunnerBody(); renderRunnerBody()" class="pm-in c" style="width:96px">
+              <div class="pm-rt">FC max (bpm)<small>Saisis ta valeur (test, course…) · vide = théorique</small></div>
+              <input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c" style="width:96px">
             </div>
             <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
             <details class="pm-det"><summary>Mes zones cardio</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-0.5 text-[12px]"></div></details>
@@ -825,6 +825,27 @@
             <span class="pm-cap" style="color:#a78bfa">Générer mon plan avec le coach</span>
             <span class="text-[12px] text-slate-400 -mt-1">Le coach crée les séances jusqu'au jour J à partir de ton profil, ton niveau et ton objectif.</span>
             <div class="pm-lbl">Jours où je peux courir<div id="planDays" class="grid grid-cols-7 gap-1"></div></div>
+            <details class="pm-det" open><summary>Pour un plan sur mesure (optionnel)</summary>
+              <div class="flex flex-col gap-2 mt-2" oninput="readPlanPrefs()" onchange="readPlanPrefs()">
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="pm-lbl">Séances / semaine<select id="ppNb" class="pm-in"><option value="">Selon les jours</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+                  <label class="pm-lbl">Priorité<select id="ppPrio" class="pm-in"><option value="">—</option><option value="chrono">Le chrono</option><option value="finir">Finir en forme</option><option value="sante">Sans blessure</option></select></label>
+                  <label class="pm-lbl">Durée max en semaine (min)<input id="ppDurSem" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 60"></label>
+                  <label class="pm-lbl">Durée max le week-end (min)<input id="ppDurWe" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 120"></label>
+                  <label class="pm-lbl">Jour de la sortie longue<select id="ppLongue" class="pm-in"><option value="">Au choix</option><option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option><option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option></select></label>
+                  <label class="pm-lbl">Km par semaine actuels<input id="ppKm" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 25"></label>
+                  <label class="pm-lbl">Plus longue sortie récente (km)<input id="ppLongest" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 12"></label>
+                  <label class="pm-lbl">Côtes dehors ?<select id="ppCotes" class="pm-in"><option value="">—</option><option value="oui">Oui</option><option value="non">Non</option></select></label>
+                  <label class="pm-lbl">Pente max du tapis (%)<input id="ppPente" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 15"></label>
+                  <label class="pm-lbl">Vitesse max du tapis (km/h)<input id="ppVit" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 18"></label>
+                  <label class="pm-lbl">Activités en plus<select id="ppCross" class="pm-in"><option value="">—</option><option value="aucun">Aucune</option><option value="velo">Vélo</option><option value="renfo">Renforcement</option><option value="les2">Vélo + renfo</option></select></label>
+                  <label class="pm-lbl">Combien / semaine<input id="ppCrossN" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 1"></label>
+                </div>
+                <label class="pm-lbl">Blessures ou points faibles<input id="ppBless" type="text" class="pm-in" placeholder="ex. tendinite d'Achille l'an dernier"></label>
+                <label class="pm-lbl">Séances que j'aime<input id="ppAime" type="text" class="pm-in" placeholder="ex. côtes, fractionné court"></label>
+                <label class="pm-lbl">À éviter<input id="ppEvite" type="text" class="pm-in" placeholder="ex. sorties de plus de 2 h"></label>
+              </div>
+            </details>
             <label class="pm-lbl">Où ?<select id="planPlace" class="pm-in"><option value="mixte">Tapis et extérieur</option><option value="tapis">Tapis uniquement</option><option value="exterieur">Extérieur uniquement</option></select></label>
             <label class="pm-lbl">Consignes pour le coach (optionnel)<textarea id="coachCustomInstructions" rows="2" placeholder="ex. 45 min maximum en semaine, sortie longue le dimanche…" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px"></textarea></label>
             <button type="button" onclick="generatePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#a78bfa;color:#13092b;font-weight:800;font-size:14px">🧠 Générer le plan</button>
@@ -5499,6 +5520,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       updateGoalModalUI();
       fillCoachTabUI();
       renderPlanDays();
+      try { fillPlanPrefs(); } catch (e) { }
       renderGoalSummary();
       document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
@@ -5771,8 +5793,66 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       if (!planReview && appData.planReview && !appData.planReview.done) planReview = appData.planReview;
       renderPlanReview();
     }
+
+    // Cardio cible d'une séance (partie rapide, ou toute la séance si allure continue) : { moy: [min, max] | null, max: n | null }
+    function parseCardio(c) {
+      if (!c || typeof c !== 'object') return undefined;
+      const n = v => { const x = Math.round(parseFloat(v)); return x >= 80 && x <= 230 ? x : null; };
+      let lo = n(c.moy_min ?? c.moyMin), hi = n(c.moy_max ?? c.moyMax), mx = n(c.max);
+      if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
+      const out = { moy: lo && hi ? [lo, hi] : null, max: mx };
+      return out.moy || out.max ? out : undefined;
+    }
+    function cardioText(c) {
+      if (!c) return '';
+      return [c.moy ? `moy ${c.moy[0]}–${c.moy[1]}` : '', c.max ? `max ${c.max}` : ''].filter(Boolean).join(' / ');
+    }
+    // Séance fractionnée sans récupération entre les fractions
+    function sessMissingRecovery(sx) {
+      if (!sx || sx.free || sx.kind === 'test' || sx.kind === 'course') return false;
+      const G = gSegs(sx), rp = Math.max(1, parseInt(sx.repet) || 1), nb = Math.max(1, parseInt(sx.nbBlocs) || 1);
+      if (!G.fast.length) return false;
+      if (G.slow.length) return false;
+      return (rp > 1) || (nb > 1 && !(+sx.recupBloc > 0));
+    }
+    const COACH_METHOD = `Méthode à suivre (références reconnues de l'entraînement en course à pied) : répartition d'intensité polarisée, environ 80 % du temps en endurance facile et 20 % en intensité (Seiler) ; allures et zones de Daniels (E endurance, M marathon, T seuil, I intervalles VO2max, R répétitions) ; travail de VMA de Véronique Billat (30/30, fractions de 1 à 5 min à 95-100 % VMA, récupération active d'une durée proche de l'effort) ; progression de la charge de 10 % maximum par semaine et rapport charge aiguë/chronique entre 0,8 et 1,3 (Gabbett) ; périodisation foncier → spécifique → affûtage, avec une semaine allégée toutes les 3 à 4 semaines (Pfitzinger, Bompa) ; affûtage de 7 à 14 jours avec 40 à 60 % de volume en moins en gardant l'intensité (Mujika) ; zones cardio en % de FC max. Utilise ces principes, sans les citer dans tes réponses.`;
+    function planPrefs() { if (!appData.planPrefs || typeof appData.planPrefs !== 'object') appData.planPrefs = {}; return appData.planPrefs; }
+    function planPrefsText() {
+      const P = planPrefs(), J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      const out = [];
+      if (P.nbSeances) out.push(`${P.nbSeances} séances de course par semaine souhaitées`);
+      if (P.durSem) out.push(`séance de ${P.durSem} min maximum en semaine`);
+      if (P.durWe) out.push(`jusqu'à ${P.durWe} min le week-end`);
+      if (P.jourLongue !== undefined && P.jourLongue !== '') out.push(`sortie longue le ${J[+P.jourLongue]}`);
+      if (P.kmSem) out.push(`volume actuel ${P.kmSem} km par semaine`);
+      if (P.longest) out.push(`sortie la plus longue récente ${P.longest} km`);
+      if (P.penteMax) out.push(`pente maximale du tapis ${P.penteMax} %`);
+      if (P.vitMax) out.push(`vitesse maximale du tapis ${P.vitMax} km/h`);
+      if (P.cotes) out.push(P.cotes === 'oui' ? 'des côtes sont accessibles en extérieur' : 'pas de côtes accessibles en extérieur');
+      if (P.cross && P.cross !== 'aucun') out.push(`activités complémentaires souhaitées : ${({ velo: 'vélo', renfo: 'renforcement musculaire', les2: 'vélo et renforcement musculaire' })[P.cross]}${P.crossN ? ` (${P.crossN} fois par semaine)` : ''}`);
+      if (P.priorite) out.push(`priorité : ${({ finir: "finir la course en bonne forme", chrono: "réussir le chrono visé", sante: "progresser sans se blesser" })[P.priorite]}`);
+      if (P.blessures) out.push(`blessures ou points de vigilance : ${P.blessures}`);
+      if (P.aime) out.push(`séances appréciées : ${P.aime}`);
+      if (P.evite) out.push(`à éviter : ${P.evite}`);
+      return out.length ? `Préférences et contraintes du coureur : ${out.join(' ; ')}.` : '';
+    }
+    function readPlanPrefs() {
+      const P = planPrefs(), v = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+      const num = id => { const x = parseFloat(v(id).replace(',', '.')); return isNaN(x) ? '' : x; };
+      Object.assign(P, { nbSeances: num('ppNb'), durSem: num('ppDurSem'), durWe: num('ppDurWe'), jourLongue: v('ppLongue'), kmSem: num('ppKm'), longest: num('ppLongest'), penteMax: num('ppPente'), vitMax: num('ppVit'), cotes: v('ppCotes'), cross: v('ppCross'), crossN: num('ppCrossN'), priorite: v('ppPrio'), blessures: v('ppBless').slice(0, 200), aime: v('ppAime').slice(0, 150), evite: v('ppEvite').slice(0, 150) });
+      saveAppData();
+    }
+    function fillPlanPrefs() {
+      const P = planPrefs(), set = (id, x) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = x ?? ''; };
+      const b = appData.runBackground || {};
+      set('ppNb', P.nbSeances || ''); set('ppDurSem', P.durSem); set('ppDurWe', P.durWe); set('ppLongue', P.jourLongue ?? '');
+      set('ppKm', P.kmSem || b.km || ''); set('ppLongest', P.longest || b.longest || ''); set('ppPente', P.penteMax); set('ppVit', P.vitMax);
+      set('ppCotes', P.cotes); set('ppCross', P.cross); set('ppCrossN', P.crossN); set('ppPrio', P.priorite); set('ppBless', P.blessures); set('ppAime', P.aime); set('ppEvite', P.evite);
+    }
     function planSessLine(s) {
-      return `${s.dateISO} (${s.jour || ''}) | ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`} | ${Math.round(computeSessionTotalMin(s))} min ≈ ${computeSessionDistanceKm(s).toFixed(1)} km | ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.notes ? ` | ${s.notes}` : ''}`;
+      const G = gSegs(s), rec = G.slow[0] ? `récup ${fmtQ(G.slow[0])} à ${fmtV(G.vmin)}` : G.recB ? `récup ${fmtQ(G.recB)} à ${fmtV(G.recB.speed || 0)} entre blocs` : '';
+      const flags = [sessMissingRecovery(s) ? 'RÉCUP MANQUANTE' : '', !s.free && !s.cardio && s.kind !== 'course' ? 'CARDIO NON PRÉCISÉ' : ''].filter(Boolean);
+      return `${s.dateISO} (${s.jour || ''}) | ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`} | ${Math.round(computeSessionTotalMin(s))} min ≈ ${computeSessionDistanceKm(s).toFixed(1)} km | ${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${rec && !/récup/.test(describeSessionHuman(s)) ? ` (${rec})` : ''} | cardio ${s.cardio ? cardioText(s.cardio) : '?'}${s.notes ? ` | ${s.notes}` : ''}${flags.length ? ` | ⚠ ${flags.join(', ')}` : ''}`;
     }
     async function analyzePlanWithCoach(skipBg) {
       const st = document.getElementById('planAnaStatus');
@@ -5808,6 +5888,10 @@ Plan à venir (référence | date | lieu | durée | contenu hors échauffement e
 ${lines}
 Allures de référence à utiliser : VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) + ' km/h' : '?'; } catch (e) { return '?'; } })()}, allure objectif ${g.distanceKm && g.durationMin ? formatSpeed(Math.round(g.distanceKm / g.durationMin * 600) / 10) + ' km/h' : '?'}, endurance ${formatSpeed(runnerEF())} km/h.
 ${planStyleText()}
+${planPrefsText()}
+FC max : ${runnerFcMax() || '?'} bpm.
+${COACH_METHOD}
+OBLIGATOIRE : chaque séance doit préciser (1) la récupération entre les fractions (segment lent dans "segments", ou "recupBloc" + "vitRecupBloc" entre blocs) et (2) le cardio cible de la partie principale dans "cardio" (cardio moyen visé sur les fractions longues ou en continu, cardio max à ne pas dépasser sur les fractions courtes), calculé avec la FC max. Toute séance marquée ⚠ RÉCUP MANQUANTE ou CARDIO NON PRÉCISÉ doit faire l'objet d'une modification "modifier" qui la complète (même si le reste ne change pas), pour toutes les séances concernées jusqu'à la course.
 Fais une VRAIE analyse de coach, détaillée, semaine par semaine jusqu'à la course (pas seulement les premières semaines ni jusqu'au prochain test) :
 - volume hebdomadaire (km, nombre de séances) et sa progression (+5 à +10 % par semaine, une semaine allégée toutes les 3 à 4) ;
 - répartition des types : travail VMA (30/30, 200-400 m, 1-3 min à 95-100 % VMA), seuil (blocs de 6 à 20 min à 85-88 % VMA), allure spécifique objectif, sortie longue, endurance, côtes, récupération ;
@@ -5816,8 +5900,8 @@ Fais une VRAIE analyse de coach, détaillée, semaine par semaine jusqu'à la co
 Corrige activement : change le type d'une séance quand c'est utile (ex. un fractionné → seuil, ou endurance → VMA courte), ajoute une séance si la fréquence est trop faible pour l'objectif, ajuste vitesses / durées / répétitions. Ne considère pas que le coureur part de zéro s'il déclare une pratique avant l'app.
 Prochaine course : ${nextRace || '?'}. Tu peux corriger tout le plan jusqu'à cette course, sans limite : modifier autant de séances que nécessaire (y compris toutes), changer leur type pour varier, en supprimer, ou en ajouter (course à pied, vélo ou renforcement musculaire).
 Format JSON strict :
-{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["4 à 6 constats précis et chiffrés (volume, types, allures, progression)"],"semaines":[{"debut":"AAAA-MM-JJ","km":25,"seances":3,"commentaire":"une phrase : rôle de la semaine et ce qui va ou non"}],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
-Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. Pas de limite au nombre de modifications ; les plus importantes d'abord. "activite" = "course" par défaut ; pour "velo" ou "renfo", seulement avec "ajouter" (session : dateISO, duree_min, titre, detail). "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
+{"verdict":"ok|ajuster|revoir","titre":"une phrase courte, ton avis global","points":["4 à 6 constats précis et chiffrés (volume, types, allures, progression)"],"semaines":[{"debut":"AAAA-MM-JJ","km":25,"seances":3,"commentaire":"une phrase : rôle de la semaine et ce qui va ou non"}],"modifications":[{"action":"modifier|supprimer|ajouter","ref":"S3","raison":"une phrase courte","activite":"course|velo|renfo","session":{"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase","duree_min":40,"titre":"pour vélo ou renfo","detail":"pour vélo ou renfo : déroulé en une ligne"}}]}
+Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si allure continue), en bpm ; "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retouches ; "revoir" = problème important. Pas de limite au nombre de modifications ; les plus importantes d'abord. "activite" = "course" par défaut ; pour "velo" ou "renfo", seulement avec "ajouter" (session : dateISO, duree_min, titre, detail). "ref" obligatoire pour modifier ou supprimer, absent pour ajouter ; "session" obligatoire pour modifier ou ajouter (sans échauffement ni retour au calme, ajoutés par l'app) ; vitesses en km/h ; "segments" = partie principale répétée "repet" fois ; ne touche pas aux séances passées. Réponds uniquement avec le JSON.`;
       const btn = document.getElementById('planAnaBtn'); if (btn) btn.disabled = true;
       say('');
       st.innerHTML = '<div class="flex items-center gap-3 py-3 px-3 rounded-xl" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.4)"><div class="animate-spin shrink-0" style="width:26px;height:26px;border-radius:50%;border:3px solid #475569;border-top-color:#a78bfa"></div><div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Le coach analyse ton plan…</span><span class="text-[12px] text-slate-400">Semaine par semaine jusqu\'à la course : 30 s à 2 min</span></div></div>';
@@ -5898,7 +5982,7 @@ Règles : "ok" = plan adapté, "modifications" vide ; "ajuster" = quelques retou
     function coachModsHtml(rv, varName, footFn) {
       const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
       const byId = id => (appData.sessions || []).find(s => s.id === id);
-      const sDesc = s => s ? `${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.type === 'exterieur' ? ' • extérieur' : ''} (${Math.round(computeSessionTotalMin(s))}')` : '';
+      const sDesc = s => s ? `${capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 })))}${s.type === 'exterieur' ? ' • extérieur' : ''} (${Math.round(computeSessionTotalMin(s))}')${(() => { const G = gSegs(s); return !G.slow.length && G.recB ? ` • récup ${fmtQ(G.recB)} à ${fmtV(G.recB.speed || 0)}` : ''; })()}${s.cardio ? ` • ❤️ ${cardioText(s.cardio)}` : ''}` : '';
       const day = iso => { const d = parseISODateLocal(iso); return d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })) : ''; };
       return rv.mods.map((m, k) => {
         if (m.cross) {
@@ -6153,6 +6237,7 @@ Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pou
       const place = { mixte: 'tapis ou extérieur (choisis selon la séance)', tapis: 'uniquement sur tapis', exterieur: 'uniquement en extérieur' }[document.getElementById('planPlace').value] || 'tapis ou extérieur';
       const hist = (appData.history || []).slice(0, 8).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}`).join('\n') || '- aucune';
       const weeks = Math.ceil((parseISODateLocal(gIso) - parseISODateLocal(todayISO())) / (7 * 864e5));
+      try { readPlanPrefs(); } catch (e) { }
       const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
 Construis mon plan d'entraînement de demain (${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}) jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines${weeks > 20 ? ' : planifie seulement les 16 prochaines semaines' : ''}).
 Objectif : ${g.distanceKm} km en ${g.durationMin} min${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
@@ -6162,10 +6247,12 @@ Séances récentes :
 ${hist}
 ${backgroundText()}
 ${planStyleText()}
+${planPrefsText()}
+${COACH_METHOD}
 Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
-{"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3}],"notes":"objectif de la séance en une phrase"}]}
-Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois (une récupération entre fractions est un segment lent) ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
+{"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
+Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance : cardio moyen visé (moy_min-moy_max) et cardio max à ne pas dépasser, en bpm, calculés avec la FC max ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
       say("🧠 Le coach prépare ton plan… (20 à 60 s)");
       try {
         const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
@@ -6950,6 +7037,7 @@ Réponds uniquement avec le JSON.`;
           recupBloc: Math.max(0, num(r.recupBloc, 0)),
           vitRecupBloc: Math.max(1, num(r.vitRecupBloc, 6)),
           pyramide: segs,
+          cardio: parseCardio(r.cardio),
           notes: String(r.notes || '').slice(0, 300)
         });
       });
@@ -8929,7 +9017,13 @@ ${analysisFormatPrompt()}`;
     // Zone cardio visée selon le segment
     function hrTargetFor(st) {
       const fc = runnerFcMax();
-      if (!fc || !st) return null;
+      if (!st) return null;
+      { const ss = getActiveSession(), c = ss && ss.cardio;
+        if (c && st.type === 'palier') {
+          const G = gSegs(ss), isMain = G.fast.length ? +st.speed >= G.vmax - 0.05 : true;
+          if (isMain) { const lo = c.moy ? c.moy[0] : Math.round(c.max * 0.93), hi = c.moy ? Math.min(c.moy[1], c.max || 999) : c.max; return { lo, hi: c.max && !c.moy ? c.max : hi, mid: Math.round((lo + hi) / 2), max: c.max || null }; }
+        } }
+      if (!fc) return null;
       const k = guideKind(getActiveSession());
       let r;
       if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') r = [0.62, 0.74];
@@ -10686,8 +10780,15 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
     }
     // Cardio cible de la partie rapide (fractionné court : cardio max à ne pas dépasser ; plus long : cardio moyen)
     function guideHrText(s) {
-      const fc = runnerFcMax(); if (!fc || !s || s.free) return '';
+      if (!s || s.free) return '';
       const k = guideKind(s), G = gSegs(s);
+      if (s.cardio) {
+        const c = s.cardio, f = G.fast[0], sec = f ? (f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60) : 9999;
+        const part = G.fast.length ? 'sur chaque fraction' : 'sur la séance';
+        if (sec < 120 && c.max) return `Fractions courtes : cardio max à ne pas dépasser ${c.max} en fin de répétition (cible fixée par le coach).`;
+        return [c.moy ? `Cardio moyen ${part} entre ${c.moy[0]} et ${c.moy[1]}` : '', c.max ? `sans dépasser ${c.max}` : ''].filter(Boolean).join(', ') + ' (cible fixée par le coach).';
+      }
+      const fc = runnerFcMax(); if (!fc) return '';
       if (k === 'test' || k === 'course' || k === 'libre') return '';
       const pc = (a, b) => [Math.round(fc * a), Math.round(fc * b)];
       if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
@@ -11198,7 +11299,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         b.className = `flex-1 h-11 rounded-xl text-[13px] font-bold border ${on ? 'bg-amber-400 border-amber-300 text-slate-950' : 'bg-slate-900 border-slate-700 text-slate-300'}`;
       });
       const th = theoreticalFcMax(), obs = maxObservedHr(), fc = runnerFcMax();
-      document.getElementById('fcMaxProfile').value = r.fcMax || '';
+      if (document.activeElement !== document.getElementById('fcMaxProfile')) document.getElementById('fcMaxProfile').value = r.fcMax || '';
       document.getElementById('fcMaxProfile').placeholder = th ? String(th) : 'ex. 190';
       let note = th ? `Théorique (${r.sex === 'F' ? 'Gulati' : 'Tanaka'}, âge ${r.age}) : ${th} bpm.` : 'Renseignez âge et sexe pour la FC max théorique.';
       if (obs) note += ` Max observée dans vos séances : ${obs} bpm.`;
@@ -11236,7 +11337,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       });
     }
     function runnerLevels() { const r = runnerProfile(); return r.levels && typeof r.levels === 'object' ? r.levels : {}; }
-    const RUNNER_TIERS = [['debutant', '🌱 Débutant', 'moins d\'1 an de course'], ['intermediaire', '🏃 Intermédiaire', 'courses régulières'], ['confirme', '💪 Confirmé', 'entraînement structuré'], ['elite', '🏆 Élite', 'compétition à haut niveau']];
+    const RUNNER_TIERS = [['debutant', '🌱 Débutant', 'moins d\'1 an · 1 à 2 séances/sem.'], ['intermediaire', '🏃 Intermédiaire', 'courses régulières · 2 à 3 séances/sem.'], ['confirme', '💪 Confirmé', 'entraînement structuré · 4 à 5 séances/sem.'], ['elite', '🏆 Élite', 'compétition · 6 séances/sem. ou plus']];
     function runnerTier() { return runnerProfile().tier || ''; }
     function runnerTierLabel() { const t = RUNNER_TIERS.find(x => x[0] === runnerTier()); return t ? t[1].replace(/^\S+\s/, '').toLowerCase() : ''; }
     function renderRunnerTier() {
