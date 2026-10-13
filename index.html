@@ -686,9 +686,6 @@
         </div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
-      <button onclick="closeHistoryModal(); openActivityWizard()" aria-label="Ajouter une activité" class="absolute flex items-center gap-2 font-extrabold active:scale-95 transition" style="right:max(20px,calc(50% - 204px));bottom:24px;height:56px;padding:0 22px;border-radius:28px;background:#34d399;color:#03140d;font-size:15px;box-shadow:0 10px 30px rgba(52,211,153,.35)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
-      </button>
     </div>
   </div>
 
@@ -4772,9 +4769,9 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       if (timerState.finished) { freeSession = null; reloadChrono(); showHome(); }
     }
 
-    let plWeekOff = 0;
+    let plWeekOff = 0, plSelDay = '';
     function openHistoryModal(keep) {
-      if (keep !== true) { currentFilter = 'week'; plWeekOff = 0; }
+      if (keep !== true) { currentFilter = 'week'; plWeekOff = 0; plSelDay = ''; }
       setupPlSwipe();
       updateHistoryTable();
       document.getElementById('historyModal').classList.remove('hidden');
@@ -4785,7 +4782,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
     }
 
     function setHistoryFilter(f) {
-      currentFilter = f;
+      currentFilter = f; plSelDay = '';
       [['week', 'fltWeek'], ['validated', 'fltVal'], ['planned', 'fltPlan']].forEach(([k, id]) => {
         const b = document.getElementById(id); if (b) b.classList.toggle('on', f === k);
       });
@@ -5062,7 +5059,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const L = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
       const base = 'width:34px;height:34px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-sizing:border-box;';
       const strip = dayIso.map((iso, i) => {
-        const isDone = done.some(x => x.iso === iso), isPlan = planned.some(x => x.dateISO === iso);
+        const isDone = done.some(x => x.iso === iso), isPlan = planned.some(x => x.dateISO === iso) || (appData.crossPlan || []).some(c => c.dateISO === iso);
         let st = base + 'color:#475569;';
         if (iso === raceISO() || planned.some(x => x.dateISO === iso && x.kind === 'course')) st = base + 'background:#facc15;color:#1a1204;';
         if (st.includes('#facc15')) { }
@@ -5070,7 +5067,9 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         else if (isDone) st = base + 'background:#34d399;color:#03140d;';
         else if (iso === t) st = base + 'border:2px solid #38bdf8;color:#38bdf8;';
         else if (isPlan) st = base + (iso < t ? 'border:1px dashed #475569;color:#64748b;' : 'background:#172338;color:#e2e8f0;border:1px solid #334155;');
-        return `<div class="flex flex-col items-center gap-1.5"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></div>`;
+        if (iso === plSelDay) st += 'outline:2px solid #e2e8f0;outline-offset:2px;';
+        const lbl = `${parseISODateLocal(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}${isDone || isPlan ? ' : voir la séance' : ' : ajouter une séance'}`;
+        return `<button type="button" onclick="plDayClick('${iso}')" aria-label="${lbl}" class="flex flex-col items-center gap-1.5 active:scale-95" style="background:none;border:none;padding:0"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></button>`;
       }).join('');
       wk.innerHTML = `
         <div class="flex items-center justify-between gap-2">
@@ -5089,7 +5088,16 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           <div class="grid grid-cols-7 gap-1.5 flex-1">${strip}</div>
           <button onclick="plShiftWeek(1)" aria-label="Semaine suivante" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">›</button>
         </div>
+        <span style="font-size:11px;color:#64748b;text-align:center">Touche un jour : voir sa séance, ou en ajouter une si le jour est libre</span>
         ${plWeekOff !== 0 ? `<button onclick="plShiftWeek(0)" class="self-center text-[12px] font-bold" style="color:#7dd3fc">↺ Revenir à cette semaine</button>` : ''}`;
+    }
+    function plDayClick(iso) {
+      const t = todayISO();
+      const has = (appData.history || []).some(h => histISO(h) === iso) || appData.sessions.some(x => x.dateISO === iso) || (appData.crossPlan || []).some(c => c.dateISO === iso) || iso === raceISO();
+      if (has) { currentFilter = 'week'; plSelDay = plSelDay === iso ? '' : iso; updateHistoryTable(); return; }
+      if (iso < t) { showToast('Jour passé : aucune séance ce jour-là'); return; }
+      plSelDay = ''; updateHistoryTable();
+      openActivityWizard('', iso);
     }
     function plWeekRange() {
       const d = parseISODateLocal(weekStartISO(todayISO())); d.setDate(d.getDate() + 7 * plWeekOff);
@@ -5098,7 +5106,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     }
     function plShiftWeek(n) {
       plWeekOff = n === 0 ? 0 : plWeekOff + n;
-      currentFilter = 'week';
+      currentFilter = 'week'; plSelDay = '';
       updateHistoryTable();
       const wk = document.getElementById('plWeek');
       if (wk && n) { wk.style.transition = 'none'; wk.style.transform = `translateX(${n > 0 ? 24 : -24}px)`; wk.style.opacity = .4; requestAnimationFrame(() => { wk.style.transition = 'transform .2s ease, opacity .2s ease'; wk.style.transform = ''; wk.style.opacity = 1; }); }
@@ -5292,12 +5300,14 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         });
       } else {
         const [w0, w6] = plWeekRange();
-        const inW = i => i.iso && i.iso >= w0 && i.iso <= w6;
+        const inW = i => i.iso && (plSelDay ? i.iso === plSelDay : i.iso >= w0 && i.iso <= w6);
+        if (plSelDay) out.push(`<div class="flex items-center justify-between gap-2"><div class="pl-sec" style="margin:0">${capFirst(parseISODateLocal(plSelDay).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</div><button onclick="plSelDay='';updateHistoryTable()" class="text-[12px] font-bold" style="color:#7dd3fc">Toute la semaine</button></div>`);
         const wl = done.filter(inW).concat(planned.filter(inW)).sort((a, b) => String(a.iso).localeCompare(String(b.iso)) || (a.type === 'validated' ? -1 : 1));
         if (!wl.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance cette semaine.</div>');
         wl.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
       }
       box.innerHTML = out.join('');
+      if (plSelDay && currentFilter === 'week') box.querySelectorAll('[id^="detail_"]').forEach(d => d.classList.remove('hidden'));
       box.onclick = e => {
         if (e.target.closest('button, a, input, select, textarea, label, [id^="detail_"]')) return;
         const card = e.target.closest('.pl-card');
@@ -10519,9 +10529,12 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
     function gSegs(s) {
       const segs = (s.pyramide || []).filter(p => p.speed > 0);
       const vmax = Math.max(...segs.map(p => +p.speed), 0), vmin = Math.min(...segs.map(p => +p.speed), 99);
-      const fast = segs.filter(p => +p.speed === vmax && vmax > vmin);
+      const nbB = Math.max(1, parseInt(s.nbBlocs) || 1), reps0 = Math.max(1, parseInt(s.repet) || 1) * nbB;
+      // une seule vitesse répétée (ex. 6 blocs de 1' séparés par une récup entre blocs) = fractionné
+      const fast = vmax > vmin ? segs.filter(p => +p.speed === vmax) : (segs.length === 1 && reps0 > 1 ? segs.slice() : []);
       const slow = segs.filter(p => +p.speed === vmin && vmax > vmin);
-      return { segs, vmax, vmin, fast, slow, reps: Math.max(1, parseInt(s.repet) || 1) * Math.max(1, parseInt(s.nbBlocs) || 1) };
+      const recB = nbB > 1 && +s.recupBloc > 0 ? { duration: +s.recupBloc, unit: 'min', speed: +s.vitRecupBloc || 0 } : null;
+      return { segs, vmax, vmin, fast, slow, recB, reps: Math.max(1, parseInt(s.repet) || 1) * Math.max(1, parseInt(s.nbBlocs) || 1) };
     }
     const fmtQ = p => p.unit === 'km' ? (p.distance < 1 ? `${Math.round(p.distance * 1000)} m` : `${formatSpeed(p.distance).replace('.', ',')} km`) : (p.duration >= 1 && Number.isInteger(+p.duration) ? `${p.duration}'` : formatMinSec(p.duration));
     const fmtV = v => formatSpeed(Math.round(v * 10) / 10).replace('.', ',');
@@ -10553,6 +10566,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         });
       }
       if (prm.rec) s.pyramide.forEach((p, i) => { if (isSlow[i] && p.unit !== 'km') p.duration = Math.round((+p.duration + prm.rec / 60) * 100) / 100; });
+      if (prm.rec && !G.slow.length && G.recB) s.recupBloc = Math.round((+s.recupBloc + prm.rec / 60) * 100) / 100;
       if (prm.dur) s.pyramide.forEach((p, i) => { if (isFast[i] && p.unit !== 'km') p.duration = Math.max(1, r2(+p.duration * prm.dur)); });
       if (prm.tot) {
         const T = computeSessionTotalMin(base), warm = (s.chauffe || 0) + (s.recup || 0);
@@ -10575,6 +10589,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (fa && fb && fa.unit !== 'km' && Math.abs(fa.duration - fb.duration) > 0.01) out.push(`effort ${fmtQ(fa)} → ${fmtQ(fb)}`);
       const sa = Ga.slow[0], sb = Gb.slow[0];
       if (kind !== 'pyramide' && sa && sb && Math.abs(sa.duration - sb.duration) > 0.01) out.push(`récup ${formatMinSec(sa.duration)} → ${formatMinSec(sb.duration)}`);
+      if (!sa && Ga.recB && Gb.recB && Math.abs(Ga.recB.duration - Gb.recB.duration) > 0.01) out.push(`récup ${formatMinSec(Ga.recB.duration)} → ${formatMinSec(Gb.recB.duration)}`);
       if ((a.pente || 0) !== (b.pente || 0) && a.type === 'tapis') out.push(`pente ${String(a.pente).replace('.', ',')} → ${String(b.pente).replace('.', ',')} %`);
       const ta = Math.round(computeSessionTotalMin(a)), tb = Math.round(computeSessionTotalMin(b));
       const ka = computeSessionDistanceKm(a), kb = computeSessionDistanceKm(b);
@@ -10592,7 +10607,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       let objectif = '', essentiel = '';
       switch (k) {
         case 'fractionne':
-          objectif = `Tenir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h${slow ? ` (récup ${fmtQ(slow)} à ${fmtV(G.vmin)})` : ''}, à la même vitesse jusqu'à la dernière répétition.`;
+          objectif = `Tenir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h${slow ? ` (récup ${fmtQ(slow)} à ${fmtV(G.vmin)})` : G.recB ? ` (récup ${fmtQ(G.recB)}${G.recB.speed ? ` à ${fmtV(G.recB.speed)}` : ''})` : ''}, à la même vitesse jusqu'à la dernière répétition.`;
           essentiel = `Au minimum ${Rmin} répétitions à ${fmtV(G.vmax)} km/h. Si tu n'arrives plus à tenir la vitesse, arrête plutôt que de ralentir : la qualité compte plus que la quantité.`; break;
         case 'pyramide':
           objectif = `Monter progressivement jusqu'à ${fmtV(G.vmax)} km/h puis redescendre, en tenant chaque palier à la vitesse prévue.`;
@@ -10657,6 +10672,11 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (G.segs.length === 2 && G.fast.length === 1 && G.slow.length === 1 && G.segs[0] === G.fast[0]) {
         const reps = `${nb > 1 ? `${nb} blocs de ` : ''}${rp > 1 || nb > 1 ? `${rp} × ` : ''}`;
         return { main: `${where} : ${reps}${fmtQ(G.fast[0])} à ${fmtV(G.vmax)} km/h`, rec: [`Récup : ${fmtQ(G.slow[0])} à ${fmtV(G.vmin)} km/h entre chaque`, recB].filter(Boolean).join(' · ') };
+      }
+      if (G.segs.length === 1 && (rp > 1 || nb > 1)) {
+        const f = G.segs[0];
+        const reps = rp > 1 && nb > 1 ? `${nb} blocs de ${rp} × ` : `${rp * nb} × `;
+        return { main: `${where} : ${reps}${fmtQ(f)} à ${fmtV(+f.speed)} km/h`, rec: rp > 1 && nb > 1 ? recB : (G.recB ? `Récup : ${fmtQ(G.recB)}${G.recB.speed ? ` à ${fmtV(G.recB.speed)} km/h` : ''} entre chaque` : '') };
       }
       let main = human();
       main = main.replace(/\s*\(récup ([^)]*)\)/, '');
@@ -11600,9 +11620,9 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
     };
     let act = null;
     function actEsc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
-    function openActivityWizard(preType) {
-      if (timerState.sessionStarted && !timerState.finished) { showToast("Une séance est déjà en cours"); return; }
-      act = { step: preType ? 2 : 1, type: preType || '', when: 'now', date: '', mode: '', dur: 45, wish: '', prop: null, form: null, advice: '' };
+    function openActivityWizard(preType, fixedDate) {
+      if (timerState.sessionStarted && !timerState.finished && !fixedDate) { showToast("Une séance est déjà en cours"); return; }
+      act = { step: preType ? 2 : 1, type: preType || '', when: fixedDate ? 'later' : 'now', date: fixedDate || '', fixedDate: fixedDate || '', mode: '', dur: 45, wish: '', prop: null, form: null, advice: '' };
       document.getElementById('actModal').classList.remove('hidden');
       renderAct();
     }
@@ -11612,6 +11632,7 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
       if (act.step <= 1) { closeActivityWizard(); return; }
       act.step--;
       if (act.step === 4 && act.mode === 'manual' && !actIsRun()) act.step = 3;
+      if (act.step === 2 && act.fixedDate) act.step = 1;
       act.advice = ''; act.loading = false;
       renderAct();
     }
@@ -11642,13 +11663,13 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
       const foot = document.getElementById('actFoot');
       const T = ACT_TYPES[act.type] || {};
       const total = act.mode === 'manual' && !actIsRun() ? 4 : 5;
-      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, total)} sur ${total}${act.type ? ` · ${T.icon} ${T.label}` : ''}`;
+      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, total)} sur ${total}${act.type ? ` · ${T.icon} ${T.label}` : ''}${act.fixedDate ? ` · ${parseISODateLocal(act.fixedDate).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}` : ''}`;
       foot.innerHTML = '';
       const back = document.getElementById('actBackBtn');
       if (back) back.style.visibility = act.step > 1 ? 'visible' : 'hidden';
       if (act.step === 1) {
         title.textContent = 'Quelle activité ?';
-        body.innerHTML = `<div class="grid grid-cols-2 gap-3">${Object.entries(ACT_TYPES).map(([k, t]) => actTile(`act.type='${k}';act.step=2;renderAct()`, t.icon, t.label, { tapis: 'Course sur tapis', exterieur: 'Course dehors', velo: 'Route, VTT ou home-trainer', muscu: 'Renforcement' }[k], act.type === k)).join('')}</div>`;
+        body.innerHTML = `<div class="grid grid-cols-2 gap-3">${Object.entries(ACT_TYPES).map(([k, t]) => actTile(`act.type='${k}';act.step=act.fixedDate?3:2;renderAct()`, t.icon, t.label, { tapis: 'Course sur tapis', exterieur: 'Course dehors', velo: 'Route, VTT ou home-trainer', muscu: 'Renforcement' }[k], act.type === k)).join('')}</div>`;
       } else if (act.step === 2) {
         title.textContent = 'Quand ?';
         const tmr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })();
