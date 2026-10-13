@@ -1280,7 +1280,7 @@
               <button type="button" onclick="connectHeartRate()" class="pm-btn" style="border:none;background:#e11d48;color:#fff;font-weight:800">Connecter</button>
               <button type="button" onclick="disconnectHeartRate()" class="pm-btn">Déconnecter</button>
             </div>
-            <details class="pm-det"><summary>Aide (Garmin, Polar, Coros…)</summary><p class="text-[12px] text-slate-400 mt-1">Garmin : activez « Diffuser la fréquence cardiaque », ou mieux « Diffuser pendant l'activité ». Une fois autorisée, la montre se reconnecte seule au lancement d'une séance. Fonctionne aussi avec Polar, Coros, Suunto et les ceintures Bluetooth.</p></details>
+            <details class="pm-det"><summary>Aide (Garmin, Polar, Coros…)</summary><p class="text-[12px] text-slate-400 mt-1">Garmin : activez « Diffuser la fréquence cardiaque », ou mieux « Diffuser pendant l'activité ». Une fois autorisée, la montre se reconnecte seule au lancement d'une séance. Fonctionne aussi avec Polar, Coros, Suunto et les ceintures Bluetooth.<br><br><b class="text-amber-300">Montre absente de la liste ?</b> Les anciennes Garmin (Forerunner 35 par exemple) ne diffusent le cardio qu'en ANT+, pas en Bluetooth. Le navigateur du téléphone ne sait lire que le Bluetooth : elles ne peuvent donc pas se connecter, même en mode diffusion. Solutions : une ceinture cardio Bluetooth (la plus précise pour le fractionné), un brassard optique Bluetooth, ou un boîtier passerelle ANT+ → Bluetooth. Les Garmin récentes (Forerunner 55, 255, 265…) diffusent en Bluetooth.</p></details>
             <input id="fcMaxInput" type="number" class="hidden">
           </div>
           <div class="pm-card" style="gap:0">
@@ -4693,7 +4693,9 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       const sumEl = document.getElementById('valSummary');
       sumEl.textContent = summaryText(sum);
       sumEl.classList.toggle('hidden', !summaryText(sum));
-      document.getElementById('valRunData').innerHTML = timerState.finished ? runDataBlockHtml(timerState.runTrack, timerState.runSeg, { pente: getActiveSession().type === 'tapis' ? (parseFloat(getActiveSession().pente) || 0) : 0 }) : '';
+      let recap = '';
+      if (timerState.finished) { try { const ds = new Date(); recap = recapHtml({ track: timerState.runTrack, seg: timerState.runSeg, pente: sess.type === 'tapis' ? (parseFloat(sess.pente) || 0) : 0, kind: sessionKind(sess), week: sess.free ? '' : sess.semaine, title: sess.free ? 'Séance libre' : capFirst(stripWarmCool(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 })))), dateTxt: capFirst(ds.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })), km: parseFloat(sum.distKm) || 0, plannedMin: sess.free ? 0 : totalMin, plannedKm: sess.free ? 0 : computeSessionDistanceKm(sess) }); } catch (e) { console.warn('recap', e); } }
+      document.getElementById('valRunData').innerHTML = recap + (timerState.finished ? runDataBlockHtml(timerState.runTrack, timerState.runSeg, { pente: getActiveSession().type === 'tapis' ? (parseFloat(getActiveSession().pente) || 0) : 0 }) : '');
       document.getElementById('valNoteInput').value = '';
       valShots = [];
       lastAnalysis = '';
@@ -5222,6 +5224,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
           <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(stripWarmCool(item.details))}</div>
           ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
+          ${item.cross ? '' : (() => { try { const hh = appData.history[item.rawIdx] || {}; return recapHtml({ track: item.track, seg: item.seg, pente: hh.type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0), kind: k, week: wn, title, dateTxt: dTxt, feeling: item.feeling, recs, analysis: item.analysis, km: item.km, plannedMin: hh.plannedMin, plannedKm: item.linked && !item.linked.free ? computeSessionDistanceKm(item.linked) : 0 }); } catch (e) { console.warn('recap', e); return ''; } })()}
           ${item.cross ? '' : runDataBlockHtml(item.track, item.seg, { pente: (appData.history[item.rawIdx] || {}).type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0) })}
           ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
           ${item.cross ? '' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? "Refaire l'analyse" : 'Analyse IA'}</button>`}
@@ -7518,6 +7521,7 @@ Réponds uniquement avec le JSON.`;
         rememberBtDevice(dev);
         renderHrChip();
       } catch (e) {
+        if (e && e.name === 'NotFoundError') setBtStatus("Aucune montre choisie. Si la vôtre n'apparaît pas dans la liste : sur les anciennes Garmin (Forerunner 35 par ex.), la diffusion cardio passe uniquement en ANT+, que le téléphone ne peut pas lire (voir l'aide).", true);
         if (e && e.name !== 'NotFoundError') {
           setBtStatus(`Connexion impossible : ${e.message || e}`, true);
           showToast(`Connexion cardio impossible : ${e.message || e}`);
@@ -9685,6 +9689,176 @@ ${analysisFormatPrompt()}`;
       return `<details class="bg-slate-950 rounded-xl border border-slate-800 p-2" open>
         <summary class="text-[10px] uppercase font-bold text-sky-300 cursor-pointer">📈 Courbes et résultats (segments, km, profil)</summary>
         <div class="space-y-2 mt-2">${c}${tb}</div></details>`;
+    }
+
+    // ==================== RÉSUMÉ DE SÉANCE : 3 vues (Synthèse / Tableau de bord / Prévu-réalisé) ====================
+    function recapHtml(o) {
+      const P = rcPrep(o.track, o.seg, { pente: o.pente || 0 });
+      if (!P || P.rows.length < 6) return '';
+      const R = P.rows, L = R.length - 1;
+      const W = rcStats(P, 0, L), cs = trackChunkStats(o.track, { pente: o.pente || 0 }) || {};
+      const f1 = v => v == null || !isFinite(v) ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+      const dur = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+      const pace = v => { if (!(v > 2)) return '–'; const t = Math.round(3600 / v); return `${Math.floor(t / 60)}'${String(t % 60).padStart(2, '0')}`; };
+      const km = o.km > 0 ? o.km : W.km, sec = W.sec, kmh = km > 0 ? km / (sec / 3600) : W.kmh;
+      const showVap = P.hasEle || (o.pente || 0) > 0;
+      const kind = o.kind || { label: 'SÉANCE', color: '#94a3b8' };
+      const feel = { green: ['bien', '#6ee7b7'], yellow: ['moyen', '#fcd34d'], red: ['dur', '#fda4af'] }[o.feeling] || null;
+      const sub = [o.dateTxt, P.hasEle ? 'extérieur' : 'tapis', feel ? `ressenti <span style="color:${feel[1]}">${feel[0]}</span>` : ''].filter(Boolean).join(' · ');
+      // Groupes « segments » de la séance et répétitions rapides
+      const G = rcGroups(P, 'seg').map(g => Object.assign(g, rcStats(P, g.a, g.b)));
+      const isWarm = g => /chauff|calme/i.test(g.label || ''), isRec = g => /r[ée]cup/i.test(g.label || '');
+      const tg = G.filter(g => g.target && !isWarm(g) && !isRec(g)).map(g => g.target);
+      const tMax = tg.length ? Math.max(...tg) : 0, tMin = tg.length ? Math.min(...tg) : 0;
+      const varied = tMax - tMin >= 0.5;
+      const reps = G.filter(g => g.target && !isWarm(g) && !isRec(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
+      const vOf = g => showVap ? g.vap : g.kmh;
+      const status = g => { const d = vOf(g) - g.target; return d < -0.5 ? 'low' : d > 0.6 ? 'high' : 'ok'; };
+      const ST = { ok: '#34d399', low: '#fb923c', high: '#fbbf24' };
+      const nOk = reps.filter(g => status(g) === 'ok').length;
+      const score = reps.length ? Math.round(nOk / reps.length * 100) : null;
+      const verdict = score == null ? null : score >= 80 ? ['Séance réussie', '#34d399', '52,211,153'] : score >= 50 ? ['Séance en partie réussie', '#fbbf24', '251,191,36'] : ['Séance difficile', '#fb923c', '251,146,60'];
+      const repTxt = reps.length ? `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} dans la cible` : '';
+      // Zones cardio
+      const fc = P.fc, hrRows = R.filter(r => r.hr);
+      let zones = null;
+      if (fc && hrRows.length > 10) {
+        zones = RC_HR_Z.map(z => ({ n: z[2], c: z[1], s: 0 }));
+        hrRows.forEach((r, i) => { const p = r.hr / fc; const k = RC_HR_Z.findIndex(z => p < z[0]); zones[k < 0 ? 4 : k].s += 5; });
+      }
+      const zMain = zones ? zones.reduce((a, z) => z.s > a.s ? z : a, zones[0]) : null;
+      const recLine = o.recs && o.recs.length ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5)"><span style="font-size:20px">🏆</span><span style="font-size:13px;font-weight:700;color:#fde68a">Record : ${plEsc(o.recs.join(', '))}</span></div>` : '';
+      const coachTxt = String(o.analysis || '').replace(/[#*_>`]/g, '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s/).slice(0, 2).join(' ');
+      const coach = (lbl) => coachTxt ? `<div style="display:flex;flex-direction:column;gap:4px;padding:11px 13px;border-radius:14px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.4)"><span style="font-size:11px;font-weight:800;color:#c4b5fd;letter-spacing:.6px">${lbl}</span><span style="font-size:13px;font-weight:600;line-height:1.4;color:#e2e8f0">${plEsc(coachTxt)}</span></div>` : '';
+      const card = 'border-radius:14px;background:#0f172a;border:1px solid #1e293b';
+      const cap = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">${t}</span>`;
+      const vapTile = (big) => showVap ? `<div style="display:flex;flex-direction:column;gap:2px;padding:${big ? '12px 10px' : '12px'};border-radius:14px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5)"><span style="font-size:11px;font-weight:700;color:#c4b5fd">VAP moy.</span><span style="font-size:${big ? 24 : 22}px;font-weight:800;line-height:1.1;color:#ddd6fe">${f1(W.vap)}</span><span style="font-size:11px;color:#a78bfa">km/h · équiv. plat</span></div>` : '';
+      const head = (big) => `<div style="display:flex;flex-direction:column;gap:4px">
+          <span style="align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.8px;color:${kind.color};background:${kind.color}22;padding:3px 9px;border-radius:7px">${plEsc(kind.label)}${o.week ? ` · S${o.week}` : ''}</span>
+          <span style="font-size:${big ? 21 : 18}px;font-weight:800;line-height:1.2;color:#f1f5f9">${plEsc(o.title || 'Séance')}</span>
+          <span style="font-size:12px;color:#94a3b8;font-weight:600">${sub}</span></div>`;
+
+      // ---- Mini graphique profil (ou vitesse sur tapis) + cardio
+      const chart = () => {
+        const Wd = 340, H = 100, x0 = R[0].km, x1 = Math.max(R[L].km, x0 + 0.01);
+        const X = k => ((k - x0) / (x1 - x0) * Wd).toFixed(1);
+        let base = '';
+        if (P.hasEle) {
+          const es = R.map(r => r.ele).filter(e => e != null);
+          let lo = Math.min(...es), hi = Math.max(...es); if (hi - lo < 20) { const m = (hi + lo) / 2; lo = m - 10; hi = m + 10; }
+          const Y = e => (H - 6 - (e - lo) / (hi - lo) * (H * 0.55)).toFixed(1);
+          for (let i = 1; i < R.length; i++) { const p = R[i - 1], q = R[i]; if (p.ele == null || q.ele == null) continue; base += `<polygon points="${X(p.km)},${H} ${X(p.km)},${Y(p.ele)} ${X(q.km)},${Y(q.ele)} ${X(q.km)},${H}" fill="${rcSlopeColor(q.g)}" fill-opacity=".5"/>`; }
+        } else {
+          const vs = R.filter(r => r.vs); if (vs.length > 2) {
+            const hi = Math.max(...vs.map(r => r.vs)) + 0.5, lo = Math.max(0, Math.min(...vs.map(r => r.vs)) - 1);
+            const Y = v => (H - 4 - (v - lo) / (hi - lo) * (H * 0.6)).toFixed(1);
+            base = `<polygon points="${X(vs[0].km)},${H} ${vs.map(r => `${X(r.km)},${Y(r.vs)}`).join(' ')} ${X(vs[vs.length - 1].km)},${H}" fill="#38bdf8" fill-opacity=".25"/>`;
+          }
+        }
+        let hrLine = '';
+        if (hrRows.length > 5) {
+          const lo = Math.min(...hrRows.map(r => r.hr)) - 5, hi = Math.max(...hrRows.map(r => r.hr)) + 5;
+          hrLine = `<polyline points="${hrRows.map(r => `${X(r.km)},${(4 + (hi - r.hr) / (hi - lo) * (H * 0.6)).toFixed(1)}`).join(' ')}" fill="none" stroke="#fb7185" stroke-width="1.8" stroke-linejoin="round"/>`;
+        }
+        if (!base && !hrLine) return '';
+        const leg = P.hasEle ? `<span style="color:#fb923c">■ montée</span><span style="color:#10b981">■ descente</span><span style="color:#94a3b8">■ plat</span>` : `<span style="color:#38bdf8">■ vitesse</span>`;
+        return `<div style="display:flex;flex-direction:column;gap:6px;padding:11px;${card}">
+          <div style="display:flex;justify-content:space-between">${cap(P.hasEle ? 'Profil et cardio' : 'Vitesse et cardio')}<span style="font-size:11px;color:#64748b">0 → ${f1(km)} km</span></div>
+          <svg viewBox="0 0 ${Wd} ${H}" preserveAspectRatio="none" style="width:100%;height:100px" role="img" aria-label="Profil de la séance">${base}${hrLine}</svg>
+          <div style="display:flex;gap:12px;font-size:11px;font-weight:700;flex-wrap:wrap">${hrLine ? '<span style="color:#fb7185">— cardio</span>' : ''}${leg}</div></div>`;
+      };
+      const zonesHtml = () => {
+        if (!zones) return '';
+        const tot = zones.reduce((a, z) => a + z.s, 0) || 1;
+        return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;${card}">${cap('Temps par zone cardio')}
+          <div style="display:flex;height:16px;border-radius:8px;overflow:hidden">${zones.map(z => z.s ? `<div style="width:${z.s / tot * 100}%;background:${z.c}"></div>` : '').join('')}</div>
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700;text-align:center">${zones.map(z => `<span style="color:${z.c}">${z.n}<br>${Math.round(z.s / 60)}'</span>`).join('')}</div></div>`;
+      };
+      const repChart = () => {
+        if (reps.length < 2) return '';
+        const vals = reps.map(vOf), hi = Math.max(...vals, tMax) + 0.6, lo = Math.max(0, Math.min(...vals, tMin) - 2);
+        const Wd = 330, H = 120, bw = Math.min(40, Wd / reps.length - 8), Y = v => 104 - (v - lo) / (hi - lo) * 84;
+        const tline = varied ? '' : `<line x1="0" x2="${Wd}" y1="${Y(tMax).toFixed(1)}" y2="${Y(tMax).toFixed(1)}" stroke="#cbd5e1" stroke-dasharray="5 4" opacity=".7"/>`;
+        const bars = reps.map((g, i) => { const cx = (i + 0.5) * Wd / reps.length, v = vOf(g), c = ST[status(g)];
+          return `<rect x="${(cx - bw / 2).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(104 - Y(v)).toFixed(1)}" rx="5" fill="${c}"/>`
+            + (varied ? `<line x1="${(cx - bw / 2 - 2).toFixed(1)}" x2="${(cx + bw / 2 + 2).toFixed(1)}" y1="${Y(g.target).toFixed(1)}" y2="${Y(g.target).toFixed(1)}" stroke="#e2e8f0" stroke-width="2"/>` : '')
+            + (reps.length <= 12 ? `<text x="${cx.toFixed(1)}" y="${(Y(v) - 4).toFixed(1)}" font-size="10" font-weight="700" fill="${c === ST.ok ? '#e2e8f0' : '#fdba74'}" text-anchor="middle">${f1(v)}</text><text x="${cx.toFixed(1)}" y="117" font-size="10" fill="#94a3b8" text-anchor="middle">R${i + 1}</text>` : ''); }).join('');
+        return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;${card}">
+          <div style="display:flex;justify-content:space-between">${cap('Répétitions')}<span style="font-size:11px;color:#94a3b8">${varied ? 'trait blanc = cible' : `cible ${f1(tMax)} km/h`}${showVap ? ' (VAP)' : ''}</span></div>
+          <svg viewBox="0 0 ${Wd} ${H}" style="width:100%;height:120px" role="img" aria-label="Vitesse de chaque répétition comparée à la cible">${tline}${bars}</svg></div>`;
+      };
+
+      // ---- Vue A : Synthèse
+      const vA = `<div style="display:flex;flex-direction:column;gap:12px">${head(true)}
+        ${verdict ? `<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:14px;background:rgba(${verdict[2]},.12);border:1px solid rgba(${verdict[2]},.5)"><span style="font-size:22px">${score >= 80 ? '✅' : score >= 50 ? '🟡' : '🟠'}</span><div style="display:flex;flex-direction:column"><span style="font-size:16px;font-weight:800;color:${verdict[1]}">${verdict[0]}</span><span style="font-size:12px;color:#cbd5e1">${repTxt}</span></div></div>` : ''}
+        <div style="display:grid;grid-template-columns:repeat(${showVap ? 3 : 2},minmax(0,1fr));gap:8px">
+          <div style="display:flex;flex-direction:column;gap:2px;padding:12px 10px;${card}"><span style="font-size:11px;font-weight:700;color:#94a3b8">Distance</span><span style="font-size:24px;font-weight:800;line-height:1.1">${f1(km)}</span><span style="font-size:11px;color:#94a3b8">km</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:12px 10px;${card}"><span style="font-size:11px;font-weight:700;color:#94a3b8">Durée</span><span style="font-size:24px;font-weight:800;line-height:1.1">${dur(sec)}</span><span style="font-size:11px;color:#94a3b8">${sec >= 3600 ? 'h:min:s' : 'min:s'}</span></div>
+          ${vapTile(true)}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));${card};overflow:hidden">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-right:1px solid #1e293b;border-bottom:1px solid #1e293b"><span style="font-size:12px;color:#94a3b8">Vitesse moy.</span><span style="font-size:16px;font-weight:800;color:#7dd3fc">${f1(kmh)}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-bottom:1px solid #1e293b"><span style="font-size:12px;color:#94a3b8">Allure</span><span style="font-size:16px;font-weight:800">${pace(kmh)} /km</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-right:1px solid #1e293b"><span style="font-size:12px;color:#94a3b8">Cardio</span><span style="font-size:16px;font-weight:800;color:#fda4af">${W.hr || '–'}${W.hrMax ? ` <span style="font-size:11px;color:#94a3b8">/ ${W.hrMax}</span>` : ''}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px"><span style="font-size:12px;color:#94a3b8">${P.hasEle ? 'Dénivelé' : 'Pente'}</span><span style="font-size:16px;font-weight:800">${P.hasEle ? `+${cs.dplus || 0} m` : `${f1(o.pente || 0)} %`}</span></div></div>
+        ${chart()}${recLine}${coach('LE COACH')}</div>`;
+
+      // ---- Vue B : Tableau de bord
+      const tile = (lbl, val, unit, note, col, hl) => `<div style="display:flex;flex-direction:column;gap:3px;padding:12px;${hl ? 'border-radius:14px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5)' : card}"><span style="font-size:11px;font-weight:700;color:${hl ? '#c4b5fd' : '#94a3b8'}">${lbl}</span><span style="font-size:22px;font-weight:800;line-height:1.1;color:${col || '#f1f5f9'}">${val}${unit ? ` <span style="font-size:12px;color:#94a3b8">${unit}</span>` : ''}</span><span style="font-size:11px;font-weight:700;color:${hl ? '#c4b5fd' : '#94a3b8'}">${note || '&nbsp;'}</span></div>`;
+      const dKm = o.plannedKm > 0 ? km - o.plannedKm : null, dMin = o.plannedMin > 0 ? sec / 60 - o.plannedMin : null;
+      const vB = `<div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">${head(false)}${verdict ? `<span style="flex-shrink:0;padding:5px 9px;border-radius:9px;background:rgba(${verdict[2]},.15);color:${verdict[1]};font-size:12px;font-weight:800">${score} %</span>` : ''}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          ${tile('Distance', f1(km), 'km', dKm != null && Math.abs(dKm) >= 0.1 ? `${dKm > 0 ? '▲ +' : '▼ '}${f1(dKm)} km vs prévu` : dKm != null ? '= prévu' : '', '', false)}
+          ${tile('Durée', dur(sec), '', dMin != null ? (Math.abs(dMin) < 1 ? `= ${Math.round(o.plannedMin)} min prévues` : `${Math.round(o.plannedMin)} min prévues`) : '', '', false)}
+          ${tile('Vitesse moyenne', f1(kmh), 'km/h', `allure ${pace(kmh)} /km`, '#7dd3fc', false)}
+          ${showVap ? tile('VAP moyenne', f1(W.vap), 'km/h', 'équivalent plat', '#ddd6fe', true) : tile('Allure', pace(kmh), '/km', '', '', false)}
+          ${tile('Cardio moyen', W.hr || '–', W.hr ? 'bpm' : '', W.hrMax ? `max ${W.hrMax}${zMain ? ` · surtout ${zMain.n}` : ''}` : 'pas de capteur', '#fda4af', false)}
+          ${tile(P.hasEle ? 'Dénivelé' : 'Pente tapis', P.hasEle ? `+${cs.dplus || 0}` : f1(o.pente || 0), P.hasEle ? 'm' : '%', P.hasEle ? `−${cs.dminus || 0} m` : (o.pente || 0) <= 1 ? 'à 1 %, VAP = vitesse' : `VAP ${f1(W.vap)} km/h`, '', false)}
+        </div>${zonesHtml()}${repChart()}${recLine}${coach('LE COACH')}</div>`;
+
+      // ---- Vue C : Prévu vs réalisé
+      const vMax = Math.max(...G.map(g => g.target || g.kmh || 0), 1);
+      const strip = G.length > 1 && G.some(g => g.target) ? `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;${card}">${cap('Le programme, bloc par bloc')}
+          <div style="display:flex;height:40px;gap:2px;align-items:flex-end">${G.map(g => { const c = isWarm(g) ? '#475569' : isRec(g) || (varied && g.target < tMax - 0.5) ? '#38bdf8' : g.target ? ST[status(g)] : '#64748b';
+            return `<div title="${plEsc(g.label)}" style="flex:${Math.max(0.3, g.sec / 60).toFixed(2)};height:${Math.max(25, (g.target || g.kmh || 0) / vMax * 100).toFixed(0)}%;background:${c};border-radius:3px 3px 0 0"></div>`; }).join('')}</div>
+          <div style="display:flex;gap:12px;font-size:11px;font-weight:700;flex-wrap:wrap"><span style="color:#34d399">■ dans la cible</span><span style="color:#fb923c">■ en dessous</span><span style="color:#fbbf24">■ au-dessus</span><span style="color:#38bdf8">■ récup</span><span style="color:#64748b">■ échauff./calme</span></div></div>` : '';
+      let rowsC, colT;
+      if (reps.length) { rowsC = reps.map((g, i) => ({ l: `R${i + 1} · ${dur(g.sec)}`, sub: P.hasEle && Math.abs(g.g) >= 2 ? `${g.g > 0 ? 'montée' : 'descente'} ${Math.round(Math.abs(g.g))} %` : '', p: f1(g.target), v: f1(vOf(g)), c: ST[status(g)], hr: g.hr, warn: status(g) !== 'ok' })); colT = 'Prévu'; }
+      else {
+        const mode = P.hasEle ? 'prof' : 'km';
+        rowsC = rcGroups(P, mode).map(g => { const s = rcStats(P, g.a, g.b); return { l: `${g.label} · ${f1(s.km)} km`, sub: P.hasEle && Math.abs(s.g) >= 1.5 ? `pente ${s.g > 0 ? '+' : ''}${Math.round(s.g)} %` : '', p: f1(s.kmh), v: f1(showVap ? s.vap : s.kmh), c: '#e2e8f0', hr: s.hr }; });
+        colT = 'Vitesse';
+      }
+      const tableC = rowsC.length ? `<div style="display:flex;flex-direction:column;${card};overflow:hidden">
+          <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:6px;padding:9px 12px;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase"><span>${reps.length ? 'Bloc' : P.hasEle ? 'Tronçon' : 'Km'}</span><span style="text-align:right">${colT}</span><span style="text-align:right">${showVap ? 'VAP' : 'Réel'}</span><span style="text-align:right">Cardio</span></div>
+          <div style="max-height:320px;overflow-y:auto">${rowsC.map(r => `<div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;border-top:1px solid #1e293b;font-size:13px;${r.warn ? 'background:rgba(251,146,60,.07)' : ''}"><span style="font-weight:700">${plEsc(r.l)}${r.sub ? `<span style="display:block;font-size:10px;font-weight:700;color:#fb923c">${r.sub}</span>` : ''}</span><span style="text-align:right;color:#94a3b8">${r.p}</span><span style="text-align:right;font-weight:800;color:${r.c}">${r.v}</span><span style="text-align:right;color:#fda4af">${r.hr || '–'}</span></div>`).join('')}</div></div>` : '';
+      const ring = score != null ? `<svg width="96" height="96" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${verdict[1]}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="56" text-anchor="middle" font-size="24" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="72" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
+      const mini = (v, l, hl, col) => `<div style="display:flex;flex-direction:column;align-items:center;padding:9px 4px;border-radius:12px;${hl ? 'background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5)' : 'background:#0f172a;border:1px solid #1e293b'}"><span style="font-size:16px;font-weight:800;color:${col || '#f1f5f9'}">${v}</span><span style="font-size:10px;color:${hl ? '#c4b5fd' : '#94a3b8'}">${l}</span></div>`;
+      const retenir = reps.length ? (() => { const bad = reps.map((g, i) => [g, i]).filter(([g]) => status(g) !== 'ok');
+          if (!bad.length) return `Toutes les répétitions sont dans la cible. ${W.hr ? `Cardio moyen ${W.hr}.` : ''}`;
+          const [g, i] = bad[0], d = vOf(g) - g.target;
+          return `${repTxt}. R${i + 1} ${d < 0 ? 'en dessous' : 'au-dessus'} de la cible (${f1(vOf(g))} pour ${f1(g.target)})${P.hasEle && g.g >= 2 ? `, dans une montée de ${Math.round(g.g)} % : la prochaine fois, vise ${f1(speedOnGrade(g.target, g.g))} km/h réels, c'est l'équivalent de ${f1(g.target)} sur le plat` : ''}.`; })() : '';
+      const vC = `<div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:14px">${ring}${head(false)}</div>
+        ${strip}${tableC}
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${mini(f1(km), 'km')}${mini(dur(sec), 'durée')}${showVap ? mini(f1(W.vap), 'VAP moy.', true, '#ddd6fe') : mini(f1(kmh), 'km/h')}${mini(W.hr || '–', 'FC moy.', false, '#fda4af')}</div>
+        ${recLine}${retenir ? `<div style="display:flex;flex-direction:column;gap:4px;padding:11px 13px;border-radius:14px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.4)"><span style="font-size:11px;font-weight:800;color:#c4b5fd">À RETENIR</span><span style="font-size:13px;font-weight:600;line-height:1.4">${plEsc(retenir)}</span></div>` : coach('LE COACH')}</div>`;
+
+      const uid = 'rv' + Math.random().toString(36).slice(2, 8);
+      const cur = ['A', 'B', 'C'].includes(appData.recapView) ? appData.recapView : 'A';
+      const tabs = [['A', 'Synthèse'], ['B', 'Tableau de bord'], ['C', 'Prévu / réalisé']];
+      return `<div id="${uid}" data-recap style="display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:18px;background:#050a16;border:1px solid #1e293b;color:#f1f5f9;font-family:'Plus Jakarta Sans',system-ui,sans-serif">
+        <div role="tablist" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k, l]) => `<button type="button" role="tab" data-rvtab="${k}" onclick="setRecapView('${uid}','${k}')" style="min-height:36px;border:none;border-radius:9px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;${k === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        <div data-rv="A" style="${cur === 'A' ? '' : 'display:none'}">${vA}</div>
+        <div data-rv="B" style="${cur === 'B' ? '' : 'display:none'}">${vB}</div>
+        <div data-rv="C" style="${cur === 'C' ? '' : 'display:none'}">${vC}</div></div>`;
+    }
+    function setRecapView(uid, k) {
+      appData.recapView = k; saveAppData();
+      document.querySelectorAll('[data-recap]').forEach(box => {
+        box.querySelectorAll('[data-rv]').forEach(d => { d.style.display = d.dataset.rv === k ? '' : 'none'; });
+        box.querySelectorAll('[data-rvtab]').forEach(b => { const on = b.dataset.rvtab === k; b.style.background = on ? '#a78bfa' : 'transparent'; b.style.color = on ? '#13092b' : '#94a3b8'; });
+      });
     }
 
     // ==================== SCRIPT DE TEST DE LA SÉANCE ====================
