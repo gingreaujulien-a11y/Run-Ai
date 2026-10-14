@@ -148,10 +148,13 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
-    body.free-ctl #circleZone svg { width: 12.5rem !important; height: 12.5rem !important; }
-    body.free-ctl #topZone { margin-bottom: 1rem !important; }
-    body.free-ctl #bottomZone { margin-top: 1rem !important; }
-    body.free-ctl #stageSpeedBig { font-size: 4.5rem !important; }
+    .spd-side { width: 3.4rem; height: 5.5rem; flex-shrink: 0; border-radius: 1.2rem; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 2.2rem; font-weight: 900; line-height: 1; touch-action: manipulation; }
+    .spd-side:active { transform: scale(.94); background: #334155; }
+    body.free-ctl .spd-side { display: block; }
+    body.free-ctl #circleZone svg { width: min(15.5rem, calc(100vw - 9.5rem)) !important; height: min(15.5rem, calc(100vw - 9.5rem)) !important; }
+    body.free-ctl #topZone { margin-bottom: .25rem !important; }
+    body.free-ctl #bottomZone { margin-top: .75rem !important; }
+    body.free-ctl #stageSpeedBig { font-size: 5.5rem !important; }
     #btnMainToggle.ctl-big svg { width: 30px; height: 30px; }
     .session-end-btn { opacity: 0.35; pointer-events: none; }
     body.started .session-end-btn { opacity: 1; pointer-events: auto; }
@@ -338,7 +341,9 @@
     </div>
 
     <!-- CHRONOMÈTRE CIRCULAIRE : UNIQUEMENT LE CHIFFRE GÉANT DE LA VITESSE -->
-    <div id="circleZone" class="relative flex items-center justify-center my-2">
+    <div id="circleRow" class="w-full flex items-center justify-center gap-2 my-2" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%">
+    <button id="spdMinus" type="button" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="spd-side hidden">−</button>
+    <div id="circleZone" class="relative flex items-center justify-center">
       <svg class="w-72 h-72 sm:w-80 sm:h-80 -rotate-90 transform" viewBox="0 0 100 100">
         <!-- Cercle de fond -->
         <circle cx="50" cy="50" r="44" stroke="#1e293b" stroke-width="7" fill="none" />
@@ -355,6 +360,8 @@
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
       </div>
     </div>
+    <button id="spdPlus" type="button" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="spd-side hidden">+</button>
+    </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
       <div class="text-center text-[15px] font-extrabold text-white mb-2">Une répétition de plus ?</div>
@@ -363,16 +370,12 @@
         <button onclick="oneMoreAnswer(false)" aria-label="Non" class="h-16 rounded-2xl text-4xl active:scale-95" style="background:#334155">👎</button>
       </div>
     </div>
-    <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 hidden">
-      <div class="flex items-center gap-3">
-        <button onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">−</button>
-        <span id="freeSpeedLbl" class="w-40 text-center text-[13px] text-slate-300 font-bold">vitesse</span>
-        <button onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">+</button>
-      </div>
-      <div id="freePenteRow" class="flex items-center gap-3">
-        <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">−</button>
-        <span id="freePenteLbl" class="w-28 text-center text-[13px] text-slate-300 font-bold">pente</span>
-        <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="w-14 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg">+</button>
+    <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
+      <span id="freeSpeedLbl" class="text-center text-[13px] text-slate-400 font-bold">vitesse</span>
+      <div id="freePenteRow" class="flex items-center gap-2 px-2 py-1 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:4px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
+        <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">−</button>
+        <span id="freePenteLbl" class="w-24 text-center text-[14px] text-slate-200 font-bold">pente</span>
+        <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">+</button>
       </div>
     </div>
 
@@ -2025,12 +2028,13 @@
       if (fsc) fsc.classList.toggle('hidden', !(sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished));
       { const pr = document.getElementById('freePenteRow'); if (pr) pr.classList.toggle('hidden', !sess.free); }
       document.body.classList.toggle('free-ctl', !!(fsc && !fsc.classList.contains('hidden')));
+      ['spdMinus', 'spdPlus'].forEach(id => { const b = document.getElementById(id); if (b) b.classList.toggle('hidden', !(fsc && !fsc.classList.contains('hidden'))); });
       { const sl = document.getElementById('freeSpeedLbl');
         if (sl && !sess.free && curStage) sl.innerHTML = `${curStage.type === 'chauffe' ? 'échauff.' : curStage.type === 'recup' ? 'calme' : 'vitesse'} <b class="text-white">${formatSpeed(curStage.speed).replace('.', ',')}</b>${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? ` <span class="text-amber-300">(prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')})</span>` : ''}`; }
       updateHrZoneBar();
       if (sess.free) {
         const sl = document.getElementById('freeSpeedLbl'), pl = document.getElementById('freePenteLbl');
-        if (sl) sl.textContent = `vitesse ${formatSpeed(curStage ? curStage.speed : 0).replace('.', ',')}`;
+        if (sl) sl.textContent = 'vitesse du tapis (− / + : 0,5 km/h)';
         if (pl) pl.textContent = `pente ${String(sess.pente || 0).replace('.', ',')} %`;
       }
       const infoLine = document.getElementById('stageInfoLine');
@@ -12508,9 +12512,8 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       closeFreeModal();
       buildCurrentSessionStages();
       showChrono();
-      updateUIHeaderAndCircle();
-      startTimer(); // dans le geste de l'utilisateur (son + plein écran)
-      btAutoReconnect();
+      updateUIHeaderAndCircle(); setMainButton();
+      btAutoReconnect(); // départ avec le bouton ▶ du cercle (décompte 3, 2, 1)
       if (aiVoiceActive()) prepareAIVoice();
     }
     function endFreeSessionIfIdle() {
