@@ -348,6 +348,7 @@
 
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
       <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+        <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
         <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio • Double appui : segment suivant" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black font-mono tracking-tighter text-white drop-shadow-lg">
           8
         </div>
@@ -2045,6 +2046,10 @@
       }
       const speedBig = document.getElementById('stageSpeedBig');
       const bigSub = document.getElementById('bigSubLabel');
+      { const bp = document.getElementById('bigPlayBtn'), idle = !timerState.sessionStarted && !preCd;
+        if (bp) { bp.classList.toggle('hidden', !idle); bp.classList.toggle('flex', idle); }
+        if (speedBig) speedBig.classList.toggle('hidden', idle);
+        if (preCd && speedBig) { speedBig.textContent = preCd.n; speedBig.style.color = '#fbbf24'; return; } }
       if (speedBig) {
         const hrFresh = runData.hr && Date.now() - runData.hrAt < 8000;
         const showHr = bigDisplayMode === 'hr' && hrFresh;
@@ -3731,8 +3736,8 @@
     function toggleTimer() {
       if (timerState.isRunning) {
         pauseTimer();
-      } else if ((!timerState.sessionStarted || timerState.finished) && appData.audioSettings.coachTip !== false) {
-        showCoachTipModal();
+      } else if (!timerState.sessionStarted || timerState.finished) {
+        startWithCountdown();
       } else {
         startTimer();
       }
@@ -3894,7 +3899,11 @@
         if (voiceCoachOn() && navigator.mediaDevices) navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
       }
       if (gpsWanted()) startGps();
-      speak(startPieces(cur, fresh), { chime: true });
+      if (fresh && opts.afterCountdown) {
+        const pcs = startPieces(cur, true), i0 = timerState.currentStageIndex;
+        speak([pcs[0]], { chime: true });
+        setTimeout(() => { if (timerState.isRunning && timerState.currentStageIndex === i0 && pcs.length > 1) speak(pcs.slice(1)); }, 4500);
+      } else speak(startPieces(cur, fresh), { chime: true });
 
       if (appData.audioSettings.keepAlive) {
         const bgAudio = document.getElementById('bgKeepAliveAudio');
@@ -8900,7 +8909,28 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     }
 
     // ==================== FIN ANTICIPÉE ====================
-    let preCd = null;
+    var preCd = null;
+    function startWithCountdown() {
+      if (preCd) { cancelPreStartCountdown(); return; }
+      if (timerState.finished) buildCurrentSessionStages();
+      if (!timerState.stages[timerState.currentStageIndex]) { showToast("Séance vide : ajoutez au moins un segment"); return; }
+      requestFullscreenSafe(); aiUnlock(); getAudioContext();
+      btAutoReconnect();
+      if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
+      const viaAi = aiPlayCountdown(3);
+      if (!viaAi) speak([VT().count[3]]);
+      preCd = { timers: [], n: 3 };
+      updateUIHeaderAndCircle();
+      if ('vibrate' in navigator) navigator.vibrate(40);
+      for (let k = 1; k <= 3; k++) {
+        preCd.timers.push(setTimeout(() => {
+          if (!preCd) return;
+          const n = 3 - k;
+          if (n > 0) { preCd.n = n; if (!viaAi) speak([VT().count[n]]); if ('vibrate' in navigator) navigator.vibrate(40); updateUIHeaderAndCircle(); }
+          else { preCd = null; const sb = document.getElementById('stageSpeedBig'); if (sb) sb.style.color = ''; startTimer({ skipCountdown: true, afterCountdown: true }); }
+        }, k * 1000));
+      }
+    }
     function runPreStartCountdown(done) {
       if (preCd) return;
       const ov = document.getElementById('preCountdown');
@@ -8932,6 +8962,8 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       preCd = null;
       cancelSpeech();
       document.getElementById('preCountdown').classList.add('hidden');
+      { const sb = document.getElementById('stageSpeedBig'); if (sb) sb.style.color = ''; }
+      updateUIHeaderAndCircle();
     }
 
     function finishEarly() {
@@ -12492,7 +12524,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
     function adjustFreeSpeed(delta) {
       const st = timerState.stages[timerState.currentStageIndex];
-      if (st && !st.isFree) { adjustStageSpeed(delta > 0 ? 1 : -1); return; }
+      if (st && !st.isFree) { adjustStageSpeed(delta > 0 ? 0.5 : -0.5); return; }
       if (!st || !st.isFree) return;
       st.speed = Math.max(3, Math.min(25, Math.round(((parseFloat(st.speed) || 0) + delta) * 2) / 2));
       if (freeSession) freeSession.pyramide[0].speed = st.speed;
@@ -12904,7 +12936,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     function launchFromHome() {
       showChrono();
-      toggleTimer();
+      if (timerState.finished) buildCurrentSessionStages();
+      updateUIHeaderAndCircle(); setMainButton();
       btAutoReconnect(); // la montre se reconnecte seule si elle a déjà été autorisée
     }
     let homeCardPrefix = '';
