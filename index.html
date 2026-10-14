@@ -148,13 +148,10 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
-    .spd-side { width: 3.4rem; height: 5.5rem; flex-shrink: 0; border-radius: 1.2rem; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 2.2rem; font-weight: 900; line-height: 1; touch-action: manipulation; }
-    .spd-side:active { transform: scale(.94); background: #334155; }
-    body.free-ctl .spd-side { display: block; }
-    body.free-ctl #circleZone svg { width: min(15.5rem, calc(100vw - 9.5rem)) !important; height: min(15.5rem, calc(100vw - 9.5rem)) !important; }
+    body.free-ctl #circleZone svg { width: min(16.5rem, 70vw) !important; height: min(16.5rem, 70vw) !important; }
     body.free-ctl #topZone { margin-bottom: .25rem !important; }
-    body.free-ctl #bottomZone { margin-top: .75rem !important; }
-    body.free-ctl #stageSpeedBig { font-size: 5.5rem !important; }
+    body.free-ctl #bottomZone { margin-top: .5rem !important; }
+    body.free-ctl #stageSpeedBig { font-size: 4.6rem !important; }
     #btnMainToggle.ctl-big svg { width: 30px; height: 30px; }
     .session-end-btn { opacity: 0.35; pointer-events: none; }
     body.started .session-end-btn { opacity: 1; pointer-events: auto; }
@@ -341,9 +338,7 @@
     </div>
 
     <!-- CHRONOMÈTRE CIRCULAIRE : UNIQUEMENT LE CHIFFRE GÉANT DE LA VITESSE -->
-    <div id="circleRow" class="w-full flex items-center justify-center gap-2 my-2" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%">
-    <button id="spdMinus" type="button" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="spd-side hidden">−</button>
-    <div id="circleZone" class="relative flex items-center justify-center">
+    <div id="circleZone" class="relative flex items-center justify-center my-2">
       <svg class="w-72 h-72 sm:w-80 sm:h-80 -rotate-90 transform" viewBox="0 0 100 100">
         <!-- Cercle de fond -->
         <circle cx="50" cy="50" r="44" stroke="#1e293b" stroke-width="7" fill="none" />
@@ -360,8 +355,6 @@
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
       </div>
     </div>
-    <button id="spdPlus" type="button" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="spd-side hidden">+</button>
-    </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
       <div class="text-center text-[15px] font-extrabold text-white mb-2">Une répétition de plus ?</div>
@@ -371,7 +364,11 @@
       </div>
     </div>
     <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
-      <span id="freeSpeedLbl" class="text-center text-[13px] text-slate-400 font-bold">vitesse</span>
+      <div class="flex items-center gap-2 px-2 py-1.5 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:6px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
+        <button onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="w-14 h-11 rounded-full bg-slate-800 text-white font-black text-2xl active:scale-95" style="width:3.5rem;height:2.75rem;border-radius:999px;background:#1e293b;color:#fff;font-size:1.5rem;font-weight:900">−</button>
+        <span id="freeSpeedLbl" class="w-40 text-center text-[15px] text-slate-200 font-bold" style="min-width:9rem;text-align:center">vitesse</span>
+        <button onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="w-14 h-11 rounded-full bg-slate-800 text-white font-black text-2xl active:scale-95" style="width:3.5rem;height:2.75rem;border-radius:999px;background:#1e293b;color:#fff;font-size:1.5rem;font-weight:900">+</button>
+      </div>
       <div id="freePenteRow" class="flex items-center gap-2 px-2 py-1 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:4px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
         <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">−</button>
         <span id="freePenteLbl" class="w-24 text-center text-[14px] text-slate-200 font-bold">pente</span>
@@ -381,6 +378,10 @@
 
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
+      <div id="idleRow" class="grid grid-cols-2 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
+        <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Tester le son</button>
+      </div>
       <div id="ctlRow" class="grid grid-cols-3 gap-3">
         <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
           <span id="mainToggleIcon" class="icon-slot" data-icon="play"></span>
@@ -439,6 +440,13 @@
         </div>
         <div id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
           <span id="cfgTestTitle" class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
+          <div id="cfgTestProto" class="flex gap-1.5 flex-wrap"></div>
+          <div id="cfgVmaBox" class="space-y-2 hidden">
+            <div id="cfgVmaStartRow" class="flex items-center justify-between gap-2"><span class="text-[12px] text-slate-300">Vitesse du 1er palier (km/h)</span>
+              <input type="number" id="cfgVmaStart" min="5" max="16" step="0.5" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white"></div>
+            <span id="cfgVmaHint" class="text-[11px] text-slate-400 block leading-snug"></span>
+          </div>
+          <div id="cfgTestChrono" class="space-y-2">
           <div class="flex gap-1.5 flex-wrap"><button type="button" onclick="setTestKm(1)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">1 km</button><button type="button" onclick="setTestKm(3)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">3 km</button><button type="button" onclick="setTestKm(5)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">5 km</button><button type="button" onclick="setTestKm(10)" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-200">10 km</button></div>
           <div class="grid grid-cols-3 gap-2 text-center">
             <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Distance (km)</label>
@@ -449,6 +457,7 @@
               <input type="number" id="cfgTestSpeed" min="4" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-fuchsia-400" oninput="onTestInput('speed')"></div>
           </div>
           <span id="cfgTestHint" class="text-[10px] text-slate-400 block"></span>
+          </div>
         </div>
         <div id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <span class="text-[12px] text-slate-300 block">🏃 Pas de durée ni d'allure imposées : tu règles tout pendant la course.</span>
@@ -1293,8 +1302,8 @@
                 oninput="document.getElementById('lblAiRate').textContent='×'+(+this.value).toFixed(2); saveAudioSettingsFromUI()" onchange="previewAIVoice()">
             </div>
             <div>
-              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Volume de la voix</span><span id="lblVolVoice" class="text-sky-300">100%</span></div>
-              <input type="range" id="volVoice" min="0.2" max="1.0" step="0.05" value="1.0" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVolVoice', this.value); saveAudioSettingsFromUI()">
+              <div class="flex justify-between text-[13px] font-bold mb-1"><span>Volume de la voix <small class="text-slate-400 font-semibold">(au-delà de 100 % : voix IA amplifiée)</small></span><span id="lblVolVoice" class="text-sky-300">100%</span></div>
+              <input type="range" id="volVoice" min="0.2" max="2.5" step="0.05" value="1.0" class="w-full accent-sky-500" oninput="updateAudioLabel('lblVolVoice', this.value); saveAudioSettingsFromUI()">
             </div>
             <label class="pm-lbl">Langue des annonces
               <select id="voiceLangSelect" onchange="onVoiceLangChange()" class="pm-in"><option value="fr">Français</option><option value="en">English</option></select>
@@ -2028,13 +2037,12 @@
       if (fsc) fsc.classList.toggle('hidden', !(sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished));
       { const pr = document.getElementById('freePenteRow'); if (pr) pr.classList.toggle('hidden', !sess.free); }
       document.body.classList.toggle('free-ctl', !!(fsc && !fsc.classList.contains('hidden')));
-      ['spdMinus', 'spdPlus'].forEach(id => { const b = document.getElementById(id); if (b) b.classList.toggle('hidden', !(fsc && !fsc.classList.contains('hidden'))); });
       { const sl = document.getElementById('freeSpeedLbl');
-        if (sl && !sess.free && curStage) sl.innerHTML = `${curStage.type === 'chauffe' ? 'échauff.' : curStage.type === 'recup' ? 'calme' : 'vitesse'} <b class="text-white">${formatSpeed(curStage.speed).replace('.', ',')}</b>${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? ` <span class="text-amber-300">(prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')})</span>` : ''}`; }
+        if (sl && !sess.free && curStage) sl.innerHTML = `${curStage.type === 'chauffe' ? 'échauff.' : curStage.type === 'recup' ? 'calme' : 'vitesse'} <b style="color:#fff">${formatSpeed(curStage.speed).replace('.', ',')}</b>${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? `<span style="display:block;font-size:11px;color:#fcd34d">prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')}</span>` : ''}`; }
       updateHrZoneBar();
       if (sess.free) {
         const sl = document.getElementById('freeSpeedLbl'), pl = document.getElementById('freePenteLbl');
-        if (sl) sl.textContent = 'vitesse du tapis (− / + : 0,5 km/h)';
+        if (sl) sl.innerHTML = `vitesse <b style="color:#fff">${formatSpeed(curStage ? curStage.speed : 0).replace('.', ',')}</b>`;
         if (pl) pl.textContent = `pente ${String(sess.pente || 0).replace('.', ',')} %`;
       }
       const infoLine = document.getElementById('stageInfoLine');
@@ -2717,6 +2725,7 @@
       return out;
     }
     function aiPlayClips(clips, cacheKey) {
+      cacheKey = `${cacheKey}|g${aiGain()}`;
       let urls = aiMergedUrls.get(cacheKey);
       if (!urls) {
         const sr = clips[0].sr;
@@ -2743,7 +2752,7 @@
           const all = new Int16Array(len);
           let o = 0;
           g.forEach((p, i) => { if (i) o += gap; all.set(p, o); o += p.length; });
-          return URL.createObjectURL(buildWavBlob(all, sr));
+          return URL.createObjectURL(buildWavBlob(withLeadIn(amplifyPcm(all, aiGain()), sr), sr));
         });
         aiMergedUrls.set(cacheKey, urls);
       }
@@ -2768,7 +2777,7 @@
       const len = slot * (parts.length - 1) + parts[parts.length - 1].length;
       const all = new Int16Array(len);
       parts.forEach((p, i) => all.set(p.subarray(0, Math.min(p.length, slot - 1)), i * slot));
-      const url = URL.createObjectURL(buildWavBlob(all, sr));
+      const url = URL.createObjectURL(buildWavBlob(withLeadIn(amplifyPcm(all, aiGain()), sr), sr));
       aiQueue.push(url);
       if (!aiPlaying) aiPlayNext();
       setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 10000);
@@ -2792,7 +2801,7 @@
         el.defaultPlaybackRate = rate;
         el.playbackRate = rate;
       } catch (e) {}
-      el.volume = Math.min(1, Math.max(0, parseFloat(appData.audioSettings.volVoice) || 1.0));
+      el.volume = Math.min(1, aiGain());
       try {
         const p = el.play();
         if (p && p.catch) p.catch(() => { setTimeout(aiPlayNext, 0); });
@@ -3776,6 +3785,8 @@
       document.body.classList.toggle('ctl-stopped', st === 'stopped' || st === 'finished');
       document.body.classList.toggle('started', st !== 'idle');
       ['topBar', 'appFooter', 'sessInfoLine'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', st !== 'idle'); });
+      { const ir = document.getElementById('idleRow'), cr = document.getElementById('ctlRow');
+        if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle'); }
       if (st === 'idle') {
         txt.classList.remove('hidden');
         txt.textContent = 'DÉMARRER';
@@ -3909,10 +3920,7 @@
         setTimeout(() => { if (timerState.isRunning && timerState.currentStageIndex === i0 && pcs.length > 1) speak(pcs.slice(1)); }, 4500);
       } else speak(startPieces(cur, fresh), { chime: true });
 
-      if (appData.audioSettings.keepAlive) {
-        const bgAudio = document.getElementById('bgKeepAliveAudio');
-        if (bgAudio) bgAudio.play().catch(() => {});
-      }
+      syncKeepAlive(); // seulement écran éteint : ne coupe plus les annonces ni la musique au départ
       acquireWakeLock();
 
       setMainButton('running');
@@ -4209,6 +4217,7 @@
       show('cfgSimpleBox', KIND_CONT.includes(k));
       show('cfgTestBox', k === 'test' || k === 'course');
       { const tt = document.getElementById('cfgTestTitle'); if (tt) tt.textContent = k === 'course' ? '🏁 Course (compétition)' : '⏱️ Test'; }
+      { const pb = document.getElementById('cfgTestProto'); if (pb) pb.classList.toggle('hidden', k !== 'test'); if (k !== 'test') { const c = document.getElementById('cfgTestChrono'), v = document.getElementById('cfgVmaBox'); if (c) c.classList.remove('hidden'); if (v) v.classList.add('hidden'); } else renderTestProto(); }
       show('cfgLibreBox', k === 'libre');
       show('cfgTotalsBox', KIND_STRUCT.includes(k));
       document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
@@ -4263,6 +4272,14 @@
         const sp = parseFloat(String(document.getElementById('cfgSimpleSpeed').value).replace(',', '.')) || runnerEF();
         v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
         return [{ speed: sp, unit: 'min', duration: Math.round(Math.max(1, T - v.chauffe - v.recup) * 100) / 100 }];
+      }
+      if (k === 'test' && cfgTestProto === 'vmaTapis') {
+        v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
+        return vmaTapisPyramid(parseFloat(String(document.getElementById('cfgVmaStart').value).replace(',', '.')) || vmaStartDefault());
+      }
+      if (k === 'test' && cfgTestProto === 'vma6') {
+        v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
+        return [{ speed: Math.round(((estimateVma() || {}).vma || runnerEF() * 1.45) * 10) / 10, unit: 'min', duration: 6 }];
       }
       if (k === 'test' || k === 'course') {
         const km = parseFloat(String(document.getElementById('cfgTestKm').value).replace(',', '.')) || 0;
@@ -4421,6 +4438,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       document.getElementById('cfgTestKm').value = tk;
       document.getElementById('cfgTestSpeed').value = formatSpeed(p0.speed);
       document.getElementById('cfgTestTime').value = fmtClock(tk / (p0.speed || 10) * 60);
+      cfgTestProto = (sess.test && sess.test.proto) || 'chrono';
+      document.getElementById('cfgVmaStart').value = sess.test && sess.test.proto === 'vmaTapis' ? sess.test.start : vmaStartDefault();
       setCfgKind(cfgKind, false);
 
       document.getElementById('configModal').classList.remove('hidden');
@@ -4642,7 +4661,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       sess.kind = cfgKind;
       if (cfgKind === 'libre') { sess.free = true; sess.plannedFree = true; }
       else if (sess.plannedFree || sess.free) { delete sess.free; delete sess.plannedFree; }
-      if (cfgKind === 'test') { sess.test = { km: pyr[0].distance, min: pyr[0].duration }; if (!/test/i.test(sess.notes || '')) sess.notes = `Test ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
+      if (cfgKind === 'test' && cfgTestProto !== 'chrono') { sess.test = { proto: cfgTestProto, start: pyr[0].speed }; sess.notes = cfgTestProto === 'vmaTapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)'; if (cfgTestProto === 'vmaTapis') sess.pente = 1; }
+      else if (cfgKind === 'test') { sess.test = { km: pyr[0].distance, min: pyr[0].duration }; if (!/test/i.test(sess.notes || '') || /Test VMA/.test(sess.notes || '')) sess.notes = `Test ${formatSpeed(pyr[0].distance)} km`; }
       else delete sess.test;
       if (cfgKind === 'course') { sess.race = { km: pyr[0].distance, min: pyr[0].duration }; if (!/course/i.test(sess.notes || '')) sess.notes = `Course ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
       else delete sess.race;
@@ -4737,8 +4757,9 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         : `Pente ${sess.pente}% • Durée ${totalMin.toFixed(1)}' • ${sess.type === 'tapis' ? 'Tapis' : 'Extérieur'}`;
       const sum = timerState.finished ? (timerState.runSummary || {}) : {};
       const sumEl = document.getElementById('valSummary');
-      sumEl.textContent = summaryText(sum);
-      sumEl.classList.toggle('hidden', !summaryText(sum));
+      const vmaR = timerState.finished ? vmaTestResult(sess, runData.track, timerState.stages) : null;
+      sumEl.textContent = [summaryText(sum), vmaR ? `🧪 VMA mesurée : ${formatSpeed(vmaR).replace('.', ',')} km/h` : ''].filter(Boolean).join(' • ');
+      sumEl.classList.toggle('hidden', !sumEl.textContent);
       let recap = '';
       if (timerState.finished) { try { const ds = new Date(); recap = recapHtml({ track: timerState.runTrack, seg: timerState.runSeg, pente: sess.type === 'tapis' ? (parseFloat(sess.pente) || 0) : 0, kind: sessionKind(sess), week: sess.free ? '' : sess.semaine, title: sess.free ? 'Séance libre' : capFirst(stripWarmCool(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 })))), dateTxt: capFirst(ds.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })), km: parseFloat(sum.distKm) || 0, plannedMin: sess.free ? 0 : totalMin, plannedKm: sess.free ? 0 : computeSessionDistanceKm(sess) }); } catch (e) { console.warn('recap', e); } }
       document.getElementById('valRunData').innerHTML = recap + (timerState.finished ? runDataBlockHtml(timerState.runTrack, timerState.runSeg, { pente: getActiveSession().type === 'tapis' ? (parseFloat(getActiveSession().pente) || 0) : 0 }) : '');
@@ -4801,9 +4822,11 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         track: timerState.finished ? (timerState.runTrack || []) : [],
         seg: timerState.finished ? (timerState.runSeg || []) : [],
         speedChanges: (runData.speedLog || []).slice(0, 60),
+        vmaTest: timerState.finished ? (vmaTestResult(sess, runData.track, timerState.stages) || undefined) : undefined,
         analysis: lastAnalysis || ''
       };
 
+      if (newEntry.vmaTest) { runnerProfile().vmaTest = { v: newEntry.vmaTest, at: todayISO(), proto: (sess.test || {}).proto }; showToast(`🧪 VMA mesurée : ${formatSpeed(newEntry.vmaTest).replace('.', ',')} km/h`); }
       appData.history.unshift(newEntry);
       if (!sess.free || sess.plannedFree) sess.doneHistId = newEntry.id; // la séance prévue est faite
       saveAppData();
@@ -7397,7 +7420,7 @@ Réponds uniquement avec le JSON.`;
       try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
 
       tl.gain = ctx.createGain();
-      tl.gain.gain.value = Math.min(1, Math.max(0, parseFloat(appData.audioSettings.volVoice) || 1));
+      tl.gain.gain.value = Math.min(1.8, aiGain());
       tl.gain.connect(ctx.destination);
 
       // Souffle quasi inaudible pour que le téléphone garde la page « active » écran éteint
@@ -8416,7 +8439,8 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         const hT = hrTargetFor(cur);
         const hrNow = runData.hr && now - runData.hrAt < 5000 ? runData.hr : null;
         const eMax = easyHrMax();
-        if (isRecoveryStage(cur)) { runData.hrHighSince = 0; } // récup de fractionné : bilan à la fin seulement
+        const ksx = getActiveSession() || {};
+        if (isRecoveryStage(cur) || ksx.kind === 'test' || ksx.kind === 'course') { runData.hrHighSince = 0; } // récup de fractionné : bilan à la fin seulement
         else if ((cur.type === 'chauffe' || cur.type === 'recup') && eMax && hrNow) {
           if (hrNow > eMax + 3) { if (!runData.hrHighSince) runData.hrHighSince = now; } else runData.hrHighSince = 0;
           if (runData.hrHighSince && now - runData.hrHighSince > 20000 && now - runData.lastHrAt > 90000) {
@@ -8442,7 +8466,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         }
       }
       // Allure et VAP : vitesse moyenne sur 30 s et pente lissée (évite les consignes contradictoires)
-      if (gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000) {
+      if (gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000 && !((getActiveSession() || {}).test || {}).proto) {
         const v30 = gpsSpeedAvg(30);
         if (v30 && v30 > 3) {
           const gr = liveGrade();
@@ -11227,6 +11251,8 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
     function describeSessionHuman(sess) {
       if (sess && sess.free && sess.plannedFree) return `séance libre${sess.type === 'exterieur' ? ' en extérieur' : ' sur tapis'}`;
       if (sess && sess.kind === 'course' && (sess.pyramide || [])[0]) { const p = sess.pyramide[0]; return `course ${formatSpeed(p.distance || p.duration * p.speed / 60).replace('.', ',')} km — objectif ${fmtClock(p.duration)} (${formatSpeed(p.speed).replace('.', ',')} km/h)`; }
+      if (sess && sess.kind === 'test' && sess.test && sess.test.proto === 'vmaTapis') return `test VMA sur tapis : paliers de 1' (+0,5 km/h) dès ${formatSpeed(sess.test.start || sess.pyramide[0].speed).replace('.', ',')} km/h, jusqu'à épuisement`;
+      if (sess && sess.kind === 'test' && sess.test && sess.test.proto === 'vma6') return `test VMA : 6 minutes le plus loin possible`;
       if (sess && sess.kind === 'test' && (sess.pyramide || [])[0]) { const p = sess.pyramide[0]; return `test ${formatSpeed(p.distance || p.duration * p.speed / 60).replace('.', ',')} km en ${fmtClock(p.duration)} (${formatSpeed(p.speed).replace('.', ',')} km/h)`; }
       const ri = routeRunInfo(sess);
       if (ri) return `sortie de ${ri.km.toFixed(1).replace('.', ',')} km « ${ri.name} » (≈ ${fmtHM(ri.min)} à ${formatSpeed(ri.kmh).replace('.', ',')} km/h${ri.gain > 20 ? `, D+ ${Math.round(ri.gain)} m` : ''})`;
@@ -11637,6 +11663,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     }
     // VMA estimée d'après les segments des séances (cardio = réserve cardiaque ; sinon borne basse selon la durée)
     function estimateVma(asOf) {
+      { const vt = runnerProfile().vmaTest, ref0 = asOf ? new Date(asOf) : new Date();
+        if (vt && vt.v > 5 && vt.at && (ref0 - parseISODateLocal(vt.at)) / 864e5 <= 120 && (ref0 - parseISODateLocal(vt.at)) >= -864e5) return { vma: vt.v, n: 8, withHr: 2, fromTest: true, testAt: vt.at }; }
       const fc = runnerFcMax();
       const ref = asOf ? new Date(asOf) : new Date();
       const since = new Date(ref); since.setDate(since.getDate() - 70);
@@ -12535,6 +12563,109 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       saveLiveRun();
     }
 
+
+    // ==================== AVANT LE DÉPART : annuler / tester le son ====================
+    function cancelBeforeStart() {
+      cancelPreStartCountdown();
+      cancelSpeech();
+      if (freeSession) { freeSession = null; }
+      reloadChrono();
+      showHome();
+    }
+    const SOUND_TEST_TXT = "Tu m'entends bien ? Si la musique couvre ma voix, monte le volume des annonces dans les réglages.";
+    async function soundTest() {
+      const b = document.getElementById('soundTestBtn');
+      cancelSpeech(); aiUnlock(); getAudioContext();
+      const text = appData.audioSettings.voiceLang === 'en' ? "Can you hear me well? If the music covers my voice, turn up the announcement volume in the settings." : SOUND_TEST_TXT;
+      if (!aiVoiceActive()) { systemSpeak(text); return; }
+      const k = aiClipKey(text);
+      if (!aiClips.has(k)) {
+        try { const stored = await aiDbGet(k); if (stored && stored.pcm) aiClips.set(k, { sr: stored.sr, pcm: new Int16Array(stored.pcm) }); } catch (e) { }
+      }
+      if (!aiClips.has(k)) {
+        if (b) { b.disabled = true; b.textContent = '⏳ Préparation…'; }
+        try {
+          const clip = await Promise.race([aiFetchClip(text), sleep(20000).then(() => null)]);
+          if (clip) { aiClips.set(k, clip); try { aiDbPut(k, { sr: clip.sr, pcm: clip.pcm.buffer.slice(clip.pcm.byteOffset, clip.pcm.byteOffset + clip.pcm.byteLength) }); } catch (e) { } }
+        } catch (e) { }
+        if (b) { b.disabled = false; b.textContent = '🔊 Tester le son'; }
+      }
+      if (aiClips.has(k)) aiPlayClips([aiClips.get(k)], k); else systemSpeak(text);
+    }
+    // Voix IA : amplification au-delà de 100 % avec limiteur doux (pas de saturation)
+    function aiGain() { return Math.min(2.5, Math.max(0.2, parseFloat(appData.audioSettings.volVoice) || 1)); }
+    function amplifyPcm(pcm, g) {
+      if (!(g > 1.01)) return pcm;
+      const out = new Int16Array(pcm.length);
+      for (let i = 0; i < pcm.length; i++) {
+        const v = pcm[i] / 32768 * g, a = Math.abs(v);
+        const y = a < 0.7 ? a : 0.7 + 0.29 * Math.tanh((a - 0.7) / 0.29);
+        out[i] = Math.round((v < 0 ? -y : y) * 32767);
+      }
+      return out;
+    }
+    // Petit silence en tête de chaque annonce : le téléphone baisse la musique avant le premier mot
+    function withLeadIn(pcm, sr) { const pad = Math.round(sr * 0.25), o = new Int16Array(pcm.length + pad); o.set(pcm, pad); return o; }
+    // Musique : le son « maintien en vie » ne tourne que écran éteint (sinon il baisse la musique en continu)
+    function syncKeepAlive() {
+      const bg = document.getElementById('bgKeepAliveAudio'); if (!bg) return;
+      const want = !!appData.audioSettings.keepAlive && timerState.isRunning && document.visibilityState === 'hidden';
+      if (want) bg.play().catch(() => {}); else bg.pause();
+    }
+    document.addEventListener('visibilitychange', () => { try { syncKeepAlive(); } catch (e) { } });
+
+    // ==================== TEST VMA ====================
+    let cfgTestProto = 'chrono';
+    function setTestProto(pr) {
+      cfgTestProto = pr;
+      if (pr === 'vmaTapis' && cfgTypeIsExt()) setSessionType('tapis');
+      if (pr === 'vma6' && !cfgTypeIsExt()) setSessionType('exterieur');
+      renderTestProto();
+    }
+    function renderTestProto() {
+      const box = document.getElementById('cfgTestProto'); if (!box) return;
+      box.innerHTML = [['chrono', '⏱️ Distance / chrono'], ['vmaTapis', '📈 VMA tapis'], ['vma6', '🏃 VMA 6 min']].map(([k, l]) => `<button type="button" onclick="setTestProto('${k}')" class="px-2.5 py-1.5 rounded-lg text-[12px] font-bold" style="${k === cfgTestProto ? 'background:rgba(232,121,249,.2);border:2px solid #e879f9;color:#fae8ff' : 'background:#1e293b;border:1px solid #334155;color:#cbd5e1'}">${l}</button>`).join('');
+      const vm = cfgTestProto !== 'chrono';
+      const show = (id, on) => { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', !on); };
+      show('cfgTestChrono', !vm); show('cfgVmaBox', vm);
+      const st = document.getElementById('cfgVmaStartRow'); if (st) st.classList.toggle('hidden', cfgTestProto !== 'vmaTapis');
+      const h = document.getElementById('cfgVmaHint');
+      if (h) h.textContent = cfgTestProto === 'vmaTapis'
+        ? "Tapis à 1 %. Après l'échauffement, la vitesse monte de 0,5 km/h chaque minute. Tiens chaque palier le plus longtemps possible, puis appuie sur ■ quand tu ne peux plus : ta VMA est la vitesse du dernier palier tenu (+ la part du palier entamé)."
+        : "Dehors, sur terrain plat (piste idéale). Après l'échauffement : 6 minutes à fond, la plus grande distance possible, à allure régulière. VMA (km/h) = distance en mètres ÷ 100. GPS obligatoire.";
+    }
+    function vmaStartDefault() { const v = (estimateVma() || {}).vma || runnerEF() * 1.45; return Math.max(7, Math.round(v * 0.62 * 2) / 2); }
+    function vmaTapisPyramid(start) {
+      const est = (estimateVma() || {}).vma || runnerEF() * 1.45;
+      const top = Math.min(24, Math.max(start + 6, Math.round((est + 2.5) * 2) / 2));
+      const out = []; for (let v = start; v <= top + 1e-6; v += 0.5) out.push({ speed: Math.round(v * 10) / 10, unit: 'min', duration: 1 });
+      return out;
+    }
+    // Résultat du test VMA à la fin de la séance
+    function vmaTestResult(sess, track, stages) {
+      const T = sess && sess.test;
+      if (!T || !T.proto || T.proto === 'chrono' || !Array.isArray(track) || track.length < 6) return null;
+      const pal = (stages || []).map((st, k) => st.type === 'palier' ? k : -1).filter(k => k >= 0);
+      if (T.proto === 'vmaTapis') {
+        let last = -1; track.forEach(r => { if (pal.includes(r[3])) last = Math.max(last, r[3]); });
+        if (last < 0) return null;
+        const secIn = track.filter(r => r[3] === last).length * 5;
+        const sp = parseFloat(stages[last].speed) || 0;
+        if (secIn >= 55) return Math.round(sp * 10) / 10;
+        const prev = pal[pal.indexOf(last) - 1];
+        const base = prev !== undefined ? parseFloat(stages[prev].speed) || sp - 0.5 : sp - 0.5;
+        return Math.round((base + (sp - base) * Math.min(1, secIn / 60)) * 10) / 10;
+      }
+      if (T.proto === 'vma6') {
+        const rows = track.filter(r => pal.includes(r[3]));
+        if (rows.length < 10) return null;
+        const km = (rows[rows.length - 1][5] || 0) - (rows[0][5] || 0) + (rows[0][2] || 0) * 5 / 3600;
+        const min = rows.length * 5 / 60;
+        if (!(km > 0.3)) return null;
+        return Math.round(km / Math.max(min, 1) * 60 * 10) / 10; // vitesse moyenne tenue ≈ VMA
+      }
+      return null;
+    }
     // ==================== COPIE DE SÉANCE : CHOIX DE LA DATE ====================
     // ==================== PARLER AU COACH PENDANT LA SÉANCE ====================
     const vc = { rec: null, mode: 'idle', timer: null, lastStart: 0, checkinDone: false, original: null };
