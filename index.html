@@ -2066,7 +2066,12 @@
         speedBig.classList.toggle('text-white', !showHr);
         speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
-          bigSub.classList.add('hidden'); // cardio dans le cercle : ni zone ni vitesse en dessous
+          const vp = showHr ? null : liveVapKmh(sess, curStage);
+          const on = vp !== null;
+          bigSub.textContent = on ? `VAP ${(Math.round(vp * 2) / 2).toFixed(1).replace('.', ',')}` : '';
+          bigSub.className = on ? 'font-black tracking-tight' : 'hidden';
+          bigSub.style.color = '#c4b5fd'; bigSub.style.lineHeight = '1';
+          if (on !== !!window.__vapOn) { window.__vapOn = on; setTimeout(() => fitCircle(true), 0); }
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
         speedBig.classList.toggle('sm:text-8xl', txt.length > 2);
@@ -2092,6 +2097,17 @@
       }
     }
 
+    // VAP affichée dans le cercle (tapis en pente ou dehors avec pente mesurée)
+    function liveVapKmh(sess, cur) {
+      if (!sess || !cur || !timerState.sessionStarted || timerState.finished) return null;
+      if (gpsWanted()) {
+        const g = runData.gps; if (!g || g.speedKmh === null) return null;
+        const lg = liveGrade(), vs = gpsSpeedAvg(20) || g.speedKmh;
+        return lg && vs > 2 ? vapKmh(vs, lg) : null;
+      }
+      if (sess.type !== 'exterieur' && treadmillGrade(sess.pente) >= 0.5 && (parseFloat(cur.speed) || 0) > 0) return vapKmh(parseFloat(cur.speed), treadmillGrade(sess.pente));
+      return null;
+    }
     // Cercle : le plus grand possible dans l'espace libre entre le haut et les boutons, centré en hauteur
     let lastFitAt = 0;
     function fitCircle(force) {
@@ -2104,7 +2120,9 @@
       const avail = cz.clientHeight - 8;
       const size = Math.round(Math.max(150, Math.min(300, window.innerWidth * 0.8, avail > 0 ? avail : 300)));
       svg.style.width = svg.style.height = size + 'px';
-      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (len > 2 ? 0.3 : 0.4)) + 'px'; }
+      const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
+      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? (len > 2 ? 0.25 : 0.33) : (len > 2 ? 0.3 : 0.4))) + 'px'; big.style.lineHeight = '1'; }
+      if (sub) { sub.style.fontSize = Math.round(size * 0.115) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
     window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
@@ -8521,15 +8539,13 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
           const rt = runData.route;
           const grade = activeRoute() && rt.progressKm !== null && !rt.offRoute ? rt.grade : 0;
           const lg = liveGrade(), vs = gpsSpeedAvg(20) || g.speedKmh;
-          if (lg || grade) parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(vs, lg) * 10) / 10)}<span class="text-sm font-bold text-slate-400"> · pente ${lg > 0 ? '+' : ''}${Math.round(lg)} %</span></span>`);
+          if (lg || grade) parts.push(`<span class="text-slate-400">pente ${lg > 0 ? '+' : ''}${Math.round(lg)} %</span>`);
         }
         if (activeRoute() && runData.route.progressKm !== null) {
           const rt = runData.route;
           parts.push(rt.offRoute ? `<span class="text-amber-300">🗺️ hors parcours</span>`
             : `<span class="text-emerald-300">🗺️ ${rt.progressKm.toFixed(1)}/${activeRoute().totalKm.toFixed(1)} km${rt.grade ? ` • ${rt.grade > 0 ? '+' : ''}${Math.round(rt.grade)}%` : ''}</span>`);
         }
-      } else if (cur && cur.type === 'palier' && sess.type !== 'exterieur' && treadmillGrade(sess.pente) >= 0.5) {
-        parts.push(`<span class="basis-full text-3xl font-black text-violet-300 tracking-tight">VAP ${formatSpeed(Math.round(vapKmh(parseFloat(cur.speed) || 0, treadmillGrade(sess.pente)) * 10) / 10)}</span>`);
       }
       box.innerHTML = parts.join('');
       box.classList.toggle('hidden', !parts.length || !timerState.sessionStarted);
