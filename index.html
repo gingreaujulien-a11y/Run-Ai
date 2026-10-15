@@ -148,10 +148,7 @@
     #pocketRing { width: 84px; height: 84px; margin-top: 1.5rem; opacity: 0; transition: opacity 0.2s; }
     #pocketRing.on { opacity: 1; }
     .pocket-btn { display: none; }
-    body.free-ctl #circleZone svg { width: min(16.5rem, 70vw) !important; height: min(16.5rem, 70vw) !important; }
-    body.free-ctl #topZone { margin-bottom: .25rem !important; }
-    body.free-ctl #bottomZone { margin-top: .5rem !important; }
-    body.free-ctl #stageSpeedBig { font-size: 4.6rem !important; }
+
     #btnMainToggle.ctl-big svg { width: 30px; height: 30px; }
     .session-end-btn { opacity: 0.35; pointer-events: none; }
     body.started .session-end-btn { opacity: 1; pointer-events: auto; }
@@ -185,26 +182,20 @@
     .home-tile svg.icon { width: 1.75rem; height: 1.75rem; }
     /* Séance lancée : cercle centré verticalement, temps total bien détaché au-dessus */
     body.running #mainArea, body.started #mainArea {
-      display: grid;
-      grid-template-rows: 1fr auto 1fr;
-      grid-template-columns: minmax(0, 1fr);
-      justify-items: center;
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
       height: 100vh;
       height: 100dvh;
-      padding-top: 0;
-      padding-bottom: 0;
+      padding-top: .5rem;
+      padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+      overflow: hidden;
     }
-    body.running #topZone, body.started #topZone {
-      align-self: end;
-      margin-bottom: 2.75rem;
-    }
-    body.running #circleZone, body.started #circleZone {
-      margin: 0;
-    }
-    body.running #bottomZone, body.started #bottomZone {
-      align-self: start;
-      margin-top: 2.25rem;
-    }
+    body.running #topZone, body.started #topZone { flex: 0 0 auto; margin-bottom: .25rem; }
+    body.running #circleZone, body.started #circleZone { flex: 1 1 0; min-height: 0; margin: 0; width: 100%; }
+    body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
+    body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
     input[type="date"] {
       color-scheme: dark;
     }
@@ -2036,7 +2027,8 @@
       const fsc = document.getElementById('freeSpeedCtl');
       if (fsc) fsc.classList.toggle('hidden', !(sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished));
       { const pr = document.getElementById('freePenteRow'); if (pr) pr.classList.toggle('hidden', !sess.free); }
-      document.body.classList.toggle('free-ctl', !!(fsc && !fsc.classList.contains('hidden')));
+      { const was = document.body.classList.contains('free-ctl'), now2 = !!(fsc && !fsc.classList.contains('hidden'));
+        document.body.classList.toggle('free-ctl', now2); if (was !== now2) setTimeout(() => fitCircle(true), 30); }
       { const sl = document.getElementById('freeSpeedLbl');
         if (sl && !sess.free && curStage) sl.innerHTML = `${curStage.type === 'chauffe' ? 'échauff.' : curStage.type === 'recup' ? 'calme' : 'vitesse'} <b style="color:#fff">${formatSpeed(curStage.speed).replace('.', ',')}</b>${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? `<span style="display:block;font-size:11px;color:#fcd34d">prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')}</span>` : ''}`; }
       updateHrZoneBar();
@@ -2079,6 +2071,7 @@
         speedBig.classList.toggle('sm:text-9xl', txt.length <= 2);
       }
 
+      try { fitCircle(); } catch (e) { }
       const circle = document.getElementById('timerProgressCircle');
       if (circle) {
         let progress = 0;
@@ -2095,6 +2088,23 @@
         circle.style.filter = `drop-shadow(0 0 14px hsla(${hue}, 90%, 50%, 0.55))`;
       }
     }
+
+    // Cercle : le plus grand possible dans l'espace libre entre le haut et les boutons, centré en hauteur
+    let lastFitAt = 0;
+    function fitCircle(force) {
+      const now = Date.now();
+      if (!force && now - lastFitAt < 700) return;
+      lastFitAt = now;
+      const cz = document.getElementById('circleZone'), svg = cz && cz.querySelector('svg'), big = document.getElementById('stageSpeedBig');
+      if (!svg) return;
+      if (!document.body.classList.contains('started') && !document.body.classList.contains('running')) { svg.style.width = svg.style.height = ''; if (big) big.style.fontSize = ''; return; }
+      const avail = cz.clientHeight - 8;
+      const size = Math.round(Math.max(150, Math.min(300, window.innerWidth * 0.8, avail > 0 ? avail : 300)));
+      svg.style.width = svg.style.height = size + 'px';
+      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (len > 2 ? 0.3 : 0.4)) + 'px'; }
+      const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
+    }
+    window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
 
     // ==================== AUDIO : CARILLON ====================
     function getAudioContext() {
@@ -3784,6 +3794,7 @@
       const big = 'py-4 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg flex items-center justify-center gap-2 ';
       document.body.classList.toggle('ctl-stopped', st === 'stopped' || st === 'finished');
       document.body.classList.toggle('started', st !== 'idle');
+      setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 30);
       ['topBar', 'appFooter', 'sessInfoLine'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', st !== 'idle'); });
       { const ir = document.getElementById('idleRow'), cr = document.getElementById('ctlRow');
         if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle'); }
@@ -3911,7 +3922,6 @@
         timerState.extendedMin = 0;
         vc.checkinDone = false;
         vc.original = null;
-        if (voiceCoachOn() && navigator.mediaDevices) navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
       }
       if (gpsWanted()) startGps();
       if (fresh && opts.afterCountdown) {
