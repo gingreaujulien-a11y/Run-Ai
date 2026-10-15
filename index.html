@@ -196,6 +196,8 @@
     body.running #circleZone, body.started #circleZone { flex: 1 1 0; min-height: 0; margin: 0; width: 100%; }
     body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
     body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
+    .csc-btn { width: 3rem; height: 3rem; border-radius: 999px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 1.7rem; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .csc-btn:active { transform: scale(.92); background: #334155; }
     input[type="date"] {
       color-scheme: dark;
     }
@@ -340,6 +342,10 @@
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
       <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+        <div id="circleSpdCtl" class="pointer-events-auto hidden" style="display:flex;gap:1.6rem;margin-bottom:.35rem">
+          <button type="button" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="csc-btn">−</button>
+          <button type="button" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="csc-btn">+</button>
+        </div>
         <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio • Double appui : segment suivant" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black tracking-tight text-white drop-shadow-lg" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-0.02em;line-height:1">
           8
         </div>
@@ -348,18 +354,14 @@
     </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
-      <div class="text-center text-[15px] font-extrabold text-white mb-2">Une répétition de plus ?</div>
+      <div class="text-center text-[15px] font-extrabold text-white mb-2">Capable de faire une série de plus que prévu ?</div>
       <div class="grid grid-cols-2 gap-3">
         <button onclick="oneMoreAnswer(true)" aria-label="Oui, une de plus" class="h-16 rounded-2xl text-4xl active:scale-95" style="background:#34d399">👍</button>
         <button onclick="oneMoreAnswer(false)" aria-label="Non" class="h-16 rounded-2xl text-4xl active:scale-95" style="background:#334155">👎</button>
       </div>
     </div>
     <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
-      <div class="flex items-center gap-2 px-2 py-1.5 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:6px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
-        <button onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="w-14 h-11 rounded-full bg-slate-800 text-white font-black text-2xl active:scale-95" style="width:3.5rem;height:2.75rem;border-radius:999px;background:#1e293b;color:#fff;font-size:1.5rem;font-weight:900">−</button>
-        <span id="freeSpeedLbl" class="w-40 text-center text-[15px] text-slate-200 font-bold" style="min-width:9rem;text-align:center">vitesse</span>
-        <button onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="w-14 h-11 rounded-full bg-slate-800 text-white font-black text-2xl active:scale-95" style="width:3.5rem;height:2.75rem;border-radius:999px;background:#1e293b;color:#fff;font-size:1.5rem;font-weight:900">+</button>
-      </div>
+      <span id="freeSpeedLbl" class="hidden"></span>
       <div id="freePenteRow" class="flex items-center gap-2 px-2 py-1 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:4px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
         <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">−</button>
         <span id="freePenteLbl" class="w-24 text-center text-[14px] text-slate-200 font-bold">pente</span>
@@ -832,6 +834,7 @@
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
             <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'), true)" class="pm-btn" style="height:48px;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800;font-size:14px">📝 Ma pratique avant l'app</button>
             <div class="flex flex-col gap-1"><span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Style du plan</span><div id="planStyleChips" class="grid grid-cols-2 gap-2"></div></div>
+            <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #334155"><input type="checkbox" id="chkCoachExpert" onchange="setCoachExpert(this.checked, this)" class="w-5 h-5 mt-0.5 accent-purple-400 shrink-0"><span class="flex flex-col gap-0.5"><span class="text-[14px] font-extrabold text-white">🧠 Coach expert (Gemini 4 Argon)</span><span class="text-[12px] text-slate-400">Analyse et génération du plan plus poussées. Payant : environ 5 × le prix de Flash.</span></span></label>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
@@ -2028,7 +2031,9 @@
       updatePocketTime();
       updateLiveMetrics();
       const fsc = document.getElementById('freeSpeedCtl');
-      if (fsc) fsc.classList.toggle('hidden', !(sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished));
+      const tapRun = sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished;
+      if (fsc) fsc.classList.toggle('hidden', !(tapRun && sess.free));
+      { const cc = document.getElementById('circleSpdCtl'); if (cc) { const on = tapRun && !(bigDisplayMode === 'hr' && runData.hr && Date.now() - runData.hrAt < 8000); if (cc.classList.contains('hidden') === on) { cc.classList.toggle('hidden', !on); setTimeout(() => fitCircle(true), 0); } } }
       { const pr = document.getElementById('freePenteRow'); if (pr) pr.classList.toggle('hidden', !sess.free); }
       { const was = document.body.classList.contains('free-ctl'), now2 = !!(fsc && !fsc.classList.contains('hidden'));
         document.body.classList.toggle('free-ctl', now2); if (was !== now2) setTimeout(() => fitCircle(true), 30); }
@@ -2123,6 +2128,9 @@
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
       if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.25 : 0.3)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
       if (sub) { sub.style.fontSize = Math.round(size * 0.115) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
+      { const cc = document.getElementById('circleSpdCtl'), ccOn = cc && !cc.classList.contains('hidden');
+        if (cc) { const bs = Math.round(size * 0.15); cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bs + 'px'; b.style.fontSize = Math.round(bs * 0.6) + 'px'; }); cc.style.gap = Math.round(size * 0.12) + 'px'; }
+        if (big && ccOn) big.style.fontSize = Math.round(size * (subOn ? 0.22 : 0.26)) + 'px'; }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
     window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
@@ -2455,7 +2463,7 @@
         if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 120)) set.add(warmEndText());
         timerState.stages.forEach((st, i) => {
           if (i === 0) set.add(stagePhrase(st, 'label'));
-          else { set.add(stagePhrase(st, 'prep')); set.add(stagePhrase(st, 'goS')); goExtras(st).forEach(x => set.add(x)); }
+          else { set.add(prepPhrase(st)); set.add(goPhrase(st)); goExtras(st).forEach(x => set.add(x)); }
         });
         if (appData.audioSettings.encouragements !== false && timerState.stages.some(st => st.durationSec >= 150)) {
           currentCoachLongTips(p.lang).forEach(x => set.add(x));
@@ -2947,6 +2955,11 @@
           }
 
           const msg = (json && json.error && json.error.message) || `Erreur ${resp.status}`;
+          if (model === GEMINI_EXPERT_MODEL) { // pas d'accès (facturation, quota) : on passe tout de suite à Flash
+            geminiTextBad.add(model); lastErr = msg;
+            try { showToast("Coach expert (Argon) indisponible avec ta clé : Gemini Flash utilisé"); } catch (e) { }
+            break;
+          }
           if (resp.status === 429) {
             const q = describeQuota(json, msg);
             lastErr = `Limite Gemini atteinte (${q.label}, ${m.id})`;
@@ -4086,8 +4099,8 @@
       // Annonce du segment suivant ~5 s avant la fin (assez tôt pour finir avant « Trois »)
       if (!f.pre && curStage.durationSec >= 10) {
         const next = timerState.stages[idx + 1];
-        const txt = next ? stagePhrase(next, 'prep') : VT().last15;
-        const lead = prepLeadMs(txt);
+        const txt = next ? prepPhrase(next) : VT().last15;
+        const lead = next && isRecAfterFast(next) ? 10500 : prepLeadMs(txt);
         if (remMs <= lead && remMs > 3500) {
           f.pre = true;
           speak([txt]);
@@ -5603,6 +5616,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       fillCoachTabUI();
       renderPlanDays();
       try { fillPlanPrefs(); } catch (e) { }
+      { const ce = document.getElementById('chkCoachExpert'); if (ce) ce.checked = !!appData.coachExpert; }
       renderGoalSummary();
       document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
@@ -6036,7 +6050,7 @@ Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si
       say('');
       st.innerHTML = '<div class="flex items-center gap-3 py-3 px-3 rounded-xl" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.4)"><div class="animate-spin shrink-0" style="width:26px;height:26px;border-radius:50%;border:3px solid #475569;border-top-color:#a78bfa"></div><div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Le coach analyse ton plan…</span><span class="text-[12px] text-slate-400">Semaine par semaine jusqu\'à la course : 30 s à 2 min</span></div></div>';
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const j = parseJsonLoose(txt) || {};
         const mods = parseCoachMods(j.modifications, refs, null, 100000);
         const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
@@ -6403,7 +6417,7 @@ Format JSON strict :
 Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance : cardio moyen visé (moy_min-moy_max) et cardio max à ne pas dépasser, en bpm, calculés avec la FC max ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
       say("🧠 Le coach prépare ton plan… (20 à 60 s)");
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const data = parseJsonLoose(txt);
         const list = Array.isArray(data) ? data : (data.sessions || []);
         pdfImportResult = normalizeImportedSessions(list);
@@ -6716,6 +6730,13 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
     const GEMINI_TEXT_MODELS_LITE = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
     const GEMINI_TEXT_MODELS_FULL = ['gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
     const geminiTextBad = new Set();
+    const GEMINI_EXPERT_MODEL = 'gemini-4-argon';
+    function setCoachExpert(on, el) {
+      if (on && !confirm("⚠️ Coach expert (Gemini 4 Argon)\n\nModèle plus puissant, utilisé seulement pour générer et analyser ton plan.\n\nSurcoût : environ 5 fois le prix de Gemini Flash (4 $ / 20 $ par million de tokens à partir du 1er décembre 2026, 2 $ / 10 $ jusque-là), soit environ 0,35 $ par analyse de plan. Pas de version gratuite : ta clé Gemini doit être sur un projet avec la facturation activée.\n\nActiver ?")) { if (el) el.checked = false; return; }
+      appData.coachExpert = !!on; saveAppData();
+      if (on) geminiTextBad.delete(GEMINI_EXPERT_MODEL);
+      showToast(on ? '🧠 Coach expert activé pour le plan' : 'Coach expert désactivé');
+    }
 
     async function geminiText(parts, opts = {}) {
       const key = getGeminiKey();
@@ -6726,6 +6747,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       const models = (tier === 'full' ? GEMINI_TEXT_MODELS_FULL : GEMINI_TEXT_MODELS_LITE).slice();
       const si = models.indexOf(saved);
       if (si > 0) models.unshift(models.splice(si, 1)[0]);
+      if (opts.expert && appData.coachExpert && !geminiTextBad.has(GEMINI_EXPERT_MODEL)) models.unshift(GEMINI_EXPERT_MODEL);
       let lastErr = "Aucun modèle Gemini disponible";
       for (const model of models) {
         if (geminiTextBad.has(model)) continue;
@@ -6743,7 +6765,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
           if (resp.ok) {
             const txt = ((((json || {}).candidates || [])[0] || {}).content?.parts || []).map(p => p.text || '').join('').trim();
             if (!txt) { lastErr = "Réponse vide"; break; }
-            try { localStorage.setItem(`tapis_ai_text_model_${tier}`, model); } catch (e) {}
+            if (model !== GEMINI_EXPERT_MODEL) try { localStorage.setItem(`tapis_ai_text_model_${tier}`, model); } catch (e) {}
             trackTextUsage(json && json.usageMetadata);
             return txt;
           }
@@ -7262,7 +7284,27 @@ Réponds uniquement avec le JSON.`;
       const l = ln.length ? ln : t.praise(f);
       return l.length ? l[(st.goVar || 0) % l.length] : '';
     }
-    function goPieces(st) { return [stagePhrase(st, 'goS'), ...goExtras(st)]; }
+
+    function isFastStage(st) { return !!st && st.type === 'palier' && st.intensity === 'fast' && !st.isFree && !st.isExtension; }
+    function prevStageOf(st) { const i = timerState.stages.indexOf(st); return i > 0 ? timerState.stages[i - 1] : null; }
+    function isRecAfterFast(st) { const p = prevStageOf(st); return !!st && isFastStage(p) && (st.type === 'recupBloc' || st.type === 'recup' || (st.type === 'palier' && st.intensity === 'easy')); }
+    function holdText(st) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      const L = en ? ['Only 10 seconds left! Hang on!', '10 more seconds, hold on!', '10 seconds, don\'t let go!', 'Just 10 seconds, keep pushing!']
+        : ['Plus que 10 secondes à tenir ! Tiens bon !', 'Encore 10 secondes, tiens bon !', '10 secondes, ne lâche rien !', 'Plus que 10 secondes, accroche-toi !'];
+      return L[(st && st.goVar || 0) % L.length];
+    }
+    function recovGoText(st) {
+      const en = appData.audioSettings.voiceLang === 'en', tap = getActiveSession().type === 'tapis' && st.type !== 'recup';
+      const v = speedSpeech(st.speed);
+      const L = en ? ['Well done! You can recover now.', 'Great! Recover now.', 'Good job! Catch your breath.', 'Well done! Recovery, relax.']
+        : ["C'est bien ! Tu peux récupérer maintenant.", 'Bravo ! Récupère maintenant.', 'Bien joué ! Tu peux souffler.', "C'est bien ! Récup, relâche tout."];
+      const b = L[(st.goVar || 0) % L.length];
+      return tap ? `${b} ${en ? `Speed ${v}.` : `À ${v}.`}` : b;
+    }
+    function prepPhrase(next) { return isRecAfterFast(next) ? holdText(next) : stagePhrase(next, 'prep'); }
+    function goPhrase(st) { return isRecAfterFast(st) ? recovGoText(st) : stagePhrase(st, 'goS'); }
+    function goPieces(st) { return [goPhrase(st), ...goExtras(st)]; }
 
     function lastFeeling() {
       const h = (appData.history || []).find(x => x && x.isVal !== false && x.feeling);
@@ -7382,8 +7424,9 @@ Réponds uniquement avec le JSON.`;
         });
         if (!enc && st.type === 'chauffe' && d >= 120) ev.push({ t: t0 + d - 60, pieces: [warmEndText()], fixed: false, kind: 'warmEnd' });
         if (d >= 10) {
-          const pp = [i + 1 < stages.length ? stagePhrase(stages[i + 1], 'prep') : t.last15];
-          ev.push({ t: t0 + d - prepLeadMs(pp[0]) / 1000, pieces: pp, fixed: true });
+          const nx = i + 1 < stages.length ? stages[i + 1] : null;
+          const pp = [nx ? prepPhrase(nx) : t.last15];
+          ev.push({ t: t0 + d - (nx && isRecAfterFast(nx) ? 10.5 : prepLeadMs(pp[0]) / 1000), pieces: pp, fixed: true });
         }
         [3, 2, 1].forEach(n => { if (d >= n) ev.push({ t: t0 + d - n, pieces: [t.count[n]], fixed: true }); });
         t0 += d;
@@ -8227,6 +8270,28 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const mm = t => `${Math.floor(t / 60)}'${String(t % 60).padStart(2, '0')}`;
       return 'Changements faits par le coureur pendant la séance : ' + log.map(x => x.extra ? `${mm(x.t)} : ${x.name}` : `${mm(x.t)} (${x.name}) : vitesse ${formatSpeed(x.from)} → ${formatSpeed(x.to)} km/h${x.next ? `, appliquée aussi aux ${x.next} répétitions suivantes` : ''}`).join(' ; ') + '.';
     }
+    // ---------- Approche de la zone rouge (Z5 : 90 % de la FC max)
+    function redZoneAlert(cur, hr, now) {
+      const fc = runnerFcMax(), ss = getActiveSession() || {};
+      if (!fc || !hr || ss.kind === 'test' || ss.kind === 'course' || isRecoveryStage(cur)) return false;
+      const z5 = Math.round(fc * 0.9), en = appData.audioSettings.voiceLang === 'en';
+      if (hr >= z5) {
+        if (!runData.redSince) runData.redSince = now;
+        if (now - runData.redSince > 8000 && now - (runData.redAt || 0) > 120000) {
+          runData.redAt = now;
+          speakLive(en ? `Red zone: ${hr}. Relax your shoulders and breathe.` : `Tu es en zone rouge : ${hr}. Relâche les épaules et respire.`);
+          return true;
+        }
+        return false;
+      }
+      runData.redSince = 0;
+      if (hr >= z5 - 4 && now - (runData.redAt || 0) > 120000 && now - (runData.redNearAt || 0) > 120000) {
+        runData.redNearAt = now;
+        speakLive(en ? `Careful, approaching the red zone: ${hr}, red zone at ${z5}.` : `Attention, tu approches de la zone rouge : ${hr}, zone rouge à ${z5}.`);
+        return true;
+      }
+      return false;
+    }
     // ---------- Fin de récup : le cardio est-il redescendu ?
     function recoveryHrCheck(cur, remMs) {
       const idx = timerState.currentStageIndex;
@@ -8258,7 +8323,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       runData.oneMoreAsked = true; runData.oneMoreAt = idx;
       if (box) box.classList.remove('hidden');
       const en = appData.audioSettings.voiceLang === 'en';
-      speakLive(en ? 'Last repetition coming. Feeling good enough to do one more? Thumb up or thumb down on the screen.' : 'Dernière répétition juste après. Tu te sens assez en forme pour en faire une de plus ? Pouce en haut ou en bas sur l\'écran.');
+      speakLive(en ? 'Last planned repetition coming. Do you feel able to add one more repetition than planned? Thumb up or thumb down on the screen.' : 'Prochaine répétition : la dernière prévue. Te sens-tu capable de faire une série de plus que ce qui était prévu ? Pouce en haut ou en bas sur l\'écran.');
     }
     function oneMoreAnswer(yes) {
       const box = document.getElementById('oneMoreBox'); if (box) box.classList.add('hidden');
@@ -8291,14 +8356,15 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const on = !!(fc && hr && timerState.sessionStarted && !timerState.finished);
       bar.classList.toggle('hidden', !on);
       if (!on) return;
-      const p = hr / fc, pos = Math.max(0, Math.min(1, (p - 0.5) / 0.5));
-      const lims = [0.6, 0.7, 0.8, 0.9];
-      const zi = lims.findIndex(x => p < x), z = zi < 0 ? 4 : zi;
-      const next = z < 4 ? Math.round(fc * lims[z]) : null;
-      const C = RC_HR_Z.map(x => x[1]);
-      bar.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:800;margin-bottom:4px"><span style="color:${C[z]}">❤️ ${hr} · Z${z + 1}</span><span style="color:#94a3b8;font-weight:700">${next ? `Z${z + 2} dans ${next - hr} bpm` : 'zone max'}</span></div>
-        <div style="position:relative;height:14px;border-radius:7px;overflow:visible;display:flex">${C.map((c, k) => `<div style="flex:1;background:${c};opacity:${k === z ? 1 : .35};${k === 0 ? 'border-radius:7px 0 0 7px;' : ''}${k === 4 ? 'border-radius:0 7px 7px 0;' : ''}"></div>`).join('')}
-        <div style="position:absolute;top:-4px;left:calc(${(pos * 100).toFixed(1)}% - 2px);width:4px;height:22px;border-radius:2px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,.8)"></div></div>`;
+      const lims = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+      const p = hr / fc, zi = lims.findIndex((x, k) => k > 0 && p < x), z = zi < 0 ? 4 : Math.max(0, zi - 1);
+      const lo = Math.round(fc * lims[z]), hi = Math.round(fc * lims[z + 1]);
+      const pos = Math.max(0, Math.min(1, (hr - lo) / Math.max(1, hi - lo)));
+      const c = RC_HR_Z[z][1];
+      bar.innerHTML = `<div style="text-align:center;font-size:2.4rem;font-weight:900;line-height:1;color:${c};letter-spacing:-.02em">${hr}</div>
+        <div style="position:relative;height:26px;margin-top:6px;border-radius:13px;background:${c};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:15px;font-weight:900;color:#04121f">Z${z + 1}</span>
+          <div style="position:absolute;top:-4px;left:calc(${(pos * 100).toFixed(1)}% - 3px);width:6px;height:34px;border-radius:3px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,.8)"></div></div>`;
     }
     function fmtDistSpeech(km) {
       const en = appData.audioSettings.voiceLang === 'en';
@@ -8482,6 +8548,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
             return;
           }
         }
+        else if (redZoneAlert(cur, hrNow, now)) { return; }
         else if (hT && hrNow) {
           if (hrNow > hT.hi + 8) { if (!runData.hrHighSince) runData.hrHighSince = now; } else runData.hrHighSince = 0;
           if (runData.hrHighSince && now - runData.hrHighSince > 15000 && now - runData.lastHrAt > 90000) {
@@ -11576,7 +11643,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const z = [[0.5, 0.6, 'Z1', 'Récupération'], [0.6, 0.7, 'Z2', 'Endurance fondamentale'], [0.7, 0.8, 'Z3', 'Tempo / aérobie'], [0.8, 0.9, 'Z4', 'Seuil'], [0.9, 1.0, 'Z5', 'VMA']];
       return z.map(([a, b, n, l]) => ({ n, l, lo: Math.round(fc * a), hi: Math.round(fc * b) }));
     }
-    const ZONE_COLORS = { Z1: '#94a3b8', Z2: '#22c55e', Z3: '#eab308', Z4: '#f97316', Z5: '#ef4444' };
+    const ZONE_COLORS = { Z1: '#64748b', Z2: '#38bdf8', Z3: '#34d399', Z4: '#fb923c', Z5: '#f43f5e' }; // mêmes couleurs que la barre et les graphiques
     function zoneColor(hr) { return ZONE_COLORS[zoneOf(hr)] || '#fda4af'; }
     function zoneOf(hr) {
       const fc = runnerFcMax();
@@ -13013,6 +13080,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
 
     // ---------- Point à mi-séance ----------
     function checkMidSessionCheckin(remMs) {
+      return; // question à mi-séance désactivée
       if (vc.checkinDone || !timerState.isRunning || tl.active || extAsk || vc.mode !== 'idle') return;
       const st = timerState.stages, i = timerState.currentStageIndex, cur = st[i];
       if (!cur || cur.type === 'chauffe' || cur.type === 'recup' || cur.isFree) return;
