@@ -2060,15 +2060,15 @@
       if (speedBig) {
         const hrFresh = runData.hr && Date.now() - runData.hrAt < 8000;
         const showHr = bigDisplayMode === 'hr' && hrFresh;
-        let txt = showHr ? String(runData.hr) : (curStage ? formatSpeed(curStage.speed) : '–');
-        if (!showHr && curStage && (curStage.isFree || curStage.type === 'chauffe' || curStage.type === 'recup') && sess.type === 'exterieur') txt = runData.gps.speedKmh !== null ? formatSpeed(Math.round(runData.gps.speedKmh * 10) / 10) : '–';
+        let txt = showHr ? String(runData.hr) : (curStage ? formatSpeed(curStage.speed).replace('.', ',') : '–');
+        if (!showHr && curStage && (curStage.isFree || curStage.type === 'chauffe' || curStage.type === 'recup') && sess.type === 'exterieur') txt = runData.gps.speedKmh !== null ? formatSpeed(Math.round(runData.gps.speedKmh * 10) / 10).replace('.', ',') : '–';
         speedBig.textContent = txt;
         speedBig.classList.toggle('text-white', !showHr);
         speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
           const vp = showHr ? null : liveVapKmh(sess, curStage);
           const on = vp !== null;
-          bigSub.textContent = on ? `VAP ${(Math.round(vp * 2) / 2).toFixed(1).replace('.', ',')}` : '';
+          bigSub.textContent = on ? `VAP ${String(Math.round(vp * 2) / 2).replace('.', ',')}` : '';
           bigSub.className = on ? 'font-black tracking-tight' : 'hidden';
           bigSub.style.color = '#c4b5fd'; bigSub.style.lineHeight = '1';
           if (on !== !!window.__vapOn) { window.__vapOn = on; setTimeout(() => fitCircle(true), 0); }
@@ -2121,7 +2121,7 @@
       const size = Math.round(Math.max(150, Math.min(300, window.innerWidth * 0.8, avail > 0 ? avail : 300)));
       svg.style.width = svg.style.height = size + 'px';
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
-      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? (len > 2 ? 0.25 : 0.33) : (len > 2 ? 0.3 : 0.4))) + 'px'; big.style.lineHeight = '1'; }
+      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.25 : 0.3)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
       if (sub) { sub.style.fontSize = Math.round(size * 0.115) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
