@@ -192,7 +192,7 @@
       padding-bottom: max(.5rem, env(safe-area-inset-bottom));
       overflow: hidden;
     }
-    body.running #topZone, body.started #topZone { flex: 0 0 auto; margin-bottom: .25rem; }
+    body.running #topZone, body.started #topZone { flex: 0 0 auto; margin-bottom: .25rem; width: 100%; max-width: 100%; }
     body.running #circleZone, body.started #circleZone { flex: 1 1 0; min-height: 0; margin: 0; width: 100%; }
     body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
     body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
@@ -2119,6 +2119,7 @@
       const now = Date.now();
       if (!force && now - lastFitAt < 700) return;
       lastFitAt = now;
+      if (force) { try { fitStageInfo(); } catch (e) { } }
       const cz = document.getElementById('circleZone'), svg = cz && cz.querySelector('svg'), big = document.getElementById('stageSpeedBig');
       if (!svg) return;
       if (!document.body.classList.contains('started') && !document.body.classList.contains('running')) { svg.style.width = svg.style.height = ''; if (big) big.style.fontSize = ''; return; }
@@ -2441,7 +2442,7 @@
     }
     function aiClipKey(text, profile) {
       const p = profile || aiProfile();
-      return `${p.voice}|${p.style}|${text}`;
+      return `${p.voice}|${p.style}${p.lang === 'en' ? '' : '|frFR'}|${text}`; // |frFR : voix régénérées avec l'accent de France
     }
     function aiAllPiecesForSession(profile) {
       const p = profile || aiProfile();
@@ -2906,12 +2907,12 @@
           if (style) part.speech_metadata = { style };
           body = {
             contents: [{ role: 'user', parts: [part] }],
-            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice } } }
+            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice }, languageCode: profile.lang === 'en' ? 'en-GB' : 'fr-FR' } }
           };
         } else {
           body = {
             contents: [{ parts: [{ text }] }],
-            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }
+            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } }, languageCode: profile.lang === 'en' ? 'en-GB' : 'fr-FR' } }
           };
         }
 
@@ -3305,10 +3306,10 @@
           "Récupère bien, la suite arrive."
         ],
         styles: {
-          coach: "coach sportif français, énergique et motivant, ton naturel et chaleureux",
-          warm: "chaleureux et encourageant, ton naturel",
-          calm: "calme et posé, ton naturel",
-          none: ""
+          coach: "coach sportif français de France (accent parisien neutre, jamais québécois), énergique et motivant, ton naturel et chaleureux",
+          warm: "français de France (accent neutre, jamais québécois), chaleureux et encourageant, ton naturel",
+          calm: "français de France (accent neutre, jamais québécois), calme et posé, ton naturel",
+          none: "français de France, accent neutre"
         }
       },
       en: {
@@ -8361,7 +8362,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const lo = Math.round(fc * lims[z]), hi = Math.round(fc * lims[z + 1]);
       const pos = Math.max(0, Math.min(1, (hr - lo) / Math.max(1, hi - lo)));
       const c = RC_HR_Z[z][1];
-      bar.innerHTML = `<div style="text-align:center;font-size:2.4rem;font-weight:900;line-height:1;color:${c};letter-spacing:-.02em">${hr}</div>
+      bar.innerHTML = `<div style="text-align:center;font-size:4rem;font-weight:900;line-height:.95;color:${c};letter-spacing:-.02em">${hr}</div>
         <div style="position:relative;height:26px;margin-top:6px;border-radius:13px;background:${c};display:flex;align-items:center;justify-content:center">
           <span style="font-size:15px;font-weight:900;color:#04121f">Z${z + 1}</span>
           <div style="position:absolute;top:-4px;left:calc(${(pos * 100).toFixed(1)}% - 3px);width:6px;height:34px;border-radius:3px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,.8)"></div></div>`;
@@ -13304,12 +13305,13 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const ref = document.getElementById('totalRemainingDisplay');
       if (!el || !ref) return;
       el.style.fontSize = '';
-      const max = parseFloat(getComputedStyle(ref).fontSize) || 60;
+      const max = (parseFloat(getComputedStyle(ref).fontSize) || 60) * 0.9;
       el.style.fontSize = max + 'px';
       let fs = max;
       while (fs > 20 && el.scrollWidth > el.clientWidth + 1) { fs -= 2; el.style.fontSize = fs + 'px'; }
     }
     window.addEventListener('resize', () => { try { fitStageInfo(); } catch (e) {} });
+    try { document.fonts && document.fonts.ready.then(() => { try { fitStageInfo(); fitCircle(true); } catch (e) { } }); } catch (e) { }
 
     // ==================== INFO BLOC EN COURS ====================
     function stageProgressLabel(st) {
