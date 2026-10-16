@@ -2956,11 +2956,6 @@
           }
 
           const msg = (json && json.error && json.error.message) || `Erreur ${resp.status}`;
-          if (model === GEMINI_EXPERT_MODEL) { // pas d'accès (facturation, quota) : on passe tout de suite à Flash
-            geminiTextBad.add(model); lastErr = msg;
-            try { showToast("Coach expert (Argon) indisponible avec ta clé : Gemini Flash utilisé"); } catch (e) { }
-            break;
-          }
           if (resp.status === 429) {
             const q = describeQuota(json, msg);
             lastErr = `Limite Gemini atteinte (${q.label}, ${m.id})`;
@@ -6771,6 +6766,11 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
             return txt;
           }
           const msg = (json && json.error && json.error.message) || `Erreur ${resp.status}`;
+          if (model === GEMINI_EXPERT_MODEL) { // pas d'accès (facturation, quota) : on passe tout de suite à Flash
+            geminiTextBad.add(model); lastErr = msg;
+            try { showToast("Coach expert (Argon) indisponible avec ta clé : Gemini Flash utilisé"); } catch (e) { }
+            break;
+          }
           if (resp.status === 429) {
             let wait = 15;
             ((json && json.error && json.error.details) || []).forEach(d => { if (d && d.retryDelay) wait = parseFloat(d.retryDelay) || wait; });
