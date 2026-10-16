@@ -4862,6 +4862,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         track: timerState.finished ? (timerState.runTrack || []) : [],
         seg: timerState.finished ? (timerState.runSeg || []) : [],
         speedChanges: (runData.speedLog || []).slice(0, 60),
+        human: sess.free ? '' : capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))),
         vmaTest: timerState.finished ? (vmaTestResult(sess, runData.track, timerState.stages) || undefined) : undefined,
         analysis: lastAnalysis || ''
       };
@@ -5330,14 +5331,18 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         if (!sm.avgKmh && vs && vs.kmh) sm.avgKmh = Math.round(vs.kmh * 10) / 10;
       }
       const stats = [`${Math.round(parseFloat(item.duration) || 0)} min`, !item.cross && item.km > 0 ? `${item.km.toFixed(1).replace('.', ',')} km` : '', summaryText(sm).replace(/ • /g, ' · ')].filter(Boolean).join(' · ');
-      const title = item.cross ? (item.note || item.title) : (stripWarmCool(String(item.details || '').split(' — ')[0]) || item.title);
+      const hh0 = appData.history[item.rawIdx] || {};
+      const title = item.cross ? (item.note || item.title) : capFirst(hh0.human || (item.linked ? describeSessionHuman(Object.assign({}, item.linked, { chauffe: 0, recup: 0 })) : '') || stripWarmCool(String(item.details || '').split(' — ')[0]) || item.title);
+      const where = hh0.type === 'exterieur' ? 'extérieur' : `tapis ${String(item.pente || 0).replace('.', ',')} %`;
+      const stats2 = [`${Math.round(parseFloat(item.duration) || 0)} min`, !item.cross && item.km > 0 ? `${item.km.toFixed(1).replace('.', ',')} km` : '', item.cross ? '' : where].filter(Boolean).join(' · ');
+      void stats;
       return `<div class="pl-card done">
         <div class="flex items-center gap-3">
-          ${recs ? `<div class="pl-date" title="Record : ${plEsc(recs.join(', '))}" style="background:linear-gradient(135deg,#fde047,#f59e0b);color:#3a2300;font-size:26px">🏆</div>` : `<div class="pl-date" style="background:#34d399;color:#03140d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`}
+          ${plDateChip(item.iso, '', recs ? 'background:linear-gradient(135deg,#fde047,#f59e0b);color:#3a2300' : 'background:#34d399;color:#03140d')}
           <div class="flex-1 flex flex-col gap-1 min-w-0">
-            <span style="font-size:12px;font-weight:700;color:#6ee7b7">${dTxt}${feel ? ` · ressenti : <span style="color:${feel[1]}">${feel[0]}</span>` : ''} · <span style="color:${k.color}">${k.label}${wn ? ` · S${wn}` : ''}</span></span>
-            <span class="pl-clamp" style="font-size:15px;font-weight:700;line-height:1.25">${plEsc(title)}</span>
-            <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats)}</span>
+            <span style="align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.6px;color:${k.color}">${k.label}${wn ? ` · S${wn}` : ''}</span>
+            <span class="pl-clamp" style="font-size:15px;font-weight:800;line-height:1.25">${plEsc(title)}</span>
+            <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats2)}</span>
             ${recs ? `<span style="font-size:12px;color:#fbbf24;font-weight:800">🏆 Record : ${plEsc(recs.join(', '))}</span>` : ''}
           </div>
           ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`)}
