@@ -2484,6 +2484,7 @@
         timerState.stages.forEach(st => { if (halfAlertApplies(st)) halfPhraseList(st).forEach(x => set.add(x)); });
         if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 60)) t.warm.forEach(x => set.add(x));
         if (timerState.stages.some(st => st.type === 'chauffe' && st.durationSec >= 120)) set.add(warmEndText());
+        timerState.stages.forEach(st => { if (st.type === 'chauffe') warmupCues(st).forEach(x => set.add(x.text)); });
         timerState.stages.forEach((st, i) => {
           if (i === 0) set.add(stagePhrase(st, 'label'));
           else { set.add(prepPhrase(st)); set.add(goPhrase(st)); goExtras(st).forEach(x => set.add(x)); }
@@ -3632,9 +3633,34 @@
 
     // Encouragements (segments rapides) et conseils de récup (segments lents) : dosés
     // Encouragements (rapide) : à mi-segment et sur la fin ; conseils (récup) : au début
+    // Consignes d'échauffement chiffrées avant une séance intense
+    function warmupCues(st) {
+      if (!st || st.type !== 'chauffe' || st.durationSec < 300) return [];
+      const ss = getActiveSession() || {}, k = guideKind(ss);
+      const fastSt = timerState.stages.filter(x => x.type === 'palier' && x.intensity === 'fast' && !x.isFree);
+      const intense = ['fractionne', 'pyramide', 'seuil', 'cotes', 'test', 'course'].includes(k) || fastSt.length > 0;
+      if (!intense || ss.free) return [];
+      const en = appData.audioSettings.voiceLang === 'en', tap = ss.type === 'tapis';
+      const r5 = v => Math.round(v * 2) / 2, ef = runnerEF();
+      const mid = r5(ef), vmaE = ((estimateVma() || {}).vma) || ef * 1.45;
+      let fast = fastSt.length ? Math.max(...fastSt.map(x => parseFloat(x.plannedSpeed ?? x.speed) || 0)) : 0;
+      if (ss.test && ss.test.proto === 'vmaTapis') fast = r5(vmaE * 0.85);
+      if (!fast) fast = r5(vmaE * 0.85);
+      const fv = spF(fast), mv = spF(mid);
+      const d = st.durationSec * 1000, out = [];
+      const add = (t, text) => { if (t >= 20000 && d - t >= 50000) out.push({ t, kind: 'wu', text }); };
+      add(Math.round(d * 0.35), en ? `Now speed up gradually, up to your easy pace, about ${mv}.` : tap ? `Accélère progressivement : passe à ${mv} kilomètres heure.` : `Accélère progressivement, jusqu'à ton allure d'endurance, environ ${mv} kilomètres heure.`);
+      if (d >= 480000) add(d - 210000, en ? (tap ? `Keep ${mv}, lengthen your stride a little, relax shoulders and arms.` : `Running drills: 20 seconds of high knees, 20 seconds of butt kicks, then 20 seconds of side shuffles, jogging in between.`)
+        : tap ? `Garde ${mv}, allonge un peu la foulée, relâche les épaules et les bras.` : `Gammes : 20 secondes de montées de genoux, 20 secondes de talons-fesses, puis 20 secondes de pas chassés, en trottinant entre chaque.`);
+      add(d - (d >= 480000 ? 150000 : 120000), en ? (tap ? `Strides: go up to ${fv} for 15 seconds, then back to ${mv}. We'll do two.` : `Strides: 2 or 3 progressive accelerations of 15 seconds up to ${fv}, the session pace, with 30 seconds easy in between.`)
+        : tap ? `Accélérations : monte à ${fv} pendant 15 secondes, puis reviens à ${mv}. On en fait deux.` : `Lignes droites : 2 à 3 accélérations progressives de 15 secondes jusqu'à ${fv} kilomètres heure, l'allure de la séance, en récupérant 30 secondes entre chaque.`);
+      if (tap) add(d - (d >= 480000 ? 105000 : 80000), en ? `Second stride: up to ${fv} for 15 seconds.` : `Deuxième accélération : remonte à ${fv} pendant 15 secondes, puis reviens à ${mv}.`);
+      return out;
+    }
     function computeExtraPoints(st) {
       const seen = {};
       return computeExtraPointsRaw(st).filter(q => {
+        if (q.text) return true;
         const l = phraseList(q.kind);
         if (!l.length) return false; // cellule vide dans le profil = pas d'annonce
         if (l.length === 1 && ['easy', 'warm', 'praise'].includes(q.kind)) { if (seen[q.kind]) return false; seen[q.kind] = 1; }
@@ -3701,6 +3727,12 @@
         if (st.durationSec >= 120) p.push({ t: 0.6 * d, kind: 'easy' });
       }
       // Échauffement : consignes de départ tranquille (pas les conseils de course)
+      if (st.type === 'chauffe' && warmupCues(st).length) {
+        p.push({ t: 75000, kind: 'warm' });
+        warmupCues(st).forEach(x => p.push(x));
+        if (d >= 120000) p.push({ t: d - 60000, kind: 'warmEnd' });
+        return p.filter(q => q.kind !== 'warm' || !p.some(o => o.kind === 'wu' && Math.abs(o.t - q.t) < 30000)).sort((a, b) => a.t - b.t);
+      }
       if (st.type === 'chauffe') {
         for (let x = 75000; x < Math.min(d - 75000, d / 2 - 25000); x += 210000) {
           if (Math.abs(x - d / 2) > 25000) p.push({ t: x, kind: 'warm' });
@@ -4093,6 +4125,12 @@
       // Encouragements / conseils de récup, sans chevaucher les autres annonces
       if (f.extra && f.extra.length) {
         const pt = f.extra[0];
+        if (pt.kind === 'wu') {
+          if (elapsedMs >= pt.t) {
+            if (!isSpeaking() && remMs > 9500) { f.extra.shift(); lastEncouragementAt.any = Date.now(); speak([pt.text]); }
+            else if (elapsedMs > pt.t + 25000) f.extra.shift();
+          }
+        } else
         if (appData.audioSettings.encouragements === false && pt.kind !== 'warmEnd') {
           f.extra.shift();
         } else if (elapsedMs >= pt.t) {
@@ -4544,36 +4582,62 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
     }
     function openAskCoachSess() {
       const s = askSessDraft(); if (!s) return;
-      askSess = { id: s.id, draft: s, prop: null, newDate: '' };
-      const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
-      m.querySelector('.pm-title').textContent = 'Conseil du coach';
-      body.innerHTML = askSessHead(s) + `<label class="pm-card"><span class="pm-cap">Ta demande</span>
-          <textarea id="askSessTxt" rows="4" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:15px" placeholder="ex. J'ai les jambes lourdes, je préfère une séance plus courte · Je n'ai que 30 min · Je veux travailler les côtes · Tapis non dispo, je cours dehors…"></textarea></label>`;
-      foot.innerHTML = `<div class="grid grid-cols-1 gap-2"><button onclick="runAskCoachSess()" class="pm-save" style="background:#a78bfa;color:#13092b">🧠 Envoyer au coach</button>
-        <button onclick="closeAskSess()" class="pm-btn" style="height:48px">Annuler</button></div>`;
-      m.classList.remove('hidden');
+      const real = appData.sessions.find(x => x.id === s.id) || {};
+      askSess = { id: s.id, draft: s, chat: Array.isArray(real.coachChat) ? real.coachChat.slice(-20) : [], busy: false };
+      document.getElementById('chkModal').querySelector('.pm-title').textContent = 'Conseil du coach';
+      renderAskSess();
+      document.getElementById('chkModal').classList.remove('hidden');
       setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
     }
-    function closeAskSess() { document.getElementById('chkModal').classList.add('hidden'); askSess = null; }
-    async function runAskCoachSess() {
+    function renderAskSess() {
       if (!askSess) return;
+      const body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      const lastCoach = askSess.chat.map((m, i) => m.role === 'coach' ? i : -1).filter(i => i >= 0).pop();
+      const bubbles = askSess.chat.map((m, i) => m.role === 'user'
+        ? `<div style="align-self:flex-end;max-width:85%;background:#7c3aed;color:#fff;padding:10px 12px;border-radius:16px 16px 4px 16px;font-size:14px;line-height:1.35">${plEsc(m.text)}</div>`
+        : m.role === 'info' ? `<div style="align-self:center;font-size:12px;color:#6ee7b7;font-weight:700">${plEsc(m.text)}</div>`
+        : `<div style="align-self:flex-start;max-width:92%;background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.4;display:flex;flex-direction:column;gap:6px">
+            <span>${plEsc(m.text)}</span>
+            ${m.propTxt ? `<span style="font-size:13px;font-weight:800;color:#fcd34d">Proposé : ${plEsc(m.propTxt)}</span>${m.resume ? `<span style="font-size:12px;color:#94a3b8">${plEsc(m.resume)}</span>` : ''}` : ''}
+            ${m.newDate ? `<span style="font-size:13px;font-weight:800;color:#7dd3fc">📅 Nouveau jour conseillé : ${plEsc(fmtDayLong(m.newDate))}</span>` : ''}
+            ${i === lastCoach && (m.prop || m.newDate) && !m.applied ? `<button onclick="applyAskSess(${i})" class="pm-save" style="background:#fbbf24;color:#1a1204;height:44px;font-size:14px">✅ Accepter la proposition</button>` : ''}
+            ${m.applied ? `<span style="font-size:12px;color:#6ee7b7;font-weight:800">✓ Appliquée</span>` : ''}
+          </div>`).join('');
+      body.innerHTML = askSessHead(askSess.draft) + `<div id="askChat" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px">${bubbles || `<div style="font-size:13px;color:#94a3b8;text-align:center">Pose ta question au coach sur cette séance.</div>`}
+        ${askSess.busy ? `<div style="align-self:flex-start;display:flex;align-items:center;gap:8px;color:#c4b5fd;font-weight:700;font-size:13px"><div class="animate-spin" style="width:16px;height:16px;border-radius:50%;border:2px solid #475569;border-top-color:#a78bfa"></div> Le coach réfléchit…</div>` : ''}</div>`;
+      foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <textarea id="askSessTxt" rows="2" class="pm-in" style="flex:1;height:auto;padding:10px 12px;font-weight:500;font-size:15px" placeholder="ex. Je n'ai que 30 min · jambes lourdes · tapis indisponible…" ${askSess.busy ? 'disabled' : ''}></textarea>
+            <button onclick="runAskCoachSess()" aria-label="Envoyer" ${askSess.busy ? 'disabled' : ''} style="width:52px;height:52px;border-radius:16px;background:#a78bfa;color:#13092b;font-size:22px;font-weight:900;flex-shrink:0">➤</button>
+          </div>
+          <button onclick="closeAskSess()" class="pm-btn" style="height:44px">Fermer</button></div>`;
+      setTimeout(() => { const c = document.getElementById('chkBody'); if (c) c.scrollTop = c.scrollHeight; const m = document.getElementById('chkModal'); if (m) m.scrollTop = m.scrollHeight; }, 30);
+    }
+    function closeAskSess() { document.getElementById('chkModal').classList.add('hidden'); askSess = null; }
+    function saveAskChat() {
+      const real = appData.sessions.find(x => x.id === (askSess && askSess.id)); if (!real) return;
+      real.coachChat = askSess.chat.slice(-20).map(m => ({ role: m.role, text: m.text, propTxt: m.propTxt, resume: m.resume, newDate: m.newDate, applied: m.applied }));
+      saveAppData();
+    }
+    async function runAskCoachSess() {
+      if (!askSess || askSess.busy) return;
       const req = String((document.getElementById('askSessTxt') || {}).value || '').trim();
-      if (!req) { showToast('Explique ta demande au coach'); return; }
-      const s = askSess.draft, body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
-      const head = askSessHead(s) + `<div class="pm-card text-[13px] text-slate-300"><b class="text-purple-300">Ta demande :</b> ${plEsc(req)}</div>`;
-      if (!getGeminiKey()) { body.innerHTML = head + `<div class="pm-card text-[14px] text-slate-300">Sans clé Gemini, pas d'avis du coach.</div>`; foot.innerHTML = `<button onclick="closeAskSess()" class="pm-save">OK</button>`; return; }
-      body.innerHTML = head + `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach étudie ta demande…</div></div>`;
-      foot.innerHTML = '';
+      if (!req) { showToast('Écris ta demande au coach'); return; }
+      if (!getGeminiKey()) { showToast("Renseigne ta clé Gemini (Réglages › Données)"); return; }
+      const s = askSess.draft;
+      const convo = askSess.chat.filter(m => m.role !== 'info').slice(-10).map(m => m.role === 'user' ? `Coureur : ${m.text}` : `Coach : ${m.text}${m.propTxt ? ` [proposition : ${m.propTxt}${m.applied ? ', acceptée et appliquée' : ''}]` : ''}`).join('\n');
+      askSess.chat.push({ role: 'user', text: req }); askSess.busy = true; renderAskSess();
       const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
       const d0 = parseISODateLocal(s.dateISO) || new Date(), lo = new Date(d0), hi = new Date(d0); lo.setDate(lo.getDate() - 5); hi.setDate(hi.getDate() + 5);
       const loI = toISODateLocal(lo), hiI = toISODateLocal(hi);
       const near = appData.sessions.filter(x => x.id !== s.id && x.dateISO && x.dateISO >= loI && x.dateISO <= hiI).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}${isSessionDone(x) ? ' (faite)' : ''}`).join('\n') || '- aucune';
       const hist = runHistory().slice(0, 6).map(h => `- ${h._iso || h.date} : ${h.human || h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
-      const feel = curDayFeel ? (() => { try { const f = curDayFeel(); return f ? feelSummary(f) : ''; } catch (e) { return ''; } })() : '';
+      let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
       const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
       const prompt = `Tu es un coach de course à pied expérimenté. ${coachToneText()}
-Le coureur te pose une question sur une séance de son plan. Sa demande : « ${req} »
-Séance (le ${s.dateISO}, aujourd'hui : ${t}) : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}${s.cardio ? ` ; cardio cible ${cardioText(s.cardio)}` : ''}.
+Tu discutes avec ton coureur d'une séance de son plan.${convo ? `\nConversation jusqu'ici :\n${convo}` : ''}
+Nouveau message du coureur : « ${req} »
+Séance actuelle (le ${s.dateISO}, aujourd'hui : ${t}) : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}${s.cardio ? ` ; cardio cible ${cardioText(s.cardio)}` : ''}.
 Détail JSON : {"type":"${s.type}","chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"vitRecupBloc":${s.vitRecupBloc || 6},"pente":${s.pente},"segments":[${segs}]}
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} km/h ; niveau : ${runnerLevelsText()}.${feel ? `\nSensations du jour : ${feel}.` : ''}
 ${planPrefsText()}
@@ -4583,30 +4647,28 @@ Séances autour (5 jours avant et après) :
 ${near}
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 ${COACH_METHOD}
-Réponds à sa demande de façon concrète. Si une modification de la séance est utile, propose-la complète.
-Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"3 à 4 phrases courtes en tutoyant, qui répondent à la demande","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
+Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
+Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
         if (!askSess) return;
         const mod = String(j.verdict || '').toLowerCase().startsWith('modif') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
         const nd = /^\d{4}-\d{2}-\d{2}$/.test(j.nouvelle_date || '') && j.nouvelle_date >= t && j.nouvelle_date !== s.dateISO ? j.nouvelle_date : '';
-        if (mod) { askSess.prop = proposalToSession(s, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') askSess.prop.type = j.seance.type; if (askSess.prop.type === 'tapis' && s.type === 'exterieur') askSess.prop.pente = Math.max(0, parseFloat(j.seance.pente) || 1); const c = parseCardio(j.cardio); if (c) askSess.prop.cardio = c; }
-        askSess.newDate = nd;
-        const V = mod || nd ? ['✏️ Proposition du coach', '#fbbf24'] : ['✅ Avis du coach', '#34d399'];
-        const after = (mod ? `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, askSess.prop, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(askSess.prop))} min${askSess.prop.type !== s.type ? ` · ${askSess.prop.type === 'exterieur' ? 'extérieur' : 'tapis'}` : ''})</span>${j.resume ? `<span class="text-[12px] text-slate-400">${plEsc(j.resume)}</span>` : ''}` : '')
-          + (nd ? `<span class="text-[13px] font-bold text-sky-200">📅 Nouveau jour conseillé : ${plEsc(fmtDayLong(nd))}</span>` : '');
-        body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
-        foot.innerHTML = `<div class="grid grid-cols-1 gap-2">${mod || nd ? `<button onclick="applyAskSess()" class="pm-save" style="background:#fbbf24;color:#1a1204">✅ Accepter la proposition</button>` : ''}
-          <button onclick="openAskCoachSess()" class="pm-btn" style="height:48px;border-color:rgba(167,139,250,.55);color:#ddd6fe;font-weight:800">💬 Nouvelle demande</button>
-          <button onclick="closeAskSess()" class="pm-btn" style="height:48px">${mod || nd ? 'Garder ma séance telle quelle' : 'OK'}</button></div>`;
+        let prop = null;
+        if (mod) { prop = proposalToSession(s, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'tapis' && s.type === 'exterieur') prop.pente = Math.max(0, parseFloat(j.seance.pente) || 1); const c = parseCardio(j.cardio); if (c) prop.cardio = c; }
+        askSess.chat.push({ role: 'coach', text: String(j.avis || '…'), prop, propTxt: prop ? `${capFirst(describeSessionHuman(Object.assign({}, prop, { chauffe: 0, recup: 0 })))} (${Math.round(computeSessionTotalMin(prop))} min${prop.type !== s.type ? ` · ${prop.type === 'exterieur' ? 'extérieur' : 'tapis'}` : ''})` : '', resume: mod ? String(j.resume || '') : '', newDate: nd });
       } catch (e) {
-        body.innerHTML = head + `<div class="pm-card text-rose-400">Avis impossible : ${plEsc(e.message || e)}</div>`;
-        foot.innerHTML = `<button onclick="closeAskSess()" class="pm-save">OK</button>`;
+        if (!askSess) return;
+        askSess.chat.push({ role: 'info', text: `Avis impossible : ${e.message || e}` });
       }
+      askSess.busy = false; saveAskChat(); renderAskSess();
     }
-    function applyAskSess() {
+    function applyAskSess(i) {
       if (!askSess) return;
+      const msg = askSess.chat[i]; if (!msg) return;
+      askSess.prop = msg.prop; askSess.newDate = msg.newDate;
       const s = appData.sessions.find(x => x.id === askSess.id); if (!s) return closeAskSess();
+      msg.applied = true; askSess.chat.push({ role: 'info', text: '✓ Proposition appliquée à la séance' }); saveAskChat();
       if (askSess.prop) {
         if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
         ['type', 'chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio'].forEach(k => { if (askSess.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(askSess.prop[k])); });
@@ -7641,9 +7703,11 @@ Réponds uniquement avec le JSON.`;
             if (at - lastTipAt < TIP_GAP_MS / 1000) return;
             lastTipAt = at;
           }
+          if (p.text) { ev.push({ t: at, pieces: [p.text], fixed: true, kind: p.kind }); return; }
           pickAtSec = baseSec + at; const ph = pickNoRepeat(p.kind); pickAtSec = null;
           if (ph) ev.push({ t: at, pieces: [ph], fixed: false, kind: p.kind });
         });
+        if (!enc) warmupCues(st).forEach(p => ev.push({ t: t0 + p.t / 1000, pieces: [p.text], fixed: true, kind: 'wu' }));
         if (!enc && st.type === 'chauffe' && d >= 120) ev.push({ t: t0 + d - 60, pieces: [warmEndText()], fixed: false, kind: 'warmEnd' });
         if (d >= 10) {
           const nx = i + 1 < stages.length ? stages[i + 1] : null;
