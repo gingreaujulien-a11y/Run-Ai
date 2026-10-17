@@ -305,8 +305,11 @@
       </div>
     </div>
 
-    <button id="homeNutBtn" onclick="openNutrition()" class="order-last w-full py-4 bg-orange-500 hover:bg-orange-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2">🍽️ MES REPAS DU JOUR</button>
-    <button id="homeFreeBtn" onclick="openActivityWizard()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">➕ CRÉER UNE ACTIVITÉ</button>
+    <div id="homeActBar" class="grid grid-cols-3 gap-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem">
+      <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" title="Mes repas du jour" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="font-size:30px;background:#f97316;box-shadow:0 8px 22px rgba(249,115,22,.3)">🍽️</button>
+      <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="background:#10b981;color:#03140d;box-shadow:0 8px 22px rgba(16,185,129,.3)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" title="Discuter avec le coach" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="font-size:30px;background:#8b5cf6;box-shadow:0 8px 22px rgba(139,92,246,.3)">💬</button>
+    </div>
 
 
   </section>
@@ -748,7 +751,7 @@
               <input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c" style="width:96px">
             </div>
             <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
-            <details class="pm-det"><summary>Mes zones cardio</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-0.5 text-[12px]"></div></details>
+            <details class="pm-det"><summary>Mes zones cardio (réglables)</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-3 text-[12px]"></div></details>
           </div>
 
           <div class="pm-card">
@@ -4569,6 +4572,18 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       closeMoveCheck(); if (s) moveRefresh(s);
       showToast(`📅 Séance remise au ${fmtDayLong(iso)}`);
     }
+    // ==================== MÉMOIRE DES ÉCHANGES AVEC LE COACH (toutes les discussions) ====================
+    function rememberChat(key, label, role, text) {
+      if (!text) return;
+      if (!Array.isArray(appData.coachMemory)) appData.coachMemory = [];
+      appData.coachMemory.push({ k: key, l: label, r: role, t: String(text).slice(0, 400), d: todayISO() });
+      appData.coachMemory = appData.coachMemory.slice(-80);
+    }
+    function coachMemoryText(excludeKey, max = 16) {
+      const m = (appData.coachMemory || []).filter(x => x.k !== excludeKey).slice(-max);
+      if (!m.length) return '';
+      return `Échanges précédents avec le coureur (autres discussions, à prendre en compte : demandes, douleurs, préférences, décisions) :\n` + m.map(x => `- ${x.d} [${x.l}] ${x.r === 'user' ? 'Coureur' : 'Coach'} : ${x.t}`).join('\n');
+    }
     // ==================== MODIFIER UNE SÉANCE : CONSEIL DU COACH (demande libre) ====================
     let askSess = null;
     function askSessDraft() {
@@ -4589,6 +4604,39 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       document.getElementById('chkModal').classList.remove('hidden');
       setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
     }
+    function openCtxChat(key, label, ctxText, title) {
+      const saved = (appData.coachChats || {})[key];
+      askSess = { id: null, general: true, ctxKey: key, ctxLabel: label, ctxText, chat: Array.isArray(saved) ? saved.slice(-30) : [], busy: false };
+      document.getElementById('chkModal').querySelector('.pm-title').textContent = title || '💬 Ton coach';
+      renderAskSess();
+      document.getElementById('chkModal').classList.remove('hidden');
+      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
+    }
+    function analysisPlain(raw) {
+      try { const j = typeof raw === 'string' ? JSON.parse(raw) : raw; if (j && typeof j === 'object') return [j.titre, j.resume, ...(Array.isArray(j.points) ? j.points : []), j.alerte, j.action].filter(Boolean).map(String).join(' ').slice(0, 1500); } catch (e) { }
+      return String(raw || '').replace(/[#*_`>]/g, '').slice(0, 1500);
+    }
+    function openHistChat(id) {
+      const h = (appData.history || []).find(x => x.id === id); if (!h) return;
+      const iso = histISO(h);
+      const ctx = `Séance faite le ${iso} : ${h.human || h.details || h.sessionTitle} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}.
+${h.seg && h.seg.length ? `Segments : ${segStatsTextZ(h.seg).replace(/\n/g, ' | ')}\n` : ''}${h.speedChanges && h.speedChanges.length ? speedLogText(h.speedChanges) + '\n' : ''}${h.analysis ? `Ton analyse de cette séance : ${analysisPlain(h.analysis)}` : ''}`;
+      openCtxChat(`hist_${id}`, `séance faite le ${iso}`, ctx, '💬 Parlons de cette séance');
+    }
+    function openValChat() {
+      const sess = getActiveSession(), sum = timerState.runSummary || {};
+      const ctx = `Séance qui vient d'être faite (${todayISO()}) : ${describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))} ; ${Math.round(valActualMinutes())} min${summaryText(sum) ? ` ; ${summaryText(sum)}` : ''}.
+${timerState.runSeg && timerState.runSeg.length ? `Segments : ${segStatsTextZ(timerState.runSeg).replace(/\n/g, ' | ')}\n` : ''}${speedLogText(runData.speedLog)}
+${lastAnalysis ? `Ton analyse de cette séance : ${analysisPlain(lastAnalysis)}` : ''}`;
+      openCtxChat(`val_${todayISO()}_${sess.id}`, `séance du ${todayISO()}`, ctx, '💬 Parlons de cette séance');
+    }
+    function openCoachChat() {
+      askSess = { id: null, general: true, chat: Array.isArray(appData.coachChat) ? appData.coachChat.slice(-30) : [], busy: false };
+      document.getElementById('chkModal').querySelector('.pm-title').textContent = '💬 Ton coach';
+      renderAskSess();
+      document.getElementById('chkModal').classList.remove('hidden');
+      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
+    }
     function renderAskSess() {
       if (!askSess) return;
       const body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
@@ -4599,34 +4647,42 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
         : `<div style="align-self:flex-start;max-width:92%;background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.4;display:flex;flex-direction:column;gap:6px">
             <span>${plEsc(m.text)}</span>
             ${m.propTxt ? `<span style="font-size:13px;font-weight:800;color:#fcd34d">Proposé : ${plEsc(m.propTxt)}</span>${m.resume ? `<span style="font-size:12px;color:#94a3b8">${plEsc(m.resume)}</span>` : ''}` : ''}
+            ${m.targetDate ? `<span style="font-size:12px;color:#94a3b8">Séance du ${plEsc(fmtDayLong(m.targetDate))}</span>` : ''}
             ${m.newDate ? `<span style="font-size:13px;font-weight:800;color:#7dd3fc">📅 Nouveau jour conseillé : ${plEsc(fmtDayLong(m.newDate))}</span>` : ''}
             ${i === lastCoach && (m.prop || m.newDate) && !m.applied ? `<button onclick="applyAskSess(${i})" class="pm-save" style="background:#fbbf24;color:#1a1204;height:44px;font-size:14px">✅ Accepter la proposition</button>` : ''}
             ${m.applied ? `<span style="font-size:12px;color:#6ee7b7;font-weight:800">✓ Appliquée</span>` : ''}
           </div>`).join('');
-      body.innerHTML = askSessHead(askSess.draft) + `<div id="askChat" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px">${bubbles || `<div style="font-size:13px;color:#94a3b8;text-align:center">Pose ta question au coach sur cette séance.</div>`}
+      const top = askSess.general ? (askSess.chat.length ? '' : `<div class="pm-card text-[13px] text-slate-300">Pose toutes tes questions : ton plan, une séance, la récup, une douleur, l'alimentation, ta course… Le coach connaît ton profil, tes séances et ton objectif, et peut te proposer de modifier une séance prévue.</div>`) : askSessHead(askSess.draft);
+      body.innerHTML = top + `<div id="askChat" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px">${bubbles || (askSess.general ? '' : `<div style="font-size:13px;color:#94a3b8;text-align:center">Pose ta question au coach sur cette séance.</div>`)}
         ${askSess.busy ? `<div style="align-self:flex-start;display:flex;align-items:center;gap:8px;color:#c4b5fd;font-weight:700;font-size:13px"><div class="animate-spin" style="width:16px;height:16px;border-radius:50%;border:2px solid #475569;border-top-color:#a78bfa"></div> Le coach réfléchit…</div>` : ''}</div>`;
       foot.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;gap:8px;align-items:flex-end">
             <textarea id="askSessTxt" rows="2" class="pm-in" style="flex:1;height:auto;padding:10px 12px;font-weight:500;font-size:15px" placeholder="ex. Je n'ai que 30 min · jambes lourdes · tapis indisponible…" ${askSess.busy ? 'disabled' : ''}></textarea>
             <button onclick="runAskCoachSess()" aria-label="Envoyer" ${askSess.busy ? 'disabled' : ''} style="width:52px;height:52px;border-radius:16px;background:#a78bfa;color:#13092b;font-size:22px;font-weight:900;flex-shrink:0">➤</button>
           </div>
-          <button onclick="closeAskSess()" class="pm-btn" style="height:44px">Fermer</button></div>`;
+          <div style="display:grid;grid-template-columns:${askSess.general && askSess.chat.length ? '1fr 1fr' : '1fr'};gap:8px">${askSess.general && askSess.chat.length ? `<button onclick="if(confirm('Effacer la conversation ?')){askSess.chat=[];saveAskChat();renderAskSess();}" class="pm-btn" style="height:44px">🗑 Nouvelle discussion</button>` : ''}<button onclick="closeAskSess()" class="pm-btn" style="height:44px">Fermer</button></div></div>`;
       setTimeout(() => { const c = document.getElementById('chkBody'); if (c) c.scrollTop = c.scrollHeight; const m = document.getElementById('chkModal'); if (m) m.scrollTop = m.scrollHeight; }, 30);
     }
     function closeAskSess() { document.getElementById('chkModal').classList.add('hidden'); askSess = null; }
     function saveAskChat() {
+      if (askSess && askSess.general && askSess.ctxKey) { if (!appData.coachChats || typeof appData.coachChats !== 'object') appData.coachChats = {}; appData.coachChats[askSess.ctxKey] = askSess.chat.slice(-30).map(m => ({ role: m.role, text: m.text, propTxt: m.propTxt, resume: m.resume, newDate: m.newDate, applied: m.applied, targetDate: m.targetDate })); saveAppData(); return; }
+      if (askSess && askSess.general) { appData.coachChat = askSess.chat.slice(-30).map(m => ({ role: m.role, text: m.text, propTxt: m.propTxt, resume: m.resume, newDate: m.newDate, applied: m.applied, targetDate: m.targetDate })); saveAppData(); return; }
       const real = appData.sessions.find(x => x.id === (askSess && askSess.id)); if (!real) return;
       real.coachChat = askSess.chat.slice(-20).map(m => ({ role: m.role, text: m.text, propTxt: m.propTxt, resume: m.resume, newDate: m.newDate, applied: m.applied }));
       saveAppData();
     }
+    function askKey() { return askSess.general ? (askSess.ctxKey || 'accueil') : `sess_${askSess.id}`; }
+    function askLabel() { return askSess.general ? (askSess.ctxLabel || 'discussion accueil') : `séance du ${fmtDayLong(askSess.draft.dateISO)}`; }
     async function runAskCoachSess() {
       if (!askSess || askSess.busy) return;
       const req = String((document.getElementById('askSessTxt') || {}).value || '').trim();
       if (!req) { showToast('Écris ta demande au coach'); return; }
       if (!getGeminiKey()) { showToast("Renseigne ta clé Gemini (Réglages › Données)"); return; }
+      if (askSess.general) return runCoachChatGeneral(req);
       const s = askSess.draft;
       const convo = askSess.chat.filter(m => m.role !== 'info').slice(-10).map(m => m.role === 'user' ? `Coureur : ${m.text}` : `Coach : ${m.text}${m.propTxt ? ` [proposition : ${m.propTxt}${m.applied ? ', acceptée et appliquée' : ''}]` : ''}`).join('\n');
       askSess.chat.push({ role: 'user', text: req }); askSess.busy = true; renderAskSess();
+      rememberChat(askKey(), askLabel(), 'user', req);
       const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
       const d0 = parseISODateLocal(s.dateISO) || new Date(), lo = new Date(d0), hi = new Date(d0); lo.setDate(lo.getDate() - 5); hi.setDate(hi.getDate() + 5);
       const loI = toISODateLocal(lo), hiI = toISODateLocal(hi);
@@ -4635,7 +4691,8 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
       const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
       const prompt = `Tu es un coach de course à pied expérimenté. ${coachToneText()}
-Tu discutes avec ton coureur d'une séance de son plan.${convo ? `\nConversation jusqu'ici :\n${convo}` : ''}
+Tu discutes avec ton coureur d'une séance de son plan.
+${coachMemoryText(askKey())}${convo ? `\nConversation jusqu'ici :\n${convo}` : ''}
 Nouveau message du coureur : « ${req} »
 Séance actuelle (le ${s.dateISO}, aujourd'hui : ${t}) : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}${s.cardio ? ` ; cardio cible ${cardioText(s.cardio)}` : ''}.
 Détail JSON : {"type":"${s.type}","chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"vitRecupBloc":${s.vitRecupBloc || 6},"pente":${s.pente},"segments":[${segs}]}
@@ -4656,6 +4713,7 @@ Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à
         const nd = /^\d{4}-\d{2}-\d{2}$/.test(j.nouvelle_date || '') && j.nouvelle_date >= t && j.nouvelle_date !== s.dateISO ? j.nouvelle_date : '';
         let prop = null;
         if (mod) { prop = proposalToSession(s, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'tapis' && s.type === 'exterieur') prop.pente = Math.max(0, parseFloat(j.seance.pente) || 1); const c = parseCardio(j.cardio); if (c) prop.cardio = c; }
+        rememberChat(askKey(), askLabel(), 'coach', String(j.avis || '') + (prop ? ` (proposition : ${capFirst(describeSessionHuman(Object.assign({}, prop, { chauffe: 0, recup: 0 })))})` : ''));
         askSess.chat.push({ role: 'coach', text: String(j.avis || '…'), prop, propTxt: prop ? `${capFirst(describeSessionHuman(Object.assign({}, prop, { chauffe: 0, recup: 0 })))} (${Math.round(computeSessionTotalMin(prop))} min${prop.type !== s.type ? ` · ${prop.type === 'exterieur' ? 'extérieur' : 'tapis'}` : ''})` : '', resume: mod ? String(j.resume || '') : '', newDate: nd });
       } catch (e) {
         if (!askSess) return;
@@ -4663,11 +4721,55 @@ Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à
       }
       askSess.busy = false; saveAskChat(); renderAskSess();
     }
+    async function runCoachChatGeneral(req) {
+      const convo = askSess.chat.filter(m => m.role !== 'info').slice(-12).map(m => m.role === 'user' ? `Coureur : ${m.text}` : `Coach : ${m.text}${m.propTxt ? ` [proposition pour la séance du ${m.targetDate} : ${m.propTxt}${m.applied ? ', acceptée' : ''}]` : ''}`).join('\n');
+      askSess.chat.push({ role: 'user', text: req }); askSess.busy = true; renderAskSess();
+      rememberChat(askKey(), askLabel(), 'user', req);
+      const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
+      const end = new Date(); end.setDate(end.getDate() + 14); const endI = toISODateLocal(end);
+      const up = appData.sessions.filter(x => x.dateISO && x.dateISO >= t && x.dateISO <= endI && !isSessionDone(x));
+      const upTxt = up.map(x => `- ${x.dateISO} (${x.jour || ''}) : ${describeSessionHuman(x)} ; ${Math.round(computeSessionTotalMin(x))} min ; ${x.type === 'exterieur' ? 'extérieur' : `tapis ${x.pente} %`}${x.cardio ? ` ; cardio ${cardioText(x.cardio)}` : ''}`).join('\n') || '- aucune';
+      const cross = (appData.crossPlan || []).filter(c => c.dateISO >= t && c.dateISO <= endI).map(c => `- ${c.dateISO} : ${c.type === 'velo' ? 'vélo' : 'renforcement'} ${c.dur || '?'} min`).join('\n');
+      const hist = runHistory().slice(0, 8).map(h => `- ${h._iso || h.date} : ${h.human || h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
+      let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
+      let prob = ''; try { const pr = computeGoalProbability(); if (pr && !pr.noData) prob = ` Chances estimées le jour J : ${pr.pDay} %.`; } catch (e) { }
+      const prompt = `Tu es le coach de course à pied personnel du coureur. ${coachToneText()}
+Aujourd'hui : ${t}.
+${askSess.ctxText ? `Sujet de la discussion :\n${askSess.ctxText}\n` : ''}${coachMemoryText(askKey())}${convo ? `\nConversation jusqu'ici :\n${convo}` : ''}
+Nouveau message du coureur : « ${req} »
+Profil : ${r.firstName || ''} ; ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} km/h ; niveau : ${runnerLevelsText()}.${feel ? `\nSensations du jour : ${feel}.` : ''}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.${prob}
+${zonesText()}
+${planPrefsText()}
+${backgroundText()}
+Séances récentes :
+${hist}
+Séances prévues (14 prochains jours) :
+${upTxt}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
+${COACH_METHOD}
+Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds de façon concrète et personnalisée. En cas de douleur inquiétante, conseille de consulter. Si c'est utile, tu peux proposer de modifier UNE séance prévue ci-dessus (donne sa date exacte).
+Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","seance_date":"AAAA-MM-JJ de la séance à modifier, sinon vide","resume":"la modification en une phrase","nouvelle_date":"AAAA-MM-JJ si tu conseilles de la déplacer, sinon vide","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        if (!askSess) return;
+        const target = up.find(x => x.dateISO === j.seance_date);
+        const mod = target && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        const nd = target && /^\d{4}-\d{2}-\d{2}$/.test(j.nouvelle_date || '') && j.nouvelle_date >= t && j.nouvelle_date !== target.dateISO ? j.nouvelle_date : '';
+        let prop = null;
+        if (mod) { prop = proposalToSession(target, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'tapis' && target.type === 'exterieur') prop.pente = Math.max(0, parseFloat(j.seance.pente) || 1); const c = parseCardio(j.cardio); if (c) prop.cardio = c; }
+        rememberChat(askKey(), askLabel(), 'coach', String(j.avis || '') + (prop ? ` (proposition pour la séance du ${target.dateISO})` : ''));
+        askSess.chat.push({ role: 'coach', text: String(j.avis || '…'), prop, targetId: target && (mod || nd) ? target.id : null, targetDate: target && (mod || nd) ? target.dateISO : '', propTxt: prop ? `${capFirst(describeSessionHuman(Object.assign({}, prop, { chauffe: 0, recup: 0 })))} (${Math.round(computeSessionTotalMin(prop))} min)` : '', resume: mod ? String(j.resume || '') : '', newDate: nd });
+      } catch (e) {
+        if (!askSess) return;
+        askSess.chat.push({ role: 'info', text: `Réponse impossible : ${e.message || e}` });
+      }
+      askSess.busy = false; saveAskChat(); renderAskSess();
+    }
     function applyAskSess(i) {
       if (!askSess) return;
       const msg = askSess.chat[i]; if (!msg) return;
       askSess.prop = msg.prop; askSess.newDate = msg.newDate;
-      const s = appData.sessions.find(x => x.id === askSess.id); if (!s) return closeAskSess();
+      const s = appData.sessions.find(x => x.id === (askSess.general ? msg.targetId : askSess.id)); if (!s) { showToast('Séance introuvable'); return; }
       msg.applied = true; askSess.chat.push({ role: 'info', text: '✓ Proposition appliquée à la séance' }); saveAskChat();
       if (askSess.prop) {
         if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
@@ -4675,7 +4777,8 @@ Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à
         if (s.type === 'exterieur') s.pente = 0;
         s.adapted = { at: todayISO(), resume: 'Modifiée avec le coach' };
       }
-      if (askSess.newDate) { const d = parseISODateLocal(askSess.newDate); s.dateISO = askSess.newDate; s.date = toDDMM(d); s.jour = weekdayName(d); modalOrigISO = askSess.newDate; }
+      if (askSess.newDate) { const d = parseISODateLocal(askSess.newDate); s.dateISO = askSess.newDate; s.date = toDDMM(d); s.jour = weekdayName(d); if (!askSess.general) modalOrigISO = askSess.newDate; }
+      if (askSess.general) { moveRefresh(s); renderAskSess(); showToast('✓ Séance mise à jour'); return; }
       closeAskSess(); moveRefresh(s);
       showSavedBig('Séance mise à jour');
     }
@@ -5631,6 +5734,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           ${item.cross ? '' : (() => { try { const hh = appData.history[item.rawIdx] || {}; return recapHtml({ track: item.track, seg: item.seg, pente: hh.type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0), kind: k, week: wn, title, dateTxt: dTxt, feeling: item.feeling, recs, analysis: item.analysis, km: item.km, plannedMin: hh.plannedMin, plannedKm: item.linked && !item.linked.free ? computeSessionDistanceKm(item.linked) : 0 }); } catch (e) { console.warn('recap', e); return ''; } })()}
           ${item.cross ? '' : runDataBlockHtml(item.track, item.seg, { pente: (appData.history[item.rawIdx] || {}).type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0) })}
           ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
+          ${item.cross ? '' : `<button onclick="openHistChat('${item.id}')" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:#8b5cf6;color:#fff">💬 Discuter de cette séance avec le coach</button>`}
           ${item.cross ? '' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? "Refaire l'analyse" : 'Analyse IA'}</button>`}
         </div>
       </div>`;
@@ -6310,7 +6414,8 @@ ${compo.text}
 Allures de référence à utiliser : VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) + ' km/h' : '?'; } catch (e) { return '?'; } })()}, allure objectif ${g.distanceKm && g.durationMin ? formatSpeed(Math.round(g.distanceKm / g.durationMin * 600) / 10) + ' km/h' : '?'}, endurance ${formatSpeed(runnerEF())} km/h.
 ${planStyleText()}
 ${planPrefsText()}
-FC max : ${runnerFcMax() || '?'} bpm.
+FC max : ${runnerFcMax() || '?'} bpm. ${zonesText()}
+${coachMemoryText('', 12)}
 ${COACH_METHOD}
 OBLIGATOIRE : chaque séance doit préciser (1) la récupération entre les fractions (segment lent dans "segments", ou "recupBloc" + "vitRecupBloc" entre blocs) et (2) le cardio cible de la partie principale dans "cardio" (cardio moyen visé sur les fractions longues ou en continu, cardio max à ne pas dépasser sur les fractions courtes), calculé avec la FC max. Toute séance marquée ⚠ RÉCUP MANQUANTE ou CARDIO NON PRÉCISÉ doit faire l'objet d'une modification "modifier" qui la complète (même si le reste ne change pas), pour toutes les séances concernées jusqu'à la course.
 Fais une VRAIE analyse de coach, détaillée, semaine par semaine jusqu'à la course (pas seulement les premières semaines ni jusqu'au prochain test) :
@@ -6689,6 +6794,8 @@ ${hist}
 ${backgroundText()}
 ${planStyleText()}
 ${planPrefsText()}
+${zonesText()}
+${coachMemoryText('', 12)}
 ${COACH_METHOD}
 Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
@@ -8531,7 +8638,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     // ---------- Textes d'annonces liés au parcours / GPS ----------
 
     // Cardio max d'un effort facile (échauffement, retour au calme)
-    function easyHrMax() { const fc = runnerFcMax(); return fc ? Math.round(fc * 0.75) : null; }
+    function easyHrMax() { const fc = runnerFcMax(); return fc ? pctToBpm(0.75) : null; }
     function easyHrTxt(en) { const m = easyHrMax(); return m ? (en ? `, heart rate under ${m}` : `, cardio sous ${m}`) : ''; }
     function isRecoveryStage(st) { return !!st && (st.type === 'recupBloc' || (st.type === 'palier' && st.intensity === 'easy' && !st.isFree)); }
     // ---------- Vitesse tapis réglée en direct (+ / − 1 km/h)
@@ -8560,7 +8667,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     function redZoneAlert(cur, hr, now) {
       const fc = runnerFcMax(), ss = getActiveSession() || {};
       if (!fc || !hr || ss.kind === 'test' || ss.kind === 'course' || isRecoveryStage(cur)) return false;
-      const z5 = Math.round(fc * 0.9), en = appData.audioSettings.voiceLang === 'en';
+      const z5 = pctToBpm(0.9), en = appData.audioSettings.voiceLang === 'en';
       if (hr >= z5) {
         if (!runData.redSince) runData.redSince = now;
         if (now - runData.redSince > 8000 && now - (runData.redAt || 0) > 120000) {
@@ -8589,7 +8696,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       runData.recChk[idx] = true;
       const prevHr = (runData.track || []).filter(r => r[3] === idx - 1 && r[1]).map(r => r[1]);
       const peak = prevHr.length ? Math.max(...prevHr) : null, drop = peak ? peak - hr : 0;
-      const ok = hr <= Math.round(fc * 0.75) || drop >= 25;
+      const ok = hr <= pctToBpm(0.75) || drop >= 25;
       const en = appData.audioSettings.voiceLang === 'en';
       speakLive(en ? (ok ? `Heart rate ${hr}: it has come down well.` : `Heart rate still ${hr}${peak ? `, down ${drop} beats` : ''}: breathe out slowly.`)
         : ok ? `Cardio ${hr} : il est bien redescendu${peak && drop > 0 ? `, ${drop} battements de moins` : ''}.` : `Cardio encore à ${hr}${peak && drop > 0 ? `, seulement ${drop} battements de moins` : ''} : souffle long, relâche les épaules.`);
@@ -8643,8 +8750,8 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       bar.classList.toggle('hidden', !on);
       if (!on) return;
       const lims = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-      const p = hr / fc, zi = lims.findIndex((x, k) => k > 0 && p < x), z = zi < 0 ? 4 : Math.max(0, zi - 1);
-      const lo = Math.round(fc * lims[z]), hi = Math.round(fc * lims[z + 1]);
+      const p = bpmToPct(hr), zi = lims.findIndex((x, k) => k > 0 && p < x), z = zi < 0 ? 4 : Math.max(0, zi - 1);
+      const lo = pctToBpm(lims[z]), hi = pctToBpm(lims[z + 1]);
       const pos = Math.max(0, Math.min(1, (hr - lo) / Math.max(1, hi - lo)));
       const c = RC_HR_Z[z][1];
       bar.innerHTML = `<div style="text-align:center;font-size:4rem;font-weight:900;line-height:.95;color:${c};letter-spacing:-.02em">${hr}</div>
@@ -9511,12 +9618,14 @@ Analyse la séance que je viens de faire${valShots.length ? ' à partir des capt
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h ; échauffement et retour au calme au ressenti (cardio sous ${easyHrMax() || '75 % FC max'}).
 ${speedLogText(runData.speedLog)}
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
-${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${zonesText()}${(() => { const ss = getActiveSession(); const c = ss.cardio ? cardioText(ss.cardio) : ''; const gt = guideHrText(ss); return c || gt ? `\nCardio cible de la séance : ${c || gt}` : ''; })()}
+${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg }, appData.history)}.
 Séances précédentes :
 ${hist}
 Prochaines séances du plan :
 ${next}
+${coachMemoryText('')}
 ${analysisFormatPrompt()}`;
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
@@ -9524,7 +9633,7 @@ ${analysisFormatPrompt()}`;
         const parts = valShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
         parts.push({ text: prompt });
         lastAnalysis = await geminiText(parts, { tier: 'full', json: true });
-        out.innerHTML = analysisHtml(lastAnalysis);
+        out.innerHTML = analysisHtml(lastAnalysis) + `<button type="button" onclick="openValChat()" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>`;
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
       }
@@ -9580,7 +9689,8 @@ ${analysisFormatPrompt()}`;
 Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${speedLogText(h.speedChanges)}
-${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app) :\n${segStatsText(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${zonesText()}
+${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Records et progrès (calculés par l'app) : ${recordsText({ id: h.id, km: h.km, summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
 Autres séances récentes :
 ${others}
@@ -9667,7 +9777,7 @@ ${analysisFormatPrompt()}`;
       if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') r = [0.62, 0.74];
       else if (st.intensity === 'fast') r = k === 'seuil' ? [0.84, 0.9] : [0.88, 0.95];
       else r = k === 'seuil' ? [0.84, 0.9] : k === 'course' || k === 'test' ? [0.85, 0.93] : [0.68, 0.79];
-      return { lo: Math.round(fc * r[0]), hi: Math.round(fc * r[1]), mid: Math.round(fc * (r[0] + r[1]) / 2) };
+      return { lo: pctToBpm(r[0]), hi: pctToBpm(r[1]), mid: pctToBpm((r[0] + r[1]) / 2) };
     }
     const spF = v => formatSpeed(Math.round(v * 10) / 10).replace('.', appData.audioSettings.voiceLang === 'en' ? '.' : ',');
     function gradeWords(g) {
@@ -10091,6 +10201,9 @@ ${analysisFormatPrompt()}`;
         };
       });
     }
+    function segStatsTextZ(seg) {
+      return (seg || []).map(s => `${s.name}${s.target ? ` (cible ${formatSpeed(s.target)})` : ''} : ${Math.round(s.sec / 60 * 10) / 10} min${s.avgKmh ? `, vitesse moy ${formatSpeed(s.avgKmh)}` : ''}${s.avgHr ? `, FC moy ${s.avgHr} (${zoneOf(s.avgHr) || '?'}) max ${s.maxHr} (${zoneOf(s.maxHr) || '?'})` : ''}`).join('\n');
+    }
     function segStatsText(seg) {
       if (!seg || !seg.length) return '';
       return seg.map(s => `${s.name}${s.target ? ` (cible ${formatSpeed(s.target)})` : ''} : ${Math.round(s.sec / 60 * 10) / 10} min${s.avgKmh ? `, vitesse moy ${formatSpeed(s.avgKmh)}` : ''}${s.avgHr ? `, FC moy ${s.avgHr} max ${s.maxHr}` : ''}`).join('\n');
@@ -10108,7 +10221,7 @@ ${analysisFormatPrompt()}`;
       const fcMax = sensors().fcMax;
       if (fcMax) {
         const z = [0, 0, 0, 0, 0];
-        hr.forEach(r => { const p = r[1] / fcMax; z[p < 0.6 ? 0 : p < 0.7 ? 1 : p < 0.8 ? 2 : p < 0.9 ? 3 : 4]++; });
+        hr.forEach(r => { const p = bpmToPct(r[1]); z[p < 0.6 ? 0 : p < 0.7 ? 1 : p < 0.8 ? 2 : p < 0.9 ? 3 : 4]++; });
         out.push('Temps par zone (FC max ' + fcMax + ') : ' + z.map((n, i) => `Z${i + 1} ${Math.round(n / hr.length * 100)}%`).join(', '));
       }
       return out.join('. ');
@@ -10286,14 +10399,14 @@ ${analysisFormatPrompt()}`;
       const chip = (k, v, l, on) => `<button type="button" onclick="rcSet('${uid}','${k}','${v}')" class="rt-tab px-2 py-0.5 rounded-md text-[10px] font-bold" data-on="${on ? '1' : ''}">${l}</button>`;
       const vTools = `<span class="flex gap-1">${[['inst', 'Instant'], ['km', 'Km'], ['seg', 'Segment'], ...(P.hasEle ? [['prof', 'Profil']] : [])].map(([v, l]) => chip('vMode', v, l, S.vMode === v)).join('')}</span>`;
       const fc = P.fc;
-      const zoneOf = hr => { const r = hr / fc; return RC_HR_Z.find(z => r < z[0]); };
+      const zoneOf = hr => { const r = bpmToPct(hr); return RC_HR_Z.find(z => r < z[0]); };
       const zoomed = S.view[1] - S.view[0] < (T1 - T0) - 1;
       const charts = [
         P.hasEle ? rcChart(uid, '<span style="color:#34d399">⛰️ Profil</span>', [{ vals: R.map(r => r.ele), area: true, colorFn: i => rcSlopeColor(R[i].g) }], { minSpan: 10 }) : '',
         rcChart(uid, '<span><span style="color:#38bdf8">● Vitesse</span> <span style="color:#a78bfa">● VAP</span> <span class="text-slate-500">km/h</span></span>', [{ vals: vVals, color: '#38bdf8', width: 2 }, { vals: vapVals, color: '#a78bfa', width: 2 }], { minSpan: 3, dec: true, target, extra: target.map(x => x[2]), tools: vTools }),
         rcChart(uid, '<span style="color:#fb7185">❤️ Cardio (bpm)</span>', [{ vals: R.map(r => r.hr), color: '#fb7185', colorFn: fc ? (i => { const z = R[i].hr && zoneOf(R[i].hr); return z ? z[1] : '#fb7185'; }) : null }], { minSpan: 20 })
       ].filter(Boolean).join('');
-      const legend = [fc ? `<div class="flex gap-2 flex-wrap text-[10px] font-bold">${RC_HR_Z.map((z, i) => `<span style="color:${z[1]}">● ${z[2]} ${i ? Math.round(RC_HR_Z[i - 1][0] * fc) : '<'}${i ? (i < 4 ? '–' + Math.round(z[0] * fc) : '+') : Math.round(z[0] * fc)}</span>`).join('')}</div>` : '',
+      const legend = [fc ? `<div class="flex gap-2 flex-wrap text-[10px] font-bold">${RC_HR_Z.map((z, i) => `<span style="color:${z[1]}">● ${z[2]} ${i ? pctToBpm(RC_HR_Z[i - 1][0]) : '<'}${i ? (i < 4 ? '–' + pctToBpm(z[0]) : '+') : pctToBpm(z[0])}</span>`).join('')}</div>` : '',
         P.hasEle ? `<div class="flex gap-2 flex-wrap text-[10px] font-bold">${[[-3, 'desc. raide'], [-1, 'descente'], [0, 'plat'], [2, '2-4 %'], [5, '4-8 %'], [9, '> 8 %']].map(([g, l]) => `<span style="color:${rcSlopeColor(g)}">● ${l}</span>`).join('')}</div>` : ''].join('');
       const zb = (f, l, al) => `<button type="button" onclick="rcZoom('${uid}',${f})" aria-label="${al}" class="rt-tab rounded-lg text-[14px] font-black" style="width:40px;height:34px">${l}</button>`;
       const panVal = zoomed ? Math.round((S.view[0] - T0) / Math.max(1, (T1 - T0) - (S.view[1] - S.view[0])) * 1000) : 0;
@@ -10473,7 +10586,7 @@ ${analysisFormatPrompt()}`;
       let zones = null;
       if (fc && hrRows.length > 10) {
         zones = RC_HR_Z.map(z => ({ n: z[2], c: z[1], s: 0 }));
-        hrRows.forEach((r, i) => { const p = r.hr / fc; const k = RC_HR_Z.findIndex(z => p < z[0]); zones[k < 0 ? 4 : k].s += 5; });
+        hrRows.forEach((r, i) => { const p = bpmToPct(r.hr); const k = RC_HR_Z.findIndex(z => p < z[0]); zones[k < 0 ? 4 : k].s += 5; });
       }
       const zMain = zones ? zones.reduce((a, z) => z.s > a.s ? z : a, zones[0]) : null;
       const recLine = o.recs && o.recs.length ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5)"><span style="font-size:20px">🏆</span><span style="font-size:13px;font-weight:700;color:#fde68a">Record : ${plEsc(o.recs.join(', '))}</span></div>` : '';
@@ -11351,13 +11464,13 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
           objectif = `Monter progressivement jusqu'à ${fmtV(G.vmax)} km/h puis redescendre, en tenant chaque palier à la vitesse prévue.`;
           essentiel = `Tenir le palier le plus rapide (${fmtV(G.vmax)} km/h) en entier sur ${G.reps > 1 ? `au moins ${Rmin} pyramide${Rmin > 1 ? 's' : ''}` : 'la pyramide'}, sans partir trop vite sur les premiers paliers.`; break;
         case 'seuil':
-          objectif = `Courir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h : effort soutenu mais contrôlé (tu peux encore dire quelques mots)${fcm ? `, cardio vers ${Math.round(fcm * 0.85)}-${Math.round(fcm * 0.9)}` : ''}.`;
+          objectif = `Courir ${G.reps} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h : effort soutenu mais contrôlé (tu peux encore dire quelques mots)${fcm ? `, cardio vers ${pctToBpm(0.85)}-${pctToBpm(0.9)}` : ''}.`;
           essentiel = `Au moins ${Rmin} bloc${Rmin > 1 ? 's' : ''} complet${Rmin > 1 ? 's' : ''} à ${fmtV(G.vmax)} km/h, régulier du début à la fin, sans finir à bout de souffle.`; break;
         case 'cotes':
           objectif = `${G.reps} montées de ${fast ? fmtQ(fast) : ''}${s.type === 'tapis' ? ` à ${String(s.pente).replace('.', ',')} %` : ''} à ${fmtV(G.vmax)} km/h : foulée dynamique, genoux hauts, même vitesse sur toutes.`;
           essentiel = `Au moins ${Rmin} montées propres, et une vraie récupération entre chaque (souffle revenu).`; break;
         case 'endu':
-          objectif = `${T} min en aisance à ~${fmtV(main ? main.speed : runnerEF())} km/h : tu dois pouvoir parler en courant${fcm ? `, cardio sous ${Math.round(fcm * 0.75)}` : ''}.`;
+          objectif = `${T} min en aisance à ~${fmtV(main ? main.speed : runnerEF())} km/h : tu dois pouvoir parler en courant${fcm ? `, cardio sous ${pctToBpm(0.75)}` : ''}.`;
           essentiel = `Rester facile du début à la fin. L'allure compte plus que la durée : ralentis plutôt que de t'essouffler.`; break;
         case 'longue':
           objectif = `Aller au bout des ${T} min à ~${fmtV(main ? main.speed : runnerEF())} km/h, sans accélérer sur la fin.`;
@@ -11434,7 +11547,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       }
       const fc = runnerFcMax(); if (!fc) return '';
       if (k === 'test' || k === 'course' || k === 'libre') return '';
-      const pc = (a, b) => [Math.round(fc * a), Math.round(fc * b)];
+      const pc = (a, b) => [pctToBpm(a), pctToBpm(b)];
       if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
         const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60;
         const [lo, hi] = k === 'seuil' ? pc(0.84, 0.9) : pc(0.88, 0.95);
@@ -11924,18 +12037,61 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       return r.fcMax || theoreticalFcMax() || sensors().fcMax || null;
     }
     function syncFcMax() { sensors().fcMax = runnerFcMax(); }
+    // Bornes des zones (bpm) : calcul automatique (% FC max) ou réglage manuel du coureur
+    const ZPCT = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    const ZONE_INFO = [
+      ['Z1', 'Récupération', "Très facile : respiration calme, tu peux discuter sans effort. Échauffement, retour au calme, récup."],
+      ['Z2', 'Endurance fondamentale', "Facile : tu peux parler en phrases complètes. L'allure des footings et des sorties longues."],
+      ['Z3', 'Tempo / aérobie', "Modéré : respiration plus marquée, seulement des phrases courtes. Allure marathon environ."],
+      ['Z4', 'Seuil', "Difficile : quelques mots seulement, effort « confortablement dur » tenable 20 à 40 min. Allure semi / 10 km."],
+      ['Z5', 'VMA', "Très difficile : impossible de parler, souffle court, tenable quelques minutes. Fractionné court, fin de course."]
+    ];
+    function zoneBounds() {
+      const fc = runnerFcMax(); if (!fc) return null;
+      const c = runnerProfile().hrZoneB;
+      const auto = ZPCT.map(x => Math.round(fc * x));
+      if (Array.isArray(c) && c.length === 4 && c.every((v, i) => v > 0 && (i === 0 || v > c[i - 1])) && c[3] < fc) return [auto[0], c[0], c[1], c[2], c[3], fc];
+      return auto;
+    }
+    // % de FC max « équivalent » -> bpm, en suivant les zones du coureur (identique au calcul en % si zones automatiques)
+    function pctToBpm(p) {
+      const fc = runnerFcMax(), B = zoneBounds(); if (!fc || !B) return null;
+      if (p <= ZPCT[0]) return Math.round(fc * p);
+      if (p >= 1) return Math.round(fc * p);
+      const i = Math.min(4, ZPCT.findIndex((x, k) => k < 5 && p >= x && p <= ZPCT[k + 1]));
+      const f = (p - ZPCT[i]) / (ZPCT[i + 1] - ZPCT[i]);
+      return Math.round(B[i] + f * (B[i + 1] - B[i]));
+    }
+    function bpmToPct(hr) {
+      const fc = runnerFcMax(), B = zoneBounds(); if (!fc || !B || !hr) return 0;
+      if (hr <= B[0]) return hr / fc;
+      if (hr >= B[5]) return hr / fc;
+      const i = Math.min(4, B.findIndex((x, k) => k < 5 && hr >= x && hr <= B[k + 1]));
+      return ZPCT[i] + (hr - B[i]) / Math.max(1, B[i + 1] - B[i]) * (ZPCT[i + 1] - ZPCT[i]);
+    }
     function hrZones(fc) {
       if (!fc) return [];
-      const z = [[0.5, 0.6, 'Z1', 'Récupération'], [0.6, 0.7, 'Z2', 'Endurance fondamentale'], [0.7, 0.8, 'Z3', 'Tempo / aérobie'], [0.8, 0.9, 'Z4', 'Seuil'], [0.9, 1.0, 'Z5', 'VMA']];
-      return z.map(([a, b, n, l]) => ({ n, l, lo: Math.round(fc * a), hi: Math.round(fc * b) }));
+      const B = zoneBounds();
+      return ZONE_INFO.map(([n, l, d], i) => ({ n, l, d, lo: B[i], hi: B[i + 1] }));
     }
+    function zonesText() {
+      const fc = runnerFcMax(); if (!fc) return '';
+      return `Zones cardio du coureur (FC max ${fc}${Array.isArray(runnerProfile().hrZoneB) ? ', zones réglées par le coureur' : ''}) : ` + hrZones(fc).map(z => `${z.n} ${z.l} ${z.lo}-${z.hi}`).join(' ; ') + '.';
+    }
+    function setZoneBound(i, v) {
+      const B = zoneBounds(); if (!B) return;
+      const c = B.slice(1, 5); const n = parseInt(v); if (!(n > 60 && n < 230)) return;
+      c[i] = n; for (let k = i + 1; k < 4; k++) if (c[k] <= c[k - 1]) c[k] = c[k - 1] + 1; for (let k = i - 1; k >= 0; k--) if (c[k] >= c[k + 1]) c[k] = c[k + 1] - 1;
+      runnerProfile().hrZoneB = c; saveAppData(); renderRunnerBody();
+    }
+    function resetZones() { delete runnerProfile().hrZoneB; saveAppData(); renderRunnerBody(); showToast('Zones recalculées depuis la FC max'); }
     const ZONE_COLORS = { Z1: '#64748b', Z2: '#38bdf8', Z3: '#34d399', Z4: '#fb923c', Z5: '#f43f5e' }; // mêmes couleurs que la barre et les graphiques
     function zoneColor(hr) { return ZONE_COLORS[zoneOf(hr)] || '#fda4af'; }
     function zoneOf(hr) {
       const fc = runnerFcMax();
       if (!fc || !hr) return '';
-      const p = hr / fc;
-      return p < 0.6 ? 'Z1' : p < 0.7 ? 'Z2' : p < 0.8 ? 'Z3' : p < 0.9 ? 'Z4' : 'Z5';
+      const B = zoneBounds();
+      return hr < B[1] ? 'Z1' : hr < B[2] ? 'Z2' : hr < B[3] ? 'Z3' : hr < B[4] ? 'Z4' : 'Z5';
     }
     function setRunnerSex(s) { runnerProfile().sex = s; renderRunnerBody(); }
     function renderRunnerBody() {
@@ -11951,9 +12107,15 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (obs) note += ` Max observée dans vos séances : ${obs} bpm.`;
       if (obs && fc && obs > fc) note += ` ⚠ Plus haute que la FC max utilisée.`;
       document.getElementById('fcMaxNote').innerHTML = note + (obs && obs !== fc ? ` <button type="button" onclick="useObservedFcMax()" class="underline text-cyan-300">Utiliser ${obs}</button>` : '');
-      const zs = hrZones(fc);
-      document.getElementById('hrZonesBox').innerHTML = zs.length ? `<div class="text-[10px] text-slate-400 mb-1">Zones cardio (FC max ${fc}${r.fcMax ? ', manuelle' : th ? ', théorique' : ''})</div>` +
-        zs.map(z => `<div class="flex justify-between text-[10px]"><span class="font-bold text-slate-200">${z.n} <span class="font-normal text-slate-400">${z.l}</span></span><span class="font-mono text-rose-300">${z.lo}–${z.hi}</span></div>`).join('') : '';
+      const zs = hrZones(fc), custom = Array.isArray(r.hrZoneB);
+      const zc = ['#64748b', '#38bdf8', '#34d399', '#fb923c', '#f43f5e'];
+      const zb = document.getElementById('hrZonesBox');
+      if (zb && !zb.contains(document.activeElement)) zb.innerHTML = zs.length ? `<div class="text-[12px] text-slate-400 mb-2">FC max ${fc} · ${custom ? 'zones réglées à la main' : 'zones calculées en % de la FC max'}. Règle le début de chaque zone d'après tes sensations en courant :</div>` +
+        zs.map((z, i) => `<div class="flex flex-col gap-1 py-2" style="border-top:1px solid #1e293b">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="text-[14px] font-extrabold" style="color:${zc[i]};flex:1;min-width:0">${z.n} · ${z.l}</span>
+              <span style="display:flex;align-items:center;gap:4px;flex:none;font-size:14px;font-weight:700;color:#e2e8f0">${i === 0 ? `<span style="width:4.5rem;text-align:center">${z.lo}</span>` : `<input type="number" inputmode="numeric" value="${z.lo}" onchange="setZoneBound(${i - 1}, this.value)" class="pm-in c" style="width:4.5rem;height:2.2rem;font-size:14px">`}<span style="color:#64748b">–</span><span style="width:2.5rem;text-align:center">${z.hi}</span></span></div>
+            <span class="text-[12px] text-slate-400 leading-snug">${z.d}</span></div>`).join('')
+          + (custom ? `<button type="button" onclick="resetZones()" class="pm-btn mt-2" style="height:40px;font-size:13px">↺ Revenir au calcul automatique</button>` : '') : '';
     }
     function useObservedFcMax() {
       const obs = maxObservedHr();
