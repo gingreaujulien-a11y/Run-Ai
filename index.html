@@ -406,6 +406,11 @@
       </div>
 
       <div class="space-y-3 overflow-y-auto custom-scroll pr-1 mt-3">
+        <!-- Date de la séance -->
+        <label class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+          <span class="text-[13px] font-extrabold text-sky-200">📅 Date</span>
+          <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
+        </label>
         <!-- Type de séance -->
         <div class="grid grid-cols-2 gap-2">
           <button type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
@@ -465,10 +470,7 @@
               <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Semaine</label>
               <input type="number" id="cfgSemaine" value="1" min="1" max="52" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500">
             </div>
-            <div class="hidden">
-              <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Date</label>
-              <input type="date" id="cfgDate" onclick="openDatePicker(this)" onchange="updateDayFromDate()" oninput="updateDayFromDate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1.5 text-center font-bold text-white text-xs focus:outline-none focus:border-sky-500">
-            </div>
+
             <div id="cfgPenteBox">
               <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Pente (%)</label>
               <input type="number" id="cfgPente" value="1" min="0" max="15" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500">
@@ -1623,6 +1625,25 @@
         if (!s.dateISO) s.dateISO = guessISOFromDDMM(s.date) || '';
         if (!s.type) s.type = 'tapis';
       });
+      try { (appData.sessions || []).forEach(longRunIncludeWarmCool); } catch (e) { }
+    }
+    function isLongRunSess(s) {
+      if (!s || s.free || s.kind === 'test' || s.kind === 'course') return false;
+      const segs = (s.pyramide || []).filter(p => p.speed > 0);
+      if (segs.length !== 1 || (parseInt(s.repet) || 1) > 1 || (parseInt(s.nbBlocs) || 1) > 1) return false;
+      return s.kind === 'longue' || (!s.kind && sessionKind(s).label === 'SORTIE LONGUE');
+    }
+    // Plan importé / proposé par le coach : la durée d'une sortie longue comprend l'échauffement et le retour au calme
+    function longRunIncludeWarmCool(s) {
+      if (s.wcIn || !isLongRunSess(s) || isSessionDone(s) || (s.dateISO && s.dateISO < todayISO())) return;
+      const wc = (+s.chauffe || 0) + (+s.recup || 0);
+      const p = s.pyramide.find(x => x.speed > 0);
+      if (wc > 0 && p) {
+        if (p.unit === 'km') { p.distance = Math.max(2, Math.round((p.distance - wc / 60 * runnerEF()) * 10) / 10); p.duration = p.distance / p.speed * 60; }
+        else p.duration = Math.max(10, Math.round((+p.duration - wc) * 100) / 100);
+      }
+      if (!s.kind) s.kind = 'longue';
+      s.wcIn = true;
     }
 
     let timerState = {
@@ -4426,6 +4447,89 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         foot.innerHTML = btns(false);
       }
     }
+    // ==================== DÉPLACEMENT D'UNE SÉANCE : AVIS DU COACH ====================
+    let moveCheck = null;
+    function fmtDayLong(iso) { const d = parseISODateLocal(iso); return d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : iso; }
+    function openMoveCheck(id, fromISO) {
+      const s = appData.sessions.find(x => x.id === id);
+      if (!s) return;
+      moveCheck = { id, fromISO, prop: null };
+      const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      m.querySelector('.pm-title').textContent = 'Séance déplacée';
+      body.innerHTML = moveHead(s) + `<div class="pm-card text-[14px] text-slate-200">Veux-tu que le coach vérifie si ce nouveau jour convient, et s'il faut adapter la séance ?</div>`;
+      foot.innerHTML = `<div class="grid grid-cols-1 gap-2">
+          <button onclick="runMoveCheck()" class="pm-save" style="background:#a78bfa;color:#13092b">🧠 Oui, demander l'avis du coach</button>
+          <button onclick="closeMoveCheck()" class="pm-btn" style="height:48px">Non merci</button></div>`;
+      m.classList.remove('hidden');
+    }
+    function moveHead(s) {
+      return `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · ${plEsc(fmtDayLong(moveCheck.fromISO))} → ${plEsc(fmtDayLong(s.dateISO))}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km</span></div>`;
+    }
+    function closeMoveCheck() { document.getElementById('chkModal').classList.add('hidden'); moveCheck = null; }
+    async function runMoveCheck() {
+      if (!moveCheck) return;
+      const s = appData.sessions.find(x => x.id === moveCheck.id); if (!s) return closeMoveCheck();
+      const body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      const head = moveHead(s);
+      if (!getGeminiKey()) { body.innerHTML = head + `<div class="pm-card text-[14px] text-slate-300">Sans clé Gemini, pas d'avis du coach.</div>`; foot.innerHTML = `<button onclick="closeMoveCheck()" class="pm-save">OK</button>`; return; }
+      body.innerHTML = head + `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse le déplacement…</div></div>`;
+      foot.innerHTML = '';
+      const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
+      const d0 = parseISODateLocal(s.dateISO), lo = new Date(d0), hi = new Date(d0); lo.setDate(lo.getDate() - 4); hi.setDate(hi.getDate() + 4);
+      const loI = toISODateLocal(lo), hiI = toISODateLocal(hi);
+      const near = appData.sessions.filter(x => x.id !== s.id && x.dateISO && x.dateISO >= loI && x.dateISO <= hiI).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}${isSessionDone(x) ? ' (faite)' : ''}`).join('\n') || '- aucune';
+      const doneNear = (appData.history || []).filter(h => { const i = histISO(h); return i && i >= loI && i <= hiI; }).map(h => `- ${histISO(h)} (faite) : ${h.human || h.details || ''} ; ressenti ${h.feeling}`).join('\n');
+      const cross = (appData.crossPlan || []).filter(c => c.dateISO >= loI && c.dateISO <= hiI).map(c => `- ${c.dateISO} : ${c.type === 'velo' ? 'vélo' : 'renforcement'} ${c.dur || '?'} min`).join('\n');
+      const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
+      const prompt = `Tu es un coach de course à pied précis. ${coachToneText()}
+Le coureur a déplacé cette séance du ${moveCheck.fromISO} au ${s.dateISO} (aujourd'hui : ${t}).
+Séance : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}.
+Détail JSON : {"chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"vitRecupBloc":${s.vitRecupBloc || 6},"pente":${s.pente},"segments":[${segs}]}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; niveau : ${runnerLevelsText()}.
+Séances autour du nouveau jour (4 jours avant et après) :
+${near}${doneNear ? '\n' + doneNear : ''}${cross ? '\nActivités complémentaires :\n' + cross : ''}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Le nouveau jour est-il adapté (enchaînement de séances dures, récupération, sortie longue la veille ou le lendemain, place dans la semaine) ? Faut-il adapter la séance (intensité, volume, type) ? Ne propose une modification que si elle est vraiment utile.
+Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3 phrases courtes en tutoyant","resume":"si adapter : la modification en une phrase","seance":{même format que le détail JSON, seulement si adapter}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        if (!moveCheck) return;
+        const v = String(j.verdict || '').toLowerCase();
+        const mod = v.startsWith('adapt') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        if (mod) moveCheck.prop = proposalToSession(s, j.seance);
+        const V = v.startsWith('decon') || v.startsWith('décon') ? ['⚠️ Déplacement déconseillé', '#fb7185'] : mod ? ['✏️ Mieux vaut adapter la séance', '#fbbf24'] : ['✅ Ce jour convient, rien à changer', '#34d399'];
+        const after = mod ? `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, moveCheck.prop, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(moveCheck.prop))} min)</span>${j.resume ? `<span class="text-[12px] text-slate-400">${plEsc(j.resume)}</span>` : ''}` : '';
+        body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
+        const back = V[1] === '#fb7185' ? `<button onclick="undoMove()" class="pm-btn" style="height:48px;border-color:rgba(251,113,133,.6);color:#fda4af;font-weight:800">↩️ Remettre au ${plEsc(fmtDayLong(moveCheck.fromISO))}</button>` : '';
+        foot.innerHTML = `<div class="grid grid-cols-1 gap-2">${mod ? `<button onclick="applyMoveProp()" class="pm-save" style="background:#fbbf24;color:#1a1204">✅ Accepter la proposition</button>` : ''}${back}
+          <button onclick="closeMoveCheck()" class="pm-btn" style="height:48px">${mod || back ? 'Garder ma séance telle quelle' : 'OK'}</button></div>`;
+      } catch (e) {
+        body.innerHTML = head + `<div class="pm-card text-rose-400">Avis impossible : ${plEsc(e.message || e)}</div>`;
+        foot.innerHTML = `<button onclick="closeMoveCheck()" class="pm-save">OK</button>`;
+      }
+    }
+    function moveRefresh(s) {
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      saveAppData(); reloadChrono(); updateHistoryTable(); try { renderHome(); } catch (e) { }
+      const i = appData.sessions.indexOf(s);
+      if (!document.getElementById('configModal').classList.contains('hidden') && i >= 0) { const f = cfgFrom; openConfigModal(i); cfgFrom = f; }
+    }
+    function applyMoveProp() {
+      if (!moveCheck || !moveCheck.prop) return closeMoveCheck();
+      const s = appData.sessions.find(x => x.id === moveCheck.id); if (!s) return closeMoveCheck();
+      if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
+      ['chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide'].forEach(k => { if (moveCheck.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(moveCheck.prop[k])); });
+      s.adapted = { at: todayISO(), resume: 'Adaptée par le coach après déplacement' };
+      closeMoveCheck(); moveRefresh(s);
+      showSavedBig('Séance adaptée');
+    }
+    function undoMove() {
+      if (!moveCheck) return;
+      const s = appData.sessions.find(x => x.id === moveCheck.id), iso = moveCheck.fromISO;
+      if (s && iso) { const d = parseISODateLocal(iso); s.dateISO = iso; s.date = toDDMM(d); s.jour = weekdayName(d); modalOrigISO = iso; }
+      closeMoveCheck(); if (s) moveRefresh(s);
+      showToast(`📅 Séance remise au ${fmtDayLong(iso)}`);
+    }
     function doCopy(useMod) {
       if (!copyCheck) return;
       const c = useMod && copyCheck.prop ? Object.assign({}, copyCheck.prop, { id: copyCheck.copy.id, dateISO: copyCheck.copy.dateISO, date: copyCheck.copy.date, jour: copyCheck.copy.jour, kind: undefined }) : copyCheck.copy;
@@ -4699,6 +4803,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       sess.route = modalRoute;
       sess.pyramide = pyr;
       sess.kind = cfgKind;
+      if (KIND_CONT.includes(cfgKind)) sess.wcIn = true;
       if (cfgKind === 'libre') { sess.free = true; sess.plannedFree = true; }
       else if (sess.plannedFree || sess.free) { delete sess.free; delete sess.plannedFree; }
       if (cfgKind === 'test' && cfgTestProto !== 'chrono') { sess.test = { proto: cfgTestProto, start: pyr[0].speed }; sess.notes = cfgTestProto === 'vmaTapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)'; if (cfgTestProto === 'vmaTapis') sess.pente = 1; }
@@ -4750,8 +4855,32 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       return true;
     }
 
+    let dateChoiceFrom = '';
+    function onCfgDateChange() {
+      updateDayFromDate();
+      const el = document.getElementById('cfgDate'), iso = el.value;
+      if (!modalOrigISO || !iso || iso === modalOrigISO) return;
+      const fmt = x => { const d = parseISODateLocal(x); return d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : x; };
+      document.getElementById('dateChoiceText').textContent = `Séance prévue le ${fmt(modalOrigISO)}. La déplacer au ${fmt(iso)} ?`;
+      dateChoiceFrom = 'input';
+      document.getElementById('dateChoiceModal').classList.remove('hidden');
+    }
     function chooseDateMode(mode) {
       document.getElementById('dateChoiceModal').classList.add('hidden');
+      if (dateChoiceFrom === 'input') {
+        dateChoiceFrom = '';
+        const el = document.getElementById('cfgDate');
+        if (!mode) { el.value = modalOrigISO; updateDayFromDate(); return; }
+        const iso = el.value;
+        const fromISO = modalOrigISO;
+        if (saveActiveSessionConfig({ dateMode: mode, keepOpen: true })) {
+          modalOrigISO = iso;
+          const d = parseISODateLocal(iso);
+          showToast(`📅 ${mode === 'copy' ? 'Copie créée' : 'Séance déplacée'} au ${d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : iso}`);
+          if (mode === 'move') openMoveCheck(cfgSessId, fromISO);
+        }
+        return;
+      }
       if (mode) saveActiveSessionConfig({ dateMode: mode });
       else afterSaveAction = null;
     }
@@ -12317,6 +12446,7 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
         pyramide: f.segs.filter(sg => sg.v > 0 && sg.d > 0).map(sg => ({ speed: sg.v, duration: round2(sg.d), unit: 'min' })),
         notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : act.runType === 'vma' ? (act.type === 'tapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)') : ''),
         kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test' }[act.runType] || undefined,
+        wcIn: act.runType === 'longue' || act.runType === 'endu' || act.runType === 'recup' ? true : undefined,
         test: act.runType === 'vma' ? { proto: act.type === 'tapis' ? 'vmaTapis' : 'vma6', start: (f.segs[0] || {}).v } : undefined
       };
     }
