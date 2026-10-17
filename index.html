@@ -377,6 +377,19 @@
       <div id="idleRow" class="grid grid-cols-2 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
         <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
         <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Tester le son</button>
+        <button id="radioBtn" onclick="openRadioModal()" class="py-3 rounded-2xl font-bold text-[15px] active:scale-95" style="grid-column:1 / span 2;min-height:48px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.5);color:#bae6fd">🎧 Animations : aucune</button>
+      </div>
+      <div id="radioModal" class="hidden" style="position:fixed;inset:0;z-index:80;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeRadioModal()">
+        <div style="width:100%;max-width:480px;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:18px;font-weight:900;color:#fff">🎧 Animations pendant la séance</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.4">Pour faire passer le temps : de courtes chroniques lues par la voix du coach, jamais pendant un effort rapide.</div>
+          <div id="radioModes" style="display:grid;grid-template-columns:1fr;gap:8px"></div>
+          <input id="radioTopic" type="text" maxlength="120" placeholder="Ton sujet : ex. histoire du marathon, astronomie, actu du foot…" class="pm-in" style="height:46px;font-size:15px">
+          <div style="font-size:13px;color:#cbd5e1;font-weight:700">Fréquence</div>
+          <div id="radioEvery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+          <div style="font-size:12px;color:#64748b">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</div>
+          <button onclick="saveRadioModal()" style="height:50px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:16px">Valider</button>
+        </div>
       </div>
       <div id="ctlRow" class="grid grid-cols-3 gap-3">
         <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
@@ -1776,6 +1789,7 @@
     }
 
     function saveAppData() {
+      try { (appData.sessions || []).forEach(x => { if (!x.wcIn && isLongRunSess(x)) longRunIncludeWarmCool(x); }); } catch (e) { }
       try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); } catch (e) {}
     }
 
@@ -1899,6 +1913,7 @@
       return false;
     }
     function buildCurrentSessionStages() {
+      if (!window.__buildOverride && !timerState.sessionStarted) try { const a = getActiveSession(); if (a && !a.wcIn && isLongRunSess(a)) { longRunIncludeWarmCool(a); saveAppData(); } } catch (e) { }
       const sess = routeRunSess(window.__buildOverride || getActiveSession());
       const stages = [];
 
@@ -1999,6 +2014,7 @@
       setMainButton('idle');
       prepareSessionVoice();
       renderHome();
+      updateRadioBtn();
     }
 
     // ==================== AFFICHAGE ====================
@@ -2115,18 +2131,26 @@
         let progress = 0;
         if (timerState.finished) progress = 1;
         else if (curStage && curStage.isFree) progress = kmDistanceNow() % 1; // séance libre : avancement du km en cours
-        else if (curStage && curStage.durationSec > 0) {
+        let colorP = null;
+        if (!timerState.finished && curStage && !curStage.isFree && curStage.durationSec >= LAP_MIN_STAGE) {
+          // Long segment : un tour de cercle toutes les 5 min (le dernier tour se termine pile à la fin), couleur = avancement global
+          const rem = timerState.stageRemainingMs, lap = LAP_SEC * 1000;
+          const inLap = rem % lap || (rem > 0 ? lap : 0);
+          progress = Math.max(0, Math.min(1, 1 - inLap / lap));
+          colorP = Math.max(0, Math.min(1, 1 - rem / (curStage.durationSec * 1000)));
+        } else if (curStage && curStage.durationSec > 0) {
           const totalMs = curStage.durationSec * 1000;
           progress = Math.max(0, Math.min(1, (totalMs - timerState.stageRemainingMs) / totalMs));
         }
         circle.style.strokeDashoffset = 276.46 * (1 - progress);
         // Vert (début du segment) → Rouge (fin du segment)
-        const hue = Math.round(130 * (1 - progress));
+        const hue = Math.round(130 * (1 - (colorP === null ? progress : colorP)));
         circle.setAttribute('stroke', `hsl(${hue}, 85%, 50%)`);
         circle.style.filter = `drop-shadow(0 0 14px hsla(${hue}, 90%, 50%, 0.55))`;
       }
     }
 
+    const LAP_SEC = 300, LAP_MIN_STAGE = 15 * 60;
     // VAP affichée dans le cercle (tapis en pente ou dehors avec pente mesurée)
     function liveVapKmh(sess, cur) {
       if (!sess || !cur || !timerState.sessionStarted || timerState.finished) return null;
@@ -3991,7 +4015,7 @@
       scheduleAudioSuspend();
 
       const fresh = !timerState.sessionStarted;
-      if (fresh) resetPhraseUse();
+      if (fresh) { resetPhraseUse(); radio.lastAt = 0; radio.said = 0; try { radioPrepare(); } catch (e) { } }
       timerState.stopped = false;
       timerState.sessionStarted = true;
       timerState.isRunning = true;
@@ -4180,6 +4204,7 @@
       routeNavAnnouncements();
       checkExtensionOffer(remMs);
       checkMidSessionCheckin(remMs);
+      try { radioTick(curStage, elapsedMs, remMs); } catch (e) { }
       checkKmSummary(remMs);
       try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       try { recoveryHrCheck(curStage, remMs); } catch (e) { }
@@ -4619,14 +4644,18 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
     function openHistChat(id) {
       const h = (appData.history || []).find(x => x.id === id); if (!h) return;
       const iso = histISO(h);
-      const ctx = `Séance faite le ${iso} : ${h.human || h.details || h.sessionTitle} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}.
+      let ctx = `Séance faite le ${iso} : ${h.human || h.details || h.sessionTitle} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}.
 ${h.seg && h.seg.length ? `Segments : ${segStatsTextZ(h.seg).replace(/\n/g, ' | ')}\n` : ''}${h.speedChanges && h.speedChanges.length ? speedLogText(h.speedChanges) + '\n' : ''}${h.analysis ? `Ton analyse de cette séance : ${analysisPlain(h.analysis)}` : ''}`;
+      const lk = (appData.sessions || []).find(x => x.id === h.sessionId);
+      ctx = ctx + `${h.plannedMin ? `\nDurée prévue par le plan : ${Math.round(h.plannedMin)} min (réalisé ${Math.round(+h.durationMin || 0)} min).` : ''}${lk ? `\nSéance prévue : ${describeSessionHuman(lk)}.` : ''}${trackSlicesText(h.track) ? '\n' + trackSlicesText(h.track) : ''}\n${recentCapacityText(iso)}`;
       openCtxChat(`hist_${id}`, `séance faite le ${iso}`, ctx, '💬 Parlons de cette séance');
     }
     function openValChat() {
       const sess = getActiveSession(), sum = timerState.runSummary || {};
-      const ctx = `Séance qui vient d'être faite (${todayISO()}) : ${describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))} ; ${Math.round(valActualMinutes())} min${summaryText(sum) ? ` ; ${summaryText(sum)}` : ''}.
+      const ctx = `Séance qui vient d'être faite (${todayISO()}) : ${sess.free ? 'séance libre' : `séance du plan préparée par toi : ${describeSessionHuman(sess)} (prévue ${Math.round(computeSessionTotalMin(sess))} min)`} ; ${Math.round(valActualMinutes())} min${summaryText(sum) ? ` ; ${summaryText(sum)}` : ''}.
 ${timerState.runSeg && timerState.runSeg.length ? `Segments : ${segStatsTextZ(timerState.runSeg).replace(/\n/g, ' | ')}\n` : ''}${speedLogText(runData.speedLog)}
+${trackSlicesText(timerState.runTrack)}
+${recentCapacityText(todayISO())}
 ${lastAnalysis ? `Ton analyse de cette séance : ${analysisPlain(lastAnalysis)}` : ''}`;
       openCtxChat(`val_${todayISO()}_${sess.id}`, `séance du ${todayISO()}`, ctx, '💬 Parlons de cette séance');
     }
@@ -4692,6 +4721,7 @@ ${lastAnalysis ? `Ton analyse de cette séance : ${analysisPlain(lastAnalysis)}`
       const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
       const prompt = `Tu es un coach de course à pied expérimenté. ${coachToneText()}
 Tu discutes avec ton coureur d'une séance de son plan.
+${recentCapacityText()}
 ${coachMemoryText(askKey())}${convo ? `\nConversation jusqu'ici :\n${convo}` : ''}
 Nouveau message du coureur : « ${req} »
 Séance actuelle (le ${s.dateISO}, aujourd'hui : ${t}) : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}${s.cardio ? ` ; cardio cible ${cardioText(s.cardio)}` : ''}.
@@ -4704,6 +4734,8 @@ Séances autour (5 jours avant et après) :
 ${near}
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 ${COACH_METHOD}
+${recentCapacityText()}
+${COACH_RECUL}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
 Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
       try {
@@ -4747,6 +4779,8 @@ ${hist}
 Séances prévues (14 prochains jours) :
 ${upTxt}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
 ${COACH_METHOD}
+${recentCapacityText()}
+${COACH_RECUL}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds de façon concrète et personnalisée. En cas de douleur inquiétante, conseille de consulter. Si c'est utile, tu peux proposer de modifier UNE séance prévue ci-dessus (donne sa date exacte).
 Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","seance_date":"AAAA-MM-JJ de la séance à modifier, sinon vide","resume":"la modification en une phrase","nouvelle_date":"AAAA-MM-JJ si tu conseilles de la déplacer, sinon vide","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
       try {
@@ -7138,7 +7172,8 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       for (const model of models) {
         if (geminiTextBad.has(model)) continue;
         const body = { contents: [{ role: 'user', parts }] };
-        if (opts.json) body.generationConfig = { responseMimeType: 'application/json' };
+        if (opts.json && !opts.search) body.generationConfig = { responseMimeType: 'application/json' };
+        if (opts.search) body.tools = [{ google_search: {} }];
         if (opts.maxTokens) body.generationConfig = Object.assign(body.generationConfig || {}, { maxOutputTokens: opts.maxTokens });
         for (let attempt = 0; attempt < 4; attempt++) {
           let resp, json = null;
@@ -9562,8 +9597,35 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       }
       return out.length ? out.join(' ; ') : 'aucun record mesuré par l\'app (cherche un progrès dans les données si tu en vois un, sinon laisse vide)';
     }
+    // Façon de raisonner du coach (analyse et discussions) : chercher la vraie cause, savoir se remettre en question
+    const COACH_RECUL = `Raisonne comme un bon coach qui prend du recul :
+- Cherche la vraie cause avant de conclure. Commence par vérifier si la séance PRÉVUE était adaptée au coureur (durée, vitesse, enchaînement) par rapport à ce qu'il fait d'habitude (voir sa capacité récente). Si elle était trop longue ou trop dure, dis-le clairement et assume : c'est le plan (donc toi) qu'il faut corriger, pas le coureur.
+- Le cardio monte naturellement avec la durée à vitesse constante (dérive cardiaque, souvent +10 à 20 bpm sur 40 min, davantage avec la chaleur, le tapis, la fatigue, le manque de sommeil ou d'hydratation). Un écart de 0,5 km/h n'explique presque jamais à lui seul un cardio élevé. Regarde l'évolution dans le temps et les moyennes, pas seulement la FC max.
+- Ne fais pas de fixation sur une valeur isolée (un pic de FC max est souvent un artefact du capteur ou le dernier effort).
+- Si le coureur conteste ou apporte un élément nouveau, réexamine honnêtement. Reconnais quand tu t'es trompé ou que ton explication était incomplète, et ne répète pas un argument déjà donné.`;
+    // Ce que le coureur fait habituellement (6 dernières semaines) : sert à juger si une séance prévue était réaliste
+    function recentCapacityText(beforeISO) {
+      try {
+        const lim = new Date(); lim.setDate(lim.getDate() - 42); const limISO = toISODateLocal(lim);
+        const h = runHistory().filter(x => !x.cross && x._iso && x._iso >= limISO && (!beforeISO || x._iso < beforeISO) && (+x.durationMin || 0) > 3);
+        if (!h.length) return 'Capacité récente : pas de séance enregistrée ces 6 dernières semaines.';
+        const d = h.map(x => +x.durationMin || 0).sort((a, b) => a - b), med = d[Math.floor(d.length / 2)];
+        const km = h.map(x => +x.km || +x.distanceKm || 0);
+        return `Capacité récente du coureur (6 dernières semaines, ${h.length} séances) : plus longue séance ${Math.round(d[d.length - 1])} min, durée habituelle ${Math.round(med)} min${Math.max(...km) > 0 ? `, plus longue distance ${Math.max(...km).toFixed(1)} km` : ''}.`;
+      } catch (e) { return ''; }
+    }
+    // Vitesse et cardio par tranches de temps : montre la dérive cardiaque
+    function trackSlicesText(track) {
+      const rows = (track || []).filter(r => r[1]);
+      if (rows.length < 24) return '';
+      const totS = rows[rows.length - 1][0], step = totS > 90 * 60 ? 900 : totS > 45 * 60 ? 600 : 300;
+      const g = {};
+      rows.forEach(r => { const k = Math.floor(r[0] / step); (g[k] = g[k] || []).push(r); });
+      return `Évolution par tranches de ${step / 60} min : ` + Object.keys(g).map(k => { const a = g[k], v = a.filter(r => r[2]); return `${k * step / 60}-${(+k + 1) * step / 60}' : ${v.length ? (v.reduce((x, r) => x + r[2], 0) / v.length).toFixed(1) + ' km/h, ' : ''}FC ${Math.round(a.reduce((x, r) => x + r[1], 0) / a.length)}`; }).join(' | ');
+    }
     function analysisFormatPrompt() {
-      return `Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
+      return `${COACH_RECUL}
+Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
 Réponds uniquement en JSON :
 {"verdict":"bonne|correcte|difficile","titre":"le bilan en une phrase de 12 mots maximum","points":["3 points clés de 12 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller"],"action":"LA chose à faire pour la suite, 15 mots maximum","record":"le record ou progrès du jour en une phrase avec le chiffre (d'après les records calculés par l'app ou un progrès net visible dans les données), sinon vide","alerte":"signal santé ou surmenage (douleur, cardio anormal, fatigue qui s'accumule) en une phrase, sinon vide","details":[
 {"titre":"Exécution","texte":"respect de la séance et intensité (trop douce, juste, trop forte), chiffres à l'appui, 2 phrases"},
@@ -9619,7 +9681,9 @@ Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; $
 ${speedLogText(runData.speedLog)}
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
 ${zonesText()}${(() => { const ss = getActiveSession(); const c = ss.cardio ? cardioText(ss.cardio) : ''; const gt = guideHrText(ss); return c || gt ? `\nCardio cible de la séance : ${c || gt}` : ''; })()}
-${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}${trackSlicesText(timerState.runTrack) ? trackSlicesText(timerState.runTrack) + '\n' : ''}${recentCapacityText(todayISO())}
+Origine de la séance : ${sess.free ? 'séance libre lancée par le coureur' : 'séance du plan, préparée par toi (le coach)'}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg }, appData.history)}.
 Séances précédentes :
 ${hist}
@@ -9690,7 +9754,8 @@ Analyse cette séance déjà réalisée${editShots.length ? ' à partir des capt
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${speedLogText(h.speedChanges)}
 ${zonesText()}
-${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}${trackSlicesText(h.track) ? trackSlicesText(h.track) + '\n' : ''}${recentCapacityText(histISO(h))}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Records et progrès (calculés par l'app) : ${recordsText({ id: h.id, km: h.km, summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
 Autres séances récentes :
 ${others}
@@ -13112,6 +13177,79 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
 
 
     // ==================== AVANT LE DÉPART : annuler / tester le son ====================
+    // ==================== ANIMATIONS PENDANT LA SÉANCE ====================
+    let radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+    let radioDraft = null;
+    function radioCfg() { return Object.assign({ mode: 'off', topic: '', every: 5 }, appData.audioSettings.radio || {}); }
+    function radioLabel(c) { c = c || radioCfg(); return c.mode === 'news' ? `📰 Actu toutes les ${c.every} min` : c.mode === 'topic' && c.topic ? `💡 « ${c.topic.length > 22 ? c.topic.slice(0, 21) + '…' : c.topic} » / ${c.every} min` : 'aucune'; }
+    function updateRadioBtn() { const b = document.getElementById('radioBtn'); if (b) b.textContent = '🎧 Animations : ' + radioLabel(); }
+    function openRadioModal() {
+      radioDraft = radioCfg();
+      document.getElementById('radioTopic').value = radioDraft.topic || '';
+      renderRadioModal();
+      document.getElementById('radioModal').classList.remove('hidden');
+    }
+    function closeRadioModal() { document.getElementById('radioModal').classList.add('hidden'); }
+    function renderRadioModal() {
+      const d = radioDraft, btn = (on, txt, js) => `<button type="button" onclick="${js}" style="min-height:48px;border-radius:12px;font-weight:800;font-size:15px;text-align:left;padding:0 14px;${on ? 'background:#38bdf8;color:#04121f;border:none' : 'background:#1e293b;color:#e2e8f0;border:1px solid #334155'}">${txt}</button>`;
+      document.getElementById('radioModes').innerHTML = btn(d.mode === 'off', '🔇 Aucune', "radioDraft.mode='off';renderRadioModal()") + btn(d.mode === 'news', "📰 L'actualité du jour", "radioDraft.mode='news';renderRadioModal()") + btn(d.mode === 'topic', '💡 Un sujet au choix', "radioDraft.mode='topic';renderRadioModal();document.getElementById('radioTopic').focus()");
+      document.getElementById('radioTopic').style.display = d.mode === 'topic' ? '' : 'none';
+      document.getElementById('radioEvery').innerHTML = [5, 10, 15].map(m => `<button type="button" onclick="radioDraft.every=${m};renderRadioModal()" style="height:44px;border-radius:12px;font-weight:800;${d.every === m ? 'background:#38bdf8;color:#04121f;border:none' : 'background:#1e293b;color:#e2e8f0;border:1px solid #334155'}">${m} min</button>`).join('');
+    }
+    function saveRadioModal() {
+      const d = radioDraft; d.topic = document.getElementById('radioTopic').value.trim();
+      if (d.mode === 'topic' && !d.topic) { showToast('Écris un sujet'); return; }
+      if (d.mode !== 'off' && !getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
+      appData.audioSettings.radio = { mode: d.mode, topic: d.topic, every: d.every }; saveAppData();
+      closeRadioModal(); updateRadioBtn();
+      radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+      if (d.mode !== 'off') radioPrepare();
+    }
+    function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
+    async function radioPrepare() {
+      const c = radioCfg();
+      if (c.mode === 'off' || !getGeminiKey() || radio.loading) return;
+      if (radio.key === radioKey(c) && radio.items.length - radio.idx >= 2) return;
+      radio.loading = true;
+      const total = Math.max(20, (timerState.totalSessionMs || 0) / 60000 || 45);
+      const n = Math.max(3, Math.min(14, Math.ceil(total / c.every) + 1));
+      const en = appData.audioSettings.voiceLang === 'en', lang = en ? 'en anglais' : 'en français';
+      const already = radio.key === radioKey(c) ? radio.items.slice(-6).map(x => '- ' + x.slice(0, 80)).join('\n') : '';
+      const prompt = c.mode === 'news'
+        ? `Nous sommes le ${todayISO()}. Utilise la recherche Google pour trouver l'actualité du jour (France et monde, plus un peu de sport, de science ou de culture). Écris ${n} brèves radio ${lang}, une par sujet différent, chacune de 2 à 3 phrases (40 à 60 mots), claires à l'oral, ton neutre et factuel, sans chiffres compliqués, sans détails morbides. Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
+Réponds uniquement avec un tableau JSON de chaînes de caractères.`
+        : `Écris ${n} courtes chroniques radio ${lang} sur le sujet « ${c.topic} », pour accompagner un coureur pendant son footing. Chaque chronique : 2 à 4 phrases (40 à 70 mots), un fait, une anecdote ou une info différente, vivante et facile à suivre à l'oral, sans liste ni chiffres compliqués. Si le sujet porte sur l'actualité, utilise la recherche Google pour des infos récentes et exactes (nous sommes le ${todayISO()}). Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
+Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
+      try {
+        const txt = await geminiText([{ text: prompt }], { search: true, maxTokens: 4000 });
+        const a = txt.indexOf('['), b = txt.lastIndexOf(']');
+        let arr = []; try { arr = JSON.parse(txt.slice(a, b + 1)); } catch (e) { }
+        arr = (Array.isArray(arr) ? arr : []).map(x => String(x || '').replace(/\[\d+(,\s*\d+)*\]/g, '').replace(/[*_#]/g, '').trim()).filter(x => x.length > 15);
+        if (radio.key !== radioKey(c)) radio = { items: [], idx: 0, lastAt: radio.lastAt, loading: true, key: radioKey(c), said: radio.said };
+        radio.items.push(...arr);
+        radioPrefetch();
+      } catch (e) { console.warn('radio', e); }
+      finally { radio.loading = false; }
+    }
+    function radioPrefetch() {
+      if (!aiVoiceActive()) return;
+      radio.items.slice(radio.idx, radio.idx + 2).forEach(t => { const tx = radioSpoken(t), k = aiClipKey(tx); if (!aiClips.has(k)) aiFetchClip(tx, undefined, 'lo').then(cl => { if (cl) aiClips.set(k, cl); }).catch(() => { }); });
+    }
+    function radioSpoken(t) { return t; }
+    function radioTick(cur, stageElMs, remMs) {
+      const c = radioCfg();
+      if (c.mode === 'off' || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
+      const el = (timerState.totalSessionMs || 0) - (timerState.totalRemainingMs || 0);
+      if (!radio.lastAt) radio.lastAt = 1; // premier passage : on compte depuis le début
+      if (el - (radio.lastAt === 1 ? 0 : radio.lastAt) < c.every * 60000) return;
+      if (radio.idx >= radio.items.length) { if (radio.items.length - radio.idx < 2) radioPrepare(); return; }
+      if (cur.intensity === 'fast' || remMs < 50000 || stageElMs < 15000) return;
+      if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
+      const t = radioSpoken(radio.items[radio.idx++]);
+      radio.lastAt = el; radio.said++;
+      speakLive(t);
+      if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
+    }
     function cancelBeforeStart() {
       cancelPreStartCountdown();
       cancelSpeech();
