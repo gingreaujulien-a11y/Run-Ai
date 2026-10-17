@@ -411,6 +411,7 @@
           <span class="text-[13px] font-extrabold text-sky-200">📅 Date</span>
           <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
         </label>
+        <button type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
         <!-- Type de séance -->
         <div class="grid grid-cols-2 gap-2">
           <button type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
@@ -4529,6 +4530,92 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       if (s && iso) { const d = parseISODateLocal(iso); s.dateISO = iso; s.date = toDDMM(d); s.jour = weekdayName(d); modalOrigISO = iso; }
       closeMoveCheck(); if (s) moveRefresh(s);
       showToast(`📅 Séance remise au ${fmtDayLong(iso)}`);
+    }
+    // ==================== MODIFIER UNE SÉANCE : CONSEIL DU COACH (demande libre) ====================
+    let askSess = null;
+    function askSessDraft() {
+      const base = cfgSess(); if (!base) return null;
+      const copy = JSON.parse(JSON.stringify(base));
+      try { const v = readModalSessionValues(); const pyr = v.pyramide.filter(p => p.speed > 0 && p.duration > 0); if (pyr.length) applyModalToSession(copy, v, pyr); } catch (e) { }
+      return copy;
+    }
+    function askSessHead(s) {
+      return `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · ${plEsc(fmtDayLong(s.dateISO))}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km · ${s.type === 'exterieur' ? 'extérieur' : `tapis ${String(s.pente || 0).replace('.', ',')} %`}</span></div>`;
+    }
+    function openAskCoachSess() {
+      const s = askSessDraft(); if (!s) return;
+      askSess = { id: s.id, draft: s, prop: null, newDate: '' };
+      const m = document.getElementById('chkModal'), body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      m.querySelector('.pm-title').textContent = 'Conseil du coach';
+      body.innerHTML = askSessHead(s) + `<label class="pm-card"><span class="pm-cap">Ta demande</span>
+          <textarea id="askSessTxt" rows="4" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:15px" placeholder="ex. J'ai les jambes lourdes, je préfère une séance plus courte · Je n'ai que 30 min · Je veux travailler les côtes · Tapis non dispo, je cours dehors…"></textarea></label>`;
+      foot.innerHTML = `<div class="grid grid-cols-1 gap-2"><button onclick="runAskCoachSess()" class="pm-save" style="background:#a78bfa;color:#13092b">🧠 Envoyer au coach</button>
+        <button onclick="closeAskSess()" class="pm-btn" style="height:48px">Annuler</button></div>`;
+      m.classList.remove('hidden');
+      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
+    }
+    function closeAskSess() { document.getElementById('chkModal').classList.add('hidden'); askSess = null; }
+    async function runAskCoachSess() {
+      if (!askSess) return;
+      const req = String((document.getElementById('askSessTxt') || {}).value || '').trim();
+      if (!req) { showToast('Explique ta demande au coach'); return; }
+      const s = askSess.draft, body = document.getElementById('chkBody'), foot = document.getElementById('chkFoot');
+      const head = askSessHead(s) + `<div class="pm-card text-[13px] text-slate-300"><b class="text-purple-300">Ta demande :</b> ${plEsc(req)}</div>`;
+      if (!getGeminiKey()) { body.innerHTML = head + `<div class="pm-card text-[14px] text-slate-300">Sans clé Gemini, pas d'avis du coach.</div>`; foot.innerHTML = `<button onclick="closeAskSess()" class="pm-save">OK</button>`; return; }
+      body.innerHTML = head + `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach étudie ta demande…</div></div>`;
+      foot.innerHTML = '';
+      const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
+      const d0 = parseISODateLocal(s.dateISO) || new Date(), lo = new Date(d0), hi = new Date(d0); lo.setDate(lo.getDate() - 5); hi.setDate(hi.getDate() + 5);
+      const loI = toISODateLocal(lo), hiI = toISODateLocal(hi);
+      const near = appData.sessions.filter(x => x.id !== s.id && x.dateISO && x.dateISO >= loI && x.dateISO <= hiI).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}${isSessionDone(x) ? ' (faite)' : ''}`).join('\n') || '- aucune';
+      const hist = runHistory().slice(0, 6).map(h => `- ${h._iso || h.date} : ${h.human || h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ressenti ${h.feeling}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- aucune';
+      const feel = curDayFeel ? (() => { try { const f = curDayFeel(); return f ? feelSummary(f) : ''; } catch (e) { return ''; } })() : '';
+      const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
+      const prompt = `Tu es un coach de course à pied expérimenté. ${coachToneText()}
+Le coureur te pose une question sur une séance de son plan. Sa demande : « ${req} »
+Séance (le ${s.dateISO}, aujourd'hui : ${t}) : ${describeSessionHuman(s)} ; ${Math.round(computeSessionTotalMin(s))} min ; ${s.type === 'exterieur' ? 'extérieur' : `tapis pente ${s.pente} %`}${s.notes ? ` ; objectif : ${s.notes}` : ''}${s.cardio ? ` ; cardio cible ${cardioText(s.cardio)}` : ''}.
+Détail JSON : {"type":"${s.type}","chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"vitRecupBloc":${s.vitRecupBloc || 6},"pente":${s.pente},"segments":[${segs}]}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} km/h ; niveau : ${runnerLevelsText()}.${feel ? `\nSensations du jour : ${feel}.` : ''}
+${planPrefsText()}
+Séances récentes :
+${hist}
+Séances autour (5 jours avant et après) :
+${near}
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${COACH_METHOD}
+Réponds à sa demande de façon concrète. Si une modification de la séance est utile, propose-la complète.
+Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"3 à 4 phrases courtes en tutoyant, qui répondent à la demande","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        if (!askSess) return;
+        const mod = String(j.verdict || '').toLowerCase().startsWith('modif') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
+        const nd = /^\d{4}-\d{2}-\d{2}$/.test(j.nouvelle_date || '') && j.nouvelle_date >= t && j.nouvelle_date !== s.dateISO ? j.nouvelle_date : '';
+        if (mod) { askSess.prop = proposalToSession(s, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') askSess.prop.type = j.seance.type; if (askSess.prop.type === 'tapis' && s.type === 'exterieur') askSess.prop.pente = Math.max(0, parseFloat(j.seance.pente) || 1); const c = parseCardio(j.cardio); if (c) askSess.prop.cardio = c; }
+        askSess.newDate = nd;
+        const V = mod || nd ? ['✏️ Proposition du coach', '#fbbf24'] : ['✅ Avis du coach', '#34d399'];
+        const after = (mod ? `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, askSess.prop, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(askSess.prop))} min${askSess.prop.type !== s.type ? ` · ${askSess.prop.type === 'exterieur' ? 'extérieur' : 'tapis'}` : ''})</span>${j.resume ? `<span class="text-[12px] text-slate-400">${plEsc(j.resume)}</span>` : ''}` : '')
+          + (nd ? `<span class="text-[13px] font-bold text-sky-200">📅 Nouveau jour conseillé : ${plEsc(fmtDayLong(nd))}</span>` : '');
+        body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
+        foot.innerHTML = `<div class="grid grid-cols-1 gap-2">${mod || nd ? `<button onclick="applyAskSess()" class="pm-save" style="background:#fbbf24;color:#1a1204">✅ Accepter la proposition</button>` : ''}
+          <button onclick="openAskCoachSess()" class="pm-btn" style="height:48px;border-color:rgba(167,139,250,.55);color:#ddd6fe;font-weight:800">💬 Nouvelle demande</button>
+          <button onclick="closeAskSess()" class="pm-btn" style="height:48px">${mod || nd ? 'Garder ma séance telle quelle' : 'OK'}</button></div>`;
+      } catch (e) {
+        body.innerHTML = head + `<div class="pm-card text-rose-400">Avis impossible : ${plEsc(e.message || e)}</div>`;
+        foot.innerHTML = `<button onclick="closeAskSess()" class="pm-save">OK</button>`;
+      }
+    }
+    function applyAskSess() {
+      if (!askSess) return;
+      const s = appData.sessions.find(x => x.id === askSess.id); if (!s) return closeAskSess();
+      if (askSess.prop) {
+        if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
+        ['type', 'chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio'].forEach(k => { if (askSess.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(askSess.prop[k])); });
+        if (s.type === 'exterieur') s.pente = 0;
+        s.adapted = { at: todayISO(), resume: 'Modifiée avec le coach' };
+      }
+      if (askSess.newDate) { const d = parseISODateLocal(askSess.newDate); s.dateISO = askSess.newDate; s.date = toDDMM(d); s.jour = weekdayName(d); modalOrigISO = askSess.newDate; }
+      closeAskSess(); moveRefresh(s);
+      showSavedBig('Séance mise à jour');
     }
     function doCopy(useMod) {
       if (!copyCheck) return;
@@ -10883,9 +10970,9 @@ ${analysisFormatPrompt()}`;
       const recordedT = feelMode !== 'add' && sess.dayFeel && sess.dayFeel.at === todayISO();
       document.getElementById('feelTitle').innerHTML = '🙂 Mes sensations du jour'
         + (recordedT ? ' <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black align-middle">✓</span>' : '');
-      document.getElementById('feelAskBtn').textContent = feelMode === 'add' ? "🧠 Le coach décide" : "🧠 Avis du coach";
-      document.getElementById('feelSaveBtn').classList.add('hidden'); // seulement « Avis du coach »
-      document.getElementById('feelAskBtn').classList.add('col-span-2');
+      // Seulement « Enregistrer » : l'avis du coach est donné ailleurs (suggestions, séance du jour)
+      document.getElementById('feelAskBtn').classList.add('hidden');
+      { const sb = document.getElementById('feelSaveBtn'); sb.classList.remove('hidden'); sb.classList.add('col-span-2'); sb.textContent = '💾 Enregistrer'; sb.style.cssText = 'background:#34d399;color:#04140d;border:none;font-size:15px;font-weight:900;padding:.8rem 0'; }
       renderFeelChips();
       const body = document.getElementById('feelBody');
       const sum = document.getElementById('feelSummaryRow');
