@@ -4614,7 +4614,6 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       document.getElementById('chkModal').querySelector('.pm-title').textContent = 'Conseil du coach';
       renderAskSess();
       document.getElementById('chkModal').classList.remove('hidden');
-      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
     }
     function openCtxChat(key, label, ctxText, title) {
       const saved = (appData.coachChats || {})[key];
@@ -4622,7 +4621,6 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       document.getElementById('chkModal').querySelector('.pm-title').textContent = title || '💬 Ton coach';
       renderAskSess();
       document.getElementById('chkModal').classList.remove('hidden');
-      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
     }
     function analysisPlain(raw) {
       try { const j = typeof raw === 'string' ? JSON.parse(raw) : raw; if (j && typeof j === 'object') return [j.titre, j.resume, ...(Array.isArray(j.points) ? j.points : []), j.alerte, j.action].filter(Boolean).map(String).join(' ').slice(0, 1500); } catch (e) { }
@@ -4651,7 +4649,6 @@ ${lastAnalysis ? `Ton analyse de cette séance : ${analysisPlain(lastAnalysis)}`
       document.getElementById('chkModal').querySelector('.pm-title').textContent = '💬 Ton coach';
       renderAskSess();
       document.getElementById('chkModal').classList.remove('hidden');
-      setTimeout(() => { const t = document.getElementById('askSessTxt'); if (t) t.focus(); }, 100);
     }
     function renderAskSess() {
       if (!askSess) return;
@@ -5750,13 +5747,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`)}
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
-          <div style="color:#cbd5e1"><b style="color:#7dd3fc">Programme :</b> ${plEsc(stripWarmCool(item.details))}</div>
-          ${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}
-          ${item.cross ? '' : (() => { try { const hh = appData.history[item.rawIdx] || {}; return recapHtml({ track: item.track, seg: item.seg, pente: hh.type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0), kind: k, week: wn, title, dateTxt: dTxt, feeling: item.feeling, recs, analysis: item.analysis, km: item.km, plannedMin: hh.plannedMin, plannedKm: item.linked && !item.linked.free ? computeSessionDistanceKm(item.linked) : 0 }); } catch (e) { console.warn('recap', e); return ''; } })()}
-          ${item.cross ? '' : runDataBlockHtml(item.track, item.seg, { pente: (appData.history[item.rawIdx] || {}).type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0) })}
-          ${item.analysis ? `<div class="leading-relaxed p-2.5 rounded-xl" style="background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>` : ''}
-          ${item.cross ? '' : `<button onclick="openHistChat('${item.id}')" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:#8b5cf6;color:#fff">💬 Discuter de cette séance avec le coach</button>`}
-          ${item.cross ? '' : `<button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" class="py-2.5 rounded-xl font-extrabold text-[12px]" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd">🧠 ${item.analysis ? "Refaire l'analyse" : 'Analyse IA'}</button>`}
+          ${item.cross ? `${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}` : histRecapHtml(item, k, recs)}
         </div>
       </div>`;
     }
@@ -10766,6 +10757,93 @@ ${analysisFormatPrompt()}`;
         <div data-rv="A" style="${cur === 'A' ? '' : 'display:none'}">${vA}</div>
         <div data-rv="B" style="${cur === 'B' ? '' : 'display:none'}">${vB}</div>
         <div data-rv="C" style="${cur === 'C' ? '' : 'display:none'}">${vC}</div></div>`;
+    }
+    // ==================== PLANNING : RÉSULTATS D'UNE SÉANCE FAITE (Coach / Segments / Graphique) ====================
+    function histRecapHtml(item, kind, recs) {
+      const hh = appData.history[item.rawIdx] || {};
+      const pente = hh.type === 'exterieur' ? 0 : (parseFloat(item.pente) || 0);
+      const feel = { green: ['😀 Bien', '#6ee7b7'], yellow: ['😐 Moyen', '#fcd34d'], red: ['😣 Dur', '#fda4af'] }[item.feeling] || null;
+      const card = 'border-radius:14px;background:#0f172a;border:1px solid #1e293b';
+      const f1 = v => v == null || !isFinite(v) || !v ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+      const top = `<div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800"><span style="color:#94a3b8;font-weight:700">Ressenti</span><span style="color:${feel ? feel[1] : '#94a3b8'}">${feel ? feel[0] : 'non renseigné'}</span></div>
+          ${item.note ? `<div style="font-size:14px;line-height:1.4;color:#e2e8f0;padding:9px 12px;${card}"><span style="font-size:11px;font-weight:800;color:#fbbf24;letter-spacing:.5px">📝 MA NOTE</span><br>${plEsc(item.note)}</div>` : ''}</div>`;
+      const P = item.track && item.track.length ? rcPrep(item.track, item.seg, { pente }) : null;
+      let stats = '', zonesB = '', segTab = '', graphTab = '';
+      if (P && P.rows.length >= 6) {
+        const R = P.rows, L = R.length - 1, W = rcStats(P, 0, L);
+        const km = item.km > 0 ? item.km : W.km, kmh = km > 0 ? km / (W.sec / 3600) : W.kmh;
+        const showVap = P.hasEle || pente > 0;
+        // Groupes de la séance : rapides / récup / échauffement
+        const G = rcGroups(P, 'seg').map(g => Object.assign(g, rcStats(P, g.a, g.b)));
+        const isWarm = g => /chauff|calme/i.test(g.label || '');
+        const tg = G.filter(g => g.target && !isWarm(g) && !/r[ée]cup/i.test(g.label || '')).map(g => g.target);
+        const tMax = tg.length ? Math.max(...tg) : 0, tMin = tg.length ? Math.min(...tg) : 0, varied = tMax - tMin >= 0.5;
+        const isRec = g => !isWarm(g) && (/r[ée]cup/i.test(g.label || '') || (varied && g.target && g.target < (tMax + tMin) / 2));
+        const isFast = g => !isWarm(g) && !isRec(g) && g.target > 0;
+        const reps = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
+        const vOf = g => P.hasEle ? g.vap : g.kmh;
+        const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && d <= 0.6; };
+        const score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
+        const col = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
+        const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
+        const tile = (l, v, c, hl) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px;${hl ? 'border-radius:14px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5)' : card}"><span style="font-size:22px;font-weight:800;line-height:1;color:${c}">${v}</span><span style="font-size:11px;font-weight:700;color:${hl ? '#c4b5fd' : '#94a3b8'};white-space:nowrap">${l}</span></div>`;
+        stats = `<div style="display:flex;align-items:center;gap:8px">${ring}${tile('Vitesse moy.', f1(kmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(W.vap), '#ddd6fe', true) : ''}${tile('Cardio moy.', W.hr || '–', '#fda4af')}</div>`;
+        const hrRows = R.filter(r => r.hr);
+        if (P.fc && hrRows.length > 10) {
+          const zones = RC_HR_Z.map(z => ({ n: z[2], c: z[1], s: 0 }));
+          hrRows.forEach(r => { const k2 = RC_HR_Z.findIndex(z => bpmToPct(r.hr) < z[0]); zones[k2 < 0 ? 4 : k2].s += 5; });
+          const tot = zones.reduce((a, z) => a + z.s, 0) || 1;
+          zonesB = `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;${card}"><span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">Temps par zone cardio</span>
+            <div style="display:flex;height:16px;border-radius:8px;overflow:hidden">${zones.map(z => z.s ? `<div style="width:${z.s / tot * 100}%;background:${z.c}"></div>` : '').join('')}</div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700;text-align:center">${zones.map(z => `<span style="color:${z.c}">${z.n}<br>${Math.round(z.s / 60)}'</span>`).join('')}</div></div>`;
+        }
+        // Onglet segments : tableau avec filtre
+        const mm = sec => `${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`;
+        const dist = k2 => k2 < 1 ? Math.round(k2 * 100) * 10 + ' m' : k2.toFixed(1).replace('.', ',') + ' km';
+        const row = (n, st, cls, tgt) => `<tr data-hsf="${cls}" style="border-top:1px solid #1e293b"><td style="padding:7px 4px 7px 0;color:#e2e8f0;font-weight:700">${plEsc(n)}</td><td style="text-align:right;color:#94a3b8">${mm(st.sec)}</td><td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}<td style="text-align:right;color:#fda4af">${st.hr || '–'}</td></tr>`;
+        let nF = 0, nR = 0;
+        const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f'; const lab = c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, c, c === 'f' ? g.target : 0); }).join('');
+        const kmRows = rcGroups(P, 'km').map(g => { const st = rcStats(P, g.a, g.b); return row(st.km < 0.95 ? `${g.label} (${dist(st.km)})` : g.label, st, 'k', 0); }).join('');
+        const uid = 'hs' + Math.random().toString(36).slice(2, 8);
+        const flt = [['all', 'Tous'], ['f', 'Rapides'], ['r', 'Récup'], ['k', 'Km']].filter(([f]) => f === 'all' || f === 'k' || (f === 'f' ? G.some(g => !isWarm(g) && !isRec(g)) : G.some(isRec)));
+        segTab = `<div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:grid;grid-template-columns:repeat(${flt.length},minmax(0,1fr));gap:4px">${flt.map(([f, l], i) => `<button type="button" data-hsb="${uid}" data-f="${f}" onclick="histSegFilter('${uid}','${f}')" style="min-height:38px;border-radius:10px;font-size:13px;font-weight:800;${i ? 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b' : 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8'}">${l}</button>`).join('')}</div>
+          <div style="max-height:360px;overflow-y:auto;${card};padding:4px 10px"><table id="${uid}" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Segment</th><th style="text-align:right">Durée</th><th style="text-align:right">km/h</th>${showVap ? '<th style="text-align:right">VAP</th>' : ''}<th style="text-align:right">FC</th></tr></thead><tbody>${segRows}${kmRows.replace(/<tr /g, '<tr style="display:none" ').replace(/style="display:none" data-hsf="k" style="/g, 'data-hsf="k" style="display:none;')}</tbody></table></div></div>`;
+        graphTab = resultChartsHtml(item.track, item.seg, { pente });
+      }
+      const recLine = recs && recs.length ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5)"><span style="font-size:20px">🏆</span><span style="font-size:13px;font-weight:700;color:#fde68a">Record : ${plEsc(recs.join(', '))}</span></div>` : '';
+      // Onglet coach : analyse détaillée + discussion + relancer
+      let coachTab = '';
+      if (item.analysis) {
+        let j = null; try { j = JSON.parse(item.analysis); } catch (e) { }
+        const icons = { 'Exécution': '🎯', 'Forme et progression': '📈', 'Objectif': '🏁', 'Récupération': '🛌', 'Plan': '🛠️' };
+        coachTab = j && typeof j === 'object'
+          ? `<div style="padding:12px;border-radius:14px;background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35)">${analysisHtml(JSON.stringify(Object.assign({}, j, { details: [] })))}</div>`
+            + (j.details || []).filter(d => d && d.texte).map(d => `<div style="display:flex;flex-direction:column;gap:4px;padding:12px;${card}"><span style="font-size:14px;font-weight:800;color:#d8b4fe">${icons[d.titre] || '•'} ${plEsc(d.titre)}</span><span style="font-size:14px;line-height:1.5;color:#e2e8f0">${plEsc(d.texte)}</span></div>`).join('')
+          : `<div style="padding:12px;border-radius:14px;background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>`;
+      } else coachTab = `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas encore d'analyse du coach pour cette séance.</div>`;
+      coachTab += `<button onclick="openHistChat('${item.id}')" style="min-height:46px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>
+        <button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" style="min-height:44px;border-radius:12px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd;font-weight:800;font-size:14px">🧠 ${item.analysis ? "Relancer l'analyse" : 'Analyse du coach'}</button>`;
+      const tabs = [['coach', '🧠 Coach', coachTab], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab]].filter(t => t[2]);
+      const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : 'coach';
+      const tid = 'ht' + Math.random().toString(36).slice(2, 8);
+      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${top}${stats}${zonesB}${recLine}
+        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:13px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
+    }
+    function setHistTab(tid, k) {
+      appData.histTab = k; saveAppData();
+      document.querySelectorAll('[data-htab]').forEach(box => {
+        if (!box.querySelector(`[data-htp="${k}"]`)) return;
+        box.querySelectorAll('[data-htp]').forEach(d => { d.style.display = d.dataset.htp === k ? 'flex' : 'none'; });
+        box.querySelectorAll('[data-httab]').forEach(b => { const on = b.dataset.httab === k; b.style.background = on ? '#a78bfa' : 'transparent'; b.style.color = on ? '#13092b' : '#94a3b8'; });
+      });
+    }
+    function histSegFilter(uid, f) {
+      const t = document.getElementById(uid); if (!t) return;
+      t.querySelectorAll('tr[data-hsf]').forEach(r => { const c = r.dataset.hsf; r.style.display = f === 'all' ? (c === 'k' ? 'none' : '') : (c === f ? '' : 'none'); });
+      document.querySelectorAll(`[data-hsb="${uid}"]`).forEach(b => { const on = b.dataset.f === f; b.style.background = on ? '#38bdf8' : '#0f172a'; b.style.color = on ? '#04121f' : '#94a3b8'; b.style.borderColor = on ? '#38bdf8' : '#1e293b'; });
     }
     function setRecapView(uid, k) {
       appData.recapView = k; saveAppData();
