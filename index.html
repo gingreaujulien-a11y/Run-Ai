@@ -906,7 +906,8 @@
   <div id="routeModal" class="pm hidden" style="--acc:#34d399;z-index:95">
     <div class="pm-wrap" style="max-width:none">
       <div class="flex items-center justify-between gap-2" style="padding:12px 14px 8px">
-        <div class="flex flex-col min-w-0"><span class="text-[20px] font-extrabold">🗺️ Mon parcours</span><div id="reStats" class="flex gap-3 text-[14px] font-extrabold text-emerald-300"></div></div>
+        <div class="flex flex-col min-w-0"><span class="text-[20px] font-extrabold">🗺️ Mon parcours</span><div id="reStats" class="flex gap-3 text-[14px] font-extrabold text-emerald-300"></div>
+          <div class="flex items-center gap-2 mt-1 text-[13px] font-bold text-slate-300">Ma vitesse <input id="reSpeed" type="number" step="0.5" min="4" max="25" inputmode="decimal" oninput="reRenderBar()" class="pm-in c" style="width:76px;height:34px;font-size:14px"> km/h <span id="reEta" class="text-purple-300"></span></div></div>
         <div class="flex items-center gap-2">
           <label class="flex flex-col items-center gap-1 text-[10px] text-slate-300 font-bold">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
           <button onclick="closeRouteEditor()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
@@ -1634,6 +1635,7 @@
       });
       try { (appData.sessions || []).forEach(x => { if (x && x.kind === 'endu') x.kind = 'longue'; }); (appData.history || []).forEach(x => { if (x && x.kind === 'endu') x.kind = 'longue'; }); } catch (e) { }
       try { (appData.sessions || []).forEach(longRunIncludeWarmCool); } catch (e) { }
+      try { (appData.sessions || []).forEach(longRunNoWarm); } catch (e) { }
     }
     function isLongRunSess(s) {
       if (!s || s.free || s.kind === 'test' || s.kind === 'course') return false;
@@ -1642,6 +1644,15 @@
       return s.kind === 'longue' || (!s.kind && sessionKind(s).label === 'SORTIE LONGUE');
     }
     // Plan importé / proposé par le coach : la durée d'une sortie longue comprend l'échauffement et le retour au calme
+    // Sortie longue : ni échauffement ni retour au calme, toute la durée est courue à l'allure facile
+    function longRunNoWarm(s) {
+      if (!s || !isLongRunSess(s) || isSessionDone(s) || (s.dateISO && s.dateISO < todayISO())) return;
+      const wc = (+s.chauffe || 0) + (+s.recup || 0); if (!wc) return;
+      if (!s.wcIn) longRunIncludeWarmCool(s);
+      const p = (s.pyramide || []).find(x => x.speed > 0);
+      if (p) { if (p.unit === 'km') { p.distance = Math.round((p.distance + wc / 60 * runnerEF()) * 10) / 10; p.duration = p.distance / p.speed * 60; } else p.duration = Math.round((+p.duration + wc) * 100) / 100; }
+      s.chauffe = 0; s.recup = 0; s.wcIn = true;
+    }
     function longRunIncludeWarmCool(s) {
       if (s.wcIn || !isLongRunSess(s) || isSessionDone(s) || (s.dateISO && s.dateISO < todayISO())) return;
       const wc = (+s.chauffe || 0) + (+s.recup || 0);
@@ -1780,7 +1791,7 @@
     }
 
     function saveAppData() {
-      try { (appData.sessions || []).forEach(x => { if (!x.wcIn && isLongRunSess(x)) longRunIncludeWarmCool(x); }); } catch (e) { }
+      try { (appData.sessions || []).forEach(x => { if (!x.wcIn && isLongRunSess(x)) longRunIncludeWarmCool(x); if (isLongRunSess(x) && ((+x.chauffe || 0) + (+x.recup || 0)) > 0) longRunNoWarm(x); }); } catch (e) { }
       try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); } catch (e) {}
     }
 
@@ -1904,7 +1915,7 @@
       return false;
     }
     function buildCurrentSessionStages() {
-      if (!window.__buildOverride && !timerState.sessionStarted) try { const a = getActiveSession(); if (a && !a.wcIn && isLongRunSess(a)) { longRunIncludeWarmCool(a); saveAppData(); } } catch (e) { }
+      if (!window.__buildOverride && !timerState.sessionStarted) try { const a = getActiveSession(); if (a && isLongRunSess(a) && (!a.wcIn || (+a.chauffe || 0) + (+a.recup || 0) > 0)) { longRunIncludeWarmCool(a); longRunNoWarm(a); saveAppData(); } } catch (e) { }
       const sess = routeRunSess(window.__buildOverride || getActiveSession());
       const stages = [];
 
@@ -4393,6 +4404,7 @@
     function kindPyramid(v) {
       const k = cfgKind;
       if (KIND_CONT.includes(k)) {
+        if (k === 'longue') { v.chauffe = 0; v.recup = 0; }
         const T = parseFloat(document.getElementById('cfgSimpleDur').value) || 0;
         const sp = parseFloat(String(document.getElementById('cfgSimpleSpeed').value).replace(',', '.')) || runnerEF();
         v.repet = 1; v.nbBlocs = 1; v.recupBloc = 0;
@@ -4426,7 +4438,8 @@
         const durEl = document.getElementById('cfgSimpleDur');
         if (ri) { durEl.value = Math.round(ri); durEl.readOnly = true; durEl.style.opacity = .6; }
         else { durEl.readOnly = false; durEl.style.opacity = 1; }
-        h.textContent = ri ? `⏱ Durée estimée par le coach d'après le parcours, dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme.`
+        if (cfgKind === 'longue') h.textContent = ri ? "⏱ Durée estimée par le coach d'après le parcours. Pas d'échauffement ni de retour au calme : pars tranquille." : "Pas d'échauffement ni de retour au calme : toute la sortie à l'allure facile, pars tranquille.";
+        else h.textContent = ri ? `⏱ Durée estimée par le coach d'après le parcours, dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme.`
           : `Dont ${v.chauffe}' d'échauffement et ${v.recup}' de retour au calme (réglables dans ton profil).`;
       }
       const th = document.getElementById('cfgTestHint');
@@ -5274,12 +5287,14 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
         speedChanges: (runData.speedLog || []).slice(0, 60),
         human: sess.free ? '' : capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))),
         vmaTest: timerState.finished ? (vmaTestResult(sess, runData.track, timerState.stages) || undefined) : undefined,
+        routeName: sess.route ? sess.route.name : undefined, routeId: sess.route ? (sess.route.myId || undefined) : undefined,
         analysis: lastAnalysis || '',
         hrShot: hrShotFrom(lastAnalysis) || undefined
       };
 
       if (newEntry.vmaTest) { runnerProfile().vmaTest = { v: newEntry.vmaTest, at: todayISO(), proto: (sess.test || {}).proto }; showToast(`🧪 VMA mesurée : ${formatSpeed(newEntry.vmaTest).replace('.', ',')} km/h`); }
       appData.history.unshift(newEntry);
+      if (!newEntry.hrShot && valShots && valShots.length) attachHrShot(newEntry, valShots.slice());
       if (!sess.free || sess.plannedFree) sess.doneHistId = newEntry.id; // la séance prévue est faite
       try { const lr = timerState.finished && routeLearnFromGps(sess); if (lr) setTimeout(() => showToast(`🗺️ Profil du parcours corrigé avec ton GPS (D+ ${lr.gain} m)`), 2800); } catch (e) { console.warn('route gps', e); }
       saveAppData();
@@ -6015,7 +6030,9 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       h.durationMin = parseFloat(document.getElementById('editHistDuration').value) || h.durationMin;
       h.note = document.getElementById('editHistNote').value.trim();
       h.feeling = selectedEditFeelingVal;
-      if (editAnalysisPending) { h.analysis = editAnalysisPending; const hs = hrShotFrom(editAnalysisPending); if (hs) h.hrShot = hs; }
+      let gotHs = false;
+      if (editAnalysisPending) { h.analysis = editAnalysisPending; const hs = hrShotFrom(editAnalysisPending); if (hs) { h.hrShot = hs; gotHs = true; } }
+      if (!gotHs && editShots && editShots.length) attachHrShot(h, editShots.slice());
 
       saveAppData();
       updateHistoryTable();
@@ -8136,6 +8153,9 @@ Réponds uniquement avec le JSON.`;
     // Vitesse ajustée à la pente (coût énergétique de Minetti)
     function minettiCost(g) {
       g = Math.max(-0.45, Math.min(0.45, g));
+      // En descente, le coureur ne profite pas de toute l'économie théorique (freinage, impacts) :
+      // ~7 % plus facile à −5 %, ~11 % au mieux vers −12 %, puis de nouveau plus dur au-delà de −20 %
+      if (g < 0) return 3.6 * (1 + 1.833 * g + 7.64 * g * g);
       return 155.4 * g ** 5 - 30.4 * g ** 4 - 43.3 * g ** 3 + 46.3 * g ** 2 + 19.5 * g + 3.6;
     }
     // Sur tapis, 1 % de pente compense l'absence de résistance de l'air : 1 % tapis ≈ plat en extérieur
@@ -8436,6 +8456,7 @@ Réponds uniquement avec le JSON.`;
             route.myId = `rt_${Date.now()}`;
             appData.myRoutes.unshift({ id: route.myId, name: route.name, km: route.totalKm, gain: route.gainM, at: todayISO(), wps: null,
               segs: [route.pts.map(p => [p[0], p[1]])], eles: route.hasEle ? route.pts.map(p => [p[2], p[3]]) : null });
+            routeAvgGrade(appData.myRoutes[0]);
             saveAppData(); renderMyRoutes();
           } catch (e) {}
           setGpxStatus(`✓ Parcours chargé : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m, ${route.turns.length} virages — enregistrez la séance`);
@@ -8581,6 +8602,17 @@ Réponds uniquement avec le JSON.`;
       return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
     }
     // Estimation immédiate (sans coach) : 100 m de D+ ≈ 1 km de plat, à l'allure d'endurance
+    // Temps pour courir un parcours à une vitesse « sur le plat » donnée : plus lent en montée, plus rapide en descente (même effort)
+    function routeTimeAt(r, kmh) {
+      const km = +r.km || +r.totalKm || 0; if (!(kmh > 0) || !km) return 0;
+      const e = Array.isArray(r.eles) && r.eles.length > 1 ? r.eles : null;
+      if (!e) return km / kmh * 60;
+      let min = 0;
+      for (let i = 1; i < e.length; i++) { const d = Math.max(0, e[i][0] - e[i - 1][0]); if (!d) continue; const g = Math.max(-25, Math.min(25, (e[i][1] - e[i - 1][1]) / (d * 1000) * 100)); min += d / Math.max(3, speedOnGrade(kmh, g)) * 60; }
+      const cov = e[e.length - 1][0] - e[0][0];
+      if (cov < km) min += (km - cov) / kmh * 60;
+      return min;
+    }
     function routeLocalEstimate(km, gain) {
       const ef = runnerEF() || 9;
       return (km + (gain || 0) / 100) / ef * 60;
@@ -9301,6 +9333,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const sel = document.getElementById('reLoopKm');
       if (sel && !sel.options.length) for (let k = 2; k <= 30; k++) sel.add(new Option(`${k} km`, k, false, k === 8));
       document.getElementById('reName').value = saved ? saved.name : '';
+      document.getElementById('reSpeed').value = saved && saved.speed ? saved.speed : formatSpeed(runnerEF());
       reStatus(saved ? `Modification de « ${saved.name} »` : 'Touche la carte pour poser le départ, puis les points de passage');
       reRenderBar();
     }
@@ -9423,6 +9456,8 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const c = reCoords(), km = reLenKm(c);
       document.getElementById('reStats').innerHTML = `<span>${km.toFixed(2).replace('.', ',')} km</span><span>D+ ${re.eles ? Math.round(reGain(re.eles)) + ' m' : '…'}</span>${km > 0.2 ? `<span style="color:#c4b5fd">⏱ ≈ ${fmtHM(routeLocalEstimate(km, re.eles ? reGain(re.eles) : 0))}</span>` : ''}${re.busy ? '<span style="color:#fbbf24">calcul…</span>' : ''}`;
       document.getElementById('reProfile').innerHTML = reProfileSvg(re.eles);
+      { const sp = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')), et = document.getElementById('reEta');
+        if (et) et.textContent = sp > 3 && km > 0.2 ? `⏱ temps prévu ${fmtHM(routeTimeAt({ km, eles: re.eles }, sp))}${re.eles ? ' (pente comprise)' : ''}` : ''; }
       const f = document.getElementById('reFollow'); if (f) f.checked = re.follow;
     }
     async function reUndo() { if (!re || re.busy) return; re.wps.pop(); re.segs.splice(Math.max(0, re.wps.length - 1)); reRedraw(); }
@@ -9495,8 +9530,10 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         id: re.editId || `rt_${Date.now()}`, name, km: route.totalKm, gain: route.gainM, at: todayISO(),
         wps: re.wps.map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6)]),
         segs: re.segs.map(sg => sg.filter((_, k) => k % step === 0 || k === sg.length - 1).map(p => [+p[0].toFixed(5), +p[1].toFixed(5)])),
-        eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null
+        eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null,
+        speed: (() => { const v = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')); return v > 3 ? Math.round(v * 10) / 10 : undefined; })()
       };
+      item.grade = undefined; routeAvgGrade(item);
       const k = appData.myRoutes.findIndex(r => r.id === item.id);
       const prevRv = k >= 0 ? appData.myRoutes[k].review : null;
       if (prevRv && Math.abs((appData.myRoutes[k].km || 0) - item.km) < 0.05 && Math.abs((appData.myRoutes[k].gain || 0) - item.gain) < 5) item.review = prevRv;
@@ -9532,24 +9569,44 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       if (modalRoute && modalRoute.myId === id) { modalRoute = null; renderRouteInfo(); }
       saveAppData(); renderMyRoutes();
     }
+    // Pente moyenne d'un parcours : D+ ÷ distance (la descente n'aide pas vraiment par rapport au plat)
+    function routeAvgGrade(r) {
+      if (!r) return 0;
+      if (typeof r.grade === 'number' && r.gradeV === 2) return r.grade;
+      r.gradeV = 2;
+      let g = 0, l = 0;
+      if (Array.isArray(r.eles) && r.eles.length > 1) { for (let i = 1; i < r.eles.length; i++) { const d = r.eles[i][1] - r.eles[i - 1][1]; if (d > 0) g += d; else l -= d; } }
+      else g = l = +r.gain || 0;
+      const km = +r.km || +r.totalKm || 0;
+      void l; r.grade = km > 0 ? Math.round(g / (km * 1000) * 1000) / 10 : 0;
+      return r.grade;
+    }
+    const RT_CLASSES = [['all', 'Tous', () => true], ['flat', 'Plat < 0,8 %', g => g < 0.8], ['hilly', 'Vallonné 0,8–2 %', g => g >= 0.8 && g < 2], ['steep', 'Accidenté ≥ 2 %', g => g >= 2]];
+    let rtFilter = 'all', rtShowAll = false;
     function renderMyRoutes() {
       const box = document.getElementById('myRoutesList');
       if (!box) return;
       const info = document.getElementById('routeInfo'), home = document.getElementById('routeInfoHome');
       if (info && home && info.parentNode !== home) home.appendChild(info);
-      const L0 = appData.myRoutes || [];
+      const all = appData.myRoutes || [];
       const selId = modalRoute && modalRoute.myId;
-      box.innerHTML = L0.length ? L0.map(r => {
+      const flt = (RT_CLASSES.find(c => c[0] === rtFilter) || RT_CLASSES[0])[2];
+      const filtered = all.filter(r => r.id === selId || flt(routeAvgGrade(r)));
+      const sorted = filtered.slice().sort((a, b) => (b.id === selId) - (a.id === selId));
+      const L0 = rtShowAll ? sorted : sorted.slice(0, 3);
+      const chips = all.length > 1 ? `<div class="flex flex-wrap gap-1.5 mb-1">${RT_CLASSES.map(([k, l, f]) => { const n = k === 'all' ? all.length : all.filter(r => f(routeAvgGrade(r))).length; return `<button type="button" onclick="rtFilter='${k}';rtShowAll=false;renderMyRoutes()" class="px-2.5 rounded-full text-[11px] font-bold" style="min-height:30px;${rtFilter === k ? 'background:#34d399;color:#03140d;border:1px solid #34d399' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l} · ${n}</button>`; }).join('')}</div>` : '';
+      const more = sorted.length > 3 ? `<button type="button" onclick="rtShowAll=!rtShowAll;renderMyRoutes()" class="w-full rounded-lg text-[12px] font-bold text-emerald-300" style="min-height:36px;background:#0f172a;border:1px dashed #1e293b">${rtShowAll ? '▲ Réduire la liste' : `▼ Voir les ${sorted.length - 3} autres parcours`}</button>` : '';
+      box.innerHTML = chips + (L0.length ? L0.map(r => {
         const sel = r.id === selId;
         return `<div data-rt="${r.id}" onclick="useMyRoute('${r.id}')" class="rounded-xl p-2 cursor-pointer transition" style="border:2px solid ${sel ? '#34d399' : '#1e293b'};background:${sel ? 'rgba(52,211,153,.08)' : '#0f172a'}">
           <div class="flex items-center gap-2">
-            <div class="flex-1 min-w-0"><div class="text-[13px] font-bold text-white truncate">${sel ? '✓ ' : ''}${plEsc(r.name)}</div><div class="text-[11px] text-slate-400">${r.km.toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m${r.review ? ` · <span class="text-purple-300 font-bold">⏱ ${fmtHM(r.km / r.review.kmh * 60)}</span>` : ''}</div></div>
+            <div class="flex-1 min-w-0"><div class="text-[13px] font-bold text-white truncate">${sel ? '✓ ' : ''}${plEsc(r.name)}</div><div class="text-[11px] text-slate-400">${r.km.toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m · pente moy. ${String(routeAvgGrade(r)).replace('.', ',')} %${r.speed ? ` · ${String(r.speed).replace('.', ',')} km/h → ${fmtHM(routeTimeAt(r, r.speed))}` : ''}${r.review ? ` · <span class="text-purple-300 font-bold">⏱ ${fmtHM(r.km / r.review.kmh * 60)}</span>` : ''}</div></div>
             ${r.wps ? `<button onclick="event.stopPropagation();openRouteEditor('${r.id}')" aria-label="Modifier" class="px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">✏️</button>` : ''}
             <button onclick="event.stopPropagation();deleteMyRoute('${r.id}')" aria-label="Supprimer" class="px-2.5 py-2 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[11px] font-bold">🗑</button>
           </div>
           ${sel ? '<div class="rt-slot mt-2" onclick="event.stopPropagation()"></div>' : ''}
         </div>`;
-      }).join('') : '<span class="text-[11px] text-slate-500">Aucun parcours enregistré. Dessine-en un ou importe un GPX.</span>';
+      }).join('') + more : `<span class="text-[11px] text-slate-500">${all.length ? 'Aucun parcours dans cette catégorie.' : 'Aucun parcours enregistré. Dessine-en un ou importe un GPX.'}</span>`);
       const slot = box.querySelector('.rt-slot');
       if (slot && info) slot.appendChild(info);
     }
@@ -9786,16 +9843,36 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         const j = parseJsonLoose(String(raw || '')); const c = j && j.cardio_capture; if (!c) return null;
         const o = { fc_moy: Math.round(+c.fc_moy) || null, fc_max: Math.round(+c.fc_max) || null };
         if (Array.isArray(c.zones_min) && c.zones_min.length === 5 && c.zones_min.some(v => +v > 0)) o.zones_min = c.zones_min.map(v => Math.max(0, +v || 0));
+        if (+c.duree_min > 0) o.duree_min = +c.duree_min;
         if (Array.isArray(c.courbe)) { const cv = c.courbe.filter(q => Array.isArray(q) && isFinite(+q[0]) && +q[1] > 40 && +q[1] < 230).map(q => [+q[0], Math.round(+q[1])]).sort((a, b) => a[0] - b[0]); if (cv.length >= 6) o.courbe = cv; }
         return o.fc_moy || o.zones_min || o.courbe ? o : null;
       } catch (e) { return null; }
     }
-    // Complète une séance sans cardio avec la courbe lue sur la capture
+    // Complète le cardio manquant (capteur décroché) avec la courbe lue sur la capture
     function trackWithShot(track, hs) {
       if (!Array.isArray(track) || !track.length || !hs || !hs.courbe) return track;
-      if (track.filter(r => r[1]).length >= 10) return track;
-      const cv = hs.courbe, at = m => { if (m <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (m <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return Math.round(a[1] + (b[1] - a[1]) * (m - a[0]) / Math.max(0.01, b[0] - a[0])); } return cv[cv.length - 1][1]; };
-      return track.map(r => { const x = r.slice(); x[1] = at(r[0] / 60); return x; });
+      const miss = track.filter(r => !r[1]).length;
+      if (miss < Math.max(6, track.length * 0.05)) return track;
+      const T = track[track.length - 1][0] / 60, D = +hs.duree_min || hs.courbe[hs.courbe.length - 1][0];
+      const k = D > 0 && Math.abs(T / D - 1) > 0.05 ? T / D : 1; // graphique de la montre sur une autre durée : on le cale sur la séance
+      const cv = hs.courbe.map(q => [q[0] * k, q[1]]), at = m => { if (m <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (m <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return Math.round(a[1] + (b[1] - a[1]) * (m - a[0]) / Math.max(0.01, b[0] - a[0])); } return cv[cv.length - 1][1]; };
+      return track.map(r => { if (r[1]) return r; const x = r.slice(); x[1] = at(r[0] / 60); return x; });
+    }
+    // Lecture du cardio sur les captures (appel dédié, plus fiable que pendant l'analyse)
+    async function extractHrFromShots(shots) {
+      if (!shots || !shots.length || !getGeminiKey()) return null;
+      const parts = shots.slice(0, 4).map(d => ({ inline_data: { mime_type: 'image/jpeg', data: String(d).split(',')[1] } }));
+      parts.push({ text: `Ces captures viennent d'une montre ou d'une appli de course. Relève le cardio (fréquence cardiaque) de la séance, tel qu'il apparaît, sans rien inventer.
+Réponds uniquement en JSON : {"fc_moy":0,"fc_max":0,"zones_min":[Z1,Z2,Z3,Z4,Z5 en minutes si l'écran les affiche, sinon []],"duree_min":durée totale couverte par le graphique du cardio en minutes (0 si pas de graphique),"courbe":[[minute depuis le départ, FC lue sur le graphique], … environ un point par minute, [] si pas de graphique]}
+Si aucune capture ne montre le cardio, réponds {"fc_moy":0}.` });
+      try { const txt = await geminiText(parts, { tier: 'full', json: true }); const j = parseJsonLoose(txt); return hrShotFrom(JSON.stringify({ cardio_capture: j })); } catch (e) { console.warn('hrShot', e); return null; }
+    }
+    async function attachHrShot(h, shots) {
+      if (!h || !shots || !shots.length) return;
+      showToast('❤️ Lecture du cardio sur ta capture…');
+      const hs = await extractHrFromShots(shots);
+      if (hs) { h.hrShot = hs; saveAppData(); try { updateHistoryTable(); } catch (e) { } showToast(`❤️ Cardio de la capture ajouté${hs.fc_moy ? ` (moyenne ${hs.fc_moy})` : ''}`); }
+      else showToast("Pas de cardio lisible sur la capture");
     }
     function analysisFormatPrompt() {
       return `${COACH_RECUL}
@@ -11096,35 +11173,52 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     function sessMetrics(h) {
       try {
         if (!h || h.cross) return null;
+        const lk = (() => { try { return histLinkedSession(h); } catch (e) { return null; } })();
+        const label = sessionKind(h.kind ? h : (lk || h)).label;
+        if (['LIBRE', 'MUSCULATION', 'VÉLO'].includes(label)) return null;
         const pente = h.type === 'exterieur' ? 0 : (parseFloat(h.pente) || 0);
         const trk = trackWithShot(h.track, h.hrShot);
         const P = trk && trk.length ? rcPrep(trk, h.seg, { pente }) : null;
-        if (!P || P.rows.length < 12) return null;
-        const G = rcGroups(P, 'seg').map(g => Object.assign(g, rcStats(P, g.a, g.b)));
-        const isWarm = g => /chauff|calme/i.test(g.label || '');
-        const tg = G.filter(g => g.target && !isWarm(g) && !/r[ée]cup/i.test(g.label || '')).map(g => g.target);
-        const tMax = tg.length ? Math.max(...tg) : 0, tMin = tg.length ? Math.min(...tg) : 0, varied = tMax - tMin >= 0.5;
-        const isRec = g => !isWarm(g) && (/r[ée]cup/i.test(g.label || '') || (varied && g.target && g.target < (tMax + tMin) / 2));
-        const reps = G.filter(g => !isWarm(g) && !isRec(g) && g.target > 0 && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
-        const body = G.filter(g => !isWarm(g));
-        const frac = reps.length > 1 || (varied && reps.length > 0);
-        const set = (frac ? reps : body).length ? (frac ? reps : body) : G;
-        let sec = 0, km = 0, vap = 0, hr = 0, hsx = 0;
-        set.forEach(g => { sec += g.sec; km += g.km; vap += (g.vap || 0) * g.sec; if (g.hr) { hr += g.hr * g.sec; hsx += g.sec; } });
-        if (sec < 60) return null;
-        const o = { iso: histISO(h), id: h.id, label: sessionKind(h).label, sec, min: Math.round((+h.durationMin || 0)), kmh: km > 0.01 ? km / (sec / 3600) : 0, vap: vap / sec, hr: hsx ? Math.round(hr / hsx) : (h.hrShot && h.hrShot.fc_moy) || null, frac };
-        // VMA estimée : % de FC de réserve ≈ % de VO2 de réserve (Swain) ; VO2 = 3,5 + 0,2 × vitesse (m/min) ; VMA ≈ VO2max / 3,5
         const fcM = runnerFcMax(), rest = +runnerProfile().fcRest || 60;
-        const steady = !frac || (reps.length && reps.reduce((a, g) => a + g.sec, 0) / reps.length >= 180);
+        const fmtRep = sec => sec < 120 ? `${Math.round(sec / 15) * 15 >= 60 ? (Math.round(sec / 15) * 15 / 60).toFixed(2).replace(/\.?0+$/, '').replace('.', ',') + "'" : Math.round(sec / 15) * 15 + '"'}` : `${(Math.round(sec / 30) / 2).toString().replace('.', ',')}'`;
+        const where = h.type === 'exterieur' ? 'dehors' : `tapis ${String(Math.round(pente * 2) / 2).replace('.', ',')} %`;
+        let o = null, repSec = 0, frac = false;
+        if (P && P.rows.length >= 12) {
+          const G = rcGroups(P, 'seg').map(g => Object.assign(g, rcStats(P, g.a, g.b)));
+          const isWarm = g => /chauff|calme/i.test(g.label || '');
+          const tg = G.filter(g => g.target && !isWarm(g) && !/r[ée]cup/i.test(g.label || '')).map(g => g.target);
+          const tMax = tg.length ? Math.max(...tg) : 0, tMin = tg.length ? Math.min(...tg) : 0, varied = tMax - tMin >= 0.5;
+          const isRec = g => !isWarm(g) && (/r[ée]cup/i.test(g.label || '') || (varied && g.target && g.target < (tMax + tMin) / 2));
+          const reps = G.filter(g => !isWarm(g) && !isRec(g) && g.target > 0 && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
+          const body = G.filter(g => !isWarm(g));
+          frac = reps.length > 1 || (varied && reps.length > 0);
+          if (frac) { const ds = reps.map(g => g.sec).sort((x, y) => x - y); repSec = ds[Math.floor(ds.length / 2)]; }
+          const set = (frac ? reps : body).length ? (frac ? reps : body) : G;
+          let sec = 0, km = 0, vap = 0, hr = 0, hsx = 0;
+          set.forEach(g => { sec += g.sec; km += g.km; vap += (g.vap || 0) * g.sec; if (g.hr) { hr += g.hr * g.sec; hsx += g.sec; } });
+          if (sec >= 60) o = { sec, kmh: km > 0.01 ? km / (sec / 3600) : 0, vap: vap / sec, hr: hsx ? Math.round(hr / hsx) : (h.hrShot && h.hrShot.fc_moy) || null };
+        }
+        if (!o) { // séance sans enregistrement détaillé (montre seule, capture) : moyennes de la séance entière
+          const sm = h.summary || {}, min = +h.durationMin || 0, km = +h.km || parseFloat(sm.distKm) || 0;
+          const kmh = sm.avgKmh || (km && min ? km / (min / 60) : 0);
+          if (!kmh) return null;
+          o = { sec: min * 60, kmh, vap: sm.vapKmh || (h.type === 'exterieur' ? kmh : vapKmh(kmh, treadmillGrade(pente))), hr: sm.hrAvg || (h.hrShot && h.hrShot.fc_moy) || null, whole: true };
+        }
+        if (!repSec && lk) { try { const G2 = gSegs(lk); if (G2.fast.length) { const f = G2.fast[0]; repSec = f.unit === 'km' ? f.distance / G2.vmax * 3600 : f.duration * 60; frac = true; } } catch (e) { } }
+        if (['FRACTIONNÉ', 'SEUIL', 'CÔTES'].includes(label) && !repSec) frac = true;
+        // Format : seules les séances du même format sont comparées (même durée de fraction, même pente, même terrain)
+        const format = frac && repSec ? `${fmtRep(repSec)} · ${where}` : frac ? where : `${where}`;
+        Object.assign(o, { iso: histISO(h), id: h.id, label, format, frac, min: Math.round(+h.durationMin || 0), route: h.routeName || (lk && lk.route && lk.route.name) || '', totKm: +h.km || 0, totMin: +h.durationMin || 0 });
+        const steady = !frac || repSec >= 180;
         if (o.hr && fcM && steady && o.vap > 4) {
-          const p = (o.hr - rest) / (fcM - rest);
-          if (p >= 0.5 && p <= 1) { const vo2 = 3.5 + 0.2 * (o.vap * 1000 / 60); o.vo2max = 3.5 + (vo2 - 3.5) / p; o.vma = o.vo2max / 3.5; }
+          const pr = (o.hr - rest) / (fcM - rest);
+          if (pr >= 0.5 && pr <= 1) { const vo2 = 3.5 + 0.2 * (o.vap * 1000 / 60); o.vo2max = 3.5 + (vo2 - 3.5) / pr; o.vma = o.vo2max / 3.5; }
         }
         o.eff = o.hr ? o.vap / o.hr * 100 : null;
         return o;
-      } catch (e) { return null; }
+      } catch (e) { console.warn('sessMetrics', e); return null; }
     }
-    let evoKind = '', evoMetric = 'vma';
+    let evoKind = '', evoMetric = 'vma', evoMode = 'type', evoRoute = '', evoFormat = '';
     function openEvo(kind) {
       let m = document.getElementById('evoModal');
       if (!m) { m = document.createElement('div'); m.id = 'evoModal'; m.className = 'fixed inset-0 hidden'; m.style.cssText = 'position:fixed;inset:0;z-index:70;background:#050a16;overflow-y:auto'; document.body.appendChild(m); }
@@ -11136,10 +11230,19 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const all = (appData.history || []).map(h => sessMetrics(h)).filter(Boolean).sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
       const kinds = [...new Set(all.map(x => x.label))];
       if (!kinds.includes(evoKind)) evoKind = kinds[0] || '';
-      const L = all.filter(x => x.label === evoKind);
-      const MET = { vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma], hr: ['Cardio moyen', 'bpm', '#fda4af', x => x.hr], vap: ['VAP moyenne', 'km/h', '#c4b5fd', x => x.vap], eff: ['VAP ÷ cardio', '×100', '#7dd3fc', x => x.eff] };
+      const routes = [...new Set(all.map(x => x.route).filter(Boolean))];
+      if (!routes.includes(evoRoute)) evoRoute = routes[0] || '';
+      if (evoMode === 'route' && !routes.length) evoMode = 'type';
+      const ofKind = all.filter(x => x.label === evoKind);
+      const formats = [...new Set(ofKind.map(x => x.format))].sort((a, b) => ofKind.filter(x => x.format === b).length - ofKind.filter(x => x.format === a).length);
+      if (!formats.includes(evoFormat)) evoFormat = formats[0] || '';
+      const L = evoMode === 'route' ? all.filter(x => x.route === evoRoute) : ofKind.filter(x => x.format === evoFormat);
+      const MET = Object.assign(evoMode === 'route' ? { time: ['Temps total', 'min', '#fbbf24', x => x.totMin], speed: ['Vitesse moyenne', 'km/h', '#7dd3fc', x => x.totMin > 0 ? x.totKm / (x.totMin / 60) : null] } : {}, { vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma], hr: ['Cardio moyen', 'bpm', '#fda4af', x => x.hr], vap: ['VAP moyenne', 'km/h', '#c4b5fd', x => x.vap], eff: ['VAP ÷ cardio', '×100', '#7dd3fc', x => x.eff] });
+      if (!MET[evoMetric]) evoMetric = Object.keys(MET)[0];
+      const okPts = k => L.map(x => [x, MET[k][3](x)]).filter(q => q[1] != null && isFinite(q[1]));
+      if (okPts(evoMetric).length < 2) { const alt = ['eff', 'vap', 'hr', 'time', 'speed', 'vma'].filter(k => MET[k]).find(k => okPts(k).length >= 2); if (alt) evoMetric = alt; }
       const [mL, mU, mC, mF] = MET[evoMetric];
-      const pts = L.map(x => [x, mF(x)]).filter(q => q[1] != null && isFinite(q[1]));
+      const pts = okPts(evoMetric);
       const f1 = v => v == null || !isFinite(v) ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
       const chip = (on, l, js) => `<button type="button" onclick="${js}" style="min-height:34px;padding:0 12px;border-radius:17px;font-size:12px;font-weight:800;white-space:nowrap;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l}</button>`;
       let chart = '<div style="padding:24px;text-align:center;color:#64748b;font-size:13px">Pas assez de séances avec ces données (il en faut au moins 2).</div>';
@@ -11152,16 +11255,20 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <line x1="${X(0)}" x2="${X(n - 1)}" y1="${Y(my - sl * mx)}" y2="${Y(my + sl * (n - 1 - mx))}" stroke="${mC}" stroke-dasharray="5 4" opacity=".5"/>
           <polyline points="${pts.map((q, i) => `${X(i).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="${mC}" stroke-width="2.5" stroke-linejoin="round"/>
           ${pts.map((q, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(q[1]).toFixed(1)}" r="4" fill="${mC}"/>${n <= 10 ? `<text x="${X(i).toFixed(1)}" y="${(Y(q[1]) - 8).toFixed(1)}" font-size="10" font-weight="700" fill="#e2e8f0" text-anchor="middle">${evoMetric === 'hr' ? Math.round(q[1]) : f1(q[1])}</text>` : ''}<text x="${X(i).toFixed(1)}" y="${H - 6}" font-size="9" fill="#64748b" text-anchor="middle">${q[0].iso ? q[0].iso.slice(8, 10) + '/' + q[0].iso.slice(5, 7) : ''}</text>`).join('')}</svg>
-          <div style="font-size:12px;font-weight:700;color:${(evoMetric === 'hr' ? -sl : sl) > 0.01 ? '#34d399' : (evoMetric === 'hr' ? -sl : sl) < -0.01 ? '#fb923c' : '#94a3b8'}">Tendance : ${sl > 0 ? '+' : ''}${evoMetric === 'hr' ? Math.round(sl * 10) / 10 : f1(sl)} ${mU} par séance${evoMetric === 'hr' ? ' (une baisse = progrès à effort égal)' : ''}</div>`;
+          <div style="font-size:12px;font-weight:700;color:${(evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) > 0.01 ? '#34d399' : (evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) < -0.01 ? '#fb923c' : '#94a3b8'}">Tendance : ${sl > 0 ? '+' : ''}${evoMetric === 'hr' ? Math.round(sl * 10) / 10 : f1(sl)} ${mU} par séance${evoMetric === 'hr' ? ' (une baisse = progrès à effort égal)' : evoMetric === 'time' ? ' (une baisse = plus rapide)' : ''}</div>`;
       }
-      const rows = L.slice().reverse().map(x => `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;color:#e2e8f0;font-weight:700">${x.iso ? x.iso.slice(8, 10) + '/' + x.iso.slice(5, 7) : ''}</td><td style="text-align:right;color:#94a3b8">${x.min}'</td><td style="text-align:right;color:#c4b5fd">${f1(x.vap)}</td><td style="text-align:right;color:#fda4af">${x.hr || '–'}</td><td style="text-align:right;color:#7dd3fc">${f1(x.eff)}</td><td style="text-align:right;color:#34d399;font-weight:800">${f1(x.vma)}</td></tr>`).join('');
+      const rows = L.slice().reverse().map(x => `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;color:#e2e8f0;font-weight:700">${x.iso ? x.iso.slice(8, 10) + '/' + x.iso.slice(5, 7) : ''}</td><td style="text-align:right;color:#94a3b8">${x.min}'${evoMode === 'route' && x.totKm ? `<span style="display:block;font-size:10px;color:#64748b">${f1(x.totKm / Math.max(1, x.totMin) * 60)} km/h</span>` : ''}</td><td style="text-align:right;color:#c4b5fd">${f1(x.vap)}</td><td style="text-align:right;color:#fda4af">${x.hr || '–'}</td><td style="text-align:right;color:#7dd3fc">${f1(x.eff)}</td><td style="text-align:right;color:#34d399;font-weight:800">${f1(x.vma)}</td></tr>`).join('');
       m.innerHTML = `<div style="max-width:480px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
         <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:24px;font-weight:800">📈 Évolution</span><button type="button" onclick="closeEvo()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;font-size:18px">✕</button></div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">${kinds.map(k => chip(k === evoKind, capFirst(k.toLowerCase()), `evoKind=${JSON.stringify(k).replace(/"/g, '&quot;')};renderEvo()`)).join('') || '<span style="color:#64748b;font-size:13px">Aucune séance enregistrée avec des mesures.</span>'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#0f172a">${[['type', 'Par type de séance'], ['route', `Par parcours${routes.length ? '' : ' (aucun)'}`]].map(([k, l]) => `<button type="button" onclick="evoMode='${k}';evoMetric='${k === 'route' ? 'time' : 'vma'}';renderEvo()" ${k === 'route' && !routes.length ? 'disabled' : ''} style="min-height:38px;border:none;border-radius:9px;font-size:13px;font-weight:800;${evoMode === k ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        ${evoMode === 'route' ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${routes.map(r => chip(r === evoRoute, '🗺️ ' + plEsc(r), `evoRoute=${JSON.stringify(r).replace(/"/g, '&quot;')};renderEvo()`)).join('')}</div>` : ''}
+        <div style="display:${evoMode === 'route' ? 'none' : 'flex'};flex-wrap:wrap;gap:6px">${kinds.map(k => chip(k === evoKind, capFirst(k.toLowerCase()), `evoKind=${JSON.stringify(k).replace(/"/g, '&quot;')};evoFormat='';renderEvo()`)).join('') || '<span style="color:#64748b;font-size:13px">Aucune séance enregistrée avec des mesures.</span>'}</div>
+        ${evoMode !== 'route' && formats.length ? `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.6px">Format comparé</span><div style="display:flex;flex-wrap:wrap;gap:6px">${formats.map(f => chip(f === evoFormat, `${plEsc(f)} · ${ofKind.filter(x => x.format === f).length}`, `evoFormat=${JSON.stringify(f).replace(/"/g, '&quot;')};renderEvo()`)).join('')}</div></div>` : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px">${Object.entries(MET).map(([k, v]) => chip(k === evoMetric, v[0], `evoMetric='${k}';renderEvo()`)).join('')}</div>
         <div style="padding:12px;border-radius:16px;background:#0f172a;border:1px solid #1e293b;display:flex;flex-direction:column;gap:6px">${chart}</div>
         <div style="padding:4px 10px;border-radius:16px;background:#0f172a;border:1px solid #1e293b"><table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:7px 0">Date</th><th style="text-align:right">Durée</th><th style="text-align:right">VAP</th><th style="text-align:right">FC</th><th style="text-align:right">VAP÷FC</th><th style="text-align:right">VMA est.</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div style="font-size:12px;line-height:1.5;color:#94a3b8">
+          <b style="color:#e2e8f0">Format :</b> seules les séances vraiment comparables sont mises côte à côte : même type, même durée de fraction (au quart de minute près) et même pente ou terrain. Un 1' à 9 % n'est pas comparé à un 2' à 5 %.<br>
           <b style="color:#e2e8f0">Comment lire :</b> moyennes du corps de séance (pour un fractionné, des répétitions rapides). À type de séance égal, une VAP plus haute pour le même cardio, ou un cardio plus bas pour la même VAP, montre que tu progresses (colonne VAP÷FC).<br>
           <b style="color:#e2e8f0">VMA estimée :</b> calculée à partir de ta VAP et de ton cardio, rapportés à ta FC max (${runnerFcMax() || '?'}) et à ta FC de repos (${+runnerProfile().fcRest || '60 par défaut'}, réglable dans ton profil). C'est une estimation (± 1 km/h) : la tendance compte plus que la valeur. Elle n'est pas calculée sur les fractions de moins de 3 min, où le cardio n'a pas le temps de monter.</div></div>`;
     }
@@ -13160,7 +13267,7 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
         fl: { repet: 5, segs: [{ v: r5(vma * 0.9), d: 3 }, { v: rec, d: 2 }] },
         seuil: { repet: 3, segs: [{ v: r5(vma * 0.85), d: 8 }, { v: rec, d: 2 }] },
         endu: { repet: 1, segs: [{ v: ef, d: 40 }] },
-        longue: { repet: 1, segs: [{ v: ef, d: 70 }] },
+        longue: { repet: 1, chauffe: 0, recup: 0, segs: [{ v: ef, d: 60 }] },
         cotes: { repet: 8, pente: 5, segs: [{ v: r5(ef + 0.5), d: 1 }, { v: rec, d: 1.5 }] },
         recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] },
         vma: act.type === 'tapis' ? { repet: 1, pente: 1, segs: vmaTapisPyramid(vmaStartDefault()).map(p => ({ v: p.speed, d: 1 })) } : { repet: 1, segs: [{ v: Math.round(vma * 10) / 10, d: 6 }] },
