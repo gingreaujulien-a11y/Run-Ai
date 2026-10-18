@@ -288,6 +288,7 @@
       <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
       <div id="homeSessRec" class="text-[14px] font-semibold text-slate-300 leading-snug hidden"></div>
       <div id="homeSessStats" class="text-[14px] font-bold text-sky-200"></div>
+      <div id="homeHr" class="text-[14px] font-bold text-rose-300 hidden"></div>
       <div id="homeFuel" class="text-[12px] font-semibold text-cyan-300 hidden"></div>
       <div id="homeGuide" class="hidden">
         <button onclick="toggleHomeGuide()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[13px] font-extrabold text-sky-100" style="background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4)"><span id="homeGuideHead">🎯 Objectif · ⚖️ adapter selon ma forme</span><span id="homeGuideArrow">▾</span></button>
@@ -706,6 +707,7 @@
           <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
           <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
         </div>
+        <div id="plKindRow" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch"></div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
     </div>
@@ -750,7 +752,7 @@
               <input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c" style="width:96px">
             </div>
             <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
-            <details class="pm-det"><summary>Mes zones cardio (réglables)</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-3 text-[12px]"></div></details>
+            <details class="pm-det" open><summary>Mes zones cardio (réglables)</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-3 text-[12px]"></div></details>
           </div>
 
           <div class="pm-card">
@@ -5604,6 +5606,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         <span style="font-size:11px;color:#64748b;text-align:center">Touche un jour : voir sa séance, ou en ajouter une si le jour est libre</span>
         ${plWeekOff !== 0 ? `<button onclick="plShiftWeek(0)" class="self-center text-[12px] font-bold" style="color:#7dd3fc">↺ Revenir à cette semaine</button>` : ''}`;
     }
+    let plKind = '';
     function plDayClick(iso) {
       const t = todayISO();
       const has = (appData.history || []).some(h => histISO(h) === iso) || appData.sessions.some(x => x.dateISO === iso) || (appData.crossPlan || []).some(c => c.dateISO === iso) || iso === raceISO();
@@ -5769,8 +5772,16 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       }));
       (appData.crossPlan || []).forEach(c => items.push({ type: 'crossplan', id: c.id, iso: c.dateISO, item: c }));
       { const gi = raceISO(); if (gi && gi >= t && !appData.sessions.some(x => x.dateISO === gi && x.kind === 'course')) items.push({ type: 'race', id: 'goalrace', iso: gi }); }
-      const done = items.filter(i => i.type === 'validated');
-      const planned = items.filter(i => i.type === 'planned' || i.type === 'crossplan' || i.type === 'race').sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
+      // Filtre par type de séance
+      const kindOf = i => i.type === 'crossplan' ? 'AUTRE ACTIVITÉ' : i.type === 'race' ? 'COURSE' : i.type === 'validated' ? (i.cross ? 'AUTRE ACTIVITÉ' : sessionKind(i.linked || i).label) : sessionKind(appData.sessions[i.rawIdx] || i).label;
+      items.forEach(i => { try { i._kind = kindOf(i); } catch (e) { i._kind = ''; } });
+      { const kinds = [...new Set(items.map(i => i._kind).filter(Boolean))];
+        if (plKind && !kinds.includes(plKind)) plKind = '';
+        const kr = document.getElementById('plKindRow');
+        if (kr) kr.innerHTML = kinds.length > 1 ? ['', ...kinds].map(k => `<button type="button" onclick="plKind=${JSON.stringify(k).replace(/"/g, '&quot;')};updateHistoryTable()" style="flex:none;min-height:34px;padding:0 12px;border-radius:17px;font-size:12px;font-weight:800;white-space:nowrap;${plKind === k ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${k ? capFirst(k.toLowerCase()) : 'Tous types'}</button>`).join('') : ''; }
+      const kOk = i => !plKind || i._kind === plKind;
+      const done = items.filter(i => i.type === 'validated' && kOk(i));
+      const planned = items.filter(i => (i.type === 'planned' || i.type === 'crossplan' || i.type === 'race') && kOk(i)).sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
       document.getElementById('cntVal').textContent = done.length;
       document.getElementById('cntPlan').textContent = upcoming.length;
@@ -10854,12 +10865,17 @@ ${analysisFormatPrompt()}`;
         const tile = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px;${card}"><span style="font-size:22px;font-weight:800;line-height:1;color:${c}">${v}</span><span style="font-size:11px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
         // Moyennes du corps de séance (sans échauffement ni retour au calme)
         const body = G.filter(g => !isWarm(g));
-        const B = body.length ? body.reduce((a, g) => { a.sec += g.sec; a.km += g.km; a.vap += (g.vap || 0) * g.sec; if (g.hr) { a.hr += g.hr * g.sec; a.hs += g.sec; } return a; }, { sec: 0, km: 0, vap: 0, hr: 0, hs: 0 }) : null;
+        const fracMode = reps.length > 1 || (varied && reps.length > 0);
+        const avgSet = fracMode ? reps : body;
+        const B = avgSet.length ? avgSet.reduce((a, g) => { a.sec += g.sec; a.km += g.km; a.vap += (g.vap || 0) * g.sec; if (g.hr) { a.hr += g.hr * g.sec; a.hs += g.sec; } return a; }, { sec: 0, km: 0, vap: 0, hr: 0, hs: 0 }) : null;
         const bKmh = B && B.sec > 0 ? (B.km > 0.01 ? B.km / (B.sec / 3600) : kmh) : kmh, bVap = B && B.sec > 0 ? B.vap / B.sec : W.vap, bHr = B && B.hs > 0 ? Math.round(B.hr / B.hs) : W.hr;
         // Réussite : fractionné = répétitions dans la cible ; séance continue = temps passé dans l'objectif
+        const f2 = v => (Math.round((v || 0) * 100) / 100).toFixed(2).replace('.', ',');
+        const mmss = sec => `${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`;
+        const pctG = g => `${g > 0.05 ? '+' : ''}${(Math.round(g * 10) / 10).toFixed(1).replace('.', ',')} %`;
         const fmtD = sec => sec >= 60 ? `${Math.round(sec / 60)}'` : `${Math.round(sec)}"`;
         let goal = '', why = '';
-        if (score != null && (reps.length > 1 || varied)) {
+        if (score != null && fracMode) {
           const nOk = reps.filter(okRep).length, durs = reps.map(g => g.sec).sort((a, b) => a - b), dm = durs[Math.floor(durs.length / 2)];
           goal = `${reps.length} × ${fmtD(dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
           why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} dans la cible (±0,5 km/h)`;
@@ -10869,9 +10885,10 @@ ${analysisFormatPrompt()}`;
           const bodyRows = R.filter(r => body.some(g => r.seg === R[g.a].seg));
           const hrR = bodyRows.filter(r => r.hr), tgt = tg.length ? tMax : 0;
           let inT = null;
-          if (hrMax && hrR.length > 10) { inT = hrR.filter(r => r.hr <= hrMax).length / hrR.length; goal = `${fmtD(B.sec)} en aisance${tgt ? ` à ${f1(tgt)} km/h` : ''}, cardio sous ${hrMax}`; why = `${Math.round(inT * 100)} % du temps sous ${hrMax}`; }
-          else if (tgt) { const vr = bodyRows.filter(r => r.vs); if (vr.length > 10) { inT = vr.filter(r => Math.abs(r.vs - tgt) <= 0.5).length / vr.length; goal = `${fmtD(B.sec)} à ${f1(tgt)} km/h`; why = `${Math.round(inT * 100)} % du temps à ±0,5 km/h de la cible`; } }
+          if (hrMax && hrR.length > 10) { inT = hrR.filter(r => r.hr <= hrMax).length / hrR.length; goal = `${fmtD(body.reduce((a, g) => a + g.sec, 0))} en aisance${tgt ? ` à ${f1(tgt)} km/h` : ''}, cardio sous ${hrMax}`; why = `${Math.round(inT * 100)} % du temps sous ${hrMax}`; }
+          else if (tgt) { const vr = bodyRows.filter(r => r.vs); if (vr.length > 10) { inT = vr.filter(r => Math.abs(r.vs - tgt) <= 0.5).length / vr.length; goal = `${fmtD(body.reduce((a, g) => a + g.sec, 0))} à ${f1(tgt)} km/h`; why = `${Math.round(inT * 100)} % du temps à ±0,5 km/h de la cible`; } }
           if (inT != null) {
+            void 0;
             const plan = +hh.plannedMin || 0, done = +hh.durationMin || 0, ratio = plan > 0 ? Math.min(1, done / plan) : 1;
             score = Math.round(inT * ratio * 100);
             if (ratio < 0.9) why += ` · séance écourtée (${Math.round(done)} min sur ${Math.round(plan)})`;
@@ -10882,7 +10899,7 @@ ${analysisFormatPrompt()}`;
         void ring;
         stats = `${ring2 ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span><span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span><span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span></div></div>` : ''}
           <div style="display:flex;align-items:stretch;gap:8px">${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}${tile('Cardio moy.', bHr || '–', '#fda4af')}</div>
-          ${body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
+          ${fracMode ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes des ${reps.length} répétitions rapides (sans récup, échauffement ni retour au calme).</span>` : body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
         const hrRows = R.filter(r => r.hr);
         if (P.fc && hrRows.length > 10) {
           const zones = RC_HR_Z.map(z => ({ n: z[2], c: z[1], s: 0 }));
@@ -10892,19 +10909,31 @@ ${analysisFormatPrompt()}`;
             <div style="display:flex;height:16px;border-radius:8px;overflow:hidden">${zones.map(z => z.s ? `<div style="width:${z.s / tot * 100}%;background:${z.c}"></div>` : '').join('')}</div>
             <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700;text-align:center">${zones.map(z => `<span style="color:${z.c}">${z.n}<br>${Math.round(z.s / 60)}'</span>`).join('')}</div></div>`;
         }
-        // Onglet segments : tableau avec filtre
-        const mm = sec => `${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`;
-        const dist = k2 => k2 < 1 ? Math.round(k2 * 100) * 10 + ' m' : k2.toFixed(1).replace('.', ',') + ' km';
-        const row = (n, st, cls, tgt) => `<tr data-hsf="${cls}" style="border-top:1px solid #1e293b"><td style="padding:7px 4px 7px 0;color:#e2e8f0;font-weight:700">${plEsc(n)}</td><td style="text-align:right;color:#94a3b8">${mm(st.sec)}</td><td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}<td style="text-align:right;color:#fda4af">${st.hr || '–'}</td></tr>`;
+        // Onglet segments : tableau avec filtres, tri et moyenne
+        const showG = P.hasEle;
+        const kmAt = i => i > 0 ? R[i - 1].km : 0;
+        const row = (n, g, st, cls, tgt, sub) => { const k0 = kmAt(g.a), k1 = R[g.b].km;
+          return `<tr data-hsf="${cls}"${sub ? ` data-sub="${sub}"` : ''} data-sec="${st.sec.toFixed(1)}" data-km="${st.km.toFixed(4)}" data-kmh="${(st.kmh || 0).toFixed(2)}" data-vap="${(st.vap || 0).toFixed(2)}" data-hr="${st.hr || 0}" data-g="${(st.g || 0).toFixed(2)}" data-k0="${k0.toFixed(3)}" style="border-top:1px solid #1e293b${cls === 'k' || cls === 'p' ? ';display:none' : ''}">
+            <td style="padding:6px 3px 6px 0;color:#e2e8f0;font-weight:700;line-height:1.2">${plEsc(n)}<span style="display:block;font-size:10px;font-weight:600;color:#64748b">${f2(k0)} → ${f2(k1)} km</span></td>
+            <td style="text-align:right;color:#cbd5e1">${f2(st.km)}</td><td style="text-align:right;color:#94a3b8">${mmss(st.sec)}</td>
+            <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:#fda4af">${st.hr || '–'}</td></tr>`; };
         let nF = 0, nR = 0;
-        const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f'; const lab = c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, c, c === 'f' ? g.target : 0); }).join('');
-        const kmRows = rcGroups(P, 'km').map(g => { const st = rcStats(P, g.a, g.b); return row(st.km < 0.95 ? `${g.label} (${dist(st.km)})` : g.label, st, 'k', 0); }).join('');
-        const profRows = P.hasEle ? rcGroups(P, 'prof').map(g => { const st = rcStats(P, g.a, g.b); return row(`${g.label} · ${dist(st.km)}${Math.abs(st.g) >= 1.5 ? ` · ${st.g > 0 ? '+' : ''}${Math.round(st.g)} %` : ''}`, st, 'p', 0); }).join('') : '';
+        const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f'; const lab = c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, g, c, c === 'f' ? g.target : 0); }).join('');
+        const kmRows = rcGroups(P, 'km').map(g => { const st = rcStats(P, g.a, g.b); return row(g.label, g, st, 'k', 0); }).join('');
+        const profG = P.hasEle ? rcGroups(P, 'prof') : [];
+        let nU = 0, nP = 0, nD = 0;
+        const profRows = profG.map(g => { const st = rcStats(P, g.a, g.b), sub = Math.abs(st.g) < 1.5 ? 'flat' : st.g > 0 ? 'up' : 'down'; return row(sub === 'up' ? `Montée ${++nU}` : sub === 'down' ? `Descente ${++nD}` : `Plat ${++nP}`, g, st, 'p', 0, sub); }).join('');
         const uid = 'hs' + Math.random().toString(36).slice(2, 8);
         const flt = [['all', 'Tous'], ['f', 'Rapides'], ['r', 'Récup'], ['k', 'Km'], ['p', 'Profil']].filter(([f]) => f === 'all' || f === 'k' || (f === 'p' ? !!profRows : f === 'f' ? G.some(g => !isWarm(g) && !isRec(g)) : G.some(isRec)));
+        const btn = (attr, f, l, on, js) => `<button type="button" ${attr}="${uid}" data-f="${f}" onclick="${js}" style="min-height:36px;border-radius:10px;font-size:13px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l}</button>`;
+        const th = (k, l, al) => `<th onclick="histSegSort('${uid}','${k}')" data-sk="${k}" style="text-align:${al || 'right'};padding:6px 0;cursor:pointer;white-space:nowrap">${l}</th>`;
         segTab = `<div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:grid;grid-template-columns:repeat(${flt.length},minmax(0,1fr));gap:4px">${flt.map(([f, l], i) => `<button type="button" data-hsb="${uid}" data-f="${f}" onclick="histSegFilter('${uid}','${f}')" style="min-height:38px;border-radius:10px;font-size:13px;font-weight:800;${i ? 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b' : 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8'}">${l}</button>`).join('')}</div>
-          <div style="max-height:360px;overflow-y:auto;${card};padding:4px 10px"><table id="${uid}" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:6px 0">Segment</th><th style="text-align:right">Durée</th><th style="text-align:right">km/h</th>${showVap ? '<th style="text-align:right">VAP</th>' : ''}<th style="text-align:right">FC</th></tr></thead><tbody>${segRows}${(kmRows + profRows).replace(/<tr data-hsf="([kp])" style="/g, '<tr data-hsf="$1" style="display:none;')}</tbody></table></div></div>`;
+          <div style="display:grid;grid-template-columns:repeat(${flt.length},minmax(0,1fr));gap:4px">${flt.map(([f, l], i) => btn('data-hsb', f, l, !i, `histSegFilter('${uid}','${f}')`)).join('')}</div>
+          ${profRows ? `<div data-hssub="${uid}" style="display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px">${[['', 'Tout'], ['up', '⬈ Montées'], ['flat', '➡ Plat'], ['down', '⬊ Descentes']].map(([f, l], i) => btn('data-hssb', f, l, !i, `histSegFilter('${uid}','p','${f}')`)).join('')}</div>` : ''}
+          <div style="max-height:380px;overflow:auto;${card};padding:4px 8px"><table id="${uid}" style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase">${th('k0', 'Segment ↕', 'left')}${th('km', 'Dist')}${th('sec', 'Durée')}${th('kmh', 'km/h')}${showVap ? th('vap', 'VAP') : ''}${showG ? th('g', 'Pente') : ''}${th('hr', 'FC')}</tr></thead>
+            <tbody>${segRows}${kmRows}${profRows}</tbody><tfoot data-hsavg="${uid}" data-vap="${showVap ? 1 : 0}" data-g="${showG ? 1 : 0}"></tfoot></table></div>
+          <span style="font-size:11px;color:#64748b">Touche un titre de colonne pour trier. Distances en km.</span></div>`;
+        setTimeout(() => { const t0 = document.getElementById(uid); if (t0 && !t0.dataset.f) histSegFilter(uid, 'all'); }, 0);
         graphTab = resultChartsHtml(item.track, item.seg, { pente });
       }
       const recLine = recs && recs.length ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5)"><span style="font-size:20px">🏆</span><span style="font-size:13px;font-weight:700;color:#fde68a">Record : ${plEsc(recs.join(', '))}</span></div>` : '';
@@ -10935,10 +10964,34 @@ ${analysisFormatPrompt()}`;
         box.querySelectorAll('[data-httab]').forEach(b => { const on = b.dataset.httab === k; b.style.background = on ? '#a78bfa' : 'transparent'; b.style.color = on ? '#13092b' : '#94a3b8'; });
       });
     }
-    function histSegFilter(uid, f) {
+    function histSegFilter(uid, f, sub) {
       const t = document.getElementById(uid); if (!t) return;
-      t.querySelectorAll('tr[data-hsf]').forEach(r => { const c = r.dataset.hsf; r.style.display = f === 'all' ? (c === 'k' || c === 'p' ? 'none' : '') : (c === f ? '' : 'none'); });
+      t.dataset.f = f; t.dataset.sub = f === 'p' ? (sub || '') : '';
+      t.querySelectorAll('tr[data-hsf]').forEach(r => { const c = r.dataset.hsf; let on = f === 'all' ? (c !== 'k' && c !== 'p') : c === f; if (on && f === 'p' && sub) on = r.dataset.sub === sub; r.style.display = on ? '' : 'none'; });
       document.querySelectorAll(`[data-hsb="${uid}"]`).forEach(b => { const on = b.dataset.f === f; b.style.background = on ? '#38bdf8' : '#0f172a'; b.style.color = on ? '#04121f' : '#94a3b8'; b.style.borderColor = on ? '#38bdf8' : '#1e293b'; });
+      document.querySelectorAll(`[data-hssub="${uid}"]`).forEach(d => { d.style.display = f === 'p' ? 'grid' : 'none'; });
+      document.querySelectorAll(`[data-hssb="${uid}"]`).forEach(b => { const on = b.dataset.f === (sub || ''); b.style.background = on ? '#38bdf8' : '#0f172a'; b.style.color = on ? '#04121f' : '#94a3b8'; b.style.borderColor = on ? '#38bdf8' : '#1e293b'; });
+      histSegAvg(uid);
+    }
+    function histSegAvg(uid) {
+      const t = document.getElementById(uid), ft = t && t.querySelector(`[data-hsavg="${uid}"]`); if (!ft) return;
+      const rows = [...t.querySelectorAll('tbody tr[data-hsf]')].filter(r => r.style.display !== 'none');
+      if (rows.length < 2) { ft.innerHTML = ''; return; }
+      let sec = 0, km = 0, vap = 0, hr = 0, hs = 0, g = 0;
+      rows.forEach(r => { const d = r.dataset, s1 = +d.sec, k1 = +d.km; sec += s1; km += k1; vap += +d.vap * s1; if (+d.hr) { hr += +d.hr * s1; hs += s1; } g += +d.g * k1; });
+      const f1 = v => v ? (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') : '–', f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+      const kmh = km > 0.01 ? km / (sec / 3600) : rows.reduce((a, r) => a + +r.dataset.kmh * +r.dataset.sec, 0) / Math.max(1, sec);
+      const gg = km > 0 ? g / km : 0;
+      const td = (v, c) => `<td style="text-align:right;font-weight:800;color:${c};padding:8px 0">${v}</td>`;
+      ft.innerHTML = `<tr style="border-top:2px solid #334155;background:rgba(56,189,248,.06)"><td style="padding:8px 3px 8px 0;font-weight:800;color:#f1f5f9">Total / moy. <span style="font-size:10px;color:#64748b">(${rows.length})</span></td>${td(f2(km), '#cbd5e1')}${td(`${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`, '#94a3b8')}${td(f1(kmh), '#7dd3fc')}${ft.dataset.vap === '1' ? td(f1(vap / Math.max(1, sec)), '#c4b5fd') : ''}${ft.dataset.g === '1' ? td(`${gg > 0.05 ? '+' : ''}${(Math.round(gg * 10) / 10).toFixed(1).replace('.', ',')} %`, rcSlopeColor(gg)) : ''}${td(hs ? Math.round(hr / hs) : '–', '#fda4af')}</tr>`;
+    }
+    function histSegSort(uid, k) {
+      const t = document.getElementById(uid); if (!t) return;
+      const dir = t.dataset.sk === k && t.dataset.sd === 'asc' ? 'desc' : 'asc';
+      t.dataset.sk = k; t.dataset.sd = dir;
+      const tb = t.querySelector('tbody'), rows = [...tb.querySelectorAll('tr[data-hsf]')];
+      rows.sort((a, b) => ((+a.dataset[k] || 0) - (+b.dataset[k] || 0)) * (dir === 'asc' ? 1 : -1)).forEach(r => tb.appendChild(r));
+      t.querySelectorAll('th[data-sk]').forEach(h => { h.style.color = h.dataset.sk === k ? '#38bdf8' : ''; });
     }
     function setRecapView(uid, k) {
       appData.recapView = k; saveAppData();
@@ -11770,6 +11823,18 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       return { main: `${where} : ${main}`, rec: [m ? `Récup : ${m[1]}` : '', recB].filter(Boolean).join(' · ') };
     }
     // Cardio cible de la partie rapide (fractionné court : cardio max à ne pas dépasser ; plus long : cardio moyen)
+    // Cardio cible en une ligne (accueil)
+    function hrTargetShort(s) {
+      if (!s || s.free) return '';
+      const k = guideKind(s), G = gSegs(s);
+      const fsec = G.fast[0] ? (G.fast[0].unit === 'km' ? G.fast[0].distance / G.vmax * 3600 : G.fast[0].duration * 60) : 9999;
+      const frac = G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k);
+      if (s.cardio) { const c = s.cardio; if (frac && fsec < 120 && c.max) return `Cardio cible : max ${c.max} en fin de répétition`; return `Cardio cible${frac ? ' sur les fractions' : ''} : ${c.moy ? `${c.moy[0]}–${c.moy[1]}` : ''}${c.max ? `${c.moy ? ', ' : ''}max ${c.max}` : ''}`; }
+      if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return '';
+      if (frac) { const [lo, hi] = k === 'seuil' ? [pctToBpm(0.84), pctToBpm(0.9)] : [pctToBpm(0.88), pctToBpm(0.95)]; return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
+      const [lo, hi] = k === 'recup' ? [pctToBpm(0.62), pctToBpm(0.74)] : [pctToBpm(0.68), pctToBpm(0.79)];
+      return `Cardio cible : ${lo}–${hi}`;
+    }
     function guideHrText(s) {
       if (!s || s.free) return '';
       const k = guideKind(s), G = gSegs(s);
@@ -14042,6 +14107,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         if (hb && showG) hb.innerHTML = guideHtml(sess, appData.activeSessionIndex); }
       { const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
         document.getElementById('homeSessStats').textContent = `⏱️ Durée totale ${total} min · ≈ ${String(dist).replace('.', ',')} km${!sess.free && (c || r) ? ` (dont échauff. ${c}' et calme ${r}')` : ''}`; }
+      { const he = document.getElementById('homeHr'); if (he) { const tx = sess.free ? '' : hrTargetShort(sess); he.textContent = tx ? `❤️ ${tx}` : ''; he.classList.toggle('hidden', !tx); } }
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE LA SÉANCE' : "C'EST PARTI !";
