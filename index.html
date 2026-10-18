@@ -1121,6 +1121,10 @@
           <input type="text" id="editHistTitle" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold focus:outline-none focus:border-amber-500">
         </div>
 
+        <div>
+          <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Type de séance</label>
+          <select id="editHistKind" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"></select>
+        </div>
         <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Date</label>
@@ -5342,6 +5346,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       if (s.free || s.kind === 'libre' || /^Séance libre/.test(s.sessionTitle || '')) return { label: 'LIBRE', color: '#34d399' };
       if (s.kind === 'cotes') return { label: 'CÔTES', color: '#f97316' };
       if (s.kind === 'recup') return { label: 'RÉCUPÉRATION', color: '#67e8f9' };
+      if (!s.pyramide && !s.__inf) { const k = histInferKind(s); if (k) return sessionKind({ kind: k, __inf: 1 }); }
       if (!s.pyramide) return { label: 'SÉANCE', color: '#38bdf8' };
       const segs = (s.pyramide || []).filter(p => p.speed > 0);
       const speeds = segs.map(p => +p.speed);
@@ -5480,6 +5485,26 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       return out;
     }
     // Distance d'une séance faite : GPS ou tapis (vitesse × temps), sinon estimée d'après la séance prévue
+    // Séance faite sans type enregistré : on le retrouve (séance prévue liée, segments enregistrés, puis description)
+    function histInferKind(h) {
+      if (!h || h.cross) return '';
+      if (h.kind) return h.kind;
+      try { const lk = histLinkedSession(h); if (lk && lk.pyramide) return inferKind(lk); } catch (e) { }
+      const seg = Array.isArray(h.seg) ? h.seg.filter(x => x && !/chauff|calme|récup bloc/i.test(x.name || '')) : [];
+      if (seg.length) {
+        const tg = seg.map(x => +x.target || +x.avgKmh || 0).filter(Boolean), hi = Math.max(...tg), lo = Math.min(...tg);
+        if (seg.length > 1 && hi - lo >= 0.5) { const fast = seg.filter(x => (+x.target || +x.avgKmh) >= hi - 0.5), ds = fast.map(x => x.sec).sort((a, b) => a - b); return ds[Math.floor(ds.length / 2)] >= 360 ? 'seuil' : 'fractionne'; }
+        if (seg.length > 2) return 'fractionne';
+      }
+      const t = `${h.human || ''} ${h.details || ''} ${h.notes || ''} ${h.sessionTitle || ''}`.toLowerCase();
+      if (/test|vma|cooper/.test(t)) return 'test';
+      if (/côte|cote/.test(t)) return 'cotes';
+      if (/seuil|tempo/.test(t)) return 'seuil';
+      if (/\d+ ?[×x] ?\d|fraction|30\/30|pyramide|répét/.test(t)) return 'fractionne';
+      if (/libre/.test(t)) return 'libre';
+      if (seg.length === 1 || /sortie longue|endurance|footing|ef\b/.test(t)) return 'longue';
+      return '';
+    }
     function histLinkedSession(h) {
       const S = appData.sessions || [];
       return S.find(x => x.doneHistId && x.doneHistId === h.id) || S.find(x => `Semaine ${x.semaine} • ${String(x.jour || '').toUpperCase()}` === h.sessionTitle && (x.date === h.date || x.dateISO === histISO(h))) || null;
@@ -5985,6 +6010,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
         const h = appData.history.find(x => x.id === id);
         if (!h) return;
         document.getElementById('editHistTitle').value = h.sessionTitle;
+        { const ks = document.getElementById('editHistKind'); if (ks) { const cur = h.kind || histInferKind(h) || ''; ks.innerHTML = `<option value="">— Non précisé —</option>` + CFG_KINDS.map(([k, e, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${e} ${l}</option>`).join(''); ks.disabled = !!h.cross; } }
         document.getElementById('editHistDate').value = h.date;
         document.getElementById('editHistPente').value = h.pente;
         document.getElementById('editHistDuration').value = h.durationMin;
@@ -6030,6 +6056,7 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       h.durationMin = parseFloat(document.getElementById('editHistDuration').value) || h.durationMin;
       h.note = document.getElementById('editHistNote').value.trim();
       h.feeling = selectedEditFeelingVal;
+      { const ks = document.getElementById('editHistKind'); if (ks && !h.cross) { if (ks.value) h.kind = ks.value; else delete h.kind; } }
       let gotHs = false;
       if (editAnalysisPending) { h.analysis = editAnalysisPending; const hs = hrShotFrom(editAnalysisPending); if (hs) { h.hrShot = hs; gotHs = true; } }
       if (!gotHs && editShots && editShots.length) attachHrShot(h, editShots.slice());
@@ -11123,10 +11150,12 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         }
         // Onglet segments : tableau avec filtres, tri et moyenne
         const showG = P.hasEle;
+        const canEdit = !item.live && hh.type !== 'exterieur' && (appData.history || []).some(x => x.id === item.id);
+        const fastIdx = G.filter(g => !isWarm(g) && !isRec(g) && g.target > 0).map(g => R[g.a].seg).join('.');
         const kmAt = i => i > 0 ? R[i - 1].km : 0;
         const row = (n, g, st, cls, tgt, sub) => { const k0 = kmAt(g.a), k1 = R[g.b].km;
           return `<tr data-hsf="${cls}"${sub ? ` data-sub="${sub}"` : ''} data-sec="${st.sec.toFixed(1)}" data-km="${st.km.toFixed(4)}" data-kmh="${(st.kmh || 0).toFixed(2)}" data-vap="${(st.vap || 0).toFixed(2)}" data-hr="${st.hr || 0}" data-g="${(st.g || 0).toFixed(2)}" data-k0="${k0.toFixed(3)}" style="border-top:1px solid #1e293b${cls === 'k' || cls === 'p' ? ';display:none' : ''}">
-            <td style="padding:6px 3px 6px 0;color:#e2e8f0;font-weight:700;line-height:1.2">${plEsc(n)}<span style="display:block;font-size:10px;font-weight:600;color:#64748b">${f2(k0)} → ${f2(k1)} km</span></td>
+            <td style="padding:6px 3px 6px 0;color:#e2e8f0;font-weight:700;line-height:1.2">${canEdit && (cls === 'f' || cls === 'r' || cls === 'w') ? `<button type="button" onclick="histSpeedEdit('${item.id}',${R[g.a].seg},'${cls}',${(st.kmh || 0).toFixed(1)},'${fastIdx}')" aria-label="Corriger la vitesse" style="float:right;margin-left:4px;border:none;background:transparent;font-size:13px;padding:0 2px">✏️</button>` : ''}${plEsc(n)}<span style="display:block;font-size:10px;font-weight:600;color:#64748b">${f2(k0)} → ${f2(k1)} km</span></td>
             <td style="text-align:right;color:#cbd5e1">${f2(st.km)}</td><td style="text-align:right;color:#94a3b8">${mmss(st.sec)}</td>
             <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:#fda4af">${st.hr || '–'}</td></tr>`; };
         let nF = 0, nR = 0;
@@ -11280,6 +11309,41 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         box.querySelectorAll('[data-httab]').forEach(b => { const on = b.dataset.httab === k; b.style.background = on ? '#a78bfa' : 'transparent'; b.style.color = on ? '#13092b' : '#94a3b8'; });
       });
     }
+    function histSpeedEdit(hid, segIdx, cls, cur, fastIdx) {
+      let m = document.getElementById('hsEdit');
+      if (!m) { m = document.createElement('div'); m.id = 'hsEdit'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.8);display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(m); }
+      const nFast = String(fastIdx || '').split('.').filter(Boolean).length;
+      m.innerHTML = `<div style="width:100%;max-width:360px;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
+        <span style="font-size:17px;font-weight:800">✏️ Vitesse réelle du tapis</span>
+        <span style="font-size:13px;color:#94a3b8">Si tu as changé la vitesse sur le tapis sans la modifier dans l'app, corrige-la ici : distance, VAP et résultats seront recalculés.</span>
+        <div style="display:flex;align-items:center;gap:8px;justify-content:center"><button type="button" onclick="const i=document.getElementById('hsV');i.value=Math.max(3,(parseFloat(i.value)||0)-0.5).toFixed(1)" style="width:48px;height:48px;border-radius:24px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:22px;font-weight:900">−</button>
+          <input id="hsV" type="number" step="0.1" inputmode="decimal" value="${cur}" style="width:100px;height:52px;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;font-size:24px;font-weight:800;text-align:center"> <span style="font-weight:700;color:#94a3b8">km/h</span>
+          <button type="button" onclick="const i=document.getElementById('hsV');i.value=Math.min(25,(parseFloat(i.value)||0)+0.5).toFixed(1)" style="width:48px;height:48px;border-radius:24px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:22px;font-weight:900">+</button></div>
+        ${cls === 'f' && nFast > 1 ? `<label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700"><input id="hsAll" type="checkbox" class="sw"> Appliquer aux ${nFast} répétitions rapides</label>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="document.getElementById('hsEdit').remove()" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Annuler</button>
+          <button type="button" onclick="histSpeedApply('${hid}',${segIdx},'${fastIdx}')" style="min-height:46px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:800">Enregistrer</button></div></div>`;
+    }
+    function histSpeedApply(hid, segIdx, fastIdx) {
+      const h = (appData.history || []).find(x => x.id === hid); if (!h) return;
+      const v = parseFloat(String(document.getElementById('hsV').value).replace(',', '.'));
+      if (!(v >= 3 && v <= 25)) { showToast('Vitesse entre 3 et 25 km/h'); return; }
+      const all = document.getElementById('hsAll') && document.getElementById('hsAll').checked;
+      const idx = all ? String(fastIdx).split('.').filter(Boolean).map(Number) : [segIdx];
+      (h.track || []).forEach(r => { if (idx.includes(r[3])) r[2] = v; });
+      (h.seg || []).forEach(sg => { if (idx.includes(sg.i)) { sg.avgKmh = v; sg.setKmh = v; } });
+      if (Array.isArray(h.track) && h.track.length) {
+        const km = h.track.reduce((a, r) => a + (r[2] || 0) * 5 / 3600, 0);
+        h.km = Math.round(km * 100) / 100;
+        h.summary = Object.assign({}, h.summary || {}, { distKm: h.km });
+        const min = +h.durationMin || h.track.length * 5 / 60;
+        if (min > 1) h.summary.avgKmh = Math.round(h.km / (min / 60) * 10) / 10;
+        try { const vs = trackChunkStats(h.track, { pente: parseFloat(h.pente) || 0 }); if (vs && vs.vap > 0) h.summary.vapKmh = Math.round(vs.vap * 10) / 10; } catch (e) { }
+      }
+      if (!Array.isArray(h.speedChanges)) h.speedChanges = [];
+      h.speedChanges.push({ t: 0, name: 'correction après séance', from: null, to: v, next: idx.length - 1, edited: true });
+      saveAppData(); document.getElementById('hsEdit').remove();
+      updateHistoryTable(); showToast(`✓ Vitesse corrigée : ${String(v).replace('.', ',')} km/h${idx.length > 1 ? ` sur ${idx.length} répétitions` : ''}`);
+    }
     function histSegFilter(uid, f, sub) {
       const t = document.getElementById(uid); if (!t) return;
       t.dataset.f = f; t.dataset.sub = f === 'p' ? (sub || '') : '';
@@ -11378,6 +11442,20 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         if (bits.length) rows.push({ t: tm, pieces: [bits.join(' ')], gps: true, live: true });
       }
       if (fuelRemindersOn() && drinkEvery() !== 'km') for (let m = drinkEvery(); m * 60 < totalT - 60; m += drinkEvery()) rows.push({ t: m * 60, pieces: [pickNoRepeat('drink')], gps: true, live: true });
+      // Animations (actualité / sujet) : moments où elles passeront et texte lu par la voix
+      { const rc = radioCfg();
+        if (rc.mode !== 'off' && (rc.mode !== 'topic' || rc.topic)) {
+          const ready = radio.key === radioKey(rc) ? radio.items.slice(radio.idx) : [];
+          if (!ready.length && getGeminiKey()) { radio.onReady = () => { const sm = document.getElementById('scriptModal'); if (sm && !sm.classList.contains('hidden')) openScriptModal(true); }; radioPrepare(); }
+          const stAt = t0 => { let a = 0; for (const st of stages) { if (t0 < a + st.durationSec) return { st, el: t0 - a, rem: a + st.durationSec - t0 }; a += st.durationSec; } return null; };
+          let k = 0, last = 0;
+          for (let t0 = rc.every * 60; t0 < totalT - 60; t0 += 5) {
+            if (t0 - last < rc.every * 60) continue;
+            const x = stAt(t0); if (!x || x.st.intensity === 'fast' || x.rem < 50 || x.el < 15) continue;
+            const txt = ready[k] || (rc.mode === 'news' ? "Brève d'actualité du jour (texte en préparation…)" : `Chronique sur « ${rc.topic} » (texte en préparation…)`);
+            rows.push({ t: t0, pieces: [txt], radio: true }); k++; last = t0;
+          }
+        } }
       if (hrEveryMin() && (sensors().btId || runData.hr)) for (let m = hrEveryMin(); m * 60 < totalT - 30; m += hrEveryMin()) rows.push({ t: m * 60, pieces: ['Cardio : valeur, zone et position par rapport à ta cible (annoncé en direct).'], gps: true, live: true });
       if (outdoor && sensors().gpsMode !== 'off') {
         if (r) {
@@ -11417,10 +11495,10 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       scriptRows.forEach(r => { r.hidden = hideRow(r); });
       { const si = document.getElementById('scriptInfo'); si.textContent = si.textContent.replace(/^\d+/, String(scriptRows.filter(r => !r.hidden).length)); }
       document.getElementById('scriptList').innerHTML = scriptRows.map((r, i) => r.hidden ? '' : `
-        <div id="scriptRow${i}" class="flex items-start gap-2 py-1.5 border-b border-slate-800 ${r.gps ? 'text-emerald-200' : r.info ? 'text-slate-500 italic' : 'text-slate-200'}">
+        <div id="scriptRow${i}" class="flex items-start gap-2 py-1.5 border-b border-slate-800 ${r.radio ? 'text-sky-100' : r.gps ? 'text-emerald-200' : r.info ? 'text-slate-500 italic' : 'text-slate-200'}"${r.radio ? ' style="background:rgba(56,189,248,.07)"' : ''}>
           <span class="font-mono text-[11px] text-sky-300 shrink-0 w-11">${fmt(r.t)}</span>
           ${s.outdoor ? `<span class="font-mono text-[10px] text-slate-500 shrink-0 w-12">${r.km.toFixed(2)} km</span>` : ''}
-          <span class="flex-1 flex flex-col gap-0.5 min-w-0"><span class="text-[10px] font-bold uppercase tracking-wide" style="color:${scriptCtx(r.t).c}">${scriptCtx(r.t).l}</span><span class="text-[11px] leading-snug">${r.pieces.join(' ').replace(/</g, '&lt;')}</span></span>
+          <span class="flex-1 flex flex-col gap-0.5 min-w-0"><span class="text-[10px] font-bold uppercase tracking-wide" style="color:${r.radio ? '#38bdf8' : scriptCtx(r.t).c}">${r.radio ? '🎧 Animation' : scriptCtx(r.t).l}</span><span class="${r.radio ? 'text-[12px]' : 'text-[11px]'} leading-snug">${r.pieces.join(' ').replace(/</g, '&lt;')}</span></span>
           ${r.info ? '' : `<button type="button" onclick="playScriptRow(${i})" class="shrink-0 w-6 h-6 rounded-full bg-purple-600/30 text-purple-200 text-[10px]">▶</button>`}
         </div>`).join('');
       document.getElementById('scriptModal').classList.remove('hidden');
@@ -13796,9 +13874,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const a = txt.indexOf('['), b = txt.lastIndexOf(']');
         let arr = []; try { arr = JSON.parse(txt.slice(a, b + 1)); } catch (e) { }
         arr = (Array.isArray(arr) ? arr : []).map(x => String(x || '').replace(/\[\d+(,\s*\d+)*\]/g, '').replace(/[*_#]/g, '').trim()).filter(x => x.length > 15);
-        if (radio.key !== radioKey(c)) radio = { items: [], idx: 0, lastAt: radio.lastAt, loading: true, key: radioKey(c), said: radio.said };
+        if (radio.key !== radioKey(c)) radio = { items: [], idx: 0, lastAt: radio.lastAt, loading: true, key: radioKey(c), said: radio.said, onReady: radio.onReady };
         radio.items.push(...arr);
         radioPrefetch();
+        if (typeof radio.onReady === 'function') { const f = radio.onReady; radio.onReady = null; setTimeout(f, 50); }
       } catch (e) { console.warn('radio', e); }
       finally { radio.loading = false; }
     }
