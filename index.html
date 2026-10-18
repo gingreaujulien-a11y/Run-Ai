@@ -252,6 +252,7 @@
       <button onclick="showHome()" title="Accueil" class="active:scale-95 transition"><img class="runai-logo" style="width:48px;height:48px" alt="Accueil"></button>
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
       <div class="ml-auto flex items-center gap-2">
+        <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" aria-label="Planning & suivi" class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="calendar"></span></button>
         <button id="homeProfileBtn" onclick="openGoalModal()" title="Profil, objectif & coach IA" class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="user"></span></button>
         <button id="homeSettingsBtn" onclick="openAudioModal()" title="Réglages (voix, cardio, GPS)" class="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-600 text-slate-200 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="settings"></span></button>
       </div>
@@ -265,7 +266,6 @@
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div class="flex items-start justify-between gap-2">
         <div id="homeRestDay" class="text-[10px] uppercase tracking-widest font-bold text-sky-300 pt-1"></div>
-        <button onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
       </div>
       <div id="homeRestTitle" class="text-lg font-black text-white">😴 Repos aujourd'hui</div>
       <div id="homeCrossToday" class="flex flex-col gap-2"></div>
@@ -283,8 +283,6 @@
           <div id="homeAdapted" class="text-[11px] font-bold text-amber-300 mt-0.5 hidden"></div>
         </div>
         <div class="shrink-0 flex gap-2">
-        <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="shrink-0 w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-200 flex items-center justify-center active:scale-95"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
-        <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" class="shrink-0 w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95"><span class="icon-slot" data-icon="calendar"></span></button>
         </div>
       </div>
       <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
@@ -301,14 +299,14 @@
       <button onclick="launchFromHome()" class="flex-1 py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
         <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">C'EST PARTI !</span>
       </button>
-      <button id="homeScriptBtn" onclick="openScriptModal()" title="Script de la séance" aria-label="Script de la séance" class="shrink-0 w-16 rounded-2xl bg-purple-500/20 border border-purple-400/60 text-purple-100 text-2xl flex items-center justify-center active:scale-95">📜</button>
+      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="shrink-0 w-16 rounded-2xl bg-sky-500/15 border border-sky-500/50 text-sky-200 flex items-center justify-center active:scale-95" style="width:4rem"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
       </div>
     </div>
 
-    <div id="homeActBar" class="grid grid-cols-3 gap-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem">
-      <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" title="Mes repas du jour" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="font-size:30px;background:#f97316;box-shadow:0 8px 22px rgba(249,115,22,.3)">🍽️</button>
-      <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="background:#10b981;color:#03140d;box-shadow:0 8px 22px rgba(16,185,129,.3)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-      <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" title="Discuter avec le coach" class="h-16 rounded-2xl active:scale-95 transition flex items-center justify-center" style="font-size:30px;background:#8b5cf6;box-shadow:0 8px 22px rgba(139,92,246,.3)">💬</button>
+    <div id="homeActBar" class="flex items-center justify-end gap-2" style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:auto;padding-top:.5rem">
+      <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" title="Mes repas du jour" class="w-11 h-11 rounded-2xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px;font-size:20px">🍽️</button>
+      <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" title="Discuter avec le coach" class="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-500/40 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px;font-size:20px">💬</button>
     </div>
 
 
@@ -374,22 +372,10 @@
 
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
-      <div id="idleRow" class="grid grid-cols-2 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-        <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
-        <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[16px] active:scale-95" style="background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Tester le son</button>
-        <button id="radioBtn" onclick="openRadioModal()" class="py-3 rounded-2xl font-bold text-[15px] active:scale-95" style="grid-column:1 / span 2;min-height:48px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.5);color:#bae6fd">🎧 Animations : aucune</button>
-      </div>
-      <div id="radioModal" class="hidden" style="position:fixed;inset:0;z-index:80;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeRadioModal()">
-        <div style="width:100%;max-width:480px;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px">
-          <div style="font-size:18px;font-weight:900;color:#fff">🎧 Animations pendant la séance</div>
-          <div style="font-size:13px;color:#94a3b8;line-height:1.4">Pour faire passer le temps : de courtes chroniques lues par la voix du coach, jamais pendant un effort rapide.</div>
-          <div id="radioModes" style="display:grid;grid-template-columns:1fr;gap:8px"></div>
-          <input id="radioTopic" type="text" maxlength="120" placeholder="Ton sujet : ex. histoire du marathon, astronomie, actu du foot…" class="pm-in" style="height:46px;font-size:15px">
-          <div style="font-size:13px;color:#cbd5e1;font-weight:700">Fréquence</div>
-          <div id="radioEvery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
-          <div style="font-size:12px;color:#64748b">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</div>
-          <button onclick="saveRadioModal()" style="height:50px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:16px">Valider</button>
-        </div>
+      <div id="idleRow" class="grid grid-cols-3 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
+        <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
+        <button id="chronoScriptBtn" onclick="openScriptModal()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(168,85,247,.18);border:1px solid rgba(192,132,252,.6);color:#f3e8ff">📜 Script</button>
+        <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Son</button>
       </div>
       <div id="ctlRow" class="grid grid-cols-3 gap-3">
         <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
@@ -3908,7 +3894,8 @@
       setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 30);
       ['topBar', 'appFooter', 'sessInfoLine'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', st !== 'idle'); });
       { const ir = document.getElementById('idleRow'), cr = document.getElementById('ctlRow');
-        if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle'); }
+        if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle');
+        { let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { } const sb = document.getElementById('chronoScriptBtn'); if (sb) sb.classList.toggle('hidden', fr); if (ir) ir.style.gridTemplateColumns = fr ? '1fr 1fr' : '1fr 1fr 1fr'; } }
       if (st === 'idle') {
         txt.classList.remove('hidden');
         txt.textContent = 'DÉMARRER';
@@ -10986,6 +10973,12 @@ ${analysisFormatPrompt()}`;
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
         <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
+        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">🎧 Animations pendant la séance</span>
+        <span class="text-[11px] text-slate-500 block mt-0.5">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>
+        ${(() => { const c = radioCfg(), ch = (on, txt, js) => `<button type="button" onclick="${js}" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${txt}</button>`;
+          return `<div class="grid grid-cols-3 gap-1.5 mt-1">${ch(c.mode === 'off', '🔇 Aucune', "setRadio({mode:'off'})")}${ch(c.mode === 'news', '📰 Actualité', "setRadio({mode:'news'})")}${ch(c.mode === 'topic', '💡 Sujet', "setRadio({mode:'topic'})")}</div>`
+            + (c.mode === 'topic' ? `<input id="radioTopic" type="text" maxlength="120" value="${(c.topic || '').replace(/"/g, '&quot;')}" placeholder="Ex. histoire du marathon, astronomie, actu du foot…" onchange="setRadio({topic:this.value.trim()})" class="pm-in w-full mt-1.5" style="height:42px;font-size:14px">` : '')
+            + (c.mode !== 'off' ? `<div class="grid grid-cols-3 gap-1.5 mt-1.5">${[5, 10, 15].map(m => ch(c.every === m, `${m} min`, `setRadio({every:${m}})`)).join('')}</div><span class="text-[11px] text-slate-500 block mt-1">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</span>` : ''); })()}
         <button onclick="regenScript()" class="w-full mt-4 py-4 rounded-2xl font-black text-[16px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
     }
@@ -11024,7 +11017,7 @@ ${analysisFormatPrompt()}`;
       }
       if (scriptDl && scriptDl.ok) {
         f.innerHTML = `<div class="text-center text-[13px] font-bold text-emerald-300">✅ Voix prêtes${scriptDl.err ? ' (certaines annonces utiliseront la voix du téléphone)' : ''}</div>
-          <button onclick="closeScriptModal(); launchFromHome()" class="w-full py-4 rounded-2xl font-black text-[17px]" style="background:#0ea5e9;color:#04121f">▶ C'EST PARTI !</button>`;
+          <button onclick="closeScriptModal(); if (document.body.classList.contains('home')) launchFromHome(); else startWithCountdown()" class="w-full py-4 rounded-2xl font-black text-[17px]" style="background:#0ea5e9;color:#04121f">▶ C'EST PARTI !</button>`;
         return;
       }
       f.innerHTML = `<div class="grid grid-cols-2 gap-2">
@@ -13205,10 +13198,21 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
       if (d.mode !== 'off') radioPrepare();
     }
+    function setRadio(ch) {
+      applyScriptToggles();
+      const t = document.getElementById('radioTopic'); const c = radioCfg();
+      if (t && ch.topic === undefined) c.topic = t.value.trim();
+      Object.assign(c, ch);
+      if (c.mode !== 'off' && !getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
+      appData.audioSettings.radio = { mode: c.mode, topic: c.topic, every: c.every }; saveAppData();
+      radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+      if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
+      if (ch.topic === undefined) { renderScriptOptions(); if (ch.mode === 'topic') setTimeout(() => { const i = document.getElementById('radioTopic'); if (i && !i.value) i.focus(); }, 50); }
+    }
     function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
     async function radioPrepare() {
       const c = radioCfg();
-      if (c.mode === 'off' || !getGeminiKey() || radio.loading) return;
+      if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !getGeminiKey() || radio.loading) return;
       if (radio.key === radioKey(c) && radio.items.length - radio.idx >= 2) return;
       radio.loading = true;
       const total = Math.max(20, (timerState.totalSessionMs || 0) / 60000 || 45);
@@ -13238,7 +13242,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function radioSpoken(t) { return t; }
     function radioTick(cur, stageElMs, remMs) {
       const c = radioCfg();
-      if (c.mode === 'off' || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
+      if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
       const el = (timerState.totalSessionMs || 0) - (timerState.totalRemainingMs || 0);
       if (!radio.lastAt) radio.lastAt = 1; // premier passage : on compte depuis le début
       if (el - (radio.lastAt === 1 ? 0 : radio.lastAt) < c.every * 60000) return;
@@ -13282,9 +13286,9 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const b = document.getElementById('soundTestBtn');
       aiUnlock(); getAudioContext();
       if (aiVoiceActive() && !aiClips.has(aiClipKey(soundTestText()))) {
-        if (b) { b.disabled = true; b.textContent = '⏳ Préparation…'; }
+        if (b) { b.disabled = true; b.textContent = '⏳'; }
         await getSoundTestClip(true);
-        if (b) { b.disabled = false; b.textContent = '🔊 Tester le son'; }
+        if (b) { b.disabled = false; b.textContent = '🔊 Son'; }
       }
       const ms = playSoundTest();
       setTimeout(() => showSoundTestModal('ask'), ms);
@@ -13865,7 +13869,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE LA SÉANCE' : "C'EST PARTI !";
-      { const sb = document.getElementById('homeScriptBtn'); if (sb) sb.classList.toggle('hidden', !!inProgress || !!sess.free); }
+      { const cb = document.getElementById('homeCfgBtn'); if (cb) cb.classList.toggle('hidden', !!inProgress); }
       const goal = appData.goal || {};
       const g = document.getElementById('homeGoal');
       if (g) g.textContent = goal.distanceKm ? `🎯 Objectif : ${goal.distanceKm} km en ${goal.durationMin} min le ${goal.date}` : '';
