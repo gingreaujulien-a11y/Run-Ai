@@ -316,6 +316,10 @@
   <!-- ==================== ZONE CENTRALE : CHRONOMÈTRE CIRCULAIRE ÉPURÉ ==================== -->
   <main id="mainArea" class="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-md mx-auto w-full min-w-0" style="min-width:0">
     
+    <div id="ytBox" class="hidden" style="width:100%;position:relative;border-radius:14px;overflow:hidden;background:#000;margin-bottom:8px;aspect-ratio:16/9">
+      <div id="ytPlayer" style="width:100%;height:100%"></div>
+      <button type="button" onclick="ytStop()" aria-label="Fermer la vidéo" style="position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:18px;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:16px;font-weight:900">✕</button>
+    </div>
     <!-- TEMPS RESTANT (APPUI : BASCULE SÉANCE / SEGMENT) -->
     <div id="topZone" class="text-center mb-3 w-full min-w-0" style="max-width:100%">
       <div id="stageInfoLine" style="max-width:100%" class="w-full text-6xl sm:text-7xl font-black text-sky-300 tracking-tight leading-none whitespace-nowrap overflow-hidden mb-2 hidden"></div>
@@ -377,6 +381,7 @@
         <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
         <button id="chronoScriptBtn" onclick="openScriptModal()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(168,85,247,.18);border:1px solid rgba(192,132,252,.6);color:#f3e8ff">📜 Script</button>
         <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Son</button>
+        <button id="ytBtn" onclick="openYtModal()" class="hidden rounded-2xl font-bold text-[14px] active:scale-95" style="grid-column:1 / -1;min-height:46px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);color:#fecaca">▶️ Vidéo YouTube : aucune</button>
       </div>
       <div id="ctlRow" class="grid grid-cols-3 gap-3">
         <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
@@ -2013,6 +2018,7 @@
 
     // Recharge la séance active sur le chrono (arrêt + remise à zéro)
     function reloadChrono() {
+      try { if (yt.active) ytStop(); } catch (e) { }
       if (timerState.isRunning) pauseTimer();
       clearLiveRun();
       cancelSpeech();
@@ -3917,6 +3923,7 @@
       ['topBar', 'appFooter', 'sessInfoLine'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', st !== 'idle'); });
       { const ir = document.getElementById('idleRow'), cr = document.getElementById('ctlRow');
         if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle');
+        { const yb = document.getElementById('ytBtn'); if (yb) { const tap = (getActiveSession() || {}).type === 'tapis'; yb.classList.toggle('hidden', !tap); yb.textContent = '▶️ Vidéo YouTube : ' + (ytCfg().on && ytCfg().url ? (ytCfg().title || 'activée') : 'aucune'); } }
         { let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { } const sb = document.getElementById('chronoScriptBtn'); if (sb) sb.classList.toggle('hidden', fr); if (ir) ir.style.gridTemplateColumns = fr ? '1fr 1fr' : '1fr 1fr 1fr'; } }
       if (st === 'idle') {
         txt.classList.remove('hidden');
@@ -9646,6 +9653,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       if (!timerState.stages[timerState.currentStageIndex]) { showToast("Séance vide : ajoutez au moins un segment"); return; }
       requestFullscreenSafe(); aiUnlock(); getAudioContext();
       btAutoReconnect();
+      try { ytStart(); } catch (e) { }
       if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
       const viaAi = aiPlayCountdown(3);
       if (!viaAi) speak([VT().count[3]]);
@@ -11342,7 +11350,10 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (!Array.isArray(h.speedChanges)) h.speedChanges = [];
       h.speedChanges.push({ t: 0, name: 'correction après séance', from: null, to: v, next: idx.length - 1, edited: true });
       saveAppData(); document.getElementById('hsEdit').remove();
-      updateHistoryTable(); showToast(`✓ Vitesse corrigée : ${String(v).replace('.', ',')} km/h${idx.length > 1 ? ` sur ${idx.length} répétitions` : ''}`);
+      const sc = document.querySelector('#historyModal .overflow-y-auto'), top = sc ? sc.scrollTop : 0;
+      updateHistoryTable();
+      { const dd = document.getElementById('detail_' + hid); if (dd) dd.classList.remove('hidden'); setHistTab('', 'seg'); if (sc) sc.scrollTop = top; }
+      showToast(`✓ Vitesse corrigée : ${String(v).replace('.', ',')} km/h${idx.length > 1 ? ` sur ${idx.length} répétitions` : ''}`);
     }
     function histSegFilter(uid, f, sub) {
       const t = document.getElementById(uid); if (!t) return;
@@ -11452,7 +11463,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           for (let t0 = rc.every * 60; t0 < totalT - 60; t0 += 5) {
             if (t0 - last < rc.every * 60) continue;
             const x = stAt(t0); if (!x || x.st.intensity === 'fast' || x.rem < 50 || x.el < 15) continue;
-            const txt = ready[k] || (rc.mode === 'news' ? "Brève d'actualité du jour (texte en préparation…)" : `Chronique sur « ${rc.topic} » (texte en préparation…)`);
+            const txt = ready[k] || (rc.mode === 'news' ? "Brève d'actualité du jour (texte en préparation…)" : `Chronique : ${rc.topic} (texte en préparation…)`);
             rows.push({ t: t0, pieces: [txt], radio: true }); k++; last = t0;
           }
         } }
@@ -11608,8 +11619,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">🎧 Animations pendant la séance</span>
         <span class="text-[11px] text-slate-500 block mt-0.5">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>
         ${(() => { const c = radioCfg(), ch = (on, txt, js) => `<button type="button" onclick="${js}" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${txt}</button>`;
-          return `<div class="grid grid-cols-3 gap-1.5 mt-1">${ch(c.mode === 'off', '🔇 Aucune', "setRadio({mode:'off'})")}${ch(c.mode === 'news', '📰 Actualité', "setRadio({mode:'news'})")}${ch(c.mode === 'topic', '💡 Sujet', "setRadio({mode:'topic'})")}</div>`
-            + (c.mode === 'topic' ? `<input id="radioTopic" type="text" maxlength="120" value="${(c.topic || '').replace(/"/g, '&quot;')}" placeholder="Ex. histoire du marathon, astronomie, actu du foot…" onchange="setRadio({topic:this.value.trim()})" class="pm-in w-full mt-1.5" style="height:42px;font-size:14px">` : '')
+          return `<div class="grid grid-cols-3 gap-1.5 mt-1">${ch(c.mode === 'off', '🔇 Aucune', "setRadio({mode:'off'})")}${ch(c.mode === 'news', '📰 Actualité', "setRadio({mode:'news'})")}${ch(c.mode === 'topic', '💡 Thèmes', "setRadio({mode:'topic'})")}</div>`
+            + (c.mode === 'topic' ? `<span class="text-[11px] text-slate-400 block mt-2">Choisis un ou plusieurs thèmes (les chroniques alternent entre eux) :</span>
+              <div class="flex flex-wrap gap-1.5 mt-1">${radioThemes().map(t => { const on = c.themes.includes(t), a = JSON.stringify(t).replace(/"/g, '&quot;'); return `<span style="display:inline-flex;align-items:center" class="inline-flex items-center rounded-full border text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><button type="button" onclick="radioToggleTheme(${a})" class="pl-3 pr-1.5" style="min-height:34px">${on ? '✓ ' : ''}${plEsc(t)}</button><button type="button" onclick="radioDelTheme(${a})" aria-label="Supprimer ce thème" class="pr-2.5 pl-1 text-slate-500" style="min-height:34px">✕</button></span>`; }).join('')}</div>
+              <div class="flex gap-1.5 mt-1.5"><input id="radioNewTheme" type="text" maxlength="80" placeholder="Nouveau thème : ex. actu du foot, cinéma…" class="pm-in flex-1" style="height:40px;font-size:14px" onkeydown="if(event.key==='Enter')radioAddTheme()"><button type="button" onclick="radioAddTheme()" class="rounded-lg px-3 text-[13px] font-bold" style="background:#38bdf8;color:#04121f">+ Ajouter</button></div>
+              ${c.themes.length ? '' : '<span class="text-[11px] text-amber-300 block mt-1">Sélectionne au moins un thème.</span>'}` : '')
             + (c.mode !== 'off' ? `<div class="grid grid-cols-3 gap-1.5 mt-1.5">${[5, 10, 15].map(m => ch(c.every === m, `${m} min`, `setRadio({every:${m}})`)).join('')}</div><span class="text-[11px] text-slate-500 block mt-1">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</span>` : ''); })()}
         <button onclick="regenScript()" class="w-full mt-4 py-4 rounded-2xl font-black text-[16px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
@@ -13818,7 +13832,22 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     // ==================== ANIMATIONS PENDANT LA SÉANCE ====================
     let radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
     let radioDraft = null;
-    function radioCfg() { return Object.assign({ mode: 'off', topic: '', every: 5 }, appData.audioSettings.radio || {}); }
+    function radioThemes() { const a = appData.audioSettings; if (!Array.isArray(a.radioThemes)) a.radioThemes = ['Histoire de la course à pied', 'Astronomie', 'Nature et animaux']; return a.radioThemes; }
+    function radioCfg() {
+      const c = Object.assign({ mode: 'off', topic: '', every: 5 }, appData.audioSettings.radio || {});
+      if (!Array.isArray(c.themes)) { c.themes = c.topic ? [c.topic] : []; if (c.topic && !radioThemes().includes(c.topic)) radioThemes().push(c.topic); }
+      c.themes = c.themes.filter(t => radioThemes().includes(t));
+      c.topic = c.themes.join(', ');
+      return c;
+    }
+    function radioToggleTheme(t) { const c = radioCfg(); const th = c.themes.includes(t) ? c.themes.filter(x => x !== t) : c.themes.concat(t); setRadio({ themes: th }); }
+    function radioAddTheme() {
+      const i = document.getElementById('radioNewTheme'); const v = i ? i.value.trim().slice(0, 80) : '';
+      if (!v) { showToast('Écris un thème'); return; }
+      if (!radioThemes().some(x => x.toLowerCase() === v.toLowerCase())) radioThemes().push(v);
+      const c = radioCfg(); setRadio({ themes: c.themes.includes(v) ? c.themes : c.themes.concat(v) });
+    }
+    function radioDelTheme(t) { const a = appData.audioSettings; a.radioThemes = radioThemes().filter(x => x !== t); const c = radioCfg(); setRadio({ themes: c.themes.filter(x => x !== t) }); }
     function radioLabel(c) { c = c || radioCfg(); return c.mode === 'news' ? `📰 Actu toutes les ${c.every} min` : c.mode === 'topic' && c.topic ? `💡 « ${c.topic.length > 22 ? c.topic.slice(0, 21) + '…' : c.topic} » / ${c.every} min` : 'aucune'; }
     function updateRadioBtn() { const b = document.getElementById('radioBtn'); if (b) b.textContent = '🎧 Animations : ' + radioLabel(); }
     function openRadioModal() {
@@ -13845,14 +13874,14 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
     function setRadio(ch) {
       applyScriptToggles();
-      const t = document.getElementById('radioTopic'); const c = radioCfg();
-      if (t && ch.topic === undefined) c.topic = t.value.trim();
+      const c = radioCfg();
       Object.assign(c, ch);
       if (c.mode !== 'off' && !getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
-      appData.audioSettings.radio = { mode: c.mode, topic: c.topic, every: c.every }; saveAppData();
+      c.topic = (c.themes || []).join(', ');
+      appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every }; saveAppData();
       radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
       if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
-      if (ch.topic === undefined) { renderScriptOptions(); if (ch.mode === 'topic') setTimeout(() => { const i = document.getElementById('radioTopic'); if (i && !i.value) i.focus(); }, 50); }
+      renderScriptOptions();
     }
     function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
     async function radioPrepare() {
@@ -13867,7 +13896,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       const prompt = c.mode === 'news'
         ? `Nous sommes le ${todayISO()}. Utilise la recherche Google pour trouver l'actualité du jour (France et monde, plus un peu de sport, de science ou de culture). Écris ${n} brèves radio ${lang}, une par sujet différent, chacune de 2 à 3 phrases (40 à 60 mots), claires à l'oral, ton neutre et factuel, sans chiffres compliqués, sans détails morbides. Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
 Réponds uniquement avec un tableau JSON de chaînes de caractères.`
-        : `Écris ${n} courtes chroniques radio ${lang} sur le sujet « ${c.topic} », pour accompagner un coureur pendant son footing. Chaque chronique : 2 à 4 phrases (40 à 70 mots), un fait, une anecdote ou une info différente, vivante et facile à suivre à l'oral, sans liste ni chiffres compliqués. Si le sujet porte sur l'actualité, utilise la recherche Google pour des infos récentes et exactes (nous sommes le ${todayISO()}). Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
+        : `Écris ${n} courtes chroniques radio ${lang} ${c.themes && c.themes.length > 1 ? `sur ces thèmes, en alternant de l'un à l'autre : ${c.themes.map(t => `« ${t} »`).join(', ')}` : `sur le thème « ${c.topic} »`}, pour accompagner un coureur pendant son footing. Chaque chronique : 2 à 4 phrases (40 à 70 mots), un fait, une anecdote ou une info différente, vivante et facile à suivre à l'oral, sans liste ni chiffres compliqués. Si le sujet porte sur l'actualité, utilise la recherche Google pour des infos récentes et exactes (nous sommes le ${todayISO()}). Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
 Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       try {
         const txt = await geminiText([{ text: prompt }], { search: true, maxTokens: 4000 });
@@ -13900,7 +13929,76 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       speakLive(t);
       if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
     }
+    // ==================== MODE VIDÉO YOUTUBE (tapis) ====================
+    let yt = { player: null, ready: false, apiP: null, vol: -1, autoPaused: false, active: false };
+    function ytCfg() { return Object.assign({ on: false, url: '' }, appData.audioSettings.youtube || {}); }
+    function ytParse(u) {
+      u = String(u || '').trim(); if (!u) return null;
+      const list = (u.match(/[?&]list=([\w-]+)/) || [])[1] || '';
+      const vid = (u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/) || [])[1] || (/^[\w-]{11}$/.test(u) ? u : '');
+      return vid || list ? { vid, list } : null;
+    }
+    function openYtModal() {
+      let m = document.getElementById('ytModal');
+      if (!m) { m = document.createElement('div'); m.id = 'ytModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+      const c = ytCfg();
+      m.innerHTML = `<div style="width:100%;max-width:480px;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
+        <span style="font-size:18px;font-weight:900">▶️ Vidéo YouTube pendant la séance</span>
+        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle le lien d'une vidéo ou d'une playlist YouTube. Elle démarre avec la séance, se met en pause avec elle, et son volume baisse pendant les annonces du coach. L'écran doit rester allumé (pas de mode poche), et le wifi est conseillé.</span>
+        <input id="ytUrl" type="url" value="${String(c.url || '').replace(/"/g, '&quot;')}" placeholder="https://www.youtube.com/watch?v=…" class="pm-in" style="height:46px;font-size:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button type="button" onclick="ytSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans vidéo</button>
+          <button type="button" onclick="ytSave(true)" style="min-height:48px;border-radius:14px;border:none;background:#ef4444;color:#fff;font-weight:900">Activer</button></div></div>`;
+    }
+    function ytSave(on) {
+      const u = (document.getElementById('ytUrl') || {}).value || '';
+      if (on && !ytParse(u)) { showToast('Lien YouTube non reconnu'); return; }
+      appData.audioSettings.youtube = { on: !!on, url: on ? u.trim() : (ytCfg().url || ''), title: on ? (ytParse(u).list && !ytParse(u).vid ? 'playlist' : 'activée') : '' };
+      saveAppData(); const m = document.getElementById('ytModal'); if (m) m.remove(); setMainButton(); showToast(on ? '▶️ La vidéo démarrera avec la séance' : 'Vidéo désactivée');
+    }
+    function ytLoadApi() {
+      if (window.YT && window.YT.Player) return Promise.resolve();
+      if (yt.apiP) return yt.apiP;
+      yt.apiP = new Promise((res, rej) => {
+        const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { try { prev && prev(); } catch (e) { } res(); };
+        const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { yt.apiP = null; rej(new Error('YouTube injoignable')); }; document.head.appendChild(sc);
+        setTimeout(() => rej(new Error('délai')), 15000);
+      });
+      return yt.apiP;
+    }
+    async function ytStart() {
+      const c = ytCfg(), sess = getActiveSession() || {};
+      if (!c.on || sess.type !== 'tapis' || yt.active) return;
+      const p = ytParse(c.url); if (!p) return;
+      yt.active = true;
+      document.getElementById('ytBox').classList.remove('hidden'); setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 50);
+      try { await ytLoadApi(); } catch (e) { showToast('Vidéo YouTube impossible à charger'); ytStop(); return; }
+      if (!yt.active) return;
+      const vars = { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1 };
+      if (p.list) { vars.list = p.list; vars.listType = 'playlist'; }
+      yt.player = new YT.Player('ytPlayer', { width: '100%', height: '100%', videoId: p.vid || undefined, playerVars: vars,
+        events: { onReady: e => { yt.ready = true; try { e.target.setVolume(100); e.target.playVideo(); } catch (er) { } }, onError: () => showToast("Cette vidéo ne peut pas être lue ici (lecture intégrée refusée par YouTube)") } });
+    }
+    function ytStop() {
+      yt.active = false; yt.ready = false; yt.vol = -1; yt.autoPaused = false;
+      try { yt.player && yt.player.destroy(); } catch (e) { }
+      yt.player = null;
+      const box = document.getElementById('ytBox'); if (box) { box.classList.add('hidden'); if (!document.getElementById('ytPlayer')) box.insertAdjacentHTML('afterbegin', '<div id="ytPlayer" style="width:100%;height:100%"></div>'); }
+      setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 50);
+    }
+    // Volume baissé pendant les annonces, pause/reprise avec la séance
+    setInterval(() => {
+      if (!yt.player || !yt.ready) return;
+      try {
+        const want = isSpeaking() ? 18 : 100;
+        if (want !== yt.vol) { yt.player.setVolume(want); yt.vol = want; }
+        const st = yt.player.getPlayerState();
+        if (!timerState.isRunning && timerState.sessionStarted && st === 1) { yt.player.pauseVideo(); yt.autoPaused = true; }
+        else if (timerState.isRunning && yt.autoPaused) { yt.player.playVideo(); yt.autoPaused = false; }
+      } catch (e) { }
+    }, 300);
     function cancelBeforeStart() {
+      try { ytStop(); } catch (e) { }
       cancelPreStartCountdown();
       cancelSpeech();
       if (freeSession) { freeSession = null; }
