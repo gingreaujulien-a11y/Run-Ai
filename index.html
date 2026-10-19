@@ -260,6 +260,7 @@
 
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
     <div id="homeGreeting" class="text-xl font-black text-white leading-snug px-1"></div>
+    <button type="button" id="homeResultsBtn" onclick="openTodayResults()" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95" style="min-height:52px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.55);color:#a7f3d0">📊 Voir les résultats de ta séance du jour</button>
     <div id="homeRecovery" class="hidden"></div>
     <div id="homeFeelHost"></div>
 
@@ -1928,13 +1929,26 @@
       }
       return false;
     }
+    // Allure (VAP) visée pour l'échauffement et le retour au calme, selon la séance ; sur tapis en pente, vitesse à programmer = même VAP
+    function easyStageVap(which, sess) {
+      const ef = runnerEF() || 9, k = guideKind(sess);
+      let v;
+      if (which === 'chauffe') v = ['fractionne', 'pyramide', 'seuil', 'cotes', 'test', 'course'].includes(k) ? ef - 0.5 : k === 'recup' ? ef - 1.5 : ef - 0.5;
+      else v = ['fractionne', 'pyramide', 'seuil', 'cotes', 'test', 'course'].includes(k) ? ef - 1.5 : ef - 1;
+      return Math.max(5, Math.round(v * 2) / 2);
+    }
+    function easyStageSpeed(which, sess) {
+      const v = easyStageVap(which, sess);
+      if (sess && sess.type === 'tapis') { const g = treadmillGrade(sess.pente); return Math.max(3, Math.round(speedOnGrade(v, g) * 2) / 2); }
+      return v;
+    }
     function buildCurrentSessionStages() {
       if (!window.__buildOverride && !timerState.sessionStarted) try { const a = getActiveSession(); if (a && isLongRunSess(a) && (!a.wcIn || (+a.chauffe || 0) + (+a.recup || 0) > 0)) { longRunIncludeWarmCool(a); longRunNoWarm(a); saveAppData(); } } catch (e) { }
       const sess = routeRunSess(window.__buildOverride || getActiveSession());
       const stages = [];
 
       if (sess.chauffe > 0) {
-        stages.push({ type: 'chauffe', name: "Échauffement", speed: runnerEF(), durationSec: Math.round(sess.chauffe * 60) });
+        stages.push({ type: 'chauffe', name: "Échauffement", speed: easyStageSpeed('chauffe', sess), vapTarget: easyStageVap('chauffe', sess), durationSec: Math.round(sess.chauffe * 60) });
       }
 
       const reps = Math.max(1, parseInt(sess.repet) || 1);
@@ -1983,7 +1997,7 @@
         stages.push({ type: 'palier', name: 'Prolongation', speed: sess.extension.speed || runnerEF(), durationSec: Math.round(sess.extension.minutes * 60), isExtension: true });
       }
       if (sess.recup > 0) {
-        stages.push({ type: 'recup', name: "Retour au calme", speed: runnerEF(), durationSec: Math.round(sess.recup * 60) });
+        stages.push({ type: 'recup', name: "Retour au calme", speed: easyStageSpeed('recup', sess), vapTarget: easyStageVap('recup', sess), durationSec: Math.round(sess.recup * 60) });
       }
 
       // Intensité : rapide (au-dessus de la vitesse moyenne des paliers) / récup (récups et paliers les plus lents)
@@ -2039,6 +2053,7 @@
     // ==================== AFFICHAGE ====================
     let bigDisplayMode = 'speed';
     function toggleBigDisplay() {
+      bigDisplayMode = 'speed'; return; // le cardio est affiché sous le cercle
       const hrFresh = runData.hr && Date.now() - runData.hrAt < 8000;
       if (bigDisplayMode === 'speed' && !hrFresh) {
         showToast("Pas de cardio : connectez votre montre ou ceinture (⌚ Cardio & GPS)");
@@ -3797,7 +3812,7 @@
     // Annonce « moitié du segment » : segments lents/moyens d'au moins 1 min (sur les rapides, place aux encouragements)
     function halfAlertApplies(st) {
       if (st && st.isFree) return false;
-      return !!st && st.durationSec >= 60 && st.intensity !== 'fast';
+      return !!st && st.durationSec >= 60 && st.intensity !== 'fast' && !isRecoveryStage(st);
     }
     // Moment de l'annonce « Prépare-toi » : 5 s avant la fin, ou plus tôt si la phrase est longue
     function prepLeadMs(text) {
@@ -4229,6 +4244,7 @@
       checkExtensionOffer(remMs);
       checkMidSessionCheckin(remMs);
       try { radioTick(curStage, elapsedMs, remMs); } catch (e) { }
+      try { coolFeelTick(curStage, elapsedMs, remMs); } catch (e) { }
       checkKmSummary(remMs);
       try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       try { recoveryHrCheck(curStage, remMs); } catch (e) { }
@@ -5222,6 +5238,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
     }
 
     function openValidationModal() {
+      if (timerState.finished && getGeminiKey() && !runData.autoAnaDone) { runData.autoAnaDone = true; setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, 700); }
       const sess = getActiveSession();
       const totalMin = computeSessionTotalMin(sess);
 
@@ -5242,10 +5259,11 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       if (timerState.finished) { try { const ds = new Date(); recap = recapHtml({ track: timerState.runTrack, seg: timerState.runSeg, pente: sess.type === 'tapis' ? (parseFloat(sess.pente) || 0) : 0, kind: sessionKind(sess), week: sess.free ? '' : sess.semaine, title: sess.free ? 'Séance libre' : capFirst(stripWarmCool(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 })))), dateTxt: capFirst(ds.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })), km: parseFloat(sum.distKm) || 0, plannedMin: sess.free ? 0 : totalMin, plannedKm: sess.free ? 0 : computeSessionDistanceKm(sess) }); } catch (e) { console.warn('recap', e); } }
       if (timerState.finished) { try { const sm = timerState.runSummary || runSummary(); const r2 = histRecapHtml({ id: 'live', rawIdx: -1, live: true, track: timerState.runTrack, seg: timerState.runSeg, km: parseFloat(sm.distKm) || kmDistanceNow() || 0, pente: sess.pente, linked: sess.free ? null : sess, hh: { type: sess.type, plannedMin: sess.free ? 0 : totalMin, durationMin: valActualMinutes() } }, sessionKind(sess), null); if (r2) { document.getElementById('valRunData').innerHTML = r2; recap = null; } } catch (e) { console.warn('recap live', e); } }
       if (recap !== null) document.getElementById('valRunData').innerHTML = recap + (timerState.finished ? runDataBlockHtml(timerState.runTrack, timerState.runSeg, { pente: getActiveSession().type === 'tapis' ? (parseFloat(getActiveSession().pente) || 0) : 0 }) : '');
-      document.getElementById('valNoteInput').value = '';
+      document.getElementById('valNoteInput').value = timerState.finished && runData.voiceFeel ? runData.voiceFeel : '';
       valShots = [];
       lastAnalysis = '';
       renderValShots();
+      if (timerState.finished && getGeminiKey()) { const o = document.getElementById('valAnalysis'); if (o) { o.classList.remove('hidden'); o.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>'; } }
       document.getElementById('valAnalysis').classList.add('hidden');
       document.getElementById('valAnalysis').innerHTML = '';
 
@@ -5571,7 +5589,81 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         <text x="${Math.min(W - 30, x(n - 1))}" y="${y(last.p) - 10}" text-anchor="middle" font-size="12" font-weight="800" fill="#fde68a">${last.p} %</text>
         <text x="10" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(pts[0].d)}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(last.d)}</text></svg>`;
     }
+    // ---------- Points forts, points à travailler (coach) et préférences du coureur ----------
+    const SESS_TYPES_PREF = [['fractionne', 'Fractionné court'], ['fl', 'Fractionné long'], ['seuil', 'Seuil / tempo'], ['cotes', 'Côtes'], ['longue', 'Sortie longue'], ['tapis', 'Tapis'], ['exterieur', 'Dehors'], ['vitesse', 'Vitesse pure'], ['endurance', 'Endurance longue durée']];
+    function runnerLikes() { const p = runnerProfile(); if (!p.likes || typeof p.likes !== 'object') p.likes = { aise: [], dur: [], aime: [], deteste: [], note: '' }; return p.likes; }
+    function runnerLikesText() {
+      const L = runnerLikes(), n = k => (SESS_TYPES_PREF.find(x => x[0] === k) || [k, k])[1].toLowerCase();
+      const parts = [L.aise.length ? `à l'aise sur : ${L.aise.map(n).join(', ')}` : '', L.dur.length ? `moins à l'aise sur : ${L.dur.map(n).join(', ')}` : '', L.aime.length ? `aime : ${L.aime.map(n).join(', ')}` : '', L.deteste.length ? `n'aime pas (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : ''].filter(Boolean);
+      return parts.length ? `Ressenti du coureur sur les types de séances : ${parts.join(' ; ')}. Le but est de progresser en prenant du plaisir : ne jamais imposer souvent une séance qu'il déteste, préférer une variante qu'il tolère mieux.` : '';
+    }
+    function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); if (cat === 'aise') L.dur = L.dur.filter(x => x !== k); if (cat === 'dur') L.aise = L.aise.filter(x => x !== k); saveAppData(); renderProgress(); }
+    function strengthsCardHtml() {
+      const L = runnerLikes(), A = appData.coachSW;
+      const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${on ? '✓ ' : ''}${l}</button>`; }).join('')}</div>`;
+      const sec = (t, cat) => `<span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">${t}</span>${chips(cat)}`;
+      const esc = x => plEsc(String(x || ''));
+      const res = A && A.j ? `<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <div><b style="color:#34d399">💪 Points forts</b><ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.45">${(A.j.forts || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+          <div><b style="color:#fb923c">🎯 À travailler</b><ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.45">${(A.j.faibles || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+          ${(A.j.travail || []).map((w, i) => `<div style="padding:10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b;display:flex;flex-direction:column;gap:4px"><b style="font-size:14px">🛠️ ${esc(w.titre)}</b><span style="font-size:13px;color:#cbd5e1">${esc(w.pourquoi)}</span>${w.exemple ? `<span style="font-size:13px;color:#7dd3fc">Exemple : ${esc(w.exemple)}</span>` : ''}
+            ${w.seance && w.seance.segments ? (w.added ? `<span style="font-size:12px;font-weight:800;color:#34d399">✓ Ajoutée au planning le ${esc(w.added)}</span>` : `<button type="button" onclick="addSwToPlan(${i})" style="align-self:flex-start;min-height:36px;padding:0 12px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:13px">➕ Ajouter au planning</button>`) : ''}</div>`).join('')}
+          <span style="font-size:11px;color:#64748b">Analyse du ${fmtDateShort(A.at)}</span></div>` : '';
+      return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🧭 Points forts et axes de progrès</span>
+        <span style="font-size:12px;color:#94a3b8">Dis au coach ce que tu aimes et où tu es à l'aise : il en tient compte pour te faire progresser en prenant du plaisir.</span>
+        ${sec("😎 Je suis à l'aise sur", 'aise')}${sec("😓 Je suis moins à l'aise sur", 'dur')}${sec("❤️ J'aime", 'aime')}${sec("🙅 Je n'aime pas", 'deteste')}
+        <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
+        <button type="button" id="swBtn" onclick="runStrengthsAnalysis()" style="margin-top:6px;min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:14px">🧠 ${A ? "Refaire l'analyse du coach" : 'Analyse du coach : mes points forts et faibles'}</button>
+        <div id="swOut">${res}</div></div>`;
+    }
+    async function runStrengthsAnalysis() {
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
+      const b = document.getElementById('swBtn'); if (b) { b.disabled = true; b.textContent = '⏳ Le coach étudie tes séances…'; }
+      const H = (appData.history || []).filter(h => !h.cross).slice(0, 40);
+      const M = H.map(h => sessMetrics(h)).filter(Boolean);
+      const byType = {}; M.forEach(m => { (byType[m.label + ' · ' + m.format] = byType[m.label + ' · ' + m.format] || []).push(m); });
+      const typeTxt = Object.entries(byType).map(([k, a]) => `- ${k} : ${a.length} séances ; ${a.slice(-4).map(x => `${x.iso} VAP ${x.vap.toFixed(1)} FC ${x.hr || '?'}${x.vma ? ` VMA≈${x.vma.toFixed(1)}` : ''}`).join(' | ')}`).join('\n') || '- aucune donnée détaillée';
+      const hist = runHistory().slice(0, 20).map(h => `- ${h._iso || h.date} [${sessionKind(h).label}] ${h.human || h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ressenti ${h.feeling}${h.note ? ` ; « ${h.note} »` : ''}`).join('\n') || '- aucune';
+      let rec = ''; try { const R0 = computeRecords(); rec = [R0.dist ? `plus longue distance ${R0.dist.v.toFixed(1)} km` : '', R0.v3 ? `meilleure vitesse 3 min ${R0.v3.v}` : '', R0.v10 ? `meilleure vitesse 10 min ${R0.v10.v}` : ''].filter(Boolean).join(', '); } catch (e) { }
+      const r = runnerProfile(), g = appData.goal || {};
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} ; niveau : ${runnerLevelsText()}.
+Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}. Records : ${rec || 'aucun'}.
+${zonesText()}
+${runnerLikesText()}
+${planPrefsText()}
+Évolution par type et format de séance :\n${typeTxt}
+Séances récentes :\n${hist}
+${coachMemoryText('', 10)}
+Identifie les points forts et les points faibles du coureur (endurance, vitesse, seuil, côtes, régularité, récupération, gestion de l'allure, constance…), chiffres à l'appui quand c'est possible. Dis ce qu'il doit travailler pour progresser vers son objectif, avec des exemples concrets de séances. Tiens compte de ce qu'il aime et n'aime pas : propose des variantes plaisantes plutôt que d'imposer ce qu'il déteste.
+Réponds uniquement en JSON : {"forts":["3 points forts, 20 mots maximum chacun"],"faibles":["2 à 3 points à travailler, 20 mots maximum"],"travail":[{"titre":"axe de travail","pourquoi":"1 phrase","exemple":"séance exemple en clair","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":6,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":12,"duree_min":1},{"vitesse":7,"duree_min":1}]}}]}
+Donne 2 ou 3 axes de travail.`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { tier: 'full', json: true, expert: true }));
+        if (!j || !Array.isArray(j.forts)) throw new Error('réponse illisible');
+        appData.coachSW = { at: todayISO(), j }; saveAppData();
+        rememberChat('profil', 'points forts et faibles', 'coach', `Points forts : ${(j.forts || []).join(' ; ')}. À travailler : ${(j.faibles || []).join(' ; ')}.`);
+      } catch (e) { showToast('Analyse impossible : ' + (e.message || e)); }
+      renderProgress();
+    }
+    function addSwToPlan(i) {
+      const A = appData.coachSW, w = A && A.j && A.j.travail && A.j.travail[i]; if (!w || !w.seance) return;
+      const busy = new Set((appData.sessions || []).map(x => x.dateISO)), d = new Date(); let iso = '';
+      for (let k = 1; k <= 21 && !iso; k++) { const x = new Date(d); x.setDate(d.getDate() + k); const xi = toISODateLocal(x); const prev = new Date(x); prev.setDate(x.getDate() - 1); if (!busy.has(xi) && !busy.has(toISODateLocal(prev))) iso = xi; }
+      if (!iso) { showToast('Pas de jour libre dans les 3 prochaines semaines'); return; }
+      const dd = parseISODateLocal(iso), next = (appData.sessions || []).find(x => x.dateISO && x.dateISO >= todayISO());
+      const base = { id: `sess_${Date.now()}`, dateISO: iso, date: toDDMM(dd), jour: weekdayName(dd), semaine: next ? next.semaine : 1, type: w.seance.type === 'exterieur' ? 'exterieur' : 'tapis', pente: 1, chauffe: 10, recup: 5, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(), pyramide: [{ speed: runnerEF(), duration: 30, unit: 'min' }], notes: String(w.titre || '').slice(0, 80) };
+      const sx = proposalToSession(base, w.seance); Object.assign(sx, { id: base.id, dateISO: iso, date: base.date, jour: base.jour, semaine: base.semaine, notes: base.notes });
+      if (w.seance.type === 'exterieur' || w.seance.type === 'tapis') sx.type = w.seance.type; if (sx.type === 'exterieur') sx.pente = 0;
+      appData.sessions.push(sx); appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      w.added = fmtDateShort(iso); saveAppData(); try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { }
+      renderProgress(); showToast(`➕ Séance ajoutée le ${fmtDateShort(iso)}`);
+    }
     function renderProgress() {
+      renderProgressInner();
+      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('afterbegin', strengthsCardHtml());
+    }
+    function renderProgressInner() {
       const box = document.getElementById('progressPanel');
       if (!box) return;
       const R0 = computeRecords();
@@ -6405,7 +6497,8 @@ Réponds uniquement en JSON : {"verdict":"telle_quelle|modifiee|ne_pas_faire","a
       if (P.blessures) out.push(`blessures ou points de vigilance : ${P.blessures}`);
       if (P.aime) out.push(`séances appréciées : ${P.aime}`);
       if (P.evite) out.push(`à éviter : ${P.evite}`);
-      return out.length ? `Préférences et contraintes du coureur : ${out.join(' ; ')}.` : '';
+      const lk = (() => { try { return runnerLikesText(); } catch (e) { return ''; } })();
+      return (out.length ? `Préférences et contraintes du coureur : ${out.join(' ; ')}.` : '') + (lk ? `\n${lk}` : '');
     }
     function readPlanPrefs() {
       const P = planPrefs(), v = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
@@ -8173,7 +8266,7 @@ Réponds uniquement avec le JSON.`;
       runData.paceDirCand = 0; runData.paceDirSince = 0; runData.lastPaceDir = 0;
       runData.route.zflags = {};
       runData.lastPaceAt = runData.lastPaceOkAt = runData.lastHrAt = runData.lastVapAt = -1e15;
-      runData.hrInfoAt = 0; runData.nextDrinkMs = 0; runData.hrAdv = null; runData.altLog = [];
+      runData.hrInfoAt = 0; runData.nextDrinkMs = 0; runData.autoAnaDone = false; runData.recHrPending = null; runData.coolAsked = false; runData.voiceFeel = ''; runData.hrAdv = null; runData.altLog = [];
     }
     function sensors() {
       if (!appData.sensors || typeof appData.sensors !== 'object') appData.sensors = {};
@@ -8819,13 +8912,14 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       const elapsed = Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000);
       const base = st.plannedSpeed ?? from, apply = [i];
       if (st.type === 'palier' && st.intensity === 'fast') timerState.stages.forEach((x, k) => { if (k > i && x.type === 'palier' && x.intensity === 'fast' && (x.plannedSpeed ?? parseFloat(x.speed)) === base && parseFloat(x.speed) === from) apply.push(k); });
+      if (isRecoveryStage(st)) timerState.stages.forEach((x, k) => { if (k > i && isRecoveryStage(x) && x.type === st.type && parseFloat(x.speed) === from) apply.push(k); });
       apply.forEach(k => { const x = timerState.stages[k]; if (x.plannedSpeed === undefined) x.plannedSpeed = parseFloat(x.speed) || 0; x.speed = to; });
       if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
       const last = runData.speedLog[runData.speedLog.length - 1];
       if (last && last.i === i && !last.extra && elapsed - last.t < 20) { last.to = to; last.next = apply.length - 1; if (last.to === last.from) runData.speedLog.pop(); }
       else runData.speedLog.push({ t: elapsed, i, name: stageTopLabel(st), from, to, next: apply.length - 1 });
       updateUIHeaderAndCircle(); saveLiveRun();
-      showToast(`Vitesse ${formatSpeed(to)} km/h${apply.length > 1 ? ` · aussi pour les ${apply.length - 1} prochaines répétitions` : ''}`);
+      showToast(`Vitesse ${formatSpeed(to)} km/h${apply.length > 1 ? ` · aussi pour les ${apply.length - 1} prochaines ${isRecoveryStage(st) ? 'récups' : 'répétitions'}` : ''}`);
     }
     function speedLogText(log) {
       if (!Array.isArray(log) || !log.length) return '';
@@ -8855,20 +8949,28 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       return false;
     }
     // ---------- Fin de récup : le cardio est-il redescendu ?
+    // Récup de fractionné : on note le cardio en fin de récup, puis on le commente au début de la répétition suivante
     function recoveryHrCheck(cur, remMs) {
-      const idx = timerState.currentStageIndex;
-      if (!isRecoveryStage(cur) || cur.durationSec < 45 || remMs > 16000 || remMs < 8500 || isSpeaking()) return;
-      runData.recChk = runData.recChk || {};
-      if (runData.recChk[idx]) return;
-      const now = Date.now(), hr = runData.hr && now - runData.hrAt < 6000 ? runData.hr : null, fc = runnerFcMax();
-      if (!hr || !fc) return;
-      runData.recChk[idx] = true;
-      const prevHr = (runData.track || []).filter(r => r[3] === idx - 1 && r[1]).map(r => r[1]);
-      const peak = prevHr.length ? Math.max(...prevHr) : null, drop = peak ? peak - hr : 0;
-      const ok = hr <= pctToBpm(0.75) || drop >= 25;
-      const en = appData.audioSettings.voiceLang === 'en';
-      speakLive(en ? (ok ? `Heart rate ${hr}: it has come down well.` : `Heart rate still ${hr}${peak ? `, down ${drop} beats` : ''}: breathe out slowly.`)
-        : ok ? `Cardio ${hr} : il est bien redescendu${peak && drop > 0 ? `, ${drop} battements de moins` : ''}.` : `Cardio encore à ${hr}${peak && drop > 0 ? `, seulement ${drop} battements de moins` : ''} : souffle long, relâche les épaules.`);
+      const idx = timerState.currentStageIndex, now = Date.now();
+      if (isRecoveryStage(cur) && remMs <= 3500 && remMs > 0) {
+        runData.recChk = runData.recChk || {};
+        if (runData.recChk[idx]) return; runData.recChk[idx] = true;
+        const hr = runData.hr && now - runData.hrAt < 6000 ? runData.hr : null; if (!hr) return;
+        const prevHr = (runData.track || []).filter(r => r[3] === idx - 1 && r[1]).map(r => r[1]);
+        runData.recHrPending = { peak: prevHr.length ? Math.max(...prevHr) : null, end: hr, recSec: cur.durationSec, for: idx + 1 };
+        return;
+      }
+      const P = runData.recHrPending;
+      if (!P || cur.intensity !== 'fast') return;
+      if (timerState.currentStageIndex !== P.for) { if (timerState.currentStageIndex > P.for) runData.recHrPending = null; return; }
+      const el = cur.durationSec * 1000 - remMs;
+      if (el < 7000 || remMs < 8000 || isSpeaking()) return;
+      runData.recHrPending = null;
+      const en = appData.audioSettings.voiceLang === 'en', drop = P.peak ? P.peak - P.end : null;
+      const good = P.end <= pctToBpm(0.75) || (drop != null && drop >= 25), ok = drop != null && drop >= 15;
+      const verdict = good ? (en ? 'good recovery' : 'bonne récupération') : ok ? (en ? 'correct recovery' : 'récupération correcte') : (en ? 'recovery a bit short, keep this one under control' : 'récupération un peu juste, garde cette répétition sous contrôle');
+      speakLive(en ? `During the recovery your heart rate ${drop != null ? `dropped ${drop} beats, from ${P.peak} to ${P.end}` : `came down to ${P.end}`}: ${verdict}.`
+        : `Pendant la récup, ton cardio ${drop != null ? `est descendu de ${drop} battements, de ${P.peak} à ${P.end}` : `est redescendu à ${P.end}`} : ${verdict}.`);
     }
     // ---------- Une répétition de plus ?
     function fastStageIdx() { return timerState.stages.map((x, k) => x.type === 'palier' && x.intensity === 'fast' && !x.isExtension && !x.isFree ? k : -1).filter(k => k >= 0); }
@@ -8911,12 +9013,16 @@ ${(runData.speedLog || []).length ? speedLogText(runData.speedLog) : ''}${feel ?
 Profil : FC max ${runnerFcMax() || '?'} ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} ; objectif ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Séances précédentes :\n${hist}\nProchaines séances :\n${next}
 ${coachMemoryText('', 6)}
-Décide : "stop" (s'arrêter là : fatigue, cardio trop haut, vitesse qui décroche, séance dure à venir), "un" (faire la dernière comme prévu) ou "deux" (le coureur est frais et en avance : ajouter une répétition, donc encore deux). Sois prudent : n'ajoute que si les répétitions sont tenues facilement et le cardio bien maîtrisé.
-Réponds uniquement en JSON : {"choix":"stop|un|deux","phrase":"ton conseil à voix haute, tutoiement, 25 mots maximum, avec la raison"}`;
-      let ch = '', phrase = '';
+Décide comme un vrai coach, avec un avis tranché : "stop" (s'arrêter là : fatigue, cardio trop haut, vitesse qui décroche, séance dure à venir), "un" (faire la dernière comme prévu) ou "deux" (le coureur est frais : ajouter une répétition, donc encore deux). N'ajoute que si les répétitions sont tenues facilement et le cardio bien maîtrisé, mais n'hésite pas à le proposer quand c'est le cas.
+Dis aussi si la ou les dernières répétitions peuvent se courir plus vite (ou doivent se courir moins vite) et à quelle vitesse ; sinon garde la vitesse prévue.
+Commence ta phrase par ton avis clair (« Je te conseille d'arrêter », « Fais la dernière comme prévu », « Tu peux en ajouter une »), puis la raison chiffrée, puis la vitesse si elle change.
+Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conseillée en km/h pour les dernières répétitions, 0 = inchangée),"phrase":"ton avis à voix haute, tutoiement, 35 mots maximum"}`;
+      let ch = '', phrase = ''; runData.omSpeed = 0;
       try {
         const txt = await Promise.race([geminiText([{ text: prompt }], { json: true }), sleep(9000).then(() => { throw new Error('délai'); })]);
-        const j = parseJsonLoose(txt) || {}; ch = { stop: 'stop', un: 'one', deux: 'two' }[String(j.choix || '').toLowerCase()] || ''; phrase = String(j.phrase || '').slice(0, 220);
+        const j = parseJsonLoose(txt) || {}; ch = { stop: 'stop', un: 'one', deux: 'two' }[String(j.choix || '').toLowerCase()] || ''; phrase = String(j.phrase || '').slice(0, 260);
+        const L0 = S[F[F.length - 1]], base = L0 ? parseFloat(L0.plannedSpeed ?? L0.speed) : 0, v = Math.round((+j.vitesse || 0) * 2) / 2;
+        runData.omSpeed = v && base && Math.abs(v - base) >= 0.5 && Math.abs(v - base) <= 2 ? v : 0;
       } catch (e) { }
       if (runData.oneMoreAt !== timerState.currentStageIndex) return; // la récup est déjà finie
       const m = document.getElementById('oneMoreMsg');
@@ -8931,6 +9037,12 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","phrase":"ton conseil à v
       const en = appData.audioSettings.voiceLang === 'en';
       if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
       const adv = runData.omAdvice && runData.omAdvice.ch ? ` (conseil du coach : ${({ stop: 'arrêter', one: 'finir comme prévu', two: 'ajouter une série' })[runData.omAdvice.ch]})` : '';
+      if ((k === 'one' || k === 'two') && runData.omSpeed) {
+        const v = runData.omSpeed; runData.omSpeed = 0;
+        timerState.stages.forEach((x, i) => { if (i > timerState.currentStageIndex && x.type === 'palier' && x.intensity === 'fast' && !x.isFree) { if (x.plannedSpeed === undefined) x.plannedSpeed = parseFloat(x.speed); x.speed = v; } });
+        runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i: timerState.currentStageIndex, extra: true, name: `vitesse des dernières répétitions passée à ${formatSpeed(v)} km/h (conseil du coach)` });
+        updateUIHeaderAndCircle();
+      }
       if (k === 'two') { oneMoreAnswer(true); const last = runData.speedLog[runData.speedLog.length - 1]; if (last && last.extra && adv) last.name += adv; return; }
       if (k === 'one') { runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i: timerState.currentStageIndex, extra: true, name: `dernière répétition faite comme prévu${adv}` }); speakLive(en ? 'OK, last one then. Give it everything.' : 'OK, c\'est la dernière. Tout ce qu\'il te reste !'); return; }
       // Arrêter là : on retire la dernière répétition (et sa récup), on garde le retour au calme
@@ -10058,7 +10170,19 @@ Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à 
         ${anaModsHtml(j)}
         ${det ? `<button type="button" onclick="openAnalysisDetail('${anaStore(j)}')" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:1px solid rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:14px">🔎 Voir le détail</button>` : ''}`;
     }
-    async function analyzeSessionWithAI() {
+    function speakAnalysis(raw) {
+      try {
+        const j = parseJsonLoose(String(raw || '')); if (!j || !j.titre) return;
+        const parts = [`Bilan de ta séance : ${j.titre}.`];
+        if (j.record) parts.push(`Record : ${j.record}.`);
+        (Array.isArray(j.points) ? j.points : []).slice(0, 3).forEach(p => parts.push(String(p).replace(/^[✔⚠✓\s]+/, '') + '.'));
+        if (j.alerte) parts.push(String(j.alerte) + '.');
+        if (j.action) parts.push(`Pour la suite : ${j.action}.`);
+        if (Array.isArray(j.modifications) && j.modifications.length && !j.modsDone) parts.push("Je te propose d'adapter ton plan : regarde l'écran pour accepter ou refuser.");
+        speakLive(parts.join(' ').replace(/\.\./g, '.'));
+      } catch (e) { }
+    }
+    async function analyzeSessionWithAI(opts = {}) {
       const out = document.getElementById('valAnalysis');
       if (!getGeminiKey()) { out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'analyse.</span>'; out.classList.remove('hidden'); return; }
       const sess = getActiveSession();
@@ -10073,7 +10197,8 @@ Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à 
 Analyse la séance que je viens de faire${valShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h ; échauffement et retour au calme au ressenti (cardio sous ${easyHrMax() || '75 % FC max'}).
 ${speedLogText(runData.speedLog)}
-Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
+Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${runData.voiceFeel && runData.voiceFeel !== document.getElementById('valNoteInput').value.trim() ? ` ; ressenti dit à voix haute pendant le retour au calme : « ${runData.voiceFeel} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
+${runData.voiceFeel ? 'Le coureur a décrit son ressenti à voix haute pendant le retour au calme (voir la note) : réponds-y directement dans ton bilan.' : ''}
 ${zonesText()}${(() => { const ss = getActiveSession(); const c = ss.cardio ? cardioText(ss.cardio) : ''; const gt = guideHrText(ss); return c || gt ? `\nCardio cible de la séance : ${c || gt}` : ''; })()}
 ${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}${trackSlicesText(timerState.runTrack) ? trackSlicesText(timerState.runTrack) + '\n' : ''}${recentCapacityText(todayISO())}
 Origine de la séance : ${sess.free ? 'séance libre lancée par le coureur' : 'séance du plan, préparée par toi (le coach)'}.
@@ -10090,6 +10215,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
         const parts = valShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
         parts.push({ text: prompt });
         lastAnalysis = tagAnalysis(await geminiText(parts, { tier: 'full', json: true }));
+        if (opts.auto || timerState.finished) speakAnalysis(lastAnalysis);
         out.innerHTML = analysisHtml(lastAnalysis) + `<button type="button" onclick="openValChat()" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>`;
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
@@ -10221,6 +10347,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     // Vitesse à tenir sur une pente pour garder la même intensité qu'à « target » km/h sur le plat
     function speedOnGrade(target, gradePct) { return target * 3.6 / minettiCost((gradePct || 0) / 100); }
     // Zone cardio visée selon le segment
+    // Cible cardio des fractions (en part de FC max) ; sur tapis le cardio monte moins haut : cible abaissée
+    function fastHrRange(k, sess) {
+      const tap = sess && sess.type === 'tapis';
+      return k === 'seuil' ? (tap ? [0.81, 0.87] : [0.84, 0.9]) : (tap ? [0.84, 0.91] : [0.88, 0.95]);
+    }
     function hrTargetFor(st) {
       const fc = runnerFcMax();
       if (!st) return null;
@@ -10233,7 +10364,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const k = guideKind(getActiveSession());
       let r;
       if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') r = [0.62, 0.74];
-      else if (st.intensity === 'fast') r = k === 'seuil' ? [0.84, 0.9] : [0.88, 0.95];
+      else if (st.intensity === 'fast') r = fastHrRange(k, getActiveSession());
       else r = k === 'seuil' ? [0.84, 0.9] : k === 'course' || k === 'test' ? [0.85, 0.93] : [0.68, 0.79];
       return { lo: pctToBpm(r[0]), hi: pctToBpm(r[1]), mid: pctToBpm((r[0] + r[1]) / 2) };
     }
@@ -10425,6 +10556,25 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       else if (long) tips.push('🚶 Demain : marche ou footing très court, et quelques minutes d\'étirements doux des mollets et cuisses.');
       tips.push('⚠️ Si une douleur précise persiste plus de 48 h ou si ton cardio au réveil est nettement plus haut que d\'habitude, allège la prochaine séance.');
       return `${coach ? `<div class="mb-2"><b style="color:#c4b5fd">🧠 Le coach :</b> ${plEsc(coach)}</div>` : ''}<div class="flex flex-col gap-1.5">${tips.map(t => `<span>${plEsc(t)}</span>`).join('')}</div>
+        <details class="mt-2"><summary class="text-[12px] font-bold text-sky-300 cursor-pointer">🧘 Étirements : utiles ? exemples</summary>
+          <div class="flex flex-col gap-1 mt-1.5 text-[12px] text-slate-300 leading-snug">
+            <span>Les étirements ne préviennent pas vraiment les blessures et ne réduisent pas les courbatures. Ils sont utiles pour garder de la mobilité (mollets, hanches) et pour le bien-être. Fais-les à froid, plusieurs heures après une séance dure ou le soir, doucement, sans douleur : 2 × 30 s par côté.</span>
+            <span>• <b>Mollets</b> : mains contre un mur, jambe arrière tendue, talon au sol ; puis genou fléchi pour le soléaire.</span>
+            <span>• <b>Ischios</b> : allongé sur le dos, jambe tendue levée, une serviette sous le pied, tire doucement.</span>
+            <span>• <b>Quadriceps</b> : debout, attrape la cheville, genoux serrés, bassin vers l'avant.</span>
+            <span>• <b>Fessiers</b> : allongé, cheville posée sur le genou opposé, ramène la jambe vers la poitrine.</span>
+            <span>• <b>Fléchisseurs de hanche</b> : fente, genou arrière au sol, pousse le bassin vers l'avant.</span>
+            <span>Avant de courir : plutôt des gammes dynamiques (montées de genoux, talons-fesses, balancés de jambes) que des étirements tenus.</span></div></details>
+        <details class="mt-2"><summary class="text-[12px] font-bold text-sky-300 cursor-pointer">💊 Vitamines et compléments</summary>
+          <div class="flex flex-col gap-1 mt-1.5 text-[12px] text-slate-300 leading-snug">
+            <span>Une alimentation variée couvre l'essentiel. Les compléments ne servent qu'en cas de manque réel : fais une prise de sang avant d'en prendre, et parles-en à ton médecin.</span>
+            <span>• <b>Fer</b> : à vérifier (ferritine), surtout pour les femmes et en cas de grosse fatigue ou d'essoufflement inhabituel. Ne pas en prendre sans carence, l'excès est nocif.</span>
+            <span>• <b>Vitamine D</b> : souvent basse d'octobre à mars ; un dosage permet d'ajuster une supplémentation.</span>
+            <span>• <b>Protéines</b> : environ 1,2 à 1,6 g par kg et par jour pour un coureur régulier, idéalement avec l'alimentation (laitages, œufs, poisson, légumineuses).</span>
+            <span>• <b>Glucides</b> : la base du carburant ; augmente-les les jours de séance dure ou longue.</span>
+            <span>• <b>Magnésium, oméga-3</b> : intérêt seulement en cas d'apport faible ; les crampes viennent surtout de la fatigue, pas d'un manque de magnésium.</span>
+            <span>• <b>Caféine</b> : peut aider à la performance (environ 3 mg/kg une heure avant une course), à tester à l'entraînement.</span>
+            <span style="color:#64748b">Ces repères ne remplacent pas un avis médical.</span></div></details>
         <details class="mt-2"><summary class="text-[12px] font-bold text-sky-300 cursor-pointer">🧮 Comment est calculée la récupération (${r.hours} h)</summary>
           <div class="flex flex-col gap-1 mt-1.5 text-[12px] text-slate-300">${(r.why || []).map(w => `<span>• ${plEsc(w)}</span>`).join('')}</div>
           <div class="text-[11px] text-slate-500 mt-1.5">Charge = minutes passées dans chaque zone × 1 (Z1) à 5 (Z5). Ajoute ta FC de repos et ton âge dans ton profil pour un calcul plus juste.</div></details>`;
@@ -11288,7 +11438,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const isFast = g => !isWarm(g) && !isRec(g) && g.target > 0;
         const reps = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
         const vOf = g => P.hasEle ? g.vap : g.kmh;
-        const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && d <= 0.6; };
+        const lkC = (item.linked && item.linked.cardio) || null;
+        const repHrMax = lkC && lkC.max ? lkC.max : lkC && lkC.moy ? lkC.moy[1] : pctToBpm(fastHrRange(guideKind(item.linked || { kind: hh.kind || 'fractionne' }), { type: hh.type })[1]);
+        const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && (d <= 0.6 || (repHrMax && g.hr && g.hr <= repHrMax) || (!g.hr && d <= 1.5)); };
         let score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
         const col = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
@@ -11308,7 +11460,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         if (score != null && fracMode) {
           const nOk = reps.filter(okRep).length, durs = reps.map(g => g.sec).sort((a, b) => a - b), dm = durs[Math.floor(durs.length / 2)];
           goal = `${reps.length} × ${fmtD(dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
-          why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} dans la cible (±0,5 km/h)`;
+          const nFast = reps.filter(g => okRep(g) && vOf(g) - g.target > 0.6).length;
+          why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} réussie${nOk > 1 ? 's' : ''} (cible ±0,5 km/h${nFast ? `, dont ${nFast} plus vite avec un cardio maîtrisé` : ''})`;
         } else if (body.length) {
           const lk = item.linked || {};
           const hrMax = lk.cardio && lk.cardio.moy ? lk.cardio.moy[1] : easyHrMax();
@@ -11450,7 +11603,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         return o;
       } catch (e) { console.warn('sessMetrics', e); return null; }
     }
-    let evoKind = '', evoMetric = 'vma', evoMode = 'type', evoRoute = '', evoFormat = '';
+    let evoKind = '', evoMetric = 'vma', evoMode = 'type', evoRoute = '', evoFormat = '', evoFormats = [];
+    function evoToggleFormat(f) { evoFormats = evoFormats.includes(f) ? evoFormats.filter(x => x !== f) : evoFormats.concat(f); if (!evoFormats.length) evoFormats = [f]; renderEvo(); }
     function openEvo(kind) {
       let m = document.getElementById('evoModal');
       if (!m) { m = document.createElement('div'); m.id = 'evoModal'; m.className = 'fixed inset-0 hidden'; m.style.cssText = 'position:fixed;inset:0;z-index:70;background:#050a16;overflow-y:auto'; document.body.appendChild(m); }
@@ -11467,8 +11621,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (evoMode === 'route' && !routes.length) evoMode = 'type';
       const ofKind = all.filter(x => x.label === evoKind);
       const formats = [...new Set(ofKind.map(x => x.format))].sort((a, b) => ofKind.filter(x => x.format === b).length - ofKind.filter(x => x.format === a).length);
-      if (!formats.includes(evoFormat)) evoFormat = formats[0] || '';
-      const L = evoMode === 'route' ? all.filter(x => x.route === evoRoute) : ofKind.filter(x => x.format === evoFormat);
+      evoFormats = evoFormats.filter(f => formats.includes(f));
+      if (!evoFormats.length && formats.length) evoFormats = [formats[0]];
+      const L = evoMode === 'route' ? all.filter(x => x.route === evoRoute) : ofKind.filter(x => evoFormats.includes(x.format));
       const MET = Object.assign(evoMode === 'route' ? { time: ['Temps total', 'min', '#fbbf24', x => x.totMin], speed: ['Vitesse moyenne', 'km/h', '#7dd3fc', x => x.totMin > 0 ? x.totKm / (x.totMin / 60) : null] } : {}, { vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma], hr: ['Cardio moyen', 'bpm', '#fda4af', x => x.hr], vap: ['VAP moyenne', 'km/h', '#c4b5fd', x => x.vap], eff: ['VAP ÷ cardio', '×100', '#7dd3fc', x => x.eff] });
       if (!MET[evoMetric]) evoMetric = Object.keys(MET)[0];
       const okPts = k => L.map(x => [x, MET[k][3](x)]).filter(q => q[1] != null && isFinite(q[1]));
@@ -11494,8 +11649,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:24px;font-weight:800">📈 Évolution</span><button type="button" onclick="closeEvo()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;font-size:18px">✕</button></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#0f172a">${[['type', 'Par type de séance'], ['route', `Par parcours${routes.length ? '' : ' (aucun)'}`]].map(([k, l]) => `<button type="button" onclick="evoMode='${k}';evoMetric='${k === 'route' ? 'time' : 'vma'}';renderEvo()" ${k === 'route' && !routes.length ? 'disabled' : ''} style="min-height:38px;border:none;border-radius:9px;font-size:13px;font-weight:800;${evoMode === k ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${evoMode === 'route' ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${routes.map(r => chip(r === evoRoute, '🗺️ ' + plEsc(r), `evoRoute=${JSON.stringify(r).replace(/"/g, '&quot;')};renderEvo()`)).join('')}</div>` : ''}
-        <div style="display:${evoMode === 'route' ? 'none' : 'flex'};flex-wrap:wrap;gap:6px">${kinds.map(k => chip(k === evoKind, capFirst(k.toLowerCase()), `evoKind=${JSON.stringify(k).replace(/"/g, '&quot;')};evoFormat='';renderEvo()`)).join('') || '<span style="color:#64748b;font-size:13px">Aucune séance enregistrée avec des mesures.</span>'}</div>
-        ${evoMode !== 'route' && formats.length ? `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.6px">Format comparé</span><div style="display:flex;flex-wrap:wrap;gap:6px">${formats.map(f => chip(f === evoFormat, `${plEsc(f)} · ${ofKind.filter(x => x.format === f).length}`, `evoFormat=${JSON.stringify(f).replace(/"/g, '&quot;')};renderEvo()`)).join('')}</div></div>` : ''}
+        <div style="display:${evoMode === 'route' ? 'none' : 'flex'};flex-wrap:wrap;gap:6px">${kinds.map(k => chip(k === evoKind, capFirst(k.toLowerCase()), `evoKind=${JSON.stringify(k).replace(/"/g, '&quot;')};evoFormats=[];renderEvo()`)).join('') || '<span style="color:#64748b;font-size:13px">Aucune séance enregistrée avec des mesures.</span>'}</div>
+        ${evoMode !== 'route' && formats.length ? `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.6px">Format comparé</span><div style="display:flex;flex-wrap:wrap;gap:6px">${formats.map(f => chip(evoFormats.includes(f), `${evoFormats.includes(f) ? '✓ ' : ''}${plEsc(f)} · ${ofKind.filter(x => x.format === f).length}`, `evoToggleFormat(${JSON.stringify(f).replace(/"/g, '&quot;')})`)).join('')}</div><span style="font-size:11px;color:#64748b">Touche plusieurs formats pour les regrouper s'ils sont très proches (ex. 1' et 1'15 à la même pente).</span></div>` : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px">${Object.entries(MET).map(([k, v]) => chip(k === evoMetric, v[0], `evoMetric='${k}';renderEvo()`)).join('')}</div>
         <div style="padding:12px;border-radius:16px;background:#0f172a;border:1px solid #1e293b;display:flex;flex-direction:column;gap:6px">${chart}</div>
         <div style="padding:4px 10px;border-radius:16px;background:#0f172a;border:1px solid #1e293b"><table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:7px 0">Date</th><th style="text-align:right">Durée</th><th style="text-align:right">VAP</th><th style="text-align:right">FC</th><th style="text-align:right">VAP÷FC</th><th style="text-align:right">VMA est.</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -12443,7 +12598,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const frac = G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k);
       if (s.cardio) { const c = s.cardio; if (frac && fsec < 120 && c.max) return `Cardio cible : max ${c.max} en fin de répétition`; return `Cardio cible${frac ? ' sur les fractions' : ''} : ${c.moy ? `${c.moy[0]}–${c.moy[1]}` : ''}${c.max ? `${c.moy ? ', ' : ''}max ${c.max}` : ''}`; }
       if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return '';
-      if (frac) { const [lo, hi] = k === 'seuil' ? [pctToBpm(0.84), pctToBpm(0.9)] : [pctToBpm(0.88), pctToBpm(0.95)]; return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(pctToBpm); return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
       const [lo, hi] = k === 'recup' ? [pctToBpm(0.62), pctToBpm(0.74)] : [pctToBpm(0.68), pctToBpm(0.79)];
       return `Cardio cible : ${lo}–${hi}`;
     }
@@ -12461,7 +12616,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const pc = (a, b) => [pctToBpm(a), pctToBpm(b)];
       if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
         const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60;
-        const [lo, hi] = k === 'seuil' ? pc(0.84, 0.9) : pc(0.88, 0.95);
+        const [lo, hi] = pc(...fastHrRange(k, s));
         return sec < 120
           ? `Fractions courtes : cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
           : `Cardio moyen sur chaque fraction entre ${lo} et ${hi}. S'il dépasse ${hi} dès les premières, la vitesse est trop haute pour aujourd'hui.`;
@@ -14139,7 +14294,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const c = ytCfg();
       m.innerHTML = `<div style="width:100%;max-width:480px;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
         <span style="font-size:18px;font-weight:900">▶️ Vidéo YouTube pendant la séance</span>
-        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle le lien d'une vidéo ou d'une playlist YouTube. Elle démarre avec la séance, se met en pause avec elle, et son volume baisse pendant les annonces du coach. L'écran doit rester allumé (pas de mode poche), et le wifi est conseillé.</span>
+        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle le lien d'une vidéo ou d'une playlist YouTube. Elle démarre avec la séance, se met en pause avec elle, et se met en pause pendant les annonces du coach. L'écran doit rester allumé (pas de mode poche), et le wifi est conseillé.</span>
         <input id="ytUrl" type="url" value="${String(c.url || '').replace(/"/g, '&quot;')}" placeholder="https://www.youtube.com/watch?v=…" class="pm-in" style="height:46px;font-size:14px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button type="button" onclick="ytSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans vidéo</button>
@@ -14185,11 +14340,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     setInterval(() => {
       if (!yt.player || !yt.ready) return;
       try {
-        const want = isSpeaking() ? 18 : 100;
-        if (want !== yt.vol) { yt.player.setVolume(want); yt.vol = want; }
-        const st = yt.player.getPlayerState();
-        if (!timerState.isRunning && timerState.sessionStarted && st === 1) { yt.player.pauseVideo(); yt.autoPaused = true; }
-        else if (timerState.isRunning && yt.autoPaused) { yt.player.playVideo(); yt.autoPaused = false; }
+        const st = yt.player.getPlayerState(), talk = isSpeaking();
+        if (yt.vol !== 100) { yt.player.setVolume(100); yt.vol = 100; }
+        if ((talk || (!timerState.isRunning && timerState.sessionStarted)) && st === 1) { yt.player.pauseVideo(); yt.autoPaused = true; }
+        else if (!talk && timerState.isRunning && yt.autoPaused) { yt.player.playVideo(); yt.autoPaused = false; }
       } catch (e) { }
     }, 300);
     function cancelBeforeStart() {
@@ -14395,6 +14549,47 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       vc.rec = rec;
       vc.lastStart = Date.now();
       try { rec.start(); } catch (e) { vc.rec = null; }
+    }
+    // ---------- Ressenti à chaud pendant le retour au calme ----------
+    function coolFeelTick(cur, elapsedMs, remMs) {
+      if (!cur || cur.type !== 'recup' || runData.coolAsked || elapsedMs < 60000 || remMs < 40000 || !timerState.isRunning) return;
+      if (isSpeaking() || tl.active || !srCtor() || appData.audioSettings.coolFeel === false) return;
+      runData.coolAsked = true;
+      const en = appData.audioSettings.voiceLang === 'en';
+      showCoolFeel('🎙️ Le coach t\'écoute dans un instant…', '');
+      speakLive(en ? 'How did the session feel? Tell me in a few words, I\'m listening.' : 'Comment s\'est passée ta séance ? Dis-moi en quelques mots ce que tu as ressenti, je t\'écoute.');
+      const t0 = Date.now();
+      const wait = setInterval(() => { if (!document.getElementById('coolFeelBox')) { clearInterval(wait); return; } if (!isSpeaking() && Date.now() - t0 > 1800) { clearInterval(wait); listenCoolFeel(); } else if (Date.now() - t0 > 15000) { clearInterval(wait); listenCoolFeel(); } }, 250);
+    }
+    function showCoolFeel(title, txt) {
+      let b = document.getElementById('coolFeelBox');
+      if (!b) { b = document.createElement('div'); b.id = 'coolFeelBox'; b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:16px;z-index:85;background:#0f172a;border:1px solid rgba(167,139,250,.7);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9;box-shadow:0 10px 30px rgba(0,0,0,.6)'; document.body.appendChild(b); }
+      b.innerHTML = `<span id="cfTitle" style="font-size:16px;font-weight:900">${title}</span><span id="cfTxt" style="font-size:14px;line-height:1.4;color:#c4b5fd;min-height:20px">${plEsc(txt || '')}</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="endCoolFeel(true)" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Passer</button><button type="button" onclick="endCoolFeel(false)" style="min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ J'ai fini</button></div>`;
+    }
+    let coolRec = null;
+    function listenCoolFeel() {
+      const SR = srCtor(); if (!SR || !document.getElementById('coolFeelBox')) return;
+      const rec = new SR(); coolRec = rec;
+      rec.lang = appData.audioSettings.voiceLang === 'en' ? 'en-GB' : 'fr-FR';
+      rec.continuous = true; rec.interimResults = true;
+      let finalTxt = '', last = Date.now(), done = false;
+      const t = document.getElementById('cfTitle'); if (t) t.textContent = '🎙️ Je t\'écoute… parle librement';
+      rec.onresult = ev => { let inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { if (ev.results[i].isFinal) finalTxt += ev.results[i][0].transcript + ' '; else inter += ev.results[i][0].transcript; } last = Date.now(); const x = document.getElementById('cfTxt'); if (x) x.textContent = `« ${(finalTxt + inter).trim()} »`; runData.voiceFeel = (finalTxt + inter).trim(); };
+      rec.onerror = () => { };
+      rec.onend = () => { if (done) return; if (document.getElementById('coolFeelBox') && Date.now() - start < 45000 && Date.now() - last < 7000) { try { rec.start(); } catch (e) { } } else finish(); };
+      const start = Date.now();
+      const finish = () => { if (done) return; done = true; clearInterval(chk); try { rec.stop(); } catch (e) { } coolRec = null; endCoolFeel(false, true); };
+      const chk = setInterval(() => { if (Date.now() - last > 7000 && Date.now() - start > 9000) finish(); if (Date.now() - start > 50000) finish(); }, 500); // 7 s de silence ou 50 s max
+      coolRec.finish = finish;
+      try { rec.start(); } catch (e) { finish(); }
+    }
+    function endCoolFeel(skip, auto) {
+      if (coolRec && coolRec.finish && !auto) { const f = coolRec.finish; coolRec = null; f(); return; }
+      const b = document.getElementById('coolFeelBox'); if (b) b.remove();
+      const en = appData.audioSettings.voiceLang === 'en';
+      if (skip) { runData.voiceFeel = ''; return; }
+      if (runData.voiceFeel) speakLive(en ? 'Thanks, noted. I\'ll take it into account in my analysis.' : 'Merci, c\'est noté, j\'en tiens compte dans mon analyse.');
     }
     function stopRec() { try { vc.rec && vc.rec.abort(); } catch (e) {} vc.rec = null; }
 
@@ -14744,6 +14939,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       btAutoReconnect(); // la montre se reconnecte seule si elle a déjà été autorisée
     }
     let homeCardPrefix = '';
+    function todayDoneHist() { const t = todayISO(); return (appData.history || []).filter(h => h && !h.cross && histISO(h) === t)[0] || null; }
+    function openTodayResults() { const h = todayDoneHist(); if (!h) return; openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + h.id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start' }); } }, 60); }
     let homeMoreOpen = false;
     function toggleHomeMore() { homeMoreOpen = !homeMoreOpen; renderHome(); }
     function renderHome() {
@@ -14752,6 +14949,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         const g = document.getElementById('homeGreeting');
         if (g) g.textContent = dailyGreeting(homeFeelMode() === 'adapt' && appData.sessions.some(s => s.dateISO === todayISO() && !isSessionDone(s)));
         try { renderRecovery(); } catch (e) { }
+        { const rb = document.getElementById('homeResultsBtn'); if (rb) rb.classList.toggle('hidden', !todayDoneHist() || (timerState.sessionStarted && !timerState.finished)); }
         syncFeelPanel();
       }
       {
