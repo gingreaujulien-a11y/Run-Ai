@@ -360,10 +360,11 @@
     </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
-      <div class="text-center text-[15px] font-extrabold text-white mb-2">Capable de faire une série de plus que prévu ?</div>
-      <div class="grid grid-cols-2 gap-3">
-        <button onclick="oneMoreAnswer(true)" aria-label="Oui, une de plus" class="h-16 rounded-2xl text-4xl active:scale-95" style="background:#34d399">👍</button>
-        <button onclick="oneMoreAnswer(false)" aria-label="Non" class="h-16 rounded-2xl text-4xl active:scale-95" style="background:#334155">👎</button>
+      <div id="oneMoreMsg" class="text-center text-[14px] font-bold text-white mb-2 leading-snug">🧠 Le coach analyse ta séance…</div>
+      <div class="grid grid-cols-3 gap-2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
+        <button id="omStop" onclick="oneMoreChoice('stop')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#334155;color:#fff">🛑<br>J'arrête là</button>
+        <button id="omOne" onclick="oneMoreChoice('one')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#0ea5e9;color:#04121f">✅<br>Encore 1</button>
+        <button id="omTwo" onclick="oneMoreChoice('two')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#34d399;color:#04140d">💪<br>Encore 2</button>
       </div>
     </div>
     <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
@@ -8879,8 +8880,65 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       if (isSpeaking()) return;
       runData.oneMoreAsked = true; runData.oneMoreAt = idx;
       if (box) box.classList.remove('hidden');
+      omHighlight('');
+      const m = document.getElementById('oneMoreMsg'); if (m) m.textContent = '🧠 Le coach analyse ta séance…';
+      coachRepAdvice(idx);
+    }
+    function omHighlight(k) {
+      [['stop', 'omStop'], ['one', 'omOne'], ['two', 'omTwo']].forEach(([x, id]) => { const b = document.getElementById(id); if (b) b.style.outline = x === k ? '3px solid #fde047' : 'none'; });
+    }
+    // Le coach donne son avis : s'arrêter, finir comme prévu (encore 1) ou ajouter une série (encore 2)
+    async function coachRepAdvice(idx) {
+      const en = appData.audioSettings.voiceLang === 'en', S = timerState.stages, F = fastStageIdx(), done = F.filter(k => k < idx);
+      const tr = runData.track || [];
+      const repTxt = done.map((k, n) => { const rows = tr.filter(r => r[3] === k), hrs = rows.map(r => r[1]).filter(Boolean), vs = rows.map(r => r[2]).filter(Boolean);
+        return `R${n + 1} : prévu ${formatSpeed(S[k].plannedSpeed ?? S[k].speed)}, tenu ${vs.length ? (vs.reduce((a, b) => a + b, 0) / vs.length).toFixed(1) : formatSpeed(S[k].speed)} km/h${hrs.length ? `, FC moy ${Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length)} max ${Math.max(...hrs)}` : ''}`; }).join(' ; ');
+      const hrNow = hrFresh() ? runData.hr : null, lastFast = done.length ? tr.filter(r => r[3] === done[done.length - 1]).map(r => r[1]).filter(Boolean) : [];
+      const drop = hrNow && lastFast.length ? Math.max(...lastFast) - hrNow : null;
+      const ss = getActiveSession() || {}, g = appData.goal || {};
+      let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
+      const hist = runHistory().slice(0, 4).map(h => `- ${h._iso || h.date} : ${h.human || h.details || ''} ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const next = upcomingPlanSessions().filter(x => x.id !== ss.id).slice(0, 3).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}`).join('\n') || '- aucune';
+      const prompt = `Tu es le coach de course à pied du coureur, pendant sa séance de fractionné. Il vient de finir l'avant-dernière répétition prévue et récupère. ${coachToneText()}
+Séance : ${describeSessionHuman(ss)}${ss.cardio ? ` ; cardio cible ${cardioText(ss.cardio)}` : ''}.
+Répétitions faites (${done.length} sur ${F.length}) : ${repTxt}.
+${hrNow ? `Cardio maintenant ${hrNow}${drop != null ? ` (redescendu de ${drop} depuis la fin de la répétition)` : ''}.` : 'Pas de cardio.'} ${zonesText()}
+${(runData.speedLog || []).length ? speedLogText(runData.speedLog) : ''}${feel ? `\nSensations avant la séance : ${feel}.` : ''}
+Profil : FC max ${runnerFcMax() || '?'} ; VMA estimée ${(() => { try { const v = (estimateVma() || {}).vma; return v ? formatSpeed(Math.round(v * 10) / 10) : '?'; } catch (e) { return '?'; } })()} ; objectif ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+Séances précédentes :\n${hist}\nProchaines séances :\n${next}
+${coachMemoryText('', 6)}
+Décide : "stop" (s'arrêter là : fatigue, cardio trop haut, vitesse qui décroche, séance dure à venir), "un" (faire la dernière comme prévu) ou "deux" (le coureur est frais et en avance : ajouter une répétition, donc encore deux). Sois prudent : n'ajoute que si les répétitions sont tenues facilement et le cardio bien maîtrisé.
+Réponds uniquement en JSON : {"choix":"stop|un|deux","phrase":"ton conseil à voix haute, tutoiement, 25 mots maximum, avec la raison"}`;
+      let ch = '', phrase = '';
+      try {
+        const txt = await Promise.race([geminiText([{ text: prompt }], { json: true }), sleep(9000).then(() => { throw new Error('délai'); })]);
+        const j = parseJsonLoose(txt) || {}; ch = { stop: 'stop', un: 'one', deux: 'two' }[String(j.choix || '').toLowerCase()] || ''; phrase = String(j.phrase || '').slice(0, 220);
+      } catch (e) { }
+      if (runData.oneMoreAt !== timerState.currentStageIndex) return; // la récup est déjà finie
+      const m = document.getElementById('oneMoreMsg');
+      const lbl = { stop: "le coach conseille d'arrêter là", one: 'le coach conseille de finir comme prévu', two: 'le coach te pense capable d\'en ajouter une' }[ch];
+      if (m) m.textContent = phrase ? `🧠 ${phrase}` : 'Dernière répétition prévue : tu arrêtes, tu finis comme prévu, ou tu en ajoutes une ?';
+      omHighlight(ch);
+      speakLive((phrase ? phrase + ' ' : '') + (en ? 'Stop now, one more as planned, or two? Choose on the screen.' : 'Tu arrêtes là, encore une, ou encore deux ? Choisis sur l\'écran.'));
+      runData.omAdvice = { ch, phrase, lbl };
+    }
+    function oneMoreChoice(k) {
+      const box = document.getElementById('oneMoreBox'); if (box) box.classList.add('hidden');
       const en = appData.audioSettings.voiceLang === 'en';
-      speakLive(en ? 'Last planned repetition coming. Do you feel able to add one more repetition than planned? Thumb up or thumb down on the screen.' : 'Prochaine répétition : la dernière prévue. Te sens-tu capable de faire une série de plus que ce qui était prévu ? Pouce en haut ou en bas sur l\'écran.');
+      if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
+      const adv = runData.omAdvice && runData.omAdvice.ch ? ` (conseil du coach : ${({ stop: 'arrêter', one: 'finir comme prévu', two: 'ajouter une série' })[runData.omAdvice.ch]})` : '';
+      if (k === 'two') { oneMoreAnswer(true); const last = runData.speedLog[runData.speedLog.length - 1]; if (last && last.extra && adv) last.name += adv; return; }
+      if (k === 'one') { runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i: timerState.currentStageIndex, extra: true, name: `dernière répétition faite comme prévu${adv}` }); speakLive(en ? 'OK, last one then. Give it everything.' : 'OK, c\'est la dernière. Tout ce qu\'il te reste !'); return; }
+      // Arrêter là : on retire la dernière répétition (et sa récup), on garde le retour au calme
+      const S = timerState.stages, F = fastStageIdx(), L = F[F.length - 1], i0 = timerState.currentStageIndex;
+      if (L === undefined || L <= i0) return;
+      let end = L; if (S[L + 1] && isRecoveryStage(S[L + 1]) && S[L + 2] && S[L + 2].type === 'recup') end = L + 1;
+      const removed = S.splice(i0 + 1, end - i0);
+      timerState.totalSessionMs -= removed.reduce((a, x) => a + x.durationSec * 1000, 0);
+      recomputeTotalRemaining();
+      runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i: i0, extra: true, name: `séance arrêtée avant la dernière répétition${adv}` });
+      updateUIHeaderAndCircle(); saveLiveRun();
+      speakLive(en ? 'Good call. We stop the repetitions here, easy recovery and cool-down.' : 'Bonne décision. On s\'arrête là pour les répétitions : récupère tranquillement, puis retour au calme.');
     }
     function oneMoreAnswer(yes) {
       const box = document.getElementById('oneMoreBox'); if (box) box.classList.add('hidden');
@@ -11139,6 +11197,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         void ring;
         stats = `${ring2 ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span><span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span><span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span></div></div>` : ''}
           <div style="display:flex;align-items:stretch;gap:8px">${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}${tile('Cardio moy.', bHr || '–', '#fda4af')}</div>
+          ${(() => { let dp = null, dm = null;
+            if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
+            else { dp = Math.round(km * 1000 * (pente || 0) / 100); dm = 0; }
+            const g = dp != null && km > 0 ? dp / (km * 1000) * 100 : null, sm = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;${card}"><span style="font-size:16px;font-weight:800;color:${c}">${v}</span><span style="font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
+            return `<div style="display:flex;gap:8px">${sm('D+', dp != null ? dp + ' m' : '–', '#fb923c')}${sm('D−', dm != null ? dm + ' m' : '–', '#34d399')}${sm('Pente moy. (D+)', g != null ? (Math.round(g * 10) / 10).toFixed(1).replace('.', ',') + ' %' : '–', '#e2e8f0')}</div>`; })()}
           ${fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">❤️ Cardio lu sur la capture de ta montre (capteur décroché pendant la séance).</span>` : ''}
           ${!item.live && item.id ? `<button type="button" onclick="openEvo(${JSON.stringify(kind && kind.label || '').replace(/"/g, '&quot;')})" style="min-height:42px;border-radius:12px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd;font-weight:800;font-size:13px">📈 Comparer avec mes séances du même type</button>` : ''}
           ${fracMode ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes des ${reps.length} répétitions rapides (sans récup, échauffement ni retour au calme).</span>` : body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
