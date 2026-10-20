@@ -916,13 +916,20 @@
   <!-- Dessiner un parcours -->
   <div id="routeModal" class="pm hidden" style="--acc:#34d399;z-index:95">
     <div class="pm-wrap" style="max-width:none">
-      <div class="flex items-center justify-between gap-2" style="padding:12px 14px 8px">
-        <div class="flex flex-col min-w-0"><span class="text-[20px] font-extrabold">🗺️ Mon parcours</span><div id="reStats" class="flex gap-3 text-[14px] font-extrabold text-emerald-300"></div>
-          <div class="flex items-center gap-2 mt-1 text-[13px] font-bold text-slate-300">Ma vitesse <input id="reSpeed" type="number" step="0.5" min="4" max="25" inputmode="decimal" oninput="reRenderBar()" class="pm-in c" style="width:76px;height:34px;font-size:14px"> km/h <span id="reEta" class="text-purple-300"></span></div></div>
-        <div class="flex items-center gap-2">
-          <label class="flex flex-col items-center gap-1 text-[10px] text-slate-300 font-bold">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
+      <div style="padding:10px 14px 8px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span class="text-[20px] font-extrabold">🗺️ Mon parcours</span>
           <button onclick="closeRouteEditor()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
         </div>
+        <div id="reStats" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#cbd5e1">Ma vitesse
+            <button type="button" onclick="reSpeedStep(-0.5)" style="width:34px;height:34px;border-radius:17px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">−</button>
+            <input id="reSpeed" type="number" step="0.5" min="4" max="25" inputmode="decimal" oninput="reRenderBar()" class="pm-in c" style="width:64px;height:34px;font-size:15px;padding:0 4px">
+            <button type="button" onclick="reSpeedStep(0.5)" style="width:34px;height:34px;border-radius:17px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">+</button> km/h</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#cbd5e1">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
+        </div>
+        <span id="reEta" style="display:none"></span>
       </div>
       <div id="reMap" class="flex-1" style="min-height:200px;background:#0b1324"></div>
       <div style="padding:8px 12px 14px;display:flex;flex-direction:column;gap:8px;background:#050a16">
@@ -8573,7 +8580,7 @@ Réponds uniquement avec le JSON.`;
       apply(r);
       (appData.sessions || []).forEach(x => { if (x !== sess && same(x) && !isSessionDone(x)) apply(x.route); });
       const it = (appData.myRoutes || []).find(x => (r.myId && x.id === r.myId) || (x.name === r.name && Math.abs((x.km || 0) - (r.totalKm || 0)) < 0.05));
-      if (it) { it.eles = r.pts.map(q => [q[2], q[3]]); it.gain = gain; it.eleSrc = 'gps'; }
+      if (it) { it.eles = r.pts.map(q => [q[2], q[3]]); it.gain = gain; it.eleSrc = 'gps'; it.grade = undefined; it.gradeV = 0; }
       return { gain: Math.round(gain), dev: Math.round(dev) };
     }
 
@@ -9549,6 +9556,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       }
       const sel = document.getElementById('reLoopKm');
       if (sel && !sel.options.length) for (let k = 2; k <= 30; k++) sel.add(new Option(`${k} km`, k, false, k === 8));
+      if (saved && saved.eles && (saved.eleSrc === 'gps' || saved.eleSrc === 'capture')) { clearTimeout(re.eleTimer); re.eles = saved.eles.map(e => [e[0], e[1]]); re.keepEles = true; re.keepSig = ''; reRedraw(); }
       document.getElementById('reName').value = saved ? saved.name : '';
       document.getElementById('reSpeed').value = saved && saved.speed ? saved.speed : formatSpeed(runnerEF());
       reStatus(saved ? `Modification de « ${saved.name} »` : 'Touche la carte pour poser le départ, puis les points de passage');
@@ -9613,6 +9621,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         return mk;
       });
       if (fit && c.length > 1) re.map.fitBounds(L.latLngBounds(c), { padding: [30, 30] });
+      { const sig = `${c.length}|${c.length ? c[0].join(',') + '|' + c[c.length - 1].join(',') : ''}|${Math.round(reLenKm(c) * 100)}`;
+        if (re.keepEles && (!re.keepSig || re.keepSig === sig)) { re.keepSig = sig; reRenderBar(); return; } // tracé inchangé : on garde le profil mesuré
+        re.keepEles = false; }
       re.eles = null;
       clearTimeout(re.eleTimer);
       re.eleTimer = setTimeout(reFetchEles, 1200);
@@ -9668,13 +9679,18 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const pts = eles.map(e => `${(e[0] / mx * W).toFixed(1)},${(H - 4 - (e[1] - lo) / sp * (H - 10)).toFixed(1)}`).join(' ');
       return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" aria-label="Profil d'altitude"><polygon points="0,${H} ${pts} ${W},${H}" fill="rgba(52,211,153,.18)"></polygon><polyline points="${pts}" fill="none" stroke="#34d399" stroke-width="2"></polyline></svg>`;
     }
+    function reSpeedStep(d) { const i = document.getElementById('reSpeed'); i.value = Math.max(4, Math.min(25, (parseFloat(String(i.value).replace(',', '.')) || runnerEF()) + d)).toFixed(1).replace(/\.0$/, ''); reRenderBar(); }
     function reRenderBar() {
       if (!re) return;
       const c = reCoords(), km = reLenKm(c);
-      document.getElementById('reStats').innerHTML = `<span>${km.toFixed(2).replace('.', ',')} km</span><span>D+ ${re.eles ? Math.round(reGain(re.eles)) + ' m' : '…'}</span>${km > 0.2 ? `<span style="color:#c4b5fd">⏱ ≈ ${fmtHM(routeLocalEstimate(km, re.eles ? reGain(re.eles) : 0))}</span>` : ''}${re.busy ? '<span style="color:#fbbf24">calcul…</span>' : ''}`;
+      { const sp = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')), chip = (t, c) => `<span style="padding:4px 10px;border-radius:12px;background:#0f172a;border:1px solid #1e293b;font-size:14px;font-weight:800;color:${c}">${t}</span>`;
+        const dp = re.eles ? Math.round(reGain(re.eles)) : null;
+        document.getElementById('reStats').innerHTML = chip(`📏 ${km.toFixed(2).replace('.', ',')} km`, '#6ee7b7') + chip(`⛰️ D+ ${dp != null ? dp + ' m' : '…'}`, '#fb923c')
+          + (dp != null && km > 0.2 ? chip(`📈 ${(dp / (km * 10)).toFixed(1).replace('.', ',')} %`, '#e2e8f0') : '')
+          + (sp > 3 && km > 0.2 ? chip(`⏱ ${fmtHM(routeTimeAt({ km, eles: re.eles }, sp))} à ${String(sp).replace('.', ',')} km/h`, '#c4b5fd') : '')
+          + (re.keepEles ? chip('✓ profil mesuré', '#34d399') : '') + (re.busy ? chip('calcul…', '#fbbf24') : ''); }
       document.getElementById('reProfile').innerHTML = reProfileSvg(re.eles);
-      { const sp = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')), et = document.getElementById('reEta');
-        if (et) et.textContent = sp > 3 && km > 0.2 ? `⏱ temps prévu ${fmtHM(routeTimeAt({ km, eles: re.eles }, sp))}${re.eles ? ' (pente comprise)' : ''}` : ''; }
+
       const f = document.getElementById('reFollow'); if (f) f.checked = re.follow;
     }
     async function reUndo() { if (!re || re.busy) return; re.wps.pop(); re.segs.splice(Math.max(0, re.wps.length - 1)); reRedraw(); }
@@ -9748,7 +9764,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         wps: re.wps.map(p => [+p.lat.toFixed(6), +p.lon.toFixed(6)]),
         segs: re.segs.map(sg => sg.filter((_, k) => k % step === 0 || k === sg.length - 1).map(p => [+p[0].toFixed(5), +p[1].toFixed(5)])),
         eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null,
-        speed: (() => { const v = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')); return v > 3 ? Math.round(v * 10) / 10 : undefined; })()
+        speed: (() => { const v = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')); return v > 3 ? Math.round(v * 10) / 10 : undefined; })(),
+        eleSrc: re.keepEles ? ((appData.myRoutes || []).find(r => r.id === re.editId) || {}).eleSrc : undefined
       };
       item.grade = undefined; routeAvgGrade(item);
       const k = appData.myRoutes.findIndex(r => r.id === item.id);
@@ -9759,6 +9776,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       route.myId = item.id;
       if (item.review) route.review = item.review;
       modalRoute = route;
+      if (window.__actRouteDraw && typeof act !== 'undefined' && act) { window.__actRouteDraw = false; act.route = route; setTimeout(() => { try { renderAct(); } catch (e) { } }, 50); }
       renderRouteInfo(); renderMyRoutes();
       setGpxStatus(`✓ « ${name} » : ${route.totalKm.toFixed(1)} km, D+ ${Math.round(route.gainM)} m — enregistre la séance pour le garder`);
       closeRouteEditor();
@@ -9768,7 +9786,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // Mes parcours (dans le paramétrage de la séance)
     function myRouteToRoute(it) {
       const c = []; (it.segs || []).forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; c.push(p); }));
-      return parseGpx(reGpx(it.name, reDensify(c), it.eles), it.name);
+      const r = parseGpx(reGpx(it.name, reDensify(c), it.eles), it.name);
+      r.myId = it.id; if (it.eleSrc) r.eleSrc = it.eleSrc;
+      return r;
     }
     function useMyRoute(id) {
       const it = (appData.myRoutes || []).find(r => r.id === id);
@@ -10108,9 +10128,14 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       h.summary = Object.assign({}, h.summary || {}); if (es.dplus) { h.summary.dplus = es.dplus; h.summary.dminus = es.dminus; }
       // Parcours lié : profil recalé sur sa longueur
       if (es.pts) {
-        let r0 = null; (appData.sessions || []).forEach(x => { if (!r0 && x.route && ((h.routeId && x.route.myId === h.routeId) || (h.routeName && x.route.name === h.routeName))) r0 = x.route; });
-        const it = (appData.myRoutes || []).find(x => (h.routeId && x.id === h.routeId) || (h.routeName && x.name === h.routeName));
+        const lk = (() => { try { return histLinkedSession(h); } catch (e) { return null; } })();
+        const rid = h.routeId || (lk && lk.route && lk.route.myId) || '', rname = h.routeName || (lk && lk.route && lk.route.name) || '';
+        if (!h.routeName && rname) { h.routeName = rname; if (rid) h.routeId = rid; }
+        const same = r => r && ((rid && r.myId === rid) || (rname && r.name === rname));
+        let r0 = null; (appData.sessions || []).forEach(x => { if (!r0 && same(x.route)) r0 = x.route; });
+        const it = (appData.myRoutes || []).find(x => (rid && x.id === rid) || (rname && x.name === rname));
         const km = (r0 && r0.totalKm) || (it && it.km) || 0;
+        if (!km && (rid || rname)) out.push('(parcours lié introuvable dans Mes parcours)');
         if (km > 0) {
           const f = es.km > 0 ? es.km / km : 1, step = 0.05, n = Math.floor(km / step) + 1;
           const prof = Array.from({ length: n }, (_, i) => at(es.pts, i * step * f));
@@ -10118,8 +10143,9 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
           let gain = 0, loss = 0; for (let i = 1; i < n; i++) { const d = prof[i] - prof[i - 1]; if (d > 0) gain += d; else loss -= d; }
           const apply = rr => { rr.prof = prof.map(v => Math.round(v)); rr.gr = gr.map(v => Math.round(v * 10) / 10); rr.gainM = gain; rr.lossM = loss; rr.hasEle = true; rr.climbs = computeClimbs(prof, gr, step); rr.eleSrc = 'capture'; delete rr._slopeAnn;
             if (Array.isArray(rr.pts)) rr.pts = rr.pts.map(q => [q[0], q[1], q[2], Math.round(prof[Math.min(n - 1, Math.max(0, Math.round(q[2] / step)))])]); };
-          let nS = 0; (appData.sessions || []).forEach(x => { if (x.route && !isSessionDone(x) && ((h.routeId && x.route.myId === h.routeId) || (h.routeName && x.route.name === h.routeName))) { apply(x.route); nS++; } });
-          if (it) { it.eles = Array.from({ length: n }, (_, i) => [+(i * step).toFixed(3), Math.round(prof[i])]); it.gain = gain; it.grade = undefined; it.gradeV = 0; routeAvgGrade(it); out.push('parcours « ' + it.name + ' »'); }
+          let nS = 0; (appData.sessions || []).forEach(x => { if (same(x.route) && !isSessionDone(x)) { apply(x.route); nS++; } });
+          if (typeof modalRoute !== 'undefined' && modalRoute && same(modalRoute)) apply(modalRoute);
+          if (it) { it.eles = Array.from({ length: n }, (_, i) => [+(i * step).toFixed(3), Math.round(prof[i])]); it.gain = gain; it.eleSrc = 'capture'; it.grade = undefined; it.gradeV = 0; routeAvgGrade(it); out.push('parcours « ' + it.name + ' » enregistré'); }
           else if (nS) out.push('parcours des prochaines séances');
         }
       }
@@ -10128,13 +10154,13 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
     }
     async function attachHrShot(h, shots) {
       if (!h || !shots || !shots.length) return;
-      showToast('📷 Lecture de ta capture (cardio, altitude)…');
+      showToast('📷 Lecture de ta capture (cardio, altitude)… les résultats se mettront à jour dans quelques secondes');
       extractHrFromShots.lastEle = null;
       const hs = await extractHrFromShots(shots);
       const es = extractHrFromShots.lastEle; let eleMsg = '';
       if (es) { try { eleMsg = applyEleShot(h, es); } catch (e) { console.warn('eleShot', e); } }
       if (hs) h.hrShot = hs; else if (!h.hrShot) { const hs0 = hrShotFrom(h.analysis); if (hs0) h.hrShot = hs0; }
-      if (hs || eleMsg || es) { saveAppData(); try { updateHistoryTable(); } catch (e) { } }
+      if (hs || eleMsg || es) { saveAppData(); try { const open = !document.getElementById('historyModal').classList.contains('hidden'); updateHistoryTable(); if (open) { const d = document.getElementById('detail_' + h.id); if (d) d.classList.remove('hidden'); } } catch (e) { } try { renderHome(); } catch (e) { } }
       const msgs = [hs ? `❤️ cardio${hs.fc_moy ? ` (moyenne ${hs.fc_moy})` : ''}` : '', eleMsg ? `⛰️ profil corrigé : ${eleMsg}` : es && es.dplus ? `⛰️ D+ ${es.dplus} m` : ''].filter(Boolean);
       showToast(msgs.length ? 'Capture lue : ' + msgs.join(' · ') : 'Rien de lisible sur la capture (cardio ou altitude)');
     }
@@ -13707,11 +13733,11 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
         if (act.loading) { body.innerHTML = `<div class="flex items-center gap-3 text-purple-300 font-bold p-4"><div class="w-5 h-5 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach prépare ta séance…</div>`; return; }
         const f = act.form;
         if (actIsRun() && f.libre) {
-          body.innerHTML = `<div class="pm-card"><span style="font-size:20px;font-weight:800">🏃 Séance libre</span><span class="text-[14px] text-slate-300 leading-snug">${act.type === 'tapis' ? 'Pas de durée ni d\'allure imposées. Pendant la course, règle la vitesse et la pente avec les boutons − / + sous le cercle.' : 'Pas de durée ni d\'allure imposées. Le chrono compte le temps et les km (GPS), avec bilans et conseils.'}</span></div>`;
+          body.innerHTML = actRouteHtml() + `<div class="pm-card"><span style="font-size:20px;font-weight:800">🏃 Séance libre</span><span class="text-[14px] text-slate-300 leading-snug">${act.type === 'tapis' ? 'Pas de durée ni d\'allure imposées. Pendant la course, règle la vitesse et la pente avec les boutons − / + sous le cercle.' : 'Pas de durée ni d\'allure imposées. Le chrono compte le temps et les km (GPS), avec bilans et conseils.'}</span></div>`;
           foot.innerHTML = act.when === 'later' ? `<span class="text-[13px] text-amber-300 font-semibold">Une séance libre se lance au moment voulu : reviens en arrière et choisis un type de séance pour la planifier.</span>` : `<button onclick="launchActivity()" class="pm-save">▶ Lancer l'activité</button>`;
           return;
         }
-        body.innerHTML = (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
+        body.innerHTML = actRouteHtml() + (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
           + actFormHtml()
           + `<div id="actAdvice">${act.advice || ''}</div>`;
         if (act.type === 'muscu') setTimeout(loadExerciseImages, 50);
@@ -13721,6 +13747,26 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
           </div>`;
       }
     }
+    // Parcours de l'activité (dehors) : choisir un parcours enregistré ou en dessiner un
+    let actRtAll = false;
+    function actRouteHtml() {
+      if (!act || act.type !== 'exterieur') return '';
+      const all = appData.myRoutes || [], sel = act.route && act.route.myId;
+      const list = all.slice().sort((a, b) => (b.id === sel) - (a.id === sel));
+      const L = actRtAll ? list : list.slice(0, 3);
+      const sp = (act.form && act.form.segs && act.form.segs[0] && act.form.segs[0].v) || runnerEF();
+      return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🗺️ Parcours</span>
+        <button type="button" onclick="act.route=null;renderAct()" style="text-align:left;min-height:40px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:800;${!sel ? 'background:rgba(52,211,153,.15);border:2px solid #34d399;color:#fff' : 'background:#0f172a;border:1px solid #1e293b;color:#94a3b8'}">${!sel ? '✓ ' : ''}Sans parcours (GPS libre)</button>
+        ${L.map(r => `<button type="button" onclick="actPickRoute('${r.id}')" style="text-align:left;padding:8px 12px;border-radius:12px;${r.id === sel ? 'background:rgba(52,211,153,.15);border:2px solid #34d399' : 'background:#0f172a;border:1px solid #1e293b'}"><span style="display:block;font-size:14px;font-weight:800;color:#f1f5f9">${r.id === sel ? '✓ ' : ''}${plEsc(r.name)}</span><span style="font-size:12px;color:#94a3b8">${(+r.km || 0).toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m · pente moy. ${String(routeAvgGrade(r)).replace('.', ',')} % · ⏱ ${fmtHM(routeTimeAt(r, r.speed || sp))}</span></button>`).join('')}
+        ${list.length > 3 ? `<button type="button" onclick="actRtAll=!actRtAll;renderAct()" style="min-height:34px;border-radius:10px;border:1px dashed #1e293b;background:#0f172a;color:#6ee7b7;font-weight:800;font-size:12px">${actRtAll ? '▲ Réduire' : `▼ Voir les ${list.length - 3} autres`}</button>` : ''}
+        <button type="button" onclick="actDrawRoute()" style="min-height:42px;border-radius:12px;border:none;background:#34d399;color:#03140d;font-weight:900;font-size:14px">✏️ Dessiner un nouveau parcours</button></div>`;
+    }
+    function actPickRoute(id) {
+      const it = (appData.myRoutes || []).find(r => r.id === id); if (!it) return;
+      try { act.route = myRouteToRoute(it); if (it.review) act.route.review = it.review; } catch (e) { showToast('Parcours illisible'); return; }
+      renderAct();
+    }
+    function actDrawRoute() { window.__actRouteDraw = true; openRouteEditor(); }
     function renderActKeepWheel() { const w = document.getElementById('actWheel'); const top = w ? w.scrollTop : null; renderAct(); const w2 = document.getElementById('actWheel'); if (w2 && top !== null) w2.scrollTop = top; }
     function actPickRunType(k) {
       act.form = actDefaultForm();
@@ -13851,6 +13897,7 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
         notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : act.runType === 'vma' ? (act.type === 'tapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)') : ''),
         kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test' }[act.runType] || undefined,
         wcIn: act.runType === 'longue' || act.runType === 'endu' || act.runType === 'recup' ? true : undefined,
+        route: act.type === 'exterieur' && act.route ? act.route : undefined,
         test: act.runType === 'vma' ? { proto: act.type === 'tapis' ? 'vmaTapis' : 'vma6', start: (f.segs[0] || {}).v } : undefined
       };
     }
@@ -13940,6 +13987,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
         if (f.libre) {
           if (act.when === 'later') { showToast("Une séance libre se lance au moment voulu : désactive « Séance libre » pour la planifier"); return; }
           const ty = act.type;
+          window.__freeRoute = ty === 'exterieur' ? act.route || null : null;
           closeActivityWizard();
           freeType = ty;
           document.getElementById('freeSpeed').value = f.speed;
@@ -14173,8 +14221,10 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
         id: `free_${Date.now()}`, free: true, type: freeType, semaine: (getActiveSession() || {}).semaine || 1,
         dateISO: toISODateLocal(d), date: toDDMM(d), jour: weekdayName(d),
         pente: freeType === 'tapis' ? pe : 0, chauffe: 0, recup: 0, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(),
-        pyramide: [{ speed: freeType === 'tapis' ? sp : runnerEF(), duration: 240, unit: 'min' }]
+        pyramide: [{ speed: freeType === 'tapis' ? sp : runnerEF(), duration: 240, unit: 'min' }],
+        route: freeType === 'exterieur' && window.__freeRoute ? window.__freeRoute : undefined
       };
+      window.__freeRoute = null;
       closeFreeModal();
       buildCurrentSessionStages();
       showChrono();
