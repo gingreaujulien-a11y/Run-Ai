@@ -82,6 +82,7 @@
     .pm-in:focus { outline: none; border-color: var(--acc); }
     .pm-in.c { text-align: center; padding: 0 6px; }
     select.pm-in { padding-right: 8px; }
+    .pm-lab { font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
     .pm-row { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #172338; }
     .pm-rt { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; font-size: 14px; font-weight: 700; color: #f1f5f9; }
     .pm-rt small { font-size: 12px; color: #94a3b8; font-weight: 500; }
@@ -261,6 +262,7 @@
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
     <div id="homeGreeting" class="text-xl font-black text-white leading-snug px-1"></div>
     <button type="button" id="homeResultsBtn" onclick="openTodayResults()" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95" style="min-height:52px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.55);color:#a7f3d0">📊 Voir les résultats de ta séance du jour</button>
+    <button type="button" id="homeChatBig" onclick="openCoachChat()" class="w-full rounded-2xl font-extrabold text-[15px] active:scale-95 flex items-center justify-center gap-2" style="min-height:50px;background:rgba(139,92,246,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Discuter avec le coach</button>
     <div id="homeRecovery" class="hidden"></div>
     <div id="homeFeelHost"></div>
 
@@ -301,18 +303,18 @@
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       </div>
-      <div id="homeBtnRow" class="mt-2" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-      <button onclick="launchFromHome()" class="py-4 bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl font-black text-slate-950 text-[16px] shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2" style="min-height:58px">
-        <span class="icon-slot" data-icon="play"></span><span id="homeLaunchText">C'EST PARTI !</span>
-      </button>
-      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="py-4 rounded-2xl bg-sky-500/15 border border-sky-500/50 text-sky-100 font-black text-[16px] flex items-center justify-center gap-2 active:scale-95" style="min-height:58px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>MODIFIER</button>
+      <div id="homeBtnRow" class="mt-2" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.5rem">
+      <button onclick="launchFromHome()" aria-label="C'est parti" title="C'est parti" class="bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl text-slate-950 shadow-lg shadow-sky-500/30 flex items-center justify-center" style="min-height:58px"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg><span id="homeLaunchText" class="hidden"></span></button>
+      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="rounded-2xl bg-sky-500/15 border border-sky-500/50 text-sky-100 flex items-center justify-center active:scale-95" style="min-height:58px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+      <button id="homeMoveBtn" onclick="homeMoveSession()" title="Déplacer la séance" aria-label="Déplacer la séance" class="rounded-2xl bg-amber-500/15 border border-amber-500/50 text-amber-100 flex items-center justify-center active:scale-95" style="min-height:58px;font-size:22px">📅</button>
+      <button id="homeDelBtn" onclick="homeDeleteSession()" title="Supprimer la séance" aria-label="Supprimer la séance" class="rounded-2xl bg-rose-500/15 border border-rose-500/50 text-rose-200 flex items-center justify-center active:scale-95" style="min-height:58px;font-size:22px">🗑</button>
       </div>
     </div>
 
     <div id="homeActBar" class="flex items-center justify-end gap-2" style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:auto;padding-top:.5rem">
-      <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" title="Mes repas du jour" class="w-11 h-11 rounded-2xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px;font-size:20px">🍽️</button>
-      <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-      <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" title="Discuter avec le coach" class="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-500/40 flex items-center justify-center active:scale-95 transition" style="width:44px;height:44px;font-size:20px">💬</button>
+      <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" class="hidden" style="display:none">🍽️</button>
+      <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="rounded-full flex items-center justify-center active:scale-95 transition" style="width:62px;height:62px;background:linear-gradient(135deg,#34d399,#10b981);color:#03140d;box-shadow:0 8px 22px rgba(16,185,129,.45);border:none"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" class="hidden" style="display:none">💬</button>
     </div>
 
 
@@ -368,8 +370,8 @@
       <div id="oneMoreMsg" class="text-center text-[14px] font-bold text-white mb-2 leading-snug">🧠 Le coach analyse ta séance…</div>
       <div class="grid grid-cols-3 gap-2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
         <button id="omStop" onclick="oneMoreChoice('stop')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#334155;color:#fff">🛑<br>J'arrête là</button>
-        <button id="omOne" onclick="oneMoreChoice('one')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#0ea5e9;color:#04121f">✅<br>Encore 1</button>
-        <button id="omTwo" onclick="oneMoreChoice('two')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#34d399;color:#04140d">💪<br>Encore 2</button>
+        <button id="omOne" onclick="oneMoreChoice('one')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#0ea5e9;color:#04121f">✅<br>Comme prévu</button>
+        <button id="omTwo" onclick="oneMoreChoice('two')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#34d399;color:#04140d">💪<br>+1 série</button>
       </div>
     </div>
     <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
@@ -517,6 +519,7 @@
           <span class="text-xs font-bold text-emerald-300 block">🗺️ Parcours GPX de la séance</span>
           <p class="text-[10px] text-slate-400">Pour une sortie extérieure : l'app vous situe sur le parcours, annonce les virages (« dans 100 mètres, tourne à droite ») et les côtes 250 m avant (« montée de 5 % sur 1 km »).</p>
           <button onclick="openRouteEditor()" class="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">🗺️ Dessiner un parcours</button>
+          <button onclick="openAutoRoute()" class="w-full py-3 mt-2 rounded-xl text-[13px] font-black" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🪄 Parcours automatique</button>
           <div class="grid grid-cols-2 gap-2">
             <label class="py-2 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-lg text-[11px] text-center cursor-pointer">📂 Importer un GPX
               <input type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="hidden" onchange="importGpx(this)">
@@ -915,19 +918,19 @@
 
   <!-- Dessiner un parcours -->
   <div id="routeModal" class="pm hidden" style="--acc:#34d399;z-index:95">
-    <div class="pm-wrap" style="max-width:none">
+    <div class="pm-wrap" style="max-width:none;position:relative">
       <div style="padding:10px 14px 8px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <span class="text-[20px] font-extrabold">🗺️ Mon parcours</span>
           <button onclick="closeRouteEditor()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
         </div>
+        <div id="reDiff"></div>
         <div id="reStats" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
           <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#cbd5e1">Ma vitesse
             <button type="button" onclick="reSpeedStep(-0.5)" style="width:34px;height:34px;border-radius:17px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">−</button>
             <input id="reSpeed" type="number" step="0.5" min="4" max="25" inputmode="decimal" oninput="reRenderBar()" class="pm-in c" style="width:64px;height:34px;font-size:15px;padding:0 4px">
             <button type="button" onclick="reSpeedStep(0.5)" style="width:34px;height:34px;border-radius:17px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">+</button> km/h</div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#cbd5e1">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
         </div>
         <span id="reEta" style="display:none"></span>
       </div>
@@ -935,6 +938,7 @@
       <div style="padding:8px 12px 14px;display:flex;flex-direction:column;gap:8px;background:#050a16">
         <div id="reStatus" class="text-[12px] text-slate-400 font-semibold"></div>
         <div id="reProfile"></div>
+        <div id="reSurf"></div>
         <div class="grid grid-cols-4 gap-2">
           <button onclick="reUndo()" class="pm-btn" style="padding:0">↶ Annuler</button>
           <button onclick="reCloseLoop()" class="pm-btn" style="padding:0">🔁 Boucle</button>
@@ -942,13 +946,48 @@
           <button onclick="reClear()" class="pm-btn" style="padding:0;color:#fda4af">🗑 Effacer</button>
         </div>
         <div class="flex items-center gap-2">
-          <select id="reLoopKm" class="pm-in" style="width:96px"></select>
-          <button onclick="reAutoLoop()" class="pm-btn flex-1" style="border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12);color:#6ee7b7">🔄 Boucle automatique</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#cbd5e1;white-space:nowrap">Suivre les chemins<input type="checkbox" id="reFollow" class="sw" checked onchange="re && (re.follow = this.checked)"></label>
+          <button onclick="openClimbSearch()" class="pm-btn flex-1" style="border-color:rgba(251,146,60,.5);background:rgba(251,146,60,.12);color:#fdba74">⛰️ Chercher une côte</button>
         </div>
+        <div id="climbPanel" class="hidden" style="position:absolute;left:0;right:0;bottom:0;max-height:64%;overflow-y:auto;z-index:1200;background:#0b1222;border-top:2px solid #fb923c;border-radius:18px 18px 0 0;padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.6)"></div>
         <div class="flex gap-2">
           <input id="reName" class="pm-in flex-1" placeholder="Nom du parcours" style="font-weight:600">
           <button onclick="reSave()" class="pm-save" style="width:auto;padding:0 18px;height:44px;font-size:15px">💾 Enregistrer</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Création automatique de parcours -->
+  <div id="autoRouteModal" class="pm hidden" style="--acc:#a78bfa;z-index:94">
+    <div class="pm-wrap">
+      <div class="pm-head"><h2 class="pm-title">🪄 Parcours automatique</h2><button onclick="closeAutoRoute()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button></div>
+      <div class="pm-body" style="display:flex;flex-direction:column;gap:14px">
+        <div><div class="pm-lab">Distance</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" onclick="arStep(-1)" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900;font-size:20px">−</button>
+            <input id="arKm" type="number" step="0.5" min="1" max="60" value="8" inputmode="decimal" class="pm-in c" style="width:90px;height:44px;font-size:20px;font-weight:900"><span style="font-weight:800;color:#cbd5e1">km</span>
+            <button type="button" onclick="arStep(1)" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900;font-size:20px">+</button></div></div>
+        <div><div class="pm-lab">Difficulté</div><div id="arDiff" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><div class="pm-lab">Pente max (%)</div><input id="arPmax" type="number" min="2" max="40" step="1" placeholder="libre" inputmode="numeric" class="pm-in c" style="height:44px"></div>
+          <div><div class="pm-lab">D+ max (m)</div><input id="arDmax" type="number" min="0" max="3000" step="10" placeholder="libre" inputmode="numeric" class="pm-in c" style="height:44px"></div>
+        </div>
+        <div><div class="pm-lab">Départ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <button type="button" onclick="arUsePos()" style="min-height:42px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">📍 Ma position</button>
+            <button type="button" id="arPickStart" onclick="arSetPick('start')" style="min-height:42px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">👆 Sur la carte</button></div>
+          <div style="display:flex;gap:6px"><input id="arStartAddr" class="pm-in flex-1" placeholder="ou une adresse…" style="height:42px" onkeydown="if(event.key==='Enter')arGeocode('start')"><button type="button" onclick="arGeocode('start')" style="width:48px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900">🔎</button></div>
+          <div id="arStartTxt" style="font-size:12px;color:#94a3b8;margin-top:4px"></div></div>
+        <div><label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:14px;color:#e2e8f0">Arrivée différente du départ (option)<input type="checkbox" id="arEndOn" class="sw" onchange="arRender()"></label>
+          <div id="arEndBox" class="hidden" style="margin-top:6px">
+            <div style="display:flex;gap:6px"><input id="arEndAddr" class="pm-in flex-1" placeholder="adresse d'arrivée…" style="height:42px" onkeydown="if(event.key==='Enter')arGeocode('end')"><button type="button" onclick="arGeocode('end')" style="width:48px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900">🔎</button></div>
+            <button type="button" id="arPickEnd" onclick="arSetPick('end')" style="margin-top:6px;width:100%;min-height:40px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">👆 Placer l'arrivée sur la carte</button>
+            <div id="arEndTxt" style="font-size:12px;color:#94a3b8;margin-top:4px"></div></div></div>
+        <div id="arMap" style="height:200px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
+        <button type="button" onclick="arGenerate()" id="arGo" style="min-height:54px;border-radius:16px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:16px">🪄 Proposer des parcours</button>
+        <div id="arStatus" style="font-size:13px;color:#94a3b8;font-weight:600"></div>
+        <div id="arList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
   </div>
@@ -3312,7 +3351,7 @@
         boost: [
           "Allez, allez, allez !", "C'est super ce que tu fais !", "Encore ! Encore !", "Lâche rien !",
           "Tiens bon, c'est maintenant que ça se joue !", "Ouiii, continue comme ça !", "Pousse, pousse, pousse !",
-          "Magnifique, garde ce rythme !", "Plus que quelques secondes, à fond !", "T'es une machine !"
+          "Magnifique, garde ce rythme !", "Tout ce qu'il te reste, à fond !", "T'es une machine !"
         ],
         named: n => [`Allez ${n} !`, `C'est super ce que tu fais ${n} !`, `Encore ${n}, encore !`, `Lâche rien ${n} !`, `T'es au top ${n} !`],
         mental: [
@@ -3372,7 +3411,7 @@
         ],
         push: [
           "Dernier effort, ne lâche rien !",
-          "Plus que quelques secondes, tiens bon !",
+          "Accroche-toi, tu y es presque !",
           "Allez, finis fort !",
           "C'est presque fini, accroche-toi !",
           "Encore un petit peu, tu y es presque !"
@@ -3716,13 +3755,20 @@
       if (!fast) fast = r5(vmaE * 0.85);
       const fv = spF(fast), mv = spF(mid);
       const d = st.durationSec * 1000, out = [];
-      const add = (t, text) => { if (t >= 20000 && d - t >= 50000) out.push({ t, kind: 'wu', text }); };
-      add(Math.round(d * 0.35), en ? `Now speed up gradually, up to your easy pace, about ${mv}.` : tap ? `Accélère progressivement : passe à ${mv} kilomètres heure.` : `Accélère progressivement, jusqu'à ton allure d'endurance, environ ${mv} kilomètres heure.`);
-      if (d >= 480000) add(d - 210000, en ? (tap ? `Keep ${mv}, lengthen your stride a little, relax shoulders and arms.` : `Running drills: 20 seconds of high knees, 20 seconds of butt kicks, then 20 seconds of side shuffles, jogging in between.`)
-        : tap ? `Garde ${mv}, allonge un peu la foulée, relâche les épaules et les bras.` : `Gammes : 20 secondes de montées de genoux, 20 secondes de talons-fesses, puis 20 secondes de pas chassés, en trottinant entre chaque.`);
-      add(d - (d >= 480000 ? 150000 : 120000), en ? (tap ? `Strides: go up to ${fv} for 15 seconds, then back to ${mv}. We'll do two.` : `Strides: 2 or 3 progressive accelerations of 15 seconds up to ${fv}, the session pace, with 30 seconds easy in between.`)
-        : tap ? `Accélérations : monte à ${fv} pendant 15 secondes, puis reviens à ${mv}. On en fait deux.` : `Lignes droites : 2 à 3 accélérations progressives de 15 secondes jusqu'à ${fv} kilomètres heure, l'allure de la séance, en récupérant 30 secondes entre chaque.`);
-      if (tap) add(d - (d >= 480000 ? 105000 : 80000), en ? `Second stride: up to ${fv} for 15 seconds.` : `Deuxième accélération : remonte à ${fv} pendant 15 secondes, puis reviens à ${mv}.`);
+      const add = (t, text, speed) => { if (t >= 20000 && d - t >= 50000) out.push({ t, kind: 'wu', text, speed }); };
+      const tapSp = v => tap ? Math.max(3, Math.round(speedOnGrade(v, treadmillGrade(ss.pente)) * 2) / 2) : v;
+      const mvT = spF(tapSp(mid));
+      add(Math.round(d * 0.35), en ? `Now speed up gradually, up to your easy pace, about ${tap ? mvT : mv}.` : tap ? `Accélère progressivement : passe à ${mvT} kilomètres heure.` : `Accélère progressivement, jusqu'à ton allure d'endurance, environ ${mv} kilomètres heure.`, tap ? tapSp(mid) : null);
+      if (d >= 480000) add(d - 210000, en ? (tap ? `Keep ${mvT}, lengthen your stride a little, relax shoulders and arms.` : `Running drills: 20 seconds of high knees, 20 seconds of butt kicks, then 20 seconds of side shuffles, jogging in between.`)
+        : tap ? `Garde ${mvT}, allonge un peu la foulée, relâche les épaules et les bras.` : `Gammes : 20 secondes de montées de genoux, 20 secondes de talons-fesses, puis 20 secondes de pas chassés, en trottinant entre chaque.`);
+      const a1 = d - (d >= 480000 ? 150000 : 120000), a2 = d - (d >= 480000 ? 100000 : 75000);
+      if (tap) {
+        add(a1, en ? `Stride: go up to ${fv} now, for 15 seconds.` : `Accélération : monte à ${fv} maintenant, pendant 15 secondes.`, fast);
+        add(a1 + 15000, en ? `Stride done, back to ${mvT}.` : `Accélération terminée, redescends à ${mvT}.`, tapSp(mid));
+        add(a2 - 5000, en ? `Second stride in 5 seconds.` : `Deuxième accélération dans 5 secondes.`);
+        add(a2, en ? `Go, up to ${fv} for 15 seconds.` : `C'est parti, remonte à ${fv} pendant 15 secondes.`, fast);
+        add(a2 + 15000, en ? `Second stride done, back to ${mvT}. Warm-up almost over.` : `Deuxième accélération terminée, redescends à ${mvT}. L'échauffement est bientôt fini.`, tapSp(mid));
+      } else add(a1, en ? `Strides: 2 or 3 progressive accelerations of 15 seconds up to ${fv}, the session pace, with 30 seconds easy in between.` : `Lignes droites : 2 à 3 accélérations progressives de 15 secondes jusqu'à ${fv} kilomètres heure, l'allure de la séance, en récupérant 30 secondes entre chaque.`);
       return out;
     }
     function computeExtraPoints(st) {
@@ -3752,7 +3798,7 @@
       let p = fq === 'moins' ? base.filter(q => q.kind === 'push' || q.kind === 'praise' || (q.kind === 'mental' && late)) : base.slice();
       const add = (t, kind) => { if (t >= (fast ? Math.min(15000, d * 0.4) : 4000) && d - t >= 6500 && !p.some(q => Math.abs(q.t - t) < 5000)) p.push({ t, kind }); };
       // Moments où insister
-      if (fc.includes('fastEnd') && fast) { add(d - 22000, 'push'); add(d - 12000, late ? 'mental' : 'push'); }
+      if (fc.includes('fastEnd') && fast) { add(d - 25000, late ? 'mental' : 'push'); }
 
       if (fc.includes('lastReps') && fast && late) { add(d * 0.4, 'mental'); add(d * 0.75, 'mental'); }
       if (fc.includes('recup') && isRec && st.type !== 'recup') { add(Math.min(8000, d / 3), 'easy'); if (d > 60000) add(d * 0.6, 'easy'); }
@@ -3783,13 +3829,13 @@
         if (appData.audioSettings.encouragements !== false && st.durationSec >= 90) p.push({ t: 45000, kind: 'praise' });
       } else if (st.intensity === 'fast' && st.durationSec <= 180) {
         // Fractionné court : encouragements très énergiques, surtout dans la 2e moitié
-        [0.5 * d, 0.72 * d, d - 10500].sort((x, y) => x - y).forEach(x => {
-          if (x >= 4500 && d - x >= 7000 && !p.some(q => Math.abs(q.t - x) < 5000)) p.push({ t: x, kind: late ? 'mental' : 'boost' });
+        [0.5 * d, d >= 90000 ? 0.7 * d : null].filter(x => x != null).forEach(x => {
+          if (x >= 4500 && d - x >= 20000 && !p.some(q => Math.abs(q.t - x) < 5000)) p.push({ t: x, kind: late ? 'mental' : 'boost' });
         });
       } else if (st.intensity === 'fast') {
         if (st.durationSec >= 150) p.push({ t: 0.25 * d, kind: 'fast' });
         if (st.durationSec >= 40) p.push({ t: 0.5 * d, kind: late ? 'mental' : 'fast' });
-        if (st.durationSec >= 24) p.push({ t: d - 13000, kind: late ? 'mental' : 'push' }); // dernier effort, juste avant l'annonce des 5 s
+        if (st.durationSec >= 60) p.push({ t: d - 30000, kind: late ? 'mental' : 'push' }); // dernier effort, bien avant « encore 10 s » et le décompte
       } else if (st.intensity === 'easy' && st.type !== 'recup') {
         if (st.durationSec >= 20) p.push({ t: 7000, kind: 'easy' });
         if (st.durationSec >= 120) p.push({ t: 0.6 * d, kind: 'easy' });
@@ -3798,7 +3844,7 @@
       if (st.type === 'chauffe' && warmupCues(st).length) {
         p.push({ t: 75000, kind: 'warm' });
         warmupCues(st).forEach(x => p.push(x));
-        if (d >= 120000) p.push({ t: d - 60000, kind: 'warmEnd' });
+        if (d >= 120000 && !p.some(o => o.kind === 'wu' && Math.abs(o.t - (d - 60000)) < 20000)) p.push({ t: d - 60000, kind: 'warmEnd' });
         return p.filter(q => q.kind !== 'warm' || !p.some(o => o.kind === 'wu' && Math.abs(o.t - q.t) < 30000)).sort((a, b) => a.t - b.t);
       }
       if (st.type === 'chauffe') {
@@ -4200,8 +4246,8 @@
         const pt = f.extra[0];
         if (pt.kind === 'wu') {
           if (elapsedMs >= pt.t) {
-            if (!isSpeaking() && remMs > 9500) { f.extra.shift(); lastEncouragementAt.any = Date.now(); speak([pt.text]); }
-            else if (elapsedMs > pt.t + 25000) f.extra.shift();
+            if (!isSpeaking() && remMs > 9500) { f.extra.shift(); lastEncouragementAt.any = Date.now(); speak([pt.text]); if (pt.speed) { curStage.speed = pt.speed; updateUIHeaderAndCircle(); } }
+            else if (elapsedMs > pt.t + (pt.speed ? 6000 : 25000)) { f.extra.shift(); if (pt.speed) { curStage.speed = pt.speed; updateUIHeaderAndCircle(); } }
           }
         } else
         if (appData.audioSettings.encouragements === false && pt.kind !== 'warmEnd') {
@@ -4782,6 +4828,7 @@ Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date 
 ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
+${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
 Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
       try {
@@ -4827,6 +4874,7 @@ ${upTxt}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
 ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
+${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds de façon concrète et personnalisée. En cas de douleur inquiétante, conseille de consulter. Si c'est utile, tu peux proposer de modifier UNE séance prévue ci-dessus (donne sa date exacte).
 Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","seance_date":"AAAA-MM-JJ de la séance à modifier, sinon vide","resume":"la modification en une phrase","nouvelle_date":"AAAA-MM-JJ si tu conseilles de la déplacer, sinon vide","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
       try {
@@ -5245,7 +5293,11 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
     }
 
     function openValidationModal() {
-      if (timerState.finished && getGeminiKey() && !runData.autoAnaDone) { runData.autoAnaDone = true; setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, 700); }
+      if (timerState.finished && getGeminiKey() && !runData.autoAnaDone) {
+        runData.autoAnaDone = true;
+        if (!runData.voiceFeel && !runData.coolAsked && srCtor() && appData.audioSettings.coolFeel !== false) setTimeout(() => askFeelAtEnd(), 500);
+        else setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, 700);
+      }
       const sess = getActiveSession();
       const totalMin = computeSessionTotalMin(sess);
 
@@ -8016,7 +8068,7 @@ Réponds uniquement avec le JSON.`;
           pickAtSec = baseSec + at; const ph = pickNoRepeat(p.kind); pickAtSec = null;
           if (ph) ev.push({ t: at, pieces: [ph], fixed: false, kind: p.kind });
         });
-        if (!enc) warmupCues(st).forEach(p => ev.push({ t: t0 + p.t / 1000, pieces: [p.text], fixed: true, kind: 'wu' }));
+        if (!enc) warmupCues(st).forEach(p => ev.push({ t: t0 + p.t / 1000, pieces: [p.text], fixed: true, kind: 'wu', speed: p.speed }));
         if (!enc && st.type === 'chauffe' && d >= 120) ev.push({ t: t0 + d - 60, pieces: [warmEndText()], fixed: false, kind: 'warmEnd' });
         if (d >= 10) {
           const nx = i + 1 < stages.length ? stages[i + 1] : null;
@@ -9031,7 +9083,7 @@ Séances précédentes :\n${hist}\nProchaines séances :\n${next}
 ${coachMemoryText('', 6)}
 Décide comme un vrai coach, avec un avis tranché : "stop" (s'arrêter là : fatigue, cardio trop haut, vitesse qui décroche, séance dure à venir), "un" (faire la dernière comme prévu) ou "deux" (le coureur est frais : ajouter une répétition, donc encore deux). N'ajoute que si les répétitions sont tenues facilement et le cardio bien maîtrisé, mais n'hésite pas à le proposer quand c'est le cas.
 Dis aussi si la ou les dernières répétitions peuvent se courir plus vite (ou doivent se courir moins vite) et à quelle vitesse ; sinon garde la vitesse prévue.
-Commence ta phrase par ton avis clair (« Je te conseille d'arrêter », « Fais la dernière comme prévu », « Tu peux en ajouter une »), puis la raison chiffrée, puis la vitesse si elle change.
+Commence ta phrase par ton avis clair (« Je te conseille d'arrêter », « Finis comme prévu », « Tu peux ajouter une série »), puis la raison chiffrée, puis la vitesse si elle change.
 Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conseillée en km/h pour les dernières répétitions, 0 = inchangée),"phrase":"ton avis à voix haute, tutoiement, 35 mots maximum"}`;
       let ch = '', phrase = ''; runData.omSpeed = 0;
       try {
@@ -9043,9 +9095,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (runData.oneMoreAt !== timerState.currentStageIndex) return; // la récup est déjà finie
       const m = document.getElementById('oneMoreMsg');
       const lbl = { stop: "le coach conseille d'arrêter là", one: 'le coach conseille de finir comme prévu', two: 'le coach te pense capable d\'en ajouter une' }[ch];
-      if (m) m.textContent = phrase ? `🧠 ${phrase}` : 'Dernière répétition prévue : tu arrêtes, tu finis comme prévu, ou tu en ajoutes une ?';
+      if (m) m.textContent = phrase ? `🧠 ${phrase}` : 'Il reste la dernière répétition prévue : tu arrêtes, tu finis comme prévu, ou tu ajoutes une série ?';
       omHighlight(ch);
-      speakLive((phrase ? phrase + ' ' : '') + (en ? 'Stop now, one more as planned, or two? Choose on the screen.' : 'Tu arrêtes là, encore une, ou encore deux ? Choisis sur l\'écran.'));
+      speakLive((phrase ? phrase + ' ' : '') + (en ? 'Stop now, finish as planned, or add one repetition? Choose on the screen.' : 'Tu arrêtes là, tu finis comme prévu, ou tu ajoutes une série ? Choisis sur l\'écran.'));
       runData.omAdvice = { ch, phrase, lbl };
     }
     function oneMoreChoice(k) {
@@ -9563,6 +9615,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       reRenderBar();
     }
     function closeRouteEditor() {
+      closeClimbSearch();
       document.getElementById('routeModal').classList.add('hidden');
       if (re && re.map) { try { re.map.remove(); } catch (e) {} }
       re = null;
@@ -9609,6 +9662,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!re || !re.map) return;
       const c = reCoords();
       re.line.setLatLngs(c);
+      reDecorate(c);
       re.marks.forEach(m => re.map.removeLayer(m));
       re.marks = re.wps.map((p, i) => {
         const first = i === 0, last = i === re.wps.length - 1 && i > 0;
@@ -9622,6 +9676,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       });
       if (fit && c.length > 1) re.map.fitBounds(L.latLngBounds(c), { padding: [30, 30] });
       { const sig = `${c.length}|${c.length ? c[0].join(',') + '|' + c[c.length - 1].join(',') : ''}|${Math.round(reLenKm(c) * 100)}`;
+        clearTimeout(re.surfTimer); re.surfTimer = setTimeout(reFetchSurf, 1500);
         if (re.keepEles && (!re.keepSig || re.keepSig === sig)) { re.keepSig = sig; reRenderBar(); return; } // tracé inchangé : on garde le profil mesuré
         re.keepEles = false; }
       re.eles = null;
@@ -9690,6 +9745,10 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           + (sp > 3 && km > 0.2 ? chip(`⏱ ${fmtHM(routeTimeAt({ km, eles: re.eles }, sp))} à ${String(sp).replace('.', ',')} km/h`, '#c4b5fd') : '')
           + (re.keepEles ? chip('✓ profil mesuré', '#34d399') : '') + (re.busy ? chip('calcul…', '#fbbf24') : ''); }
       document.getElementById('reProfile').innerHTML = reProfileSvg(re.eles);
+      { const dp = re.eles ? reGain(re.eles) : null, mg = eleMaxGrade(re.eles);
+        const d = km > 0.2 && dp != null ? routeDifficulty(km, dp, mg, re.surf) : null;
+        document.getElementById('reDiff').innerHTML = d ? diffChipHtml(d, true) : '';
+        document.getElementById('reSurf').innerHTML = km > 0.2 ? (re.surf ? surfBarHtml(re.surf) : `<span style="font-size:12px;color:#64748b">Revêtement : analyse…</span>`) : ''; }
 
       const f = document.getElementById('reFollow'); if (f) f.checked = re.follow;
     }
@@ -9711,7 +9770,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // Boucle automatique de X km autour du départ
     async function reAutoLoop() {
       if (!re || !re.map || re.busy) return;
-      const km = parseFloat(document.getElementById('reLoopKm').value) || 8;
+      const km = parseFloat((document.getElementById('reLoopKm') || {}).value) || re.loopKm || 8;
       re.loopKm = km;
       const c = re.wps[0] || (() => { const m = re.map.getCenter(); return { lat: m.lat, lon: m.lng }; })();
       const th = Math.random() * 2 * Math.PI;
@@ -9731,6 +9790,339 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (got > 0 && Math.abs(got - km) / km > 0.12) { r *= km / got; got = await build(r); }
       reRedraw(true);
       reStatus(`Boucle de ${got.toFixed(1).replace('.', ',')} km : déplace les points pour l'ajuster, ou relance pour une autre`);
+    }
+    // ===== Outils parcours : itinéraire multi-points, altitudes, pente max, revêtement, difficulté
+    function geoOffset(c, distM, brg) { const dLat = distM / 111320, dLon = distM / (111320 * Math.cos(c.lat * Math.PI / 180)); return { lat: c.lat + dLat * Math.cos(brg), lon: c.lon + dLon * Math.sin(brg) }; }
+    function bearingDeg(a, b) { const y = Math.sin((b[1] - a[1]) * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180), x = Math.cos(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) - Math.sin(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
+    async function osrmMulti(pts) {
+      try {
+        const url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join(';')}?overview=full&geometries=geojson`;
+        const r = await Promise.race([fetch(url), sleep(12000).then(() => { throw new Error('délai'); })]);
+        const j = await r.json(), c = j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates;
+        if (c && c.length >= 2) return c.map(p => [p[1], p[0]]);
+      } catch (e) { }
+      return null;
+    }
+    async function elesFor(coords, maxN = 100) {
+      const s = reSamples(coords, maxN); if (s.length < 2) return null;
+      try {
+        const out = [];
+        for (let i = 0; i < s.length; i += 100) {
+          const part = s.slice(i, i + 100);
+          const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`);
+          const j = await r.json(); (j.elevation || []).forEach(e => out.push(e));
+        }
+        return out.length === s.length ? s.map((p, i) => [p.d, out[i]]) : null;
+      } catch (e) { return null; }
+    }
+    // pente max sur des tronçons d'au moins 150 m (évite les pics d'un point à l'autre)
+    function eleMaxGrade(eles, minKm = 0.15) {
+      if (!eles || eles.length < 2) return null;
+      let mx = 0, j = 0;
+      for (let i = 0; i < eles.length; i++) {
+        while (j < eles.length - 1 && eles[j][0] - eles[i][0] < minKm) j++;
+        const dk = eles[j][0] - eles[i][0]; if (dk < minKm * 0.8) break;
+        mx = Math.max(mx, (eles[j][1] - eles[i][1]) / (dk * 1000) * 100);
+      }
+      return Math.round(mx * 10) / 10;
+    }
+    const SURF_CLS = { route: ['🛣️', 'Route / bitume', '#94a3b8'], paves: ['🧱', 'Pavés', '#f472b6'], gravier: ['🪨', 'Gravier / stabilisé', '#eab308'], terre: ['🌲', 'Terre / sentier', '#84cc16'], inconnu: ['❔', 'Non renseigné', '#475569'] };
+    function surfClass(t) {
+      const sf = String(t.surface || '').toLowerCase(), h = t.highway || '', tt = t.tracktype || '';
+      if (/^(asphalt|paved|concrete|chipseal|metal|tartan|rubber)/.test(sf)) return 'route';
+      if (/(sett|cobblestone|paving_stones|unhewn|bricks)/.test(sf)) return 'paves';
+      if (/(gravel|compacted|pebblestone|unpaved|shells)/.test(sf)) return 'gravier';
+      if (/(dirt|ground|earth|grass|mud|sand|woodchips|rock|soil|forest|leaves)/.test(sf)) return 'terre';
+      if (/^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian|steps|cycleway|footway|road)/.test(h)) return 'route';
+      if (h === 'track') return tt === 'grade1' ? 'route' : (tt === 'grade2' || tt === 'grade3') ? 'gravier' : 'terre';
+      if (h === 'path' || h === 'bridleway') return 'terre';
+      return 'inconnu';
+    }
+    async function surfaceMix(coords) {
+      const s = reSamples(coords, 120); if (s.length < 2) return null;
+      const q = `[out:json][timeout:25];way(around:20,${s.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(',')})[highway];out tags geom;`;
+      let ways;
+      try {
+        const r = await Promise.race([fetch('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }), sleep(25000).then(() => { throw new Error('délai'); })]);
+        ways = ((await r.json()).elements || []).filter(w => w.geometry && w.geometry.length > 1 && w.tags);
+      } catch (e) { return null; }
+      const kx = Math.cos(s[0].lat * Math.PI / 180) * 111320, ky = 111320;
+      const segD = (p, a, b) => { const ax = a.lon * kx, ay = a.lat * ky, bx = b.lon * kx, by = b.lat * ky, px = p.lon * kx, py = p.lat * ky, dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
+      const acc = {}; let tot = 0;
+      s.forEach((p, i) => {
+        const len = i < s.length - 1 ? s[i + 1].d - p.d : 0; if (len <= 0) return;
+        let best = null, bd = 30;
+        ways.forEach(w => { for (let k = 1; k < w.geometry.length; k++) { const d = segD(p, w.geometry[k - 1], w.geometry[k]); if (d < bd) { bd = d; best = w; } } });
+        const c = best ? surfClass(best.tags) : 'inconnu';
+        acc[c] = (acc[c] || 0) + len; tot += len;
+      });
+      if (!tot) return null;
+      const out = {}; Object.keys(acc).forEach(k => out[k] = Math.round(acc[k] / tot * 100));
+      return out;
+    }
+    function surfBarHtml(sf) {
+      if (!sf) return '';
+      const ks = Object.keys(SURF_CLS).filter(k => sf[k] > 0);
+      if (!ks.length) return '';
+      return `<div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#1e293b">${ks.map(k => `<div style="width:${sf[k]}%;background:${SURF_CLS[k][2]}"></div>`).join('')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;font-weight:700;color:#cbd5e1">${ks.sort((a, b) => sf[b] - sf[a]).map(k => `<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${SURF_CLS[k][2]};margin-right:4px"></span>${SURF_CLS[k][1]} ${sf[k]} %</span>`).join('')}</div></div>`;
+    }
+    const DIFF_LV = [['🟢', 'Facile', '#34d399'], ['🟡', 'Modérée', '#facc15'], ['🟠', 'Difficile', '#fb923c'], ['🔴', 'Très difficile', '#f43f5e']];
+    function routeDifficulty(km, gain, maxGrade, surf) {
+      if (!(km > 0)) return null;
+      const dpk = (gain || 0) / km; let pts = 0;
+      pts += dpk < 8 ? 0 : dpk < 18 ? 1 : dpk < 30 ? 2 : dpk < 45 ? 3 : 4;
+      if (maxGrade >= 10) pts++; if (maxGrade >= 16) pts++;
+      if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40) pts++;
+      if (km >= 12) pts++; if (km >= 21) pts++; if (km >= 32) pts++;
+      const lv = pts <= 1 ? 0 : pts <= 3 ? 1 : pts <= 5 ? 2 : 3;
+      const why = [`D+ ${Math.round(dpk)} m/km`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
+      return { lv, why: why.join(' · ') };
+    }
+    function diffChipHtml(d, big) { if (!d) return ''; const L0 = DIFF_LV[d.lv]; return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="padding:${big ? '5px 12px' : '2px 8px'};border-radius:12px;background:${L0[2]}22;border:1px solid ${L0[2]};color:${L0[2]};font-weight:900;font-size:${big ? 15 : 12}px">${L0[0]} ${L0[1]}</span><span style="font-size:12px;color:#94a3b8;font-weight:700">${d.why}</span></div>`; }
+    function reFetchSurf() {
+      if (!re) return;
+      const c = reCoords(); if (c.length < 2) { re.surf = null; return; }
+      const sig = `${c.length}|${c[0]}|${c[c.length - 1]}`; if (re.surfSig === sig && re.surf) return;
+      re.surfSig = sig; re.surf = null;
+      surfaceMix(c).then(sf => { if (re && re.surfSig === sig) { re.surf = sf; reRenderBar(); } });
+    }
+    // numéros de km et flèches de sens sur la carte
+    function reDecorate(c) {
+      if (!re || !re.map) return;
+      (re.deco || []).forEach(m => { try { re.map.removeLayer(m); } catch (e) { } }); re.deco = [];
+      if (c.length < 2) return;
+      const tot = reLenKm(c), step = tot > 30 ? 2 : 1, arrows = [];
+      for (let k = step; k < tot - 0.05; k += step) arrows.push({ at: k, num: true });
+      for (let k = 0.5 * step; k < tot - 0.05; k += step) arrows.push({ at: k });
+      if (tot < step) arrows.push({ at: tot / 2 });
+      let cum = 0, i = 1; arrows.sort((a, b) => a.at - b.at);
+      arrows.forEach(a => {
+        while (i < c.length) { const d = haversineM({ lat: c[i - 1][0], lon: c[i - 1][1] }, { lat: c[i][0], lon: c[i][1] }) / 1000; if (cum + d >= a.at) { const f = d ? (a.at - cum) / d : 0; a.p = [c[i - 1][0] + (c[i][0] - c[i - 1][0]) * f, c[i - 1][1] + (c[i][1] - c[i - 1][1]) * f]; a.brg = bearingDeg(c[i - 1], c[i]); break; } cum += d; i++; }
+        if (!a.p) return;
+        const html = a.num ? `<div style="width:22px;height:22px;border-radius:11px;background:#fff;color:#064e3b;border:2px solid #059669;font:900 11px/18px system-ui;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.5)">${Math.round(a.at)}</div>`
+          : `<div style="width:18px;height:18px;transform:rotate(${Math.round(a.brg)}deg)"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 1 L18 18 L10 13 L2 18 Z" fill="#fff" stroke="#047857" stroke-width="1.6" stroke-linejoin="round"/></svg></div>`;
+        const sz = a.num ? 22 : 18;
+        re.deco.push(L.marker(a.p, { icon: L.divIcon({ className: '', iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2], html }), interactive: false, keyboard: false }).addTo(re.map));
+      });
+    }
+
+    // ===== Recherche de côte : pente et longueur voulues autour du parcours
+    let climbRes = [];
+    function openClimbSearch() {
+      if (!re) return;
+      const p = document.getElementById('climbPanel'); p.classList.remove('hidden');
+      p.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:17px;font-weight:900;color:#fdba74">⛰️ Chercher une côte</span><button type="button" onclick="closeClimbSearch()" style="width:36px;height:36px;border-radius:18px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">✕</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="pm-lab">Pente voulue (%)</div><input id="clPct" type="number" min="1" max="30" step="0.5" value="${climbCfg().pct}" inputmode="decimal" class="pm-in c" style="height:44px;font-size:18px;font-weight:900"></div>
+        <div><div class="pm-lab">Longueur (m)</div><input id="clLen" type="number" min="100" max="5000" step="50" value="${climbCfg().len}" inputmode="numeric" class="pm-in c" style="height:44px;font-size:18px;font-weight:900"></div></div>
+        <div style="font-size:12px;color:#94a3b8">Recherche autour du dernier point posé (ou du centre de la carte).</div>
+        <button type="button" onclick="runClimbSearch()" style="min-height:48px;border-radius:14px;border:none;background:#fb923c;color:#1c0d02;font-weight:900;font-size:15px">🔎 Rechercher</button>
+        <div id="clList" style="display:flex;flex-direction:column;gap:8px"></div>`;
+    }
+    function closeClimbSearch() { const p = document.getElementById('climbPanel'); if (p) p.classList.add('hidden'); if (re && re.climbLine) { try { re.map.removeLayer(re.climbLine); } catch (e) { } re.climbLine = null; } }
+    function climbCfg() { return Object.assign({ pct: 6, len: 500 }, appData.climbCfg || {}); }
+    async function runClimbSearch() {
+      if (!re || !re.map) return;
+      const pct = parseFloat(String(document.getElementById('clPct').value).replace(',', '.')) || 6, len = Math.max(100, parseFloat(document.getElementById('clLen').value) || 500);
+      appData.climbCfg = { pct, len }; saveAppData();
+      const box = document.getElementById('clList'), st = t => { box.innerHTML = `<div style="font-size:13px;color:#fbbf24;font-weight:700">${t}</div>`; };
+      const c0 = re.wps.length ? re.wps[re.wps.length - 1] : (() => { const m = re.map.getCenter(); return { lat: m.lat, lon: m.lng }; })();
+      // 1) grille d'altitudes autour du point
+      st('Lecture du relief autour…');
+      const sp = Math.max(150, len * 0.8), n = 11, grid = [];
+      for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) { const q = geoOffset(geoOffset(c0, (a - 5) * sp, 0), (b - 5) * sp, Math.PI / 2); grid.push({ a, b, lat: q.lat, lon: q.lon }); }
+      try {
+        for (let i = 0; i < grid.length; i += 100) {
+          const part = grid.slice(i, i + 100);
+          const j = await (await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`)).json();
+          (j.elevation || []).forEach((e, k) => part[k].e = e);
+        }
+      } catch (e) { st('⚠ Relief indisponible (réseau ?)'); return; }
+      // 2) paires de points voisins dont la pente se rapproche de la cible
+      const G = (a, b) => grid[a * n + b], pairs = [];
+      grid.forEach(g => [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1], [2, 0], [0, 2], [-2, 0], [0, -2]].forEach(([da, db]) => {
+        const h = g.a + da, k = g.b + db; if (h < 0 || k < 0 || h >= n || k >= n) return;
+        const o = G(h, k); if (g.e == null || o.e == null) return;
+        const d = sp * Math.hypot(da, db); if (d < len * 0.5 || d > len * 2.6) return;
+        const gr = (o.e - g.e) / d * 100; if (gr <= 0.5) return;
+        pairs.push({ s: g, t: o, gr, cost: Math.abs(gr - pct) + Math.hypot(g.a - 5, g.b - 5) * 0.15 });
+      }));
+      pairs.sort((x, y) => x.cost - y.cost);
+      const pick = []; pairs.forEach(pr => { if (pick.length < 7 && !pick.some(q => haversineM(q.s, pr.s) < sp * 0.9 && haversineM(q.t, pr.t) < sp * 0.9)) pick.push(pr); });
+      if (!pick.length) { st('Aucune montée trouvée dans le coin : essaie une pente plus faible.'); return; }
+      // 3) itinéraire réel à pied + profil précis, puis meilleur tronçon de la longueur voulue
+      const res = [];
+      for (let i = 0; i < pick.length; i++) {
+        st(`Analyse des montées… ${i + 1}/${pick.length}`);
+        const path = await osrmMulti([pick[i].s, pick[i].t]); if (!path) continue;
+        const el = await elesFor(path, Math.min(100, Math.max(12, Math.round(reLenKm(path) / 0.03)))); if (!el) continue;
+        let best = null;
+        for (let a = 0; a < el.length; a++) for (let b = a + 1; b < el.length; b++) {
+          const L0 = (el[b][0] - el[a][0]) * 1000; if (L0 < len * 0.6) continue; if (L0 > len * 1.5) break;
+          const g = (el[b][1] - el[a][1]) / L0 * 100, cost = Math.abs(g - pct) * 1.2 + Math.abs(L0 - len) / len * 4;
+          if (!best || cost < best.cost) best = { a, b, L: L0, g, cost };
+        }
+        if (!best || best.g <= 0) continue;
+        const sub = []; let cum = 0;
+        path.forEach((p, k) => { if (k) cum += haversineM({ lat: path[k - 1][0], lon: path[k - 1][1] }, { lat: p[0], lon: p[1] }) / 1000; if (cum >= el[best.a][0] - 0.01 && cum <= el[best.b][0] + 0.01) sub.push(p); });
+        if (sub.length < 2) continue;
+        const subE = el.slice(best.a, best.b + 1).map(e => [e[0] - el[best.a][0], e[1]]);
+        res.push({ coords: sub, L: Math.round(best.L), g: Math.round(best.g * 10) / 10, gain: Math.round(el[best.b][1] - el[best.a][1]), max: eleMaxGrade(subE, 0.1), eles: subE, away: Math.round(haversineM(c0, { lat: sub[0][0], lon: sub[0][1] })), cost: best.cost });
+      }
+      res.sort((x, y) => x.cost - y.cost); climbRes = [];
+      res.forEach(r => { if (climbRes.length < 5 && !climbRes.some(q => haversineM({ lat: q.coords[0][0], lon: q.coords[0][1] }, { lat: r.coords[0][0], lon: r.coords[0][1] }) < 80)) climbRes.push(r); });
+      if (!climbRes.length) { st('Aucune côte exploitable trouvée : change la pente ou la longueur.'); return; }
+      box.innerHTML = climbRes.map((r, i) => `<div style="border:1px solid #334155;border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:900;color:#fdba74">${String(r.g).replace('.', ',')} % sur ${r.L} m</span><span style="font-size:12px;color:#94a3b8;font-weight:700">D+ ${r.gain} m${r.max != null ? ` · max ${String(r.max).replace('.', ',')} %` : ''} · à ${r.away >= 1000 ? (r.away / 1000).toFixed(1).replace('.', ',') + ' km' : r.away + ' m'}</span></div>
+        ${reProfileSvg(r.eles).replace('height="56"', 'height="36"')}
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="showClimb(${i})" style="min-height:40px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
+        <button type="button" onclick="addClimb(${i})" style="min-height:40px;border-radius:10px;border:none;background:#fb923c;color:#1c0d02;font-weight:900">➕ Intégrer au parcours</button></div></div>`).join('');
+    }
+    function showClimb(i) {
+      const r = climbRes[i]; if (!r || !re || !re.map) return;
+      if (re.climbLine) { try { re.map.removeLayer(re.climbLine); } catch (e) { } }
+      re.climbLine = L.polyline(r.coords, { color: '#fb923c', weight: 7, opacity: 0.95 }).addTo(re.map);
+      try { re.map.fitBounds(L.latLngBounds(r.coords), { paddingTopLeft: [30, 30], paddingBottomRight: [30, Math.round(window.innerHeight * 0.66)] }); } catch (e) { }
+    }
+    async function addClimb(i) {
+      const r = climbRes[i]; if (!r || !re || re.busy) return;
+      const a = r.coords[0], b = r.coords[r.coords.length - 1];
+      await reAddPoint(a[0], a[1], true);        // rejoint le pied de la côte
+      re.wps.push({ lat: b[0], lon: b[1] });       // puis la côte elle-même, telle quelle
+      if (re.wps.length > 1) re.segs.push(r.coords.map(p => [p[0], p[1]]));
+      closeClimbSearch(); reRedraw(true);
+      reStatus(`Côte de ${r.L} m à ${String(r.g).replace('.', ',')} % ajoutée : continue ton tracé`);
+    }
+
+    // ===== Création automatique de parcours
+    let ar = null;
+    function openAutoRoute() {
+      const prev = ar; ar = { diff: prev ? prev.diff : -1, start: prev ? prev.start : null, end: null, pick: 'start', map: null, cands: [] };
+      if (!ar.start && runData && runData.gps && runData.gps.lat) ar.start = { lat: runData.gps.lat, lon: runData.gps.lon, label: 'ma position' };
+      document.getElementById('autoRouteModal').classList.remove('hidden');
+      arRender(); arInitMap();
+      if (!ar.start) arUsePos(true);
+    }
+    function closeAutoRoute() { document.getElementById('autoRouteModal').classList.add('hidden'); if (ar && ar.map) { try { ar.map.remove(); } catch (e) { } ar.map = null; } }
+    function arStep(d) { const i = document.getElementById('arKm'); i.value = Math.max(1, Math.min(60, (parseFloat(String(i.value).replace(',', '.')) || 8) + d)); }
+    function arRender() {
+      if (!ar) return;
+      document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe']].concat(DIFF_LV.slice(0, 3).map((d, i) => [i, d[0], d[1]])).map(([v, ic, t]) => `<button type="button" onclick="ar.diff=${v};arRender()" style="min-height:48px;border-radius:12px;font-size:12px;font-weight:800;${ar.diff === v ? 'background:rgba(167,139,250,.2);border:2px solid #a78bfa;color:#fff' : 'background:#0f172a;border:1px solid #1e293b;color:#94a3b8'}">${ic}<br>${t}</button>`).join('');
+      const on = document.getElementById('arEndOn').checked; document.getElementById('arEndBox').classList.toggle('hidden', !on);
+      if (!on) { ar.end = null; if (ar.pick === 'end') ar.pick = 'start'; }
+      const fmt = p => p ? `✓ ${p.label || `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`}` : '';
+      document.getElementById('arStartTxt').textContent = fmt(ar.start) || 'Pas encore de départ';
+      document.getElementById('arEndTxt').textContent = fmt(ar.end);
+      ['arPickStart', 'arPickEnd'].forEach(id => { const b = document.getElementById(id); if (b) { const act = (id === 'arPickStart') === (ar.pick === 'start'); b.style.borderColor = act ? '#a78bfa' : '#334155'; b.style.color = act ? '#fff' : '#e2e8f0'; } });
+      arDrawMarks();
+    }
+    function arSetPick(w) { if (!ar) return; ar.pick = w; arRender(); reStatusAr(w === 'start' ? 'Touche la carte pour placer le départ' : 'Touche la carte pour placer l\'arrivée'); }
+    function reStatusAr(t, err) { const e = document.getElementById('arStatus'); if (e) { e.textContent = t; e.style.color = err ? '#fda4af' : ''; } }
+    async function arInitMap() {
+      try { await loadLeaflet(); } catch (e) { reStatusAr('⚠ Carte indisponible : utilise ta position ou une adresse', true); return; }
+      if (!ar || ar.map) return;
+      const box = document.getElementById('arMap'); box.innerHTML = '';
+      const c = ar.start ? [ar.start.lat, ar.start.lon] : [48.8566, 2.3522];
+      ar.map = L.map(box, { zoomControl: false, attributionControl: true }).setView(c, ar.start ? 14 : 12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(ar.map);
+      ar.map.on('click', e => { const p = { lat: e.latlng.lat, lon: e.latlng.lng, label: 'point choisi sur la carte' }; if (ar.pick === 'end' && document.getElementById('arEndOn').checked) ar.end = p; else ar.start = p; arRender(); });
+      ar.marks = []; ar.lines = []; arDrawMarks();
+      setTimeout(() => ar && ar.map && ar.map.invalidateSize(), 200);
+    }
+    function arDrawMarks() {
+      if (!ar || !ar.map) return;
+      (ar.marks || []).forEach(m => { try { ar.map.removeLayer(m); } catch (e) { } }); ar.marks = [];
+      [[ar.start, '#34d399'], [ar.end, '#fb7185']].forEach(([p, col]) => { if (p) ar.marks.push(L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: `<div style="width:22px;height:22px;border-radius:11px;border:3px solid #fff;background:${col}"></div>` }) }).addTo(ar.map)); });
+    }
+    function arUsePos(silent) {
+      const set = (lat, lon) => { if (!ar) return; ar.start = { lat, lon, label: 'ma position' }; arRender(); if (ar.map) ar.map.setView([lat, lon], 14); reStatusAr(''); };
+      if (!navigator.geolocation) { if (runData && runData.gps && runData.gps.lat) set(runData.gps.lat, runData.gps.lon); else if (!silent) reStatusAr('Position indisponible', true); return; }
+      if (!silent) reStatusAr('Recherche de ta position…');
+      navigator.geolocation.getCurrentPosition(p => set(p.coords.latitude, p.coords.longitude), () => { if (!silent) reStatusAr('Position refusée ou indisponible : utilise une adresse ou la carte', true); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+    }
+    async function arGeocode(w) {
+      const q = (document.getElementById(w === 'end' ? 'arEndAddr' : 'arStartAddr').value || '').trim(); if (!q) return;
+      reStatusAr('Recherche de l\'adresse…');
+      try {
+        const j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=fr&q=${encodeURIComponent(q)}`)).json();
+        if (!j || !j[0]) { reStatusAr('Adresse introuvable', true); return; }
+        const p = { lat: +j[0].lat, lon: +j[0].lon, label: String(j[0].display_name || q).split(',').slice(0, 3).join(',') };
+        if (w === 'end') ar.end = p; else ar.start = p;
+        arRender(); if (ar.map) ar.map.setView([p.lat, p.lon], 14); reStatusAr('');
+      } catch (e) { reStatusAr('Recherche d\'adresse indisponible (réseau ?)', true); }
+    }
+    async function arCandidate(wps) {
+      const coords = await osrmMulti(wps); if (!coords) return null;
+      return { wps, coords, km: reLenKm(coords) };
+    }
+    async function arGenerate() {
+      if (!ar) return;
+      if (!ar.start) { reStatusAr('Choisis d\'abord un départ', true); return; }
+      const km = Math.max(1, parseFloat(String(document.getElementById('arKm').value).replace(',', '.')) || 8);
+      const pmax = parseFloat(document.getElementById('arPmax').value) || null, dmax = parseFloat(document.getElementById('arDmax').value) || null;
+      const end = document.getElementById('arEndOn').checked ? ar.end : null;
+      if (document.getElementById('arEndOn').checked && !end) { reStatusAr('Choisis l\'arrivée (adresse ou carte), ou décoche l\'option', true); return; }
+      const btn = document.getElementById('arGo'); btn.disabled = true; btn.style.opacity = .6;
+      const list = document.getElementById('arList'); list.innerHTML = '';
+      const S = ar.start, cands = [], N = 6, base = Math.random() * 2 * Math.PI;
+      const loopWps = (th, rM) => { const C = geoOffset(S, rM, th); const pts = [S]; [90, 180, 270].forEach(a => pts.push(geoOffset(C, rM, th + Math.PI + a * Math.PI / 180))); pts.push({ lat: S.lat, lon: S.lon }); return pts; };
+      const abWps = (side, f, h) => { const mid = { lat: S.lat + (end.lat - S.lat) * f, lon: S.lon + (end.lon - S.lon) * f }, brg = bearingDeg([S.lat, S.lon], [end.lat, end.lon]) * Math.PI / 180; return h > 30 ? [S, geoOffset(mid, h, brg + side * Math.PI / 2), end] : [S, end]; };
+      try {
+        for (let i = 0; i < N; i++) {
+          reStatusAr(`Calcul des parcours… ${i + 1}/${N}`);
+          let c;
+          if (!end) {
+            const th = base + i * 2 * Math.PI / N; let r = km * 1000 / (2 * Math.PI) * 0.8;
+            c = await arCandidate(loopWps(th, r));
+            if (c && Math.abs(c.km - km) / km > 0.1) { r *= km / c.km; c = await arCandidate(loopWps(th, r)) || c; }
+          } else {
+            const D = haversineM(S, end), side = i % 2 ? -1 : 1, f = [0.5, 0.5, 0.33, 0.33, 0.67, 0.67][i];
+            let h = km * 1000 / 1.25 > D ? Math.sqrt(Math.max(0, Math.pow(km * 1000 / 1.25 / 2, 2) - Math.pow(D / 2, 2))) : 0;
+            if (!h && i) break;
+            c = await arCandidate(abWps(side, f, h));
+            if (c && h && Math.abs(c.km - km) / km > 0.1) { h = Math.max(0, h * (1 + (km - c.km) / c.km * 1.4)); c = await arCandidate(abWps(side, f, h)) || c; }
+          }
+          if (!c) continue;
+          c.eles = await elesFor(c.coords, 100);
+          c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles);
+          c.diff = routeDifficulty(c.km, c.gain, c.maxG, null);
+          let cost = Math.abs(c.km - km) / km * 10;
+          if (pmax && c.maxG != null && c.maxG > pmax) cost += (c.maxG - pmax) * 2;
+          if (dmax && c.gain != null && c.gain > dmax) cost += (c.gain - dmax) / 15;
+          if (ar.diff >= 0 && c.diff) cost += Math.abs(c.diff.lv - ar.diff) * 4;
+          c.cost = cost; c.ok = (!pmax || c.maxG == null || c.maxG <= pmax) && (!dmax || c.gain == null || c.gain <= dmax) && (ar.diff < 0 || !c.diff || c.diff.lv === ar.diff);
+          cands.push(c);
+        }
+      } finally { btn.disabled = false; btn.style.opacity = 1; }
+      cands.sort((a, b) => a.cost - b.cost); ar.cands = cands;
+      if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
+      reStatusAr(`${cands.length} parcours proposés, du plus proche de ta demande au moins proche :`);
+      list.innerHTML = cands.map((c, i) => `<div style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px"><span style="font-size:17px;font-weight:900;color:#f1f5f9">${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}</span></div>
+        ${diffChipHtml(c.diff)}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
+        ${reProfileSvg(c.eles).replace('height="56"', 'height="40"')}
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arShow(${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
+        <button type="button" onclick="arChoose(${i})" style="min-height:42px;border-radius:10px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ Choisir et ajuster</button></div></div>`).join('');
+      arShow(0);
+    }
+    function arShow(i) {
+      const c = ar && ar.cands[i]; if (!c || !ar.map) return;
+      (ar.lines || []).forEach(l => { try { ar.map.removeLayer(l); } catch (e) { } });
+      ar.lines = [L.polyline(c.coords, { color: '#a78bfa', weight: 5, opacity: 0.95 }).addTo(ar.map)];
+      try { ar.map.fitBounds(L.latLngBounds(c.coords), { padding: [20, 20] }); } catch (e) { }
+      document.getElementById('arMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    async function arChoose(i) {
+      const c = ar && ar.cands[i]; if (!c) return;
+      const km = c.km.toFixed(1).replace('.', ',');
+      closeAutoRoute();
+      await openRouteEditor();
+      if (!re) return;
+      re.wps = c.wps.map(p => ({ lat: p.lat, lon: p.lon }));
+      await reRebuildAll();
+      reRedraw(true);
+      document.getElementById('reName').value = `${ar.end ? 'Parcours' : 'Boucle'} ${km} km`;
+      reStatus('Parcours proposé : déplace les points pour l\'ajuster, puis enregistre');
     }
     function reGpx(name, coords, eles) {
       // altitude interpolée sur chaque point
@@ -9765,7 +10157,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         segs: re.segs.map(sg => sg.filter((_, k) => k % step === 0 || k === sg.length - 1).map(p => [+p[0].toFixed(5), +p[1].toFixed(5)])),
         eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null,
         speed: (() => { const v = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')); return v > 3 ? Math.round(v * 10) / 10 : undefined; })(),
-        eleSrc: re.keepEles ? ((appData.myRoutes || []).find(r => r.id === re.editId) || {}).eleSrc : undefined
+        eleSrc: re.keepEles ? ((appData.myRoutes || []).find(r => r.id === re.editId) || {}).eleSrc : undefined,
+        surf: re.surf || undefined, maxGrade: eleMaxGrade(re.eles) ?? undefined
       };
       item.grade = undefined; routeAvgGrade(item);
       const k = appData.myRoutes.findIndex(r => r.id === item.id);
@@ -9987,6 +10380,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       return out.length ? out.join(' ; ') : 'aucun record mesuré par l\'app (cherche un progrès dans les données si tu en vois un, sinon laisse vide)';
     }
     // Façon de raisonner du coach (analyse et discussions) : chercher la vraie cause, savoir se remettre en question
+    const COACH_ADAPT = `Quand tu proposes de modifier une séance : garde son type (un fractionné reste un fractionné, une sortie longue reste une sortie longue) et son intention, sauf si le coureur demande explicitement autre chose. Ajuste UN paramètre principal à la fois (deux au maximum), par petites touches : ±0,5 km/h, ±1 répétition, ±15 à 30 s de fraction ou de récup, ±1 à 2 % de pente. Si le coureur trouve la séance « un peu dure », allège légèrement (pas de séance facile à la place) ; si tu proposes deux options, présente-les clairement.`;
     const COACH_RECUL = `Raisonne comme un bon coach qui prend du recul :
 - Cherche la vraie cause avant de conclure. Commence par vérifier si la séance PRÉVUE était adaptée au coureur (durée, vitesse, enchaînement) par rapport à ce qu'il fait d'habitude (voir sa capacité récente). Si elle était trop longue ou trop dure, dis-le clairement et assume : c'est le plan (donc toi) qu'il faut corriger, pas le coureur.
 - Le cardio monte naturellement avec la durée à vitesse constante (dérive cardiaque, souvent +10 à 20 bpm sur 40 min, davantage avec la chaleur, le tapis, la fatigue, le manque de sommeil ou d'hydratation). Un écart de 0,5 km/h n'explique presque jamais à lui seul un cardio élevé. Regarde l'évolution dans le temps et les moyennes, pas seulement la FC max.
@@ -13759,7 +14153,8 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
         <button type="button" onclick="act.route=null;renderAct()" style="text-align:left;min-height:40px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:800;${!sel ? 'background:rgba(52,211,153,.15);border:2px solid #34d399;color:#fff' : 'background:#0f172a;border:1px solid #1e293b;color:#94a3b8'}">${!sel ? '✓ ' : ''}Sans parcours (GPS libre)</button>
         ${L.map(r => `<button type="button" onclick="actPickRoute('${r.id}')" style="text-align:left;padding:8px 12px;border-radius:12px;${r.id === sel ? 'background:rgba(52,211,153,.15);border:2px solid #34d399' : 'background:#0f172a;border:1px solid #1e293b'}"><span style="display:block;font-size:14px;font-weight:800;color:#f1f5f9">${r.id === sel ? '✓ ' : ''}${plEsc(r.name)}</span><span style="font-size:12px;color:#94a3b8">${(+r.km || 0).toFixed(1).replace('.', ',')} km · D+ ${Math.round(r.gain || 0)} m · pente moy. ${String(routeAvgGrade(r)).replace('.', ',')} % · ⏱ ${fmtHM(routeTimeAt(r, r.speed || sp))}</span></button>`).join('')}
         ${list.length > 3 ? `<button type="button" onclick="actRtAll=!actRtAll;renderAct()" style="min-height:34px;border-radius:10px;border:1px dashed #1e293b;background:#0f172a;color:#6ee7b7;font-weight:800;font-size:12px">${actRtAll ? '▲ Réduire' : `▼ Voir les ${list.length - 3} autres`}</button>` : ''}
-        <button type="button" onclick="actDrawRoute()" style="min-height:42px;border-radius:12px;border:none;background:#34d399;color:#03140d;font-weight:900;font-size:14px">✏️ Dessiner un nouveau parcours</button></div>`;
+        <button type="button" onclick="actDrawRoute()" style="min-height:42px;border-radius:12px;border:none;background:#34d399;color:#03140d;font-weight:900;font-size:14px">✏️ Dessiner un nouveau parcours</button>
+        <button type="button" onclick="window.__actRouteDraw=true;openAutoRoute()" style="min-height:42px;border-radius:12px;border:1px solid rgba(167,139,250,.6);background:rgba(167,139,250,.15);color:#ddd6fe;font-weight:900;font-size:14px">🪄 Parcours automatique</button></div>`;
     }
     function actPickRoute(id) {
       const it = (appData.myRoutes || []).find(r => r.id === id); if (!it) return;
@@ -14650,20 +15045,32 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       let finalTxt = '', last = Date.now(), done = false;
       const t = document.getElementById('cfTitle'); if (t) t.textContent = '🎙️ Je t\'écoute… parle librement';
       rec.onresult = ev => { let inter = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { if (ev.results[i].isFinal) finalTxt += ev.results[i][0].transcript + ' '; else inter += ev.results[i][0].transcript; } last = Date.now(); const x = document.getElementById('cfTxt'); if (x) x.textContent = `« ${(finalTxt + inter).trim()} »`; runData.voiceFeel = (finalTxt + inter).trim(); };
-      rec.onerror = () => { };
-      rec.onend = () => { if (done) return; if (document.getElementById('coolFeelBox') && Date.now() - start < 45000 && Date.now() - last < 7000) { try { rec.start(); } catch (e) { } } else finish(); };
+      rec.onend = () => { if (done) return; if (document.getElementById('coolFeelBox') && Date.now() - start < 45000 && Date.now() - last < 8000) { setTimeout(() => { try { rec.start(); } catch (e) { finish(); } }, 150); } else finish(); };
+      rec.onerror = ev => { if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')) { const x = document.getElementById('cfTxt'); if (x) x.textContent = 'Micro refusé : autorise le micro pour Run Ai dans les réglages du navigateur.'; } };
       const start = Date.now();
       const finish = () => { if (done) return; done = true; clearInterval(chk); try { rec.stop(); } catch (e) { } coolRec = null; endCoolFeel(false, true); };
       const chk = setInterval(() => { if (Date.now() - last > 7000 && Date.now() - start > 9000) finish(); if (Date.now() - start > 50000) finish(); }, 500); // 7 s de silence ou 50 s max
       coolRec.finish = finish;
       try { rec.start(); } catch (e) { finish(); }
     }
+    // Fin de séance (écran rallumé) : le coach demande le ressenti, la réponse se fait au micro d'un appui, puis il analyse
+    function askFeelAtEnd() {
+      const en = appData.audioSettings.voiceLang === 'en';
+      runData.feelAtEnd = true;
+      showCoolFeel('🎙️ Comment s\'est passée ta séance ?', '');
+      const t = document.getElementById('cfTitle'); if (t) t.insertAdjacentHTML('afterend', `<button type="button" id="cfMic" onclick="this.remove();listenCoolFeel()" style="min-height:52px;border-radius:14px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:16px">🎙️ Appuie et parle au coach</button>`);
+      speakLive(en ? 'Session finished, well done! How did it feel? Tap the button and tell me.' : 'Séance terminée, bravo ! Comment ça s\'est passé ? Appuie sur le bouton et raconte-moi.');
+      runData.feelEndTimer = setTimeout(() => { if (document.getElementById('cfMic')) endCoolFeel(true); }, 90000);
+    }
     function endCoolFeel(skip, auto) {
       if (coolRec && coolRec.finish && !auto) { const f = coolRec.finish; coolRec = null; f(); return; }
       const b = document.getElementById('coolFeelBox'); if (b) b.remove();
+      clearTimeout(runData.feelEndTimer);
       const en = appData.audioSettings.voiceLang === 'en';
-      if (skip) { runData.voiceFeel = ''; return; }
-      if (runData.voiceFeel) speakLive(en ? 'Thanks, noted. I\'ll take it into account in my analysis.' : 'Merci, c\'est noté, j\'en tiens compte dans mon analyse.');
+      const atEnd = runData.feelAtEnd; runData.feelAtEnd = false;
+      if (skip) runData.voiceFeel = '';
+      else if (runData.voiceFeel) speakLive(en ? 'Thanks, noted. I\'ll take it into account in my analysis.' : 'Merci, c\'est noté, j\'en tiens compte dans mon analyse.');
+      if (atEnd) { const ni = document.getElementById('valNoteInput'); if (ni && runData.voiceFeel && !ni.value.trim()) ni.value = runData.voiceFeel; setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, runData.voiceFeel ? 2500 : 300); }
     }
     function stopRec() { try { vc.rec && vc.rec.abort(); } catch (e) {} vc.rec = null; }
 
@@ -15013,6 +15420,34 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       btAutoReconnect(); // la montre se reconnecte seule si elle a déjà été autorisée
     }
     let homeCardPrefix = '';
+    function homeMoveSession() {
+      const s = getActiveSession(); if (!s || s.free) return;
+      let m = document.getElementById('homeMoveModal');
+      if (!m) { m = document.createElement('div'); m.id = 'homeMoveModal'; m.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(2,6,23,.8);display:flex;align-items:center;justify-content:center;padding:16px'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+      m.innerHTML = `<div style="width:100%;max-width:360px;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
+        <span style="font-size:17px;font-weight:900">📅 Déplacer la séance</span>
+        <input id="homeMoveDate" type="date" value="${s.dateISO || todayISO()}" min="${todayISO()}" class="pm-in" style="height:48px;font-size:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="document.getElementById('homeMoveModal').remove()" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Annuler</button>
+          <button type="button" onclick="homeMoveApply()" style="min-height:46px;border-radius:12px;border:none;background:#f59e0b;color:#1c1003;font-weight:900">Déplacer</button></div></div>`;
+    }
+    function homeMoveApply() {
+      const s = getActiveSession(), iso = document.getElementById('homeMoveDate').value; if (!s || !iso) return;
+      const from = s.dateISO; if (iso === from) { document.getElementById('homeMoveModal').remove(); return; }
+      const d = parseISODateLocal(iso); s.dateISO = iso; s.date = toDDMM(d); s.jour = weekdayName(d);
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      homePickNext();
+      saveAppData(); document.getElementById('homeMoveModal').remove();
+      try { reloadChrono(); updateHistoryTable(); renderHome(); } catch (e) { }
+      openMoveCheck(s.id, from);
+    }
+    function homeDeleteSession() {
+      const s = getActiveSession(); if (!s || s.free) return;
+      const i = appData.sessions.indexOf(s); if (i < 0) return;
+      const n = appData.sessions.length; deleteItem(s.id, 'planned', i);
+      if (appData.sessions.length < n) { homePickNext(); saveAppData(); }
+      try { reloadChrono(); renderHome(); } catch (e) { }
+    }
+    function homePickNext() { const t = todayISO(); const k = appData.sessions.findIndex(x => x.dateISO && x.dateISO >= t && !isSessionDone(x)); appData.activeSessionIndex = Math.max(0, k); }
     function todayDoneHist() { const t = todayISO(); return (appData.history || []).filter(h => h && !h.cross && histISO(h) === t)[0] || null; }
     function openTodayResults() { const h = todayDoneHist(); if (!h) return; openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + h.id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start' }); } }, 60); }
     let homeMoreOpen = false;
@@ -15086,7 +15521,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE' : "C'EST PARTI !";
-      { const cb = document.getElementById('homeCfgBtn'); if (cb) cb.classList.toggle('hidden', !!inProgress); const br = document.getElementById('homeBtnRow'); if (br) br.style.gridTemplateColumns = inProgress ? '1fr' : '1fr 1fr'; }
+      { ['homeCfgBtn', 'homeMoveBtn', 'homeDelBtn'].forEach(id => { const b = document.getElementById(id); if (b) b.classList.toggle('hidden', !!inProgress || (id !== 'homeCfgBtn' && !!sess.free)); }); const br = document.getElementById('homeBtnRow'); if (br) br.style.gridTemplateColumns = inProgress ? '1fr' : sess.free ? '2fr 1fr' : '2fr 1fr 1fr 1fr'; }
       const goal = appData.goal || {};
       const g = document.getElementById('homeGoal');
       if (g) g.textContent = goal.distanceKm ? `🎯 Objectif : ${goal.distanceKm} km en ${goal.durationMin} min le ${goal.date}` : '';
