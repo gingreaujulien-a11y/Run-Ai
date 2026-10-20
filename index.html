@@ -5328,7 +5328,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
 
       if (newEntry.vmaTest) { runnerProfile().vmaTest = { v: newEntry.vmaTest, at: todayISO(), proto: (sess.test || {}).proto }; showToast(`🧪 VMA mesurée : ${formatSpeed(newEntry.vmaTest).replace('.', ',')} km/h`); }
       appData.history.unshift(newEntry);
-      if (!newEntry.hrShot && valShots && valShots.length) attachHrShot(newEntry, valShots.slice());
+      if (valShots && valShots.length) attachHrShot(newEntry, valShots.slice());
       if (!sess.free || sess.plannedFree) sess.doneHistId = newEntry.id; // la séance prévue est faite
       try { const lr = timerState.finished && routeLearnFromGps(sess); if (lr) setTimeout(() => showToast(`🗺️ Profil du parcours corrigé avec ton GPS (D+ ${lr.gain} m)`), 2800); } catch (e) { console.warn('route gps', e); }
       saveAppData();
@@ -5591,13 +5591,20 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     }
     // ---------- Points forts, points à travailler (coach) et préférences du coureur ----------
     const SESS_TYPES_PREF = [['fractionne', 'Fractionné court'], ['fl', 'Fractionné long'], ['seuil', 'Seuil / tempo'], ['cotes', 'Côtes'], ['longue', 'Sortie longue'], ['tapis', 'Tapis'], ['exterieur', 'Dehors'], ['vitesse', 'Vitesse pure'], ['endurance', 'Endurance longue durée']];
-    function runnerLikes() { const p = runnerProfile(); if (!p.likes || typeof p.likes !== 'object') p.likes = { aise: [], dur: [], aime: [], deteste: [], note: '' }; return p.likes; }
+    function runnerLikes() {
+      const p = runnerProfile(); if (!p.likes || typeof p.likes !== 'object') p.likes = { aime: [], deteste: [], note: '', faibles: '' };
+      const L = p.likes; if (!Array.isArray(L.aime)) L.aime = []; if (!Array.isArray(L.deteste)) L.deteste = [];
+      if (Array.isArray(L.aise) && L.aise.length) { L.aise.forEach(k => { if (!L.aime.includes(k)) L.aime.push(k); }); } delete L.aise;
+      if (Array.isArray(L.dur) && L.dur.length) { L.dur.forEach(k => { if (!L.deteste.includes(k)) L.deteste.push(k); }); } delete L.dur;
+      if (typeof L.faibles !== 'string') L.faibles = '';
+      return L;
+    }
     function runnerLikesText() {
       const L = runnerLikes(), n = k => (SESS_TYPES_PREF.find(x => x[0] === k) || [k, k])[1].toLowerCase();
-      const parts = [L.aise.length ? `à l'aise sur : ${L.aise.map(n).join(', ')}` : '', L.dur.length ? `moins à l'aise sur : ${L.dur.map(n).join(', ')}` : '', L.aime.length ? `aime : ${L.aime.map(n).join(', ')}` : '', L.deteste.length ? `n'aime pas (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : ''].filter(Boolean);
+      const parts = [L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}` : '', L.deteste.length ? `n'aime pas / moins à l'aise sur (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : '', L.faibles ? `points faibles connus du coureur (à prendre en compte dans les conseils et le plan) : ${L.faibles}` : ''].filter(Boolean);
       return parts.length ? `Ressenti du coureur sur les types de séances : ${parts.join(' ; ')}. Le but est de progresser en prenant du plaisir : ne jamais imposer souvent une séance qu'il déteste, préférer une variante qu'il tolère mieux.` : '';
     }
-    function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); if (cat === 'aise') L.dur = L.dur.filter(x => x !== k); if (cat === 'dur') L.aise = L.aise.filter(x => x !== k); saveAppData(); renderProgress(); }
+    function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); saveAppData(); renderProgress(); }
     function strengthsCardHtml() {
       const L = runnerLikes(), A = appData.coachSW;
       const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${on ? '✓ ' : ''}${l}</button>`; }).join('')}</div>`;
@@ -5611,8 +5618,10 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           <span style="font-size:11px;color:#64748b">Analyse du ${fmtDateShort(A.at)}</span></div>` : '';
       return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🧭 Points forts et axes de progrès</span>
         <span style="font-size:12px;color:#94a3b8">Dis au coach ce que tu aimes et où tu es à l'aise : il en tient compte pour te faire progresser en prenant du plaisir.</span>
-        ${sec("😎 Je suis à l'aise sur", 'aise')}${sec("😓 Je suis moins à l'aise sur", 'dur')}${sec("❤️ J'aime", 'aime')}${sec("🙅 Je n'aime pas", 'deteste')}
+        ${sec("👍 J'aime / je suis à l'aise", 'aime')}${sec("👎 Je n'aime pas / je suis moins à l'aise", 'deteste')}
         <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
+        <span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">⚠️ Mes points faibles (ce que le coach ne peut pas deviner)</span>
+        <textarea id="likesWeak" rows="2" placeholder="Ex. je crampe facilement après 1 h, genou droit fragile en descente, je pars toujours trop vite…" onchange="runnerLikes().faibles=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:56px">${esc(L.faibles)}</textarea>
         <button type="button" id="swBtn" onclick="runStrengthsAnalysis()" style="margin-top:6px;min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:14px">🧠 ${A ? "Refaire l'analyse du coach" : 'Analyse du coach : mes points forts et faibles'}</button>
         <div id="swOut">${res}</div></div>`;
     }
@@ -5635,7 +5644,7 @@ ${planPrefsText()}
 Évolution par type et format de séance :\n${typeTxt}
 Séances récentes :\n${hist}
 ${coachMemoryText('', 10)}
-Identifie les points forts et les points faibles du coureur (endurance, vitesse, seuil, côtes, régularité, récupération, gestion de l'allure, constance…), chiffres à l'appui quand c'est possible. Dis ce qu'il doit travailler pour progresser vers son objectif, avec des exemples concrets de séances. Tiens compte de ce qu'il aime et n'aime pas : propose des variantes plaisantes plutôt que d'imposer ce qu'il déteste.
+Identifie les points forts et les points faibles du coureur, en partant aussi des points faibles qu'il a lui-même signalés (endurance, vitesse, seuil, côtes, régularité, récupération, gestion de l'allure, constance…), chiffres à l'appui quand c'est possible. Dis ce qu'il doit travailler pour progresser vers son objectif, avec des exemples concrets de séances. Tiens compte de ce qu'il aime et n'aime pas : propose des variantes plaisantes plutôt que d'imposer ce qu'il déteste.
 Réponds uniquement en JSON : {"forts":["3 points forts, 20 mots maximum chacun"],"faibles":["2 à 3 points à travailler, 20 mots maximum"],"travail":[{"titre":"axe de travail","pourquoi":"1 phrase","exemple":"séance exemple en clair","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":6,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":12,"duree_min":1},{"vitesse":7,"duree_min":1}]}}]}
 Donne 2 ou 3 axes de travail.`;
       try {
@@ -10086,12 +10095,15 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
     }
     // Applique le profil lu sur la capture : altitudes de la séance, et parcours associé (mes parcours + prochaines séances)
     function applyEleShot(h, es) {
-      if (!h || !es || h.type !== 'exterieur') return '';
+      if (!h || !es) return '';
+      if (h.type !== 'exterieur') { if (es.dplus) { h.summary = Object.assign({}, h.summary || {}, { dplus: es.dplus, dminus: es.dminus }); } return ''; }
       const out = [];
       const at = (pts, k) => { if (k <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (k <= pts[i][0]) { const a = pts[i - 1], b = pts[i]; return a[1] + (b[1] - a[1]) * (k - a[0]) / Math.max(1e-6, b[0] - a[0]); } return pts[pts.length - 1][1]; };
       if (es.pts && Array.isArray(h.track) && h.track.length) {
-        const T = h.track[h.track.length - 1][5] || 0, f = es.km > 0 && T > 0 ? es.km / T : 1;
-        if (T > 0) { h.track.forEach(r => { if (r[5] != null) r[4] = Math.round(at(es.pts, r[5] * f) * 10) / 10; }); out.push('altitudes de la séance'); }
+        let T = h.track[h.track.length - 1][5] || 0;
+        if (!(T > 0)) { const tot = +h.km || es.km || 0, n = h.track.length; h.track.forEach((r, i) => { r[5] = Math.round(tot * (i + 1) / n * 1000) / 1000; }); T = tot; }
+        const f = es.km > 0 && T > 0 ? es.km / T : 1;
+        if (T > 0) { h.track.forEach(r => { if (r[5] != null) r[4] = Math.round(at(es.pts, r[5] * f) * 10) / 10; }); out.push('altitudes de la séance (profil, D+, VAP par segment)'); }
       }
       h.summary = Object.assign({}, h.summary || {}); if (es.dplus) { h.summary.dplus = es.dplus; h.summary.dminus = es.dminus; }
       // Parcours lié : profil recalé sur sa longueur
@@ -10121,7 +10133,7 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       const hs = await extractHrFromShots(shots);
       const es = extractHrFromShots.lastEle; let eleMsg = '';
       if (es) { try { eleMsg = applyEleShot(h, es); } catch (e) { console.warn('eleShot', e); } }
-      if (hs) h.hrShot = hs;
+      if (hs) h.hrShot = hs; else if (!h.hrShot) { const hs0 = hrShotFrom(h.analysis); if (hs0) h.hrShot = hs0; }
       if (hs || eleMsg || es) { saveAppData(); try { updateHistoryTable(); } catch (e) { } }
       const msgs = [hs ? `❤️ cardio${hs.fc_moy ? ` (moyenne ${hs.fc_moy})` : ''}` : '', eleMsg ? `⛰️ profil corrigé : ${eleMsg}` : es && es.dplus ? `⛰️ D+ ${es.dplus} m` : ''].filter(Boolean);
       showToast(msgs.length ? 'Capture lue : ' + msgs.join(' · ') : 'Rien de lisible sur la capture (cardio ou altitude)');
@@ -11578,10 +11590,17 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const body = G.filter(g => !isWarm(g));
           frac = reps.length > 1 || (varied && reps.length > 0);
           if (frac) { const ds = reps.map(g => g.sec).sort((x, y) => x - y); repSec = ds[Math.floor(ds.length / 2)]; }
+          // Fractionné : FC max de chaque fraction (la FC moyenne n'a pas de sens sur un effort court), baisse du cardio pendant chaque récup
+          var hrPk = null, recDrop = null;
+          if (frac) {
+            const pk = reps.map(g => g.hrMax).filter(Boolean); if (pk.length) hrPk = Math.round(pk.reduce((a, b) => a + b, 0) / pk.length);
+            const drops = G.filter(g => isRec(g)).map(g => { const rr = P.rows.slice(g.a, g.b + 1).filter(r => r.hr); if (rr.length < 4) return null; const st = Math.max(...rr.slice(0, Math.max(2, Math.ceil(rr.length / 4))).map(r => r.hr)), en = rr.slice(-2).reduce((a, r) => a + r.hr, 0) / 2; return st - en; }).filter(v => v != null && v > -10);
+            if (drops.length) recDrop = Math.round(drops.reduce((a, b) => a + b, 0) / drops.length);
+          }
           const set = (frac ? reps : body).length ? (frac ? reps : body) : G;
           let sec = 0, km = 0, vap = 0, hr = 0, hsx = 0;
           set.forEach(g => { sec += g.sec; km += g.km; vap += (g.vap || 0) * g.sec; if (g.hr) { hr += g.hr * g.sec; hsx += g.sec; } });
-          if (sec >= 60) o = { sec, kmh: km > 0.01 ? km / (sec / 3600) : 0, vap: vap / sec, hr: hsx ? Math.round(hr / hsx) : (h.hrShot && h.hrShot.fc_moy) || null };
+          if (sec >= 60) o = { sec, kmh: km > 0.01 ? km / (sec / 3600) : 0, vap: vap / sec, hr: hsx ? Math.round(hr / hsx) : (h.hrShot && h.hrShot.fc_moy) || null, hrPk, recDrop };
         }
         if (!o) { // séance sans enregistrement détaillé (montre seule, capture) : moyennes de la séance entière
           const sm = h.summary || {}, min = +h.durationMin || 0, km = +h.km || parseFloat(sm.distKm) || 0;
@@ -11600,6 +11619,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           if (pr >= 0.5 && pr <= 1) { const vo2 = 3.5 + 0.2 * (o.vap * 1000 / 60); o.vo2max = 3.5 + (vo2 - 3.5) / pr; o.vma = o.vo2max / 3.5; }
         }
         o.eff = o.hr ? o.vap / o.hr * 100 : null;
+        o.effPk = o.hrPk ? o.vap / o.hrPk * 100 : null;
         return o;
       } catch (e) { console.warn('sessMetrics', e); return null; }
     }
@@ -11624,10 +11644,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       evoFormats = evoFormats.filter(f => formats.includes(f));
       if (!evoFormats.length && formats.length) evoFormats = [formats[0]];
       const L = evoMode === 'route' ? all.filter(x => x.route === evoRoute) : ofKind.filter(x => evoFormats.includes(x.format));
-      const MET = Object.assign(evoMode === 'route' ? { time: ['Temps total', 'min', '#fbbf24', x => x.totMin], speed: ['Vitesse moyenne', 'km/h', '#7dd3fc', x => x.totMin > 0 ? x.totKm / (x.totMin / 60) : null] } : {}, { vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma], hr: ['Cardio moyen', 'bpm', '#fda4af', x => x.hr], vap: ['VAP moyenne', 'km/h', '#c4b5fd', x => x.vap], eff: ['VAP ÷ cardio', '×100', '#7dd3fc', x => x.eff] });
+      const fracL = evoMode !== 'route' && L.length && L.filter(x => x.frac).length >= L.length / 2;
+      const MET = Object.assign(evoMode === 'route' ? { time: ['Temps total', 'min', '#fbbf24', x => x.totMin], speed: ['Vitesse moyenne', 'km/h', '#7dd3fc', x => x.totMin > 0 ? x.totKm / (x.totMin / 60) : null] } : {},
+        fracL ? { eff: ['VAP ÷ FC max des fractions', '×100', '#7dd3fc', x => x.effPk], vap: ['VAP des fractions', 'km/h', '#c4b5fd', x => x.vap], hr: ['FC max des fractions', 'bpm', '#fda4af', x => x.hrPk], rec: ['Baisse du cardio en récup', 'bpm', '#34d399', x => x.recDrop], vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma] }
+          : { vma: ['VMA estimée', 'km/h', '#34d399', x => x.vma], hr: ['Cardio moyen', 'bpm', '#fda4af', x => x.hr], vap: ['VAP moyenne', 'km/h', '#c4b5fd', x => x.vap], eff: ['VAP ÷ cardio', '×100', '#7dd3fc', x => x.eff] });
       if (!MET[evoMetric]) evoMetric = Object.keys(MET)[0];
       const okPts = k => L.map(x => [x, MET[k][3](x)]).filter(q => q[1] != null && isFinite(q[1]));
-      if (okPts(evoMetric).length < 2) { const alt = ['eff', 'vap', 'hr', 'time', 'speed', 'vma'].filter(k => MET[k]).find(k => okPts(k).length >= 2); if (alt) evoMetric = alt; }
+      if (okPts(evoMetric).length < 2) { const alt = ['eff', 'vap', 'hr', 'rec', 'time', 'speed', 'vma'].filter(k => MET[k]).find(k => okPts(k).length >= 2); if (alt) evoMetric = alt; }
       const [mL, mU, mC, mF] = MET[evoMetric];
       const pts = okPts(evoMetric);
       const f1 = v => v == null || !isFinite(v) ? '–' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
@@ -11642,9 +11665,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <line x1="${X(0)}" x2="${X(n - 1)}" y1="${Y(my - sl * mx)}" y2="${Y(my + sl * (n - 1 - mx))}" stroke="${mC}" stroke-dasharray="5 4" opacity=".5"/>
           <polyline points="${pts.map((q, i) => `${X(i).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="${mC}" stroke-width="2.5" stroke-linejoin="round"/>
           ${pts.map((q, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(q[1]).toFixed(1)}" r="4" fill="${mC}"/>${n <= 10 ? `<text x="${X(i).toFixed(1)}" y="${(Y(q[1]) - 8).toFixed(1)}" font-size="10" font-weight="700" fill="#e2e8f0" text-anchor="middle">${evoMetric === 'hr' ? Math.round(q[1]) : f1(q[1])}</text>` : ''}<text x="${X(i).toFixed(1)}" y="${H - 6}" font-size="9" fill="#64748b" text-anchor="middle">${q[0].iso ? q[0].iso.slice(8, 10) + '/' + q[0].iso.slice(5, 7) : ''}</text>`).join('')}</svg>
-          <div style="font-size:12px;font-weight:700;color:${(evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) > 0.01 ? '#34d399' : (evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) < -0.01 ? '#fb923c' : '#94a3b8'}">Tendance : ${sl > 0 ? '+' : ''}${evoMetric === 'hr' ? Math.round(sl * 10) / 10 : f1(sl)} ${mU} par séance${evoMetric === 'hr' ? ' (une baisse = progrès à effort égal)' : evoMetric === 'time' ? ' (une baisse = plus rapide)' : ''}</div>`;
+          <div style="font-size:12px;font-weight:700;color:${(evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) > 0.01 ? '#34d399' : (evoMetric === 'hr' || evoMetric === 'time' ? -sl : sl) < -0.01 ? '#fb923c' : '#94a3b8'}">Tendance : ${sl > 0 ? '+' : ''}${evoMetric === 'hr' ? Math.round(sl * 10) / 10 : f1(sl)} ${mU} par séance${evoMetric === 'hr' ? ' (une baisse = progrès à effort égal)' : evoMetric === 'time' ? ' (une baisse = plus rapide)' : evoMetric === 'rec' ? ' (une hausse = tu récupères plus vite)' : ''}</div>`;
       }
-      const rows = L.slice().reverse().map(x => `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;color:#e2e8f0;font-weight:700">${x.iso ? x.iso.slice(8, 10) + '/' + x.iso.slice(5, 7) : ''}</td><td style="text-align:right;color:#94a3b8">${x.min}'${evoMode === 'route' && x.totKm ? `<span style="display:block;font-size:10px;color:#64748b">${f1(x.totKm / Math.max(1, x.totMin) * 60)} km/h</span>` : ''}</td><td style="text-align:right;color:#c4b5fd">${f1(x.vap)}</td><td style="text-align:right;color:#fda4af">${x.hr || '–'}</td><td style="text-align:right;color:#7dd3fc">${f1(x.eff)}</td><td style="text-align:right;color:#34d399;font-weight:800">${f1(x.vma)}</td></tr>`).join('');
+      const rows = L.slice().reverse().map(x => `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;color:#e2e8f0;font-weight:700">${x.iso ? x.iso.slice(8, 10) + '/' + x.iso.slice(5, 7) : ''}</td><td style="text-align:right;color:#94a3b8">${x.min}'${evoMode === 'route' && x.totKm ? `<span style="display:block;font-size:10px;color:#64748b">${f1(x.totKm / Math.max(1, x.totMin) * 60)} km/h</span>` : ''}</td><td style="text-align:right;color:#c4b5fd">${f1(x.vap)}</td><td style="text-align:right;color:#fda4af">${(fracL ? x.hrPk : x.hr) || '–'}</td><td style="text-align:right;color:#7dd3fc">${f1(fracL ? x.effPk : x.eff)}</td><td style="text-align:right;color:#34d399;font-weight:800">${fracL ? (x.recDrop != null ? '−' + x.recDrop : '–') : f1(x.vma)}</td></tr>`).join('');
       m.innerHTML = `<div style="max-width:480px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
         <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:24px;font-weight:800">📈 Évolution</span><button type="button" onclick="closeEvo()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;font-size:18px">✕</button></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#0f172a">${[['type', 'Par type de séance'], ['route', `Par parcours${routes.length ? '' : ' (aucun)'}`]].map(([k, l]) => `<button type="button" onclick="evoMode='${k}';evoMetric='${k === 'route' ? 'time' : 'vma'}';renderEvo()" ${k === 'route' && !routes.length ? 'disabled' : ''} style="min-height:38px;border:none;border-radius:9px;font-size:13px;font-weight:800;${evoMode === k ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
@@ -11653,9 +11676,10 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         ${evoMode !== 'route' && formats.length ? `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.6px">Format comparé</span><div style="display:flex;flex-wrap:wrap;gap:6px">${formats.map(f => chip(evoFormats.includes(f), `${evoFormats.includes(f) ? '✓ ' : ''}${plEsc(f)} · ${ofKind.filter(x => x.format === f).length}`, `evoToggleFormat(${JSON.stringify(f).replace(/"/g, '&quot;')})`)).join('')}</div><span style="font-size:11px;color:#64748b">Touche plusieurs formats pour les regrouper s'ils sont très proches (ex. 1' et 1'15 à la même pente).</span></div>` : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px">${Object.entries(MET).map(([k, v]) => chip(k === evoMetric, v[0], `evoMetric='${k}';renderEvo()`)).join('')}</div>
         <div style="padding:12px;border-radius:16px;background:#0f172a;border:1px solid #1e293b;display:flex;flex-direction:column;gap:6px">${chart}</div>
-        <div style="padding:4px 10px;border-radius:16px;background:#0f172a;border:1px solid #1e293b"><table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:7px 0">Date</th><th style="text-align:right">Durée</th><th style="text-align:right">VAP</th><th style="text-align:right">FC</th><th style="text-align:right">VAP÷FC</th><th style="text-align:right">VMA est.</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div style="padding:4px 10px;border-radius:16px;background:#0f172a;border:1px solid #1e293b"><table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase"><th style="text-align:left;padding:7px 0">Date</th><th style="text-align:right">Durée</th><th style="text-align:right">VAP</th><th style="text-align:right">${fracL ? 'FC max' : 'FC'}</th><th style="text-align:right">VAP÷FC</th><th style="text-align:right">${fracL ? 'Récup' : 'VMA est.'}</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div style="font-size:12px;line-height:1.5;color:#94a3b8">
           <b style="color:#e2e8f0">Format :</b> seules les séances vraiment comparables sont mises côte à côte : même type, même durée de fraction (au quart de minute près) et même pente ou terrain. Un 1' à 9 % n'est pas comparé à un 2' à 5 %.<br>
+          ${fracL ? `<b style="color:#e2e8f0">Fractionné :</b> on compare la VAP des fractions à leur FC max (la FC moyenne d'un effort court ne veut rien dire), et la baisse du cardio pendant les récups (FC du début de récup − FC de fin) : plus elle est grande, mieux tu récupères.<br>` : ''}
           <b style="color:#e2e8f0">Comment lire :</b> moyennes du corps de séance (pour un fractionné, des répétitions rapides). À type de séance égal, une VAP plus haute pour le même cardio, ou un cardio plus bas pour la même VAP, montre que tu progresses (colonne VAP÷FC).<br>
           <b style="color:#e2e8f0">VMA estimée :</b> calculée à partir de ta VAP et de ton cardio, rapportés à ta FC max (${runnerFcMax() || '?'}) et à ta FC de repos (${+runnerProfile().fcRest || '60 par défaut'}, réglable dans ton profil). C'est une estimation (± 1 km/h) : la tendance compte plus que la valeur. Elle n'est pas calculée sur les fractions de moins de 3 min, où le cardio n'a pas le temps de monter.</div></div>`;
     }
