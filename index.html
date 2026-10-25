@@ -117,6 +117,7 @@
     button, input, select, textarea { font-family: inherit; }
     /* Planning */
     #historyModal .pl-sec { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 4px 0; }
+    #historyModal [data-plsid] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     #historyModal .pl-card { padding: 12px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; }
     #historyModal .pl-card.today { padding: 16px; border-radius: 22px; background: #0f172a; border: 1.5px solid #38bdf8; box-shadow: 0 8px 28px rgba(56,189,248,.15); }
     #historyModal .pl-card.done { background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.3); }
@@ -719,11 +720,14 @@
       <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 96px">
         <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
         <button onclick="openOffModal()" class="w-full mt-3 flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74">🚫 Jours sans sport · décaler le planning</button>
-        <div class="grid gap-1 my-3.5" style="grid-template-columns:1fr .85fr 1.15fr 1fr;padding:4px;border-radius:16px;background:#0f172a;border:1px solid #1e293b">
+        <div class="grid gap-1 mt-3.5" style="grid-template-columns:1fr 1fr;padding:4px;border-radius:16px 16px 0 0;background:#0f172a;border:1px solid #1e293b;border-bottom:0">
           <button onclick="setHistoryFilter('week')" id="fltWeek" class="pl-tab">Semaine</button>
           <button onclick="setHistoryFilter('all')" id="fltAll" class="pl-tab">Toutes</button>
+        </div>
+        <div class="grid grid-cols-3 gap-1 mb-3.5" style="padding:0 4px 4px;border-radius:0 0 16px 16px;background:#0f172a;border:1px solid #1e293b;border-top:0">
           <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
           <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
+          <button onclick="setHistoryFilter('missed')" id="fltMiss" class="pl-tab">Non faites · <span id="cntMiss">0</span></button>
         </div>
         <div id="plKindRow" style="display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 6px"></div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
@@ -1003,6 +1007,10 @@
             <div id="arEndTxt" style="font-size:13px;color:#94a3b8;margin-top:6px;font-weight:700"></div></div></div>
         <button type="button" onclick="arGenerate()" id="arGo" style="min-height:54px;border-radius:16px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:16px">🪄 Proposer des parcours</button>
         <div id="arStatus" style="font-size:13px;color:#94a3b8;font-weight:600"></div>
+        <div id="arCmp" class="hidden" style="display:flex;flex-direction:column;gap:4px">
+          <div id="arCmpMap" style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
+          <div style="font-size:12px;color:#94a3b8;text-align:center">Touche un tracé (ou une carte ci-dessous) pour le mettre en évidence</div>
+        </div>
         <div id="arList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
@@ -5434,7 +5442,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
 
     function setHistoryFilter(f) {
       currentFilter = f; plSelDay = '';
-      [['week', 'fltWeek'], ['all', 'fltAll'], ['validated', 'fltVal'], ['planned', 'fltPlan']].forEach(([k, id]) => {
+      [['week', 'fltWeek'], ['all', 'fltAll'], ['validated', 'fltVal'], ['planned', 'fltPlan'], ['missed', 'fltMiss']].forEach(([k, id]) => {
         const b = document.getElementById(id); if (b) b.classList.toggle('on', f === k);
       });
       updateHistoryTable();
@@ -5824,7 +5832,8 @@ Donne 2 ou 3 axes de travail.`;
         else if (isPlan) st = base + (iso < t ? 'border:1px dashed #475569;color:#64748b;' : 'background:#172338;color:#e2e8f0;border:1px solid #334155;');
         if (iso === plSelDay) st += 'outline:2px solid #e2e8f0;outline-offset:2px;';
         const lbl = `${parseISODateLocal(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}${isDone || isPlan ? ' : voir la séance' : ' : ajouter une séance'}`;
-        return `<button type="button" onclick="plDayClick('${iso}')" aria-label="${lbl}" class="flex flex-col items-center gap-1.5 active:scale-95" style="background:none;border:none;padding:0"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></button>`;
+        const dragS = planned.find(x => x.dateISO === iso && !isSessionDone(x));
+        return `<button type="button" onclick="plDayClick('${iso}')" aria-label="${lbl}" data-pliso="${iso}"${dragS ? ` data-plsid="${dragS.id}"` : ''} class="flex flex-col items-center gap-1.5 active:scale-95" style="background:none;border:none;padding:0"><span style="font-size:11px;font-weight:700;color:#64748b">${L[i]}</span><div style="${st}">${parseISODateLocal(iso).getDate()}</div></button>`;
       }).join('');
       wk.innerHTML = `
         <div class="flex items-center justify-between gap-2">
@@ -5839,13 +5848,106 @@ Donne 2 ou 3 axes de travail.`;
         </div>
         <div style="height:8px;border-radius:4px;background:#1e293b;overflow:hidden"><div style="width:${pct}%;height:8px;border-radius:4px;background:#34d399"></div></div>
         <div class="flex items-center gap-1">
-          <button onclick="plShiftWeek(-1)" aria-label="Semaine précédente" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">‹</button>
+          <button onclick="plShiftWeek(-1)" data-plnav="-1" aria-label="Semaine précédente" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">‹</button>
           <div class="grid grid-cols-7 gap-1.5 flex-1">${strip}</div>
-          <button onclick="plShiftWeek(1)" aria-label="Semaine suivante" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">›</button>
+          <button onclick="plShiftWeek(1)" data-plnav="1" aria-label="Semaine suivante" class="shrink-0 flex items-center justify-center" style="width:26px;height:40px;color:#7dd3fc;font-size:22px;font-weight:800">›</button>
         </div>
-        <span style="font-size:11px;color:#64748b;text-align:center">Touche un jour : voir sa séance, ou en ajouter une si le jour est libre</span>
+        <span style="font-size:11px;color:#64748b;text-align:center">Touche un jour : voir sa séance, ou en ajouter une si le jour est libre · Appui long sur une séance : la glisser sur un autre jour</span>
         ${plWeekOff !== 0 ? `<button onclick="plShiftWeek(0)" class="self-center text-[12px] font-bold" style="color:#7dd3fc">↺ Revenir à cette semaine</button>` : ''}`;
     }
+    // ===== Glisser une séance sur un autre jour (appui long)
+    let plDrag = null;
+    function plDragInit() {
+      const root = document.getElementById('historyModal'); if (!root || root.__drag) return; root.__drag = true;
+      const pt = ev => ev.touches && ev.touches[0] ? ev.touches[0] : ev.changedTouches && ev.changedTouches[0] ? ev.changedTouches[0] : ev;
+      const start = ev => {
+        if (ev.button > 0) return;
+        const src = ev.target.closest('[data-plsid]'); if (!src || ev.target.closest('button:not([data-pliso]), a, input, select, textarea')) return;
+        const p = pt(ev), sid = src.dataset.plsid;
+        plDragEnd(true);
+        plDrag = { sid, x0: p.clientX, y0: p.clientY, on: false, src };
+        plDrag.timer = setTimeout(() => plDragStart(p.clientX, p.clientY), 450);
+      };
+      const move = ev => {
+        if (!plDrag) return; const p = pt(ev);
+        if (!plDrag.on) { if (Math.hypot(p.clientX - plDrag.x0, p.clientY - plDrag.y0) > 10) plDragEnd(true); return; }
+        if (ev.cancelable) ev.preventDefault();
+        plDragMove(p.clientX, p.clientY);
+      };
+      const end = ev => { if (!plDrag) return; if (plDrag.on) { if (ev.cancelable) ev.preventDefault(); plDragDrop(); } else plDragEnd(true); };
+      root.addEventListener('touchstart', start, { passive: true }); root.addEventListener('touchmove', move, { passive: false }); root.addEventListener('touchend', end, { passive: false }); root.addEventListener('touchcancel', () => plDragEnd(true));
+      root.addEventListener('mousedown', start); window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+      root.addEventListener('contextmenu', e => { if (e.target.closest('[data-plsid]')) e.preventDefault(); });
+      root.addEventListener('click', e => { if (plDrag && plDrag.justDropped) { e.stopPropagation(); e.preventDefault(); } }, true);
+    }
+    function plDragStart(x, y) {
+      const s = appData.sessions.find(z => z.id === (plDrag && plDrag.sid)); if (!s || isSessionDone(s)) { plDragEnd(true); return; }
+      plDrag.on = true;
+      try { navigator.vibrate && navigator.vibrate(30); } catch (e) { }
+      const k = sessionKind(s), g = document.createElement('div'); g.id = 'plGhost';
+      g.style.cssText = `position:fixed;z-index:200;pointer-events:none;left:0;top:0;transform:translate(${x - 70}px,${y - 135}px);width:140px;padding:8px 10px;border-radius:14px;background:#0f172a;border:2px solid ${k.color};box-shadow:0 12px 30px rgba(0,0,0,.6);color:#f1f5f9;font-size:12px;font-weight:800;line-height:1.25`;
+      g.innerHTML = `<div style="color:${k.color};font-size:10px;letter-spacing:.5px">${k.label}</div><div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</div><div id="plGhostDay" style="margin-top:4px;color:#7dd3fc;font-size:11px">Lâche sur un jour</div>`;
+      document.body.appendChild(g);
+      if (plDrag.src) plDrag.src.style.opacity = '.45';
+      const wk = document.getElementById('plWeek'); if (wk) { const r = wk.getBoundingClientRect(); if (r.bottom < 60 || r.top > window.innerHeight - 60) wk.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }
+    function plDragMove(x, y) {
+      const g = document.getElementById('plGhost'); if (g) g.style.transform = `translate(${x - 70}px,${y - 135}px)`;
+      const el = document.elementFromPoint(x, y), day = el && el.closest('[data-pliso]'), nav = el && el.closest('[data-plnav]');
+      document.querySelectorAll('[data-pliso].plDropOn').forEach(b => { b.classList.remove('plDropOn'); b.style.transform = ''; b.style.filter = ''; });
+      const s = appData.sessions.find(z => z.id === plDrag.sid);
+      plDrag.target = null;
+      if (day && day.dataset.pliso !== (s && s.dateISO)) {
+        day.classList.add('plDropOn'); day.style.transform = 'scale(1.25)'; day.style.filter = 'drop-shadow(0 0 6px #38bdf8)';
+        plDrag.target = day.dataset.pliso;
+      }
+      const gd = document.getElementById('plGhostDay');
+      if (gd) gd.textContent = plDrag.target ? `→ ${parseISODateLocal(plDrag.target).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}` : 'Lâche sur un jour';
+      // survol des flèches : semaine précédente / suivante
+      if (nav) { if (!plDrag.navT) plDrag.navT = setTimeout(() => { plDrag && (plDrag.navT = null); plShiftWeek(parseInt(nav.dataset.plnav, 10)); }, 650); }
+      else if (plDrag.navT) { clearTimeout(plDrag.navT); plDrag.navT = null; }
+    }
+    function plDragEnd(cancel) {
+      if (!plDrag) return;
+      clearTimeout(plDrag.timer); clearTimeout(plDrag.navT);
+      const g = document.getElementById('plGhost'); if (g) g.remove();
+      document.querySelectorAll('[data-pliso].plDropOn').forEach(b => { b.classList.remove('plDropOn'); b.style.transform = ''; b.style.filter = ''; });
+      if (plDrag.src) plDrag.src.style.opacity = '';
+      const was = plDrag.on; plDrag = was ? { justDropped: true } : null;
+      if (was) setTimeout(() => { if (plDrag && plDrag.justDropped) plDrag = null; }, 400);
+    }
+    function plDragDrop() {
+      const sid = plDrag.sid, to = plDrag.target;
+      plDragEnd();
+      if (!to) return;
+      const s = appData.sessions.find(z => z.id === sid); if (!s) return;
+      const fmt = iso => capFirst(parseISODateLocal(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+      const clash = appData.sessions.some(z => z !== s && z.dateISO === to && !isSessionDone(z)) || (appData.history || []).some(h => histISO(h) === to);
+      let m = document.getElementById('plMoveModal');
+      if (!m) { m = document.createElement('div'); m.id = 'plMoveModal'; m.style.cssText = 'position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.8);display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(m); }
+      m.onclick = e => { if (e.target === m) m.remove(); };
+      m.innerHTML = `<div style="width:100%;max-width:380px;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
+        <span style="font-size:17px;font-weight:900">📅 Déplacer la séance ?</span>
+        <span style="font-size:14px;font-weight:700;color:#cbd5e1">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span>
+        <span style="font-size:14px;color:#e2e8f0">${fmt(s.dateISO)} <b style="color:#38bdf8">→ ${fmt(to)}</b></span>
+        ${clash ? '<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ Il y a déjà une séance ce jour-là.</span>' : ''}
+        ${to < todayISO() ? '<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ Ce jour est déjà passé.</span>' : ''}
+        <button type="button" onclick="plMoveApply('${sid}','${to}',false)" style="min-height:48px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">✓ Déplacer</button>
+        ${getGeminiKey() ? `<button type="button" onclick="plMoveApply('${sid}','${to}',true)" style="min-height:44px;border-radius:12px;border:1px solid rgba(167,139,250,.6);background:rgba(167,139,250,.15);color:#ddd6fe;font-weight:800">🧠 Déplacer et demander l'avis du coach</button>` : ''}
+        <button type="button" onclick="document.getElementById('plMoveModal').remove()" style="min-height:44px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Annuler</button></div>`;
+    }
+    function plMoveApply(sid, to, coach) {
+      const s = appData.sessions.find(z => z.id === sid); const m = document.getElementById('plMoveModal'); if (m) m.remove(); if (!s) return;
+      const from = s.dateISO, d = parseISODateLocal(to);
+      s.dateISO = to; s.date = toDDMM(d); s.jour = weekdayName(d);
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      homePickNext(); saveAppData();
+      try { reloadChrono(); } catch (e) { } try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { }
+      showUndo(`Séance déplacée au ${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}`, plMoveUndoId(sid, from));
+      if (coach) openMoveCheck(sid, from);
+    }
+    // « Annuler » remet la séance à sa date d'origine
+    function plMoveUndoId(sid, from) { window.__plMoveUndo = { sid, from }; return '__move'; }
     let plKinds = [];
     function plToggleKind(k) { if (!k) plKinds = []; else plKinds = plKinds.includes(k) ? plKinds.filter(x => x !== k) : plKinds.concat(k); updateHistoryTable(); }
     function plDayClick(iso) {
@@ -5881,11 +5983,12 @@ Donne 2 ou 3 axes de travail.`;
         if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) plShiftWeek(dx < 0 ? 1 : -1);
       }, { passive: true });
     }
-    const PL_ICON_EDIT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
-    const PL_ICON_DEL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
-    function plIconBtns(editJs, delJs) {
-      const b = 'width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;';
-      return `<div class="shrink-0 flex gap-1.5">${editJs ? `<button onclick="${editJs}" aria-label="Modifier" style="${b}background:#111c30;border:1px solid #334155;color:#cbd5e1">${PL_ICON_EDIT}</button>` : ''}${delJs ? `<button onclick="${delJs}" aria-label="Supprimer" style="${b}background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fda4af">${PL_ICON_DEL}</button>` : ''}</div>`;
+    const PL_ICON_EDIT = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(45 12 12)"><rect x="9" y="1.5" width="6" height="3.6" rx="1.2" fill="#f472b6"/><rect x="9" y="5" width="6" height="1.8" fill="#cbd5e1"/><rect x="9" y="6.8" width="6" height="10.2" fill="#facc15"/><rect x="11.2" y="6.8" width="1.6" height="10.2" fill="#eab308"/><polygon points="9,17 15,17 12,22.4" fill="#fde68a"/><polygon points="11.1,20.6 12.9,20.6 12,22.4" fill="#334155"/></g></svg>';
+    const PL_ICON_DEL = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.2" width="6" height="3.2" rx="1.2" fill="none" stroke="#fb7185" stroke-width="1.7"/><rect x="3.5" y="4.8" width="17" height="2.8" rx="1.2" fill="#fb7185"/><path d="M5.6 8.6h12.8l-1.1 12.2a1.6 1.6 0 0 1-1.6 1.5H8.3a1.6 1.6 0 0 1-1.6-1.5Z" fill="#fda4af"/><path d="M10 11v8M14 11v8" stroke="#e11d48" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    const PL_ICON_COPY = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="1.8" width="13" height="16" rx="2.2" fill="#3b82f6"/><path d="M5.5 6h7M5.5 9h7M5.5 12h4.5" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round"/><rect x="8.5" y="6.2" width="13" height="16" rx="2.2" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.4"/><path d="M11.5 10.5h7M11.5 13.5h7M11.5 16.5h4.5" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    function plIconBtns(editJs, delJs, copyJs) {
+      const b = 'width:36px;height:32px;border:none;background:transparent;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;';
+      return `<div class="shrink-0 flex flex-col items-center" style="gap:2px;margin-right:-6px">${copyJs ? `<button onclick="${copyJs}" aria-label="Refaire cette séance" title="Refaire cette séance" class="active:scale-90" style="${b}">${PL_ICON_COPY}</button>` : ''}${editJs ? `<button onclick="${editJs}" aria-label="Modifier" title="Modifier" class="active:scale-90" style="${b}">${PL_ICON_EDIT}</button>` : ''}${delJs ? `<button onclick="${delJs}" aria-label="Supprimer" title="Supprimer" class="active:scale-90" style="${b}">${PL_ICON_DEL}</button>` : ''}</div>`;
     }
     function plPlannedCard(item, isToday) {
       const s = appData.sessions[item.rawIdx];
@@ -5902,13 +6005,13 @@ Donne 2 ou 3 axes de travail.`;
           ${guideHtml(s, item.rawIdx)}
         </div>`;
       if (isToday) {
-        return `<div class="pl-card today">
+        return `<div class="pl-card today" data-plsid="${s.id}">
           <div class="flex items-center gap-3">${plDateChip(item.iso, '', 'background:#38bdf8;color:#04121f;width:52px;height:56px;border-radius:16px')}${body}${more}</div>
           <div class="flex gap-2 mt-3">
             <button onclick="closeHistoryModal(); appData.activeSessionIndex=${item.rawIdx}; saveAppData(); reloadChrono(); launchFromHome()" class="flex-1 flex items-center justify-center gap-2 font-extrabold" style="height:46px;border-radius:14px;background:#38bdf8;color:#04121f;font-size:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>Lancer</button>
           </div>${actions}</div>`;
       }
-      return `<div class="pl-card ${past ? 'past' : ''}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
+      return `<div class="pl-card ${past ? 'past' : ''}" data-plsid="${s.id}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
     }
     function plRaceCard(i) {
       const g = appData.goal || {};
@@ -5989,7 +6092,7 @@ Donne 2 ou 3 axes de travail.`;
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats2)}</span>
             ${recs ? `<span style="font-size:12px;color:#fbbf24;font-weight:800">🏆 Record : ${plEsc(recs.join(', '))}</span>` : ''}
           </div>
-          <div class="shrink-0 flex gap-1.5">${item.cross ? '' : `<button onclick="openCopyDone('${item.id}')" aria-label="Refaire cette séance" title="Refaire cette séance" style="width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#111c30;border:1px solid #334155;font-size:17px">📋</button>`}${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`)}</div>
+          ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`, item.cross ? '' : `openCopyDone('${item.id}')`)}
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
           ${item.cross ? `${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}` : histRecapHtml(item, k, recs)}
@@ -6025,14 +6128,25 @@ Donne 2 ou 3 axes de travail.`;
       const done = items.filter(i => i.type === 'validated' && kOk(i));
       const planned = items.filter(i => (i.type === 'planned' || i.type === 'crossplan' || i.type === 'race') && kOk(i)).sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
+      const missed = planned.filter(i => i.iso && i.iso < t && i.type === 'planned').sort((a, b) => String(b.iso).localeCompare(String(a.iso)));
+      { const c = document.getElementById('cntMiss'); if (c) c.textContent = missed.length; }
       document.getElementById('cntVal').textContent = done.length;
       document.getElementById('cntPlan').textContent = upcoming.length;
       const badge = document.getElementById('badgeHistCount'); if (badge) badge.textContent = done.length;
-      setTimeout(() => ['week', 'all', 'validated', 'planned'].forEach(k => { const b = document.getElementById({ week: 'fltWeek', all: 'fltAll', validated: 'fltVal', planned: 'fltPlan' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
+      setTimeout(() => ['week', 'all', 'validated', 'planned', 'missed'].forEach(k => { const b = document.getElementById({ week: 'fltWeek', all: 'fltAll', validated: 'fltVal', planned: 'fltPlan', missed: 'fltMiss' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
       renderPlanningHeader(items);
+      plDragInit();
 
       const out = [];
       const sec = txt => out.push(`<div class="pl-sec">${txt}</div>`);
+      const missedList = list => {
+        let cur = '';
+        list.forEach(i => {
+          const m = capFirst(parseISODateLocal(i.iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+          if (m !== cur) { sec(m); cur = m; }
+          out.push(plPlannedCard(i, false));
+        });
+      };
       const groupPlanned = list => {
         const w0 = weekStartISO(t);
         const nextW = (() => { const d = parseISODateLocal(w0); d.setDate(d.getDate() + 7); return toISODateLocal(d); })();
@@ -6055,9 +6169,13 @@ Donne 2 ou 3 axes de travail.`;
         if (!upcoming.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance à venir.<br>Importe un plan (Profil › Coach IA) ou ajoute une séance.</div>');
         groupPlanned(upcoming);
         if (upcoming.length) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
+      } else if (currentFilter === 'missed') {
+        if (!missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance passée non faite. 👏</div>');
+        else { out.push('<div class="text-[12px] px-1" style="color:#94a3b8">Séances prévues à une date passée et pas faites. Touche ✏️ pour la refaire un autre jour, ou 🗑 pour la retirer.</div>'); missedList(missed); }
       } else if (currentFilter === 'all') {
-        if (!upcoming.length && !done.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance.</div>');
+        if (!upcoming.length && !done.length && !missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance.</div>');
         if (upcoming.length) { out.push('<div class="pl-sec" style="color:#7dd3fc">📅 À venir</div>'); groupPlanned(upcoming); }
+        if (missed.length) { out.push('<div class="pl-sec" style="color:#fda4af;margin-top:10px">⏳ Passées non faites</div>'); missedList(missed); }
         if (done.length) out.push('<div class="pl-sec" style="color:#6ee7b7;margin-top:10px">✅ Faites</div>');
         let cur = '';
         done.forEach(i => {
@@ -6271,6 +6389,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       try { return `📅 ${formatSessTitle(it)} · ${it.dateISO ? parseISODateLocal(it.dateISO).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : (it.date || '')}`; } catch (x) { return '📅 Séance'; }
     }
     function restoreTrash(tid) {
+      if (tid === '__move') { const u = window.__plMoveUndo; window.__plMoveUndo = null; hideUndo(); if (u) { const s = appData.sessions.find(z => z.id === u.sid); if (s) { const d = parseISODateLocal(u.from); s.dateISO = u.from; s.date = toDDMM(d); s.jour = weekdayName(d); appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999')); homePickNext(); saveAppData(); try { reloadChrono(); updateHistoryTable(); renderHome(); } catch (e) { } showToast('Déplacement annulé'); } } return; }
       const k = (appData.trash || []).findIndex(x => x.tid === tid); if (k < 0) return;
       const e = appData.trash[k];
       if (e.kind === 'validated') e.items.forEach(h => { if (!appData.history.some(x => x.id === h.id)) appData.history.splice(Math.min(e.idx ?? 0, appData.history.length), 0, h); });
@@ -9891,16 +10010,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!re) return;
       const s = reSamples(reCoords(), 200);
       if (s.length < 2) { reRenderBar(); return; }
-      try {
-        const eles = [];
-        for (let i = 0; i < s.length; i += 100) {
-          const part = s.slice(i, i + 100);
-          const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`);
-          const j = await r.json();
-          (j.elevation || []).forEach(e => eles.push(e));
-        }
-        if (re && eles.length === s.length) re.eles = s.map((p, i) => [p.d, eles[i]]);
-      } catch (e) {}
+      const eles = await meteoEles(s);
+      if (re && eles) re.eles = s.map((p, i) => [p.d, eles[i]]);
       reRenderBar();
     }
     function reGain(eles) { let g = 0; for (let i = 1; i < (eles || []).length; i++) { const d = eles[i][1] - eles[i - 1][1]; if (d > 0) g += d; } return g; }
@@ -9916,7 +10027,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         const svg = el.querySelector('svg'); if (!svg) return;
         const r = svg.getBoundingClientRect(); if (!r.width) return;
         const fx = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), mx = d.eles[d.eles.length - 1][0] || 1, km = fx * mx;
-        const alt = eleAt(d.eles, km), w = Math.min(0.05, mx / 4), g = (eleAt(d.eles, Math.min(mx, km + w)) - eleAt(d.eles, Math.max(0, km - w))) / ((Math.min(mx, km + w) - Math.max(0, km - w)) * 1000 || 1) * 100;
+        const alt = eleAt(d.eles, km), g = gradeAtKm(d.eles, km);
         let cur = el.querySelector('.scrubCur'), tip = el.querySelector('.scrubTip');
         if (!cur) { cur = document.createElement('div'); cur.className = 'scrubCur'; cur.style.cssText = 'position:absolute;width:2px;background:#fbbf24;pointer-events:none;border-radius:1px'; el.appendChild(cur); }
         if (!tip) { tip = document.createElement('div'); tip.className = 'scrubTip'; tip.style.cssText = 'position:absolute;pointer-events:none;padding:3px 8px;border-radius:8px;background:#0f172a;border:1px solid #fbbf24;font-size:12px;font-weight:800;white-space:nowrap;transform:translateX(-50%);color:#f1f5f9'; el.appendChild(tip); }
@@ -10014,27 +10125,43 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       } catch (e) { }
       return null;
     }
+    // Altitudes Open-Meteo : mémorisées point par point, et nouvel essai si le service sature
+    const ELE_CACHE = new Map();
+    async function meteoEles(pts) {
+      const key = p => p.lat.toFixed(4) + ',' + p.lon.toFixed(4);
+      const miss = [...new Set(pts.map(key).filter(k => !ELE_CACHE.has(k)))];
+      for (let i = 0; i < miss.length; i += 100) {
+        const part = miss.slice(i, i + 100).map(k => k.split(','));
+        let ok = false;
+        for (let a = 0; a < 3 && !ok; a++) {
+          if (a) await sleep(900 * a);
+          try {
+            const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p[0]).join(',')}&longitude=${part.map(p => p[1]).join(',')}`);
+            if (!r.ok) continue;
+            const j = await r.json();
+            if (Array.isArray(j.elevation) && j.elevation.length === part.length) { j.elevation.forEach((e, k) => ELE_CACHE.set(part[k].join(','), e)); ok = true; }
+          } catch (e) { }
+        }
+        if (!ok) return null;
+      }
+      if (ELE_CACHE.size > 20000) ELE_CACHE.clear();
+      const out = pts.map(p => ELE_CACHE.get(key(p)));
+      return out.every(e => typeof e === 'number') ? out : null;
+    }
     async function elesFor(coords, maxN = 100) {
       const s = reSamples(coords, maxN); if (s.length < 2) return null;
-      try {
-        const out = [];
-        for (let i = 0; i < s.length; i += 100) {
-          const part = s.slice(i, i + 100);
-          const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`);
-          const j = await r.json(); (j.elevation || []).forEach(e => out.push(e));
-        }
-        return out.length === s.length ? s.map((p, i) => [p.d, out[i]]) : null;
-      } catch (e) { return null; }
+      const e = await meteoEles(s);
+      return e ? s.map((p, i) => [p.d, e[i]]) : null;
     }
-    // pente max sur des tronçons d'au moins 150 m (évite les pics d'un point à l'autre)
-    function eleMaxGrade(eles, minKm = 0.15) {
+    // Pente en un point : sur 100 m (50 m avant, 50 m après) ; la pente max utilise exactement le même calcul que le curseur du profil
+    function gradeAtKm(e, km) {
+      const mx = e[e.length - 1][0] - e[0][0], w = Math.min(0.05, mx / 4), a = Math.max(e[0][0], km - w), b = Math.min(e[e.length - 1][0], km + w);
+      return b > a ? (eleAt(e, b) - eleAt(e, a)) / ((b - a) * 1000) * 100 : 0;
+    }
+    function eleMaxGrade(eles) {
       if (!eles || eles.length < 2) return null;
-      let mx = 0, j = 0;
-      for (let i = 0; i < eles.length; i++) {
-        while (j < eles.length - 1 && eles[j][0] - eles[i][0] < minKm) j++;
-        const dk = eles[j][0] - eles[i][0]; if (dk < minKm * 0.8) break;
-        mx = Math.max(mx, (eles[j][1] - eles[i][1]) / (dk * 1000) * 100);
-      }
+      let mx = 0; const end = eles[eles.length - 1][0];
+      for (let km = eles[0][0]; km <= end + 1e-9; km += 0.01) mx = Math.max(mx, gradeAtKm(eles, km));
       return Math.round(mx * 10) / 10;
     }
     const SURF_CLS = { route: ['🛣️', 'Route / bitume', '#94a3b8'], paves: ['🧱', 'Pavés', '#f472b6'], gravier: ['🪨', 'Gravier / stabilisé', '#eab308'], terre: ['🌲', 'Terre / sentier', '#84cc16'], inconnu: ['❔', 'Non renseigné', '#475569'] };
@@ -10092,7 +10219,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40) pts++;
       if (km >= 12) pts++; if (km >= 21) pts++; if (km >= 32) pts++;
       const lv = pts <= 1 ? 0 : pts <= 3 ? 1 : pts <= 5 ? 2 : 3;
-      const why = [`D+ ${Math.round(dpk)} m/km`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
+      const why = [`pente moy. ${(dpk / 10).toFixed(1).replace('.', ',')} %`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
       return { lv, why: why.join(' · ') };
     }
     function diffChipHtml(d, big) { if (!d) return ''; const L0 = DIFF_LV[d.lv]; return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="padding:${big ? '5px 12px' : '2px 8px'};border-radius:12px;background:${L0[2]}22;border:1px solid ${L0[2]};color:${L0[2]};font-weight:900;font-size:${big ? 15 : 12}px">${L0[0]} ${L0[1]}</span><span style="font-size:12px;color:#94a3b8;font-weight:700">${d.why}</span></div>`; }
@@ -10220,7 +10347,43 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       routeModeSync(); arRender();
       if (!ar.start) arUsePos(true);
     }
-    function closeAutoRoute() { arBigClose(); document.getElementById('autoRouteModal').classList.add('hidden'); }
+    const AR_COLS = ['#a78bfa', '#38bdf8', '#f472b6', '#34d399', '#fbbf24', '#fb923c'];
+    function arCmpClear() { if (ar && ar.cmpMap) { try { ar.cmpMap.remove(); } catch (e) { } ar.cmpMap = null; } const w = document.getElementById('arCmp'); if (w) w.classList.add('hidden'); }
+    function arCmpRender() {
+      const w = document.getElementById('arCmp'); if (!ar || !ar.cands.length) return;
+      arCmpClear(); w.classList.remove('hidden'); ar.sel = -1;
+      loadLeaflet().then(() => {
+        if (!ar || ar.cmpMap) return;
+        let box = document.getElementById('arCmpMap');
+        if (box._leaflet_id) { const nb = box.cloneNode(false); box.replaceWith(nb); box = nb; }
+        box.innerHTML = '';
+        const m = L.map(box, { zoomControl: true, attributionControl: true }).setView([ar.start.lat, ar.start.lon], 14);
+        ar.cmpMap = m; ar.cmpLines = [];
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+        const all = [];
+        ar.cands.forEach((c, i) => {
+          const col = AR_COLS[i % AR_COLS.length];
+          const ln = L.polyline(c.coords, { color: col, weight: 4, opacity: 0.9 }).addTo(m);
+          const hit = L.polyline(c.coords, { color: '#000', weight: 22, opacity: 0 }).addTo(m);
+          [ln, hit].forEach(x => x.on('click', () => arSelect(i, true)));
+          const lp = c.coords[Math.floor(c.coords.length * (0.25 + 0.1 * (i % 5)))] || c.coords[0];
+          L.marker(lp, { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: `<div style="width:22px;height:22px;border-radius:11px;background:${col};color:#0b1020;font:900 12px/22px system-ui;text-align:center;border:2px solid #fff">${i + 1}</div>` }) }).on('click', () => arSelect(i, true)).addTo(m);
+          ar.cmpLines.push(ln); c.coords.forEach(p => all.push(p));
+        });
+        L.marker([ar.start.lat, ar.start.lon], { icon: L.divIcon({ className: '', iconSize: [20, 20], iconAnchor: [10, 10], html: '<div style="width:20px;height:20px;border-radius:10px;border:3px solid #fff;background:#34d399"></div>' }), interactive: false }).addTo(m);
+        try { m.fitBounds(L.latLngBounds(all), { padding: [16, 16] }); } catch (e) { }
+        setTimeout(() => { try { m.invalidateSize(); m.fitBounds(L.latLngBounds(all), { padding: [16, 16] }); } catch (e) { } }, 200);
+      }).catch(e => { box = document.getElementById('arCmpMap'); if (box) box.innerHTML = `<div style="padding:16px;color:#fda4af;font-weight:700">⚠ Carte indisponible</div>`; });
+    }
+    function arSelect(i, fromMap) {
+      if (!ar) return; ar.sel = i;
+      (ar.cmpLines || []).forEach((ln, k) => { try { ln.setStyle(k === i ? { color: AR_COLS[k % AR_COLS.length], weight: 7, opacity: 1 } : { color: '#64748b', weight: 3, opacity: 0.45 }); if (k === i) ln.bringToFront(); } catch (e) { } });
+      document.querySelectorAll('[data-arcard]').forEach(el => { const on = +el.dataset.arcard === i; el.style.boxShadow = on ? `0 0 0 2px ${AR_COLS[i % AR_COLS.length]}` : ''; el.style.opacity = on ? '1' : '.6'; });
+      const card = document.querySelector(`[data-arcard="${i}"]`), mapEl = document.getElementById('arCmp');
+      if (fromMap && card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      else if (!fromMap && mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function closeAutoRoute() { arCmpClear(); arBigClose(); document.getElementById('autoRouteModal').classList.add('hidden'); }
     function arStep(id, d) { const i = document.getElementById(id), lim = { arKm: [1, 60], arMin: [10, 360], arSpeed: [4, 25] }[id]; i.value = Math.max(lim[0], Math.min(lim[1], (parseFloat(String(i.value).replace(',', '.')) || 0) + d)); }
     function arRender() {
       if (!ar) return;
@@ -10282,7 +10445,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(me.map);
         const dot = col => L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 12], html: `<div style="width:24px;height:24px;border-radius:12px;border:3px solid #fff;background:${col};box-shadow:0 1px 5px rgba(0,0,0,.6)"></div>` });
         if (mode === 'view') {
-          L.polyline(c.coords, { color: '#a78bfa', weight: 6, opacity: 0.95 }).addTo(me.map);
+          ar.cands.forEach((o, k) => { if (k !== i) L.polyline(o.coords, { color: '#64748b', weight: 3, opacity: 0.45 }).on('click', () => arBigOpen('view', k)).addTo(me.map); });
+          L.polyline(c.coords, { color: AR_COLS[i % AR_COLS.length], weight: 6, opacity: 0.95 }).addTo(me.map);
           routeDecorate(me.map, c.coords, me.deco);
           L.marker(c.coords[0], { icon: dot('#34d399'), interactive: false }).addTo(me.map);
           if (ar.end) L.marker(c.coords[c.coords.length - 1], { icon: dot('#fb7185'), interactive: false }).addTo(me.map);
@@ -10335,7 +10499,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const end = document.getElementById('arEndOn').checked ? ar.end : null;
       if (document.getElementById('arEndOn').checked && !end) { reStatusAr('Choisis l\'arrivée (adresse ou carte), ou décoche l\'option', true); return; }
       const btn = document.getElementById('arGo'); btn.disabled = true; btn.style.opacity = .6;
-      const list = document.getElementById('arList'); list.innerHTML = '';
+      const list = document.getElementById('arList'); list.innerHTML = ''; arCmpClear();
       const S = ar.start, cands = [], N = 6, base = Math.random() * 2 * Math.PI;
       const loopWps = (th, rM) => { const C = geoOffset(S, rM, th); const pts = [S]; [90, 180, 270].forEach(a => pts.push(geoOffset(C, rM, th + Math.PI + a * Math.PI / 180))); pts.push({ lat: S.lat, lon: S.lon }); return pts; };
       const abWps = (side, f, h) => { const mid = { lat: S.lat + (end.lat - S.lat) * f, lon: S.lon + (end.lon - S.lon) * f }, brg = bearingDeg([S.lat, S.lon], [end.lat, end.lon]) * Math.PI / 180; return h > 30 ? [S, geoOffset(mid, h, brg + side * Math.PI / 2), end] : [S, end]; };
@@ -10363,15 +10527,18 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           cands.push(c);
         }
       } finally { btn.disabled = false; btn.style.opacity = 1; }
+      // altitudes manquantes (service saturé) : on réessaie une fois
+      for (const c of cands.filter(x => !x.eles)) { reStatusAr('Récupération des profils manquants…'); await sleep(1000); await arEval(c, v); }
       cands.sort((a, b) => a.cost - b.cost); ar.cands = cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
       reStatusAr(`${cands.length} parcours proposés, du plus proche de ta demande au moins proche${timeMode ? ` (en ${goalMin} min max à ${String(v).replace('.', ',')} km/h sur le plat)` : ''} :`);
-      list.innerHTML = cands.map((c, i) => `<div style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap"><span style="font-size:17px;font-weight:900;color:#f1f5f9">${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}</span></div>
+      list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}</span></div>
         ${diffChipHtml(c.diff)}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
-        ${reProfileSvg(c.eles, 40)}
+        ${c.eles ? reProfileSvg(c.eles, 40) : '<span style="font-size:12px;color:#64748b">Profil indisponible (service d\'altitude saturé)</span>'}
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arBigOpen('view',${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
         <button type="button" onclick="arChoose(${i})" style="min-height:42px;border-radius:10px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ Choisir et ajuster</button></div></div>`).join('');
+      arCmpRender();
     }
     async function arChoose(i) {
       const c = ar && ar.cands[i]; if (!c) return;
