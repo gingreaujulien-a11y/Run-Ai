@@ -943,6 +943,10 @@
           <span class="text-[20px] font-extrabold">🗺️ Mon parcours</span>
           <button onclick="closeRouteEditor()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
         </div>
+        <div style="position:relative">
+          <div style="display:flex;gap:6px"><input id="reAddr" class="pm-in flex-1" placeholder="🔎 Aller à une ville, une adresse…" style="height:40px;font-size:14px" onkeydown="if(event.key==='Enter')reGeocode()"><button type="button" onclick="reGeocode()" style="width:46px;border-radius:12px;border:none;background:#34d399;color:#03140d;font-weight:900">🔎</button></div>
+          <div id="reAddrList" class="hidden" style="position:absolute;left:0;right:0;top:44px;z-index:1300;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden"></div>
+        </div>
         <div id="reDiff"></div>
         <div id="reStats" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1889,7 +1893,25 @@
 
     function saveAppData() {
       try { (appData.sessions || []).forEach(x => { if (!x.wcIn && isLongRunSess(x)) longRunIncludeWarmCool(x); if (isLongRunSess(x) && ((+x.chauffe || 0) + (+x.recup || 0)) > 0) longRunNoWarm(x); }); } catch (e) { }
-      try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); } catch (e) {}
+      try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); }
+      catch (e) {
+        for (let lvl = 1; lvl <= 3; lvl++) {
+          compactStorage(lvl);
+          try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); if (lvl > 1) console.warn('stockage allégé niveau', lvl); return; } catch (e2) { }
+        }
+        if (!saveAppData.warned) { saveAppData.warned = true; try { showToast('⚠ Mémoire de l\'app pleine : exporte une sauvegarde (Paramètres) puis supprime de vieilles séances'); } catch (e3) { } }
+      }
+    }
+    // Allège les anciennes séances : 1 = tracés GPS et annonces des séances de plus de 2 mois ; 2 = au-delà des 25 dernières ; 3 = mesures réduites aussi
+    function compactStorage(lvl) {
+      const H = appData.history || [], lim = Date.now() - 60 * 86400000;
+      H.forEach((h, i) => {
+        const old = (h.endAt || 0) < lim, far = i >= 25;
+        if ((lvl >= 1 && old) || (lvl >= 2 && far)) { delete h.gps; delete h.spoken; delete h.diag; }
+        if (lvl >= 3 && far && Array.isArray(h.track) && h.track.length > 150) { const st = Math.ceil(h.track.length / 150); h.track = h.track.filter((_, k) => k % st === 0); }
+        if (lvl >= 2 && Array.isArray(h.spoken) && h.spoken.length > 200) h.spoken = h.spoken.slice(0, 200);
+      });
+      if (lvl >= 2 && appData.audioSettings && appData.audioSettings.readText) { delete appData.audioSettings.readText.text; }
     }
 
     function showToast(msg) {
@@ -2431,7 +2453,7 @@
     }
 
     // Voix du téléphone (secours si la voix IA n'est pas prête)
-    function systemSpeak(text) {
+    function systemSpeak(text, rateOv) {
       if (!('speechSynthesis' in window)) {
         playPiercingBeep(1400, 0.18);
         return;
@@ -2441,7 +2463,7 @@
         const u = new SpeechSynthesisUtterance(text);
         const v = getSelectedVoice();
         if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = VT().bcp; }
-        u.rate = parseFloat(s.voiceRate) || 1.0;
+        u.rate = rateOv || parseFloat(s.voiceRate) || 1.0;
         u.pitch = 1.0;
         u.volume = Math.min(1, Math.max(0, parseFloat(s.volVoice) || 1.0));
 
@@ -2939,12 +2961,12 @@
       out.push(pcm.slice(start));
       return out;
     }
-    function aiPlayClips(clips, cacheKey) {
-      cacheKey = `${cacheKey}|g${aiGain()}`;
+    function aiPlayClips(clips, cacheKey, rateOv) {
+      cacheKey = `${cacheKey}|g${aiGain()}${rateOv ? '|r' + rateOv : ''}`;
       let urls = aiMergedUrls.get(cacheKey);
       if (!urls) {
         const sr = clips[0].sr;
-        const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+        const rate = rateOv || Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
         // Durée du fichier ET durée de lecture sous 4,2 s (silence d'attaque compris), même si la voix est accélérée
         const maxSamples = Math.floor((AI_MAX_CHUNK_SEC - 0.5) * sr * Math.min(1, rate));
         const gap = Math.round(sr * 0.12);
@@ -2972,7 +2994,7 @@
         });
         aiMergedUrls.set(cacheKey, urls);
       }
-      (Array.isArray(urls) ? urls : [urls]).forEach(u => aiQueue.push(u));
+      (Array.isArray(urls) ? urls : [urls]).forEach(u => aiQueue.push(rateOv ? { u, rate: rateOv } : u));
       if (!aiPlaying) aiPlayNext();
     }
 
@@ -3000,7 +3022,7 @@
       return true;
     }
     function aiPlayNext() {
-      const url = aiQueue.shift();
+      const item = aiQueue.shift(), url = item && typeof item === 'object' ? item.u : item, rateOv = item && typeof item === 'object' ? item.rate : null;
       if (!url) {
         const was = aiPlaying;
         aiPlaying = false;
@@ -3013,7 +3035,7 @@
       setAudioSessionType('transient');
       const el = getAiAudioEl();
       el.src = url;
-      const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.92));
+      const rate = rateOv ? Math.min(1.6, Math.max(0.6, rateOv)) : Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.92));
       try {
         el.preservesPitch = true;
         el.webkitPreservesPitch = true;
@@ -3073,7 +3095,7 @@
       const style = opts.style !== undefined ? opts.style : aiStyleText(profile);
       let models = AI_MODELS.slice();
       if (opts.newOnly) models = models.filter(m => m.fmt === 'new');
-      const pref = appData.audioSettings.aiModel;
+      const pref = opts.model || appData.audioSettings.aiModel;
       const pi = pref ? models.findIndex(m => m.id === pref) : -1;
       if (pi > 0) models.unshift(models.splice(pi, 1)[0]);
 
@@ -4080,7 +4102,7 @@
       const here = navHere(), r = activeRoute(true);
       const c0 = here ? [here.lat, here.lon] : r && r.pts && r.pts.length ? [r.pts[0][0], r.pts[0][1]] : [46.6, 2.4];
       runMap = L.map(box, { zoomControl: false, attributionControl: false }).setView(c0, 16);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(runMap);
+      baseTiles(runMap);
       runMap.on('dragstart', () => { runMapFollow = false; runMapFollowAt = Date.now(); });
       runMapL = { deco: [] };
       if (r && r.pts && r.pts.length > 1) {
@@ -4364,6 +4386,7 @@
       const remMs = Math.max(0, durMs - elapsedMs);
       timerState.stageRemainingMs = remMs;
       recomputeTotalRemaining();
+      try { sampleTrack(); } catch (e) { tickErr('mesures', e); } // en premier : rien ne doit empêcher l'enregistrement
 
       const f = timerState.flags;
 
@@ -4427,21 +4450,20 @@
         }
       }
 
-      routeNavAnnouncements();
-      checkExtensionOffer(remMs);
-      checkMidSessionCheckin(remMs);
+      try { routeNavAnnouncements(); } catch (e) { tickErr('guidage', e); }
+      try { checkExtensionOffer(remMs); } catch (e) { tickErr('prolongation', e); }
+      try { checkMidSessionCheckin(remMs); } catch (e) { tickErr('mi-séance', e); }
       try { radioTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { coolFeelTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { readTick(curStage, elapsedMs, remMs); } catch (e) { }
-      checkKmSummary(remMs);
+      try { checkKmSummary(remMs); } catch (e) { tickErr('km', e); }
       try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       try { recoveryHrCheck(curStage, remMs); } catch (e) { }
       try { oneMoreCheck(curStage, curStage ? curStage.durationSec * 1000 - remMs : 0, remMs); } catch (e) { }
-      sensorAnnouncements(curStage, elapsedMs, remMs);
-      try { hrInfoTick(curStage, elapsedMs, remMs); } catch (e) { }
+      try { sensorAnnouncements(curStage, elapsedMs, remMs); } catch (e) { tickErr('capteurs', e); }
+      try { hrInfoTick(curStage, elapsedMs, remMs); } catch (e) { tickErr('cardio', e); }
 
-      sampleTrack();
-      fuelAnnouncements(remMs, elapsedMs);
+      try { fuelAnnouncements(remMs, elapsedMs); } catch (e) { tickErr('ravitaillement', e); }
 
       // Moitié de la séance
       if (!timerState.sessionHalfDone && timerState.totalSessionMs > 0) {
@@ -5521,6 +5543,9 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
         gps: gpsForHistory(runData.gpsPath),
         routeMatch: runData.rmTot > 20 ? Math.round((1 - (runData.rmOff || 0) / runData.rmTot) * 100) / 100 : undefined,
         spoken: (runData.spoken || []).slice(0, 600),
+        diag: runData.errs && runData.errs.length ? runData.errs.slice() : undefined,
+        dbg: { n: (runData.track || []).length, g: (runData.gpsPath || []).length, rs: runData.restored || 0, fin: !!timerState.finished, v: 84 },
+        noTimer: !timerState.finished || undefined,
         sessSnap: sess.free ? undefined : (() => { const o = {}; ['type', 'pente', 'chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pyramide', 'kind', 'notes', 'cardio', 'semaine', 'test'].forEach(k => { if (sess[k] !== undefined) o[k] = JSON.parse(JSON.stringify(sess[k])); }); return o; })()
       };
 
@@ -7825,8 +7850,9 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       for (const model of models) {
         if (geminiTextBad.has(model)) continue;
         const body = { contents: [{ role: 'user', parts }] };
-        if (opts.json && !opts.search) body.generationConfig = { responseMimeType: 'application/json' };
+        if (opts.json && !opts.search && !opts.urlContext) body.generationConfig = { responseMimeType: 'application/json' };
         if (opts.search) body.tools = [{ google_search: {} }];
+        if (opts.urlContext) body.tools = [{ url_context: {} }];
         if (opts.maxTokens) body.generationConfig = Object.assign(body.generationConfig || {}, { maxOutputTokens: opts.maxTokens });
         for (let attempt = 0; attempt < 4; attempt++) {
           let resp, json = null;
@@ -10125,6 +10151,71 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // ==================== CRÉER UN PARCOURS SUR LA CARTE ====================
     const RE_LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
     let re = null;
+    // ===== Fonds de carte : OpenStreetMap, topo (courbes de niveau), IGN (France)
+    const IGN_WMTS = 'https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&TILEMATRIXSET=PM&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}';
+    const TILE_REF = { referrerPolicy: 'strict-origin-when-cross-origin' };
+    const MAP_BASES = {
+      osm: ['OpenStreetMap', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }],
+      carto: ['Plan clair (CARTO)', 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap, © CARTO' }],
+      topo: ['Topo (courbes de niveau)', 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: '© OpenStreetMap, © OpenTopoMap' }],
+      ign: ['IGN Plan (France)', IGN_WMTS + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&FORMAT=image/png&STYLE=normal', { maxZoom: 19, attribution: '© IGN' }],
+      ignphoto: ['IGN photo aérienne (France)', IGN_WMTS + '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&FORMAT=image/jpeg&STYLE=normal', { maxZoom: 19, attribution: '© IGN' }]
+    };
+    // Fichier ouvert directement sur l'ordinateur (file://) : OpenStreetMap refuse les tuiles (pas d'adresse d'origine) → CARTO par défaut
+    function mapBaseKey() { return MAP_BASES[appData.mapBase] ? appData.mapBase : location.protocol === 'file:' ? 'carto' : 'osm'; }
+    const MAP_FR_ONLY = { ign: 1, ignphoto: 1 };
+    function baseTiles(map) {
+      const b = MAP_BASES[mapBaseKey()];
+      const t = L.tileLayer(b[1], Object.assign({}, b[2], TILE_REF)).addTo(map); map.__base = t;
+      try { mapControls(map); } catch (e) { }
+      return t;
+    }
+    function setMapBase(map, k) {
+      appData.mapBase = k; saveAppData();
+      try { map.removeLayer(map.__base); } catch (e) { }
+      const b = MAP_BASES[k]; map.__base = L.tileLayer(b[1], Object.assign({}, b[2], TILE_REF)).addTo(map);
+      let out = false; try { const c = map.getCenter(); out = MAP_FR_ONLY[k] && !inFrance(c.lat, c.lng); } catch (e) { }
+      showToast(out ? `🗺️ ${b[0]} : la carte IGN ne couvre que la France (vide ici)` : '🗺️ Fond de carte : ' + b[0]);
+    }
+    // Boutons sur la carte : changer de fond, et ma position GPS (point bleu)
+    function mapControls(map) {
+      const el = map.getContainer && map.getContainer(); if (!el || el.querySelector('.mctl')) return;
+      if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+      const st = 'position:absolute;right:8px;z-index:900;width:40px;height:40px;border-radius:20px;border:1px solid #334155;background:rgba(2,6,23,.85);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center';
+      el.insertAdjacentHTML('beforeend', `<button type="button" class="mctl" data-k="base" aria-label="Fond de carte" style="${st};top:8px">🗺️</button><button type="button" class="mctl" data-k="me" aria-label="Ma position" style="${st};top:54px">📍</button>`);
+      el.querySelectorAll('.mctl').forEach(b => {
+        ['mousedown', 'pointerdown', 'touchstart', 'dblclick'].forEach(t => b.addEventListener(t, ev => ev.stopPropagation(), { passive: true }));
+        b.addEventListener('click', ev => {
+          ev.stopPropagation(); ev.preventDefault();
+          if (b.dataset.k === 'base') mapBaseMenu(map, el);
+          else { map.__follow = true; if (map.__me) map.setView(map.__me.getLatLng(), Math.max(map.getZoom ? map.getZoom() : 15, 15)); else showToast('📍 Recherche de ta position…'); }
+        });
+      });
+      if (map.__noMe) { const b = el.querySelector('.mctl[data-k="me"]'); if (b) b.remove(); } else mapShowMe(map);
+    }
+    // Liste des fonds de carte pour choisir
+    function mapBaseMenu(map, el) {
+      const old = el.querySelector('.mbmenu'); if (old) { old.remove(); return; }
+      let fr = true; try { const c = map.getCenter(); fr = inFrance(c.lat, c.lng); } catch (e) { }
+      const cur = mapBaseKey();
+      el.insertAdjacentHTML('beforeend', `<div class="mbmenu" style="position:absolute;top:52px;right:54px;z-index:950;min-width:210px;padding:6px;border-radius:14px;background:#0f172a;border:1px solid #334155;box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:4px">
+        ${Object.entries(MAP_BASES).map(([k, b]) => `<button type="button" data-b="${k}" style="text-align:left;min-height:40px;padding:0 10px;border-radius:10px;font-size:13px;font-weight:800;${k === cur ? 'background:#38bdf8;color:#04121f;border:none' : 'background:transparent;color:#e2e8f0;border:none'}">${k === cur ? '✓ ' : ''}${b[0]}${MAP_FR_ONLY[k] && !fr ? ' <span style="font-size:11px;font-weight:700;opacity:.7">· pas ici</span>' : ''}</button>`).join('')}</div>`);
+      const menu = el.querySelector('.mbmenu');
+      ['mousedown', 'pointerdown', 'touchstart', 'dblclick', 'wheel'].forEach(t => menu.addEventListener(t, ev => ev.stopPropagation(), { passive: true }));
+      menu.querySelectorAll('[data-b]').forEach(x => x.addEventListener('click', ev => { ev.stopPropagation(); ev.preventDefault(); menu.remove(); setMapBase(map, x.dataset.b); }));
+    }
+    function mapShowMe(map) {
+      if (!navigator.geolocation || map.__meWatch != null) return;
+      map.__meWatch = navigator.geolocation.watchPosition(pos => {
+        const ll = [pos.coords.latitude, pos.coords.longitude];
+        if (!map.__me) {
+          map.__me = L.marker(ll, { icon: L.divIcon({ className: '', iconSize: [20, 20], iconAnchor: [10, 10], html: '<div style="width:20px;height:20px;border-radius:10px;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,.3)"></div>' }), interactive: false, keyboard: false, zIndexOffset: 900 }).addTo(map);
+          if (map.__follow) map.setView(ll, 15);
+        } else map.__me.setLatLng(ll);
+      }, () => { }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+      const rm = map.remove && map.remove.bind(map);
+      if (rm) map.remove = function () { try { navigator.geolocation.clearWatch(map.__meWatch); } catch (e) { } map.__meWatch = null; return rm(); };
+    }
     function loadLeaflet() {
       if (window.L && window.L.map) return Promise.resolve();
       return new Promise((res, rej) => {
@@ -10148,7 +10239,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       let center = [48.8566, 2.3522], zoom = 13;
       if (runData && runData.gps && runData.gps.lat) { center = [runData.gps.lat, runData.gps.lon]; zoom = 15; }
       re.map = L.map(box, { zoomControl: false, attributionControl: true }).setView(center, zoom);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(re.map);
+      baseTiles(re.map);
       re.line = L.polyline([], { color: '#34d399', weight: 5, opacity: 0.95 }).addTo(re.map);
       re.map.on('click', e => reAddPoint(e.latlng.lat, e.latlng.lng));
       setTimeout(() => re && re.map && re.map.invalidateSize(), 150);
@@ -10157,9 +10248,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         re.segs = (saved.segs || []).map(sg => sg.map(p => [p[0], p[1]]));
         if (re.segs.length !== Math.max(0, re.wps.length - 1)) await reRebuildAll();
         reRedraw(true);
-      } else if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(p => { if (re && re.map && !re.wps.length) re.map.setView([p.coords.latitude, p.coords.longitude], 15); }, () => {}, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
-      }
+      } else { re.map.__follow = true; }
       const sel = document.getElementById('reLoopKm');
       if (sel && !sel.options.length) for (let k = 2; k <= 30; k++) sel.add(new Option(`${k} km`, k, false, k === 8));
       if (saved && saved.eles && (saved.eleSrc === 'gps' || saved.eleSrc === 'capture')) { clearTimeout(re.eleTimer); re.eles = saved.eles.map(e => [e[0], e[1]]); re.keepEles = true; re.keepSig = ''; reRedraw(); }
@@ -10167,6 +10256,28 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       document.getElementById('reSpeed').value = saved && saved.speed ? saved.speed : formatSpeed(runnerEF());
       reStatus(saved ? `Modification de « ${saved.name} »` : 'Touche la carte pour poser le départ, puis les points de passage');
       reRenderBar();
+    }
+    // Aller à une adresse (pour préparer un parcours ailleurs, ex. en France avec la carte IGN)
+    let reGeo = [];
+    async function reGeocode() {
+      const q = (document.getElementById('reAddr').value || '').trim(), box = document.getElementById('reAddrList'); if (!q || !re || !re.map) return;
+      box.classList.remove('hidden'); box.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:#94a3b8">Recherche…</div>';
+      try {
+        const j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=fr&q=${encodeURIComponent(q)}`)).json();
+        reGeo = (j || []).map(x => ({ lat: +x.lat, lon: +x.lon, name: String(x.display_name || '').split(',').slice(0, 4).join(',') }));
+        box.innerHTML = reGeo.length ? reGeo.map((g, i) => `<button type="button" onclick="reGoTo(${i})" style="text-align:left;padding:10px 12px;border:none;border-bottom:1px solid #1e293b;background:transparent;color:#e2e8f0;font-size:13px;font-weight:700">📍 ${plEsc(g.name)}${inFrance(g.lat, g.lon) ? ' <span style="color:#6ee7b7;font-size:11px">· IGN dispo</span>' : ''}</button>`).join('') + `<button type="button" onclick="document.getElementById('reAddrList').classList.add('hidden')" style="padding:8px;border:none;background:#0b1324;color:#94a3b8;font-size:12px;font-weight:800">Fermer</button>`
+          : '<div style="padding:10px 12px;font-size:13px;color:#fda4af">Aucun lieu trouvé</div>';
+      } catch (e) { box.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:#fda4af">Recherche indisponible (réseau ?)</div>'; }
+    }
+    function reGoTo(i) {
+      const g = reGeo[i]; if (!g || !re || !re.map) return;
+      document.getElementById('reAddrList').classList.add('hidden');
+      re.map.__follow = false; re.map.setView([g.lat, g.lon], 15);
+      if (inFrance(g.lat, g.lon) && !/^ign/.test(mapBaseKey())) {
+        const box = document.getElementById('reAddrList'); box.classList.remove('hidden');
+        box.innerHTML = `<div style="padding:10px 12px;font-size:13px;color:#e2e8f0">Ce lieu est en France : afficher la carte IGN ?</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px 10px"><button type="button" onclick="setMapBase(re.map,'ign');document.getElementById('reAddrList').classList.add('hidden')" style="min-height:40px;border-radius:10px;border:none;background:#34d399;color:#03140d;font-weight:900">Carte IGN</button><button type="button" onclick="document.getElementById('reAddrList').classList.add('hidden')" style="min-height:40px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Garder</button></div>`;
+      }
+      reStatus(`📍 ${g.name.split(',')[0]} : touche la carte pour poser le départ`);
     }
     function closeRouteEditor() {
       closeClimbSearch();
@@ -10396,9 +10507,30 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     // Altitudes Open-Meteo : mémorisées point par point, et nouvel essai si le service sature
     const ELE_CACHE = new Map();
+    function inFrance(lat, lon) { return (lat > 41.2 && lat < 51.2 && lon > -5.5 && lon < 9.8) || (lat > 41.3 && lat < 43.1 && lon > 8.5 && lon < 9.7); }
+    async function ignEles(part) { // part : [[lat, lon], …] ; renvoie un tableau (null là où l'IGN n'a pas de donnée)
+      const u = `https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${part.map(p => p[1]).join('|')}&lat=${part.map(p => p[0]).join('|')}&resource=ign_rge_alti_wld&zonly=true`;
+      const now = Date.now(), wait = (ignEles.last || 0) + 220 - now; if (wait > 0) await sleep(wait); ignEles.last = Date.now(); // 5 requêtes / s max
+      const r = await Promise.race([fetch(u), sleep(12000).then(() => { throw new Error('délai'); })]);
+      if (!r.ok) throw new Error('IGN ' + r.status);
+      const j = await r.json(), e = j.elevations || [];
+      if (e.length !== part.length) throw new Error('IGN incomplet');
+      return e.map(v => { const z = typeof v === 'object' ? v.z : v; return typeof z === 'number' && z > -1000 ? z : null; });
+    }
     async function meteoEles(pts) {
       const key = p => p.lat.toFixed(4) + ',' + p.lon.toFixed(4);
-      const miss = [...new Set(pts.map(key).filter(k => !ELE_CACHE.has(k)))];
+      let miss = [...new Set(pts.map(key).filter(k => !ELE_CACHE.has(k)))];
+      // 1) IGN pour les points en France
+      const fr = miss.filter(k => { const [a, b] = k.split(',').map(Number); return inFrance(a, b); });
+      if (fr.length && appData.eleSrc !== 'meteo' && !meteoEles.ignDown) {
+        for (let i = 0; i < fr.length; i += 100) {
+          const part = fr.slice(i, i + 100).map(k => k.split(','));
+          try { const z = await ignEles(part); z.forEach((v, k) => { if (v != null) ELE_CACHE.set(part[k].join(','), v); }); }
+          catch (e) { meteoEles.ignDown = Date.now(); setTimeout(() => { meteoEles.ignDown = 0; }, 10 * 60000); break; }
+        }
+        miss = miss.filter(k => !ELE_CACHE.has(k));
+      }
+      // 2) Open-Meteo pour le reste
       for (let i = 0; i < miss.length; i += 100) {
         const part = miss.slice(i, i + 100).map(k => k.split(','));
         let ok = false;
@@ -10543,13 +10675,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       st('Lecture du relief autour…');
       const sp = Math.max(150, len * 0.8), n = 11, grid = [];
       for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) { const q = geoOffset(geoOffset(c0, (a - 5) * sp, 0), (b - 5) * sp, Math.PI / 2); grid.push({ a, b, lat: q.lat, lon: q.lon }); }
-      try {
-        for (let i = 0; i < grid.length; i += 100) {
-          const part = grid.slice(i, i + 100);
-          const j = await (await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p.lat.toFixed(5)).join(',')}&longitude=${part.map(p => p.lon.toFixed(5)).join(',')}`)).json();
-          (j.elevation || []).forEach((e, k) => part[k].e = e);
-        }
-      } catch (e) { st('⚠ Relief indisponible (réseau ?)'); return; }
+      { const ez = await meteoEles(grid); if (!ez) { st('⚠ Relief indisponible (réseau ?)'); return; } ez.forEach((e, k) => grid[k].e = e); }
       // 2) paires de points voisins dont la pente se rapproche de la cible
       const G = (a, b) => grid[a * n + b], pairs = [];
       grid.forEach(g => [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1], [2, 0], [0, 2], [-2, 0], [0, -2]].forEach(([da, db]) => {
@@ -10628,7 +10754,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         box.innerHTML = '';
         const m = L.map(box, { zoomControl: true, attributionControl: true }).setView([ar.start.lat, ar.start.lon], 14);
         ar.cmpMap = m; ar.cmpLines = [];
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+        baseTiles(m);
         const all = [];
         ar.cands.forEach((c, i) => {
           const col = AR_COLS[i % AR_COLS.length];
@@ -10711,7 +10837,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         const box = document.getElementById('arBigMap');
         const ref = mode === 'end' ? (ar.end || ar.start) : ar.start;
         me.map = L.map(box, { zoomControl: true, attributionControl: true }).setView(ref ? [ref.lat, ref.lon] : [46.6, 2.4], ref ? 15 : 6);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(me.map);
+        baseTiles(me.map);
         const dot = col => L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 12], html: `<div style="width:24px;height:24px;border-radius:12px;border:3px solid #fff;background:${col};box-shadow:0 1px 5px rgba(0,0,0,.6)"></div>` });
         if (mode === 'view') {
           ar.cands.forEach((o, k) => { if (k !== i) L.polyline(o.coords, { color: '#64748b', weight: 3, opacity: 0.45 }).on('click', () => arBigOpen('view', k)).addTo(me.map); });
@@ -11243,6 +11369,15 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const k = D > 0 && Math.abs(T / D - 1) > 0.05 ? T / D : 1; // graphique de la montre sur une autre durée : on le cale sur la séance
       const cv = hs.courbe.map(q => [q[0] * k, q[1]]), at = m => { if (m <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (m <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return Math.round(a[1] + (b[1] - a[1]) * (m - a[0]) / Math.max(0.01, b[0] - a[0])); } return cv[cv.length - 1][1]; };
       return track.map(r => { if (r[1]) return r; const x = r.slice(); x[1] = at(r[0] / 60); return x; });
+    }
+    // Séance sans mesures de l'app : courbe de cardio de la capture étalée sur la durée de la séance
+    function synthTrackFromShot(h, hs) {
+      const D = +h.durationMin || +hs.duree_min || hs.courbe[hs.courbe.length - 1][0], km = histKm(h) || +h.km || 0;
+      if (!(D > 0)) return [];
+      const n = Math.floor(D * 60 / 5), v = km > 0 ? Math.round(km / (D / 60) * 10) / 10 : null, cD = +hs.duree_min || hs.courbe[hs.courbe.length - 1][0] || D, k = cD / D;
+      const cv = hs.courbe, at = m => { m *= k; if (m <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (m <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return Math.round(a[1] + (b[1] - a[1]) * (m - a[0]) / Math.max(1e-6, b[0] - a[0])); } return cv[cv.length - 1][1]; };
+      const out = []; for (let i = 0; i < n; i++) out.push([i * 5, at(i * 5 / 60), v, 0, null, km > 0 ? Math.round(km * i / n * 1000) / 1000 : null]);
+      return out;
     }
     // Lecture du cardio sur les captures (appel dédié, plus fiable que pendant l'analyse)
     async function extractHrFromShots(shots) {
@@ -12034,6 +12169,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
 
     // ==================== ENREGISTREMENT DE LA SÉANCE (courbes) ====================
     // Une mesure toutes les 5 s : [s, fc, vitesse, n° segment, altitude, km]
+    // Erreurs pendant la séance : gardées (sans bloquer la séance) pour pouvoir les diagnostiquer ensuite
+    function tickErr(where, e) {
+      const a = runData.errs || (runData.errs = []), msg = `${where} : ${(e && e.message) || e}`.slice(0, 160);
+      if (!a.includes(msg) && a.length < 8) { a.push(msg); console.warn('tick', where, e); }
+    }
     function sampleTrack() {
       if (!timerState.isRunning) return;
       const now = Date.now();
@@ -12611,7 +12751,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800"><span style="color:#94a3b8;font-weight:700">Ressenti</span><span style="color:${feel ? feel[1] : '#94a3b8'}">${feel ? feel[0] : 'non renseigné'}</span></div>
           ${item.note ? `<div style="font-size:14px;line-height:1.4;color:#e2e8f0;padding:9px 12px;${card}"><span style="font-size:11px;font-weight:800;color:#fbbf24;letter-spacing:.5px">📝 MA NOTE</span><br>${plEsc(item.note)}</div>` : ''}</div>`;
       const hs = hh.hrShot || item.hrShot || null;
-      const trk = trackWithShot(item.track, hs), fromShot = trk !== item.track;
+      let synth = false;
+      if ((!item.track || !item.track.length) && hs && hs.courbe && hs.courbe.length > 3) { item = Object.assign({}, item, { track: synthTrackFromShot(hh, hs) }); synth = true; }
+      const trk = trackWithShot(item.track, hs), fromShot = trk !== item.track || synth;
       const P = trk && trk.length ? rcPrep(trk, item.seg, { pente }) : null;
       let stats = '', zonesB = '', segTab = '', graphTab = '';
       if (P && P.rows.length >= 6) {
@@ -12740,13 +12882,19 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <div data-hmmodes style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px"></div>
           <div data-hmbox style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
           <div data-hmleg style="font-size:12px;color:#94a3b8"></div></div>` : '';
-      const tabs = [['coach', '🧠 Coach', item.live ? '' : coachTab], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab], ['map', '🗺️ Carte', mapTab]].filter(t => t[2]);
+      const spk = item.live ? (runData.spoken || []) : (hh.spoken || []);
+      const fmtS = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+      const spokenTab = !item.live ? (spk.length ? `<div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
+        : `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas d'annonces enregistrées pour cette séance (faite avant la mise à jour qui les garde, ou sans le chrono de l'app).</div>`) : '';
+      const tabs = [['coach', '🧠 Coach', item.live ? '' : coachTab], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab], ['map', '🗺️ Carte', mapTab], ['spoken', '📜 Annonces', spokenTab]].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach';
       const tid = 'ht' + Math.random().toString(36).slice(2, 8);
-      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${item.live ? '' : top}${stats}${zonesB}${recLine}
-        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:13px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+      const noData = !item.live && (!item.track || !item.track.length)
+        ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
+      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${item.live ? '' : top}${noData}${stats}${zonesB}${recLine}
+        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:${tabs.length > 4 ? 11.5 : 13}px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
     // ==================== ÉVOLUTION : séances du même type ====================
@@ -12915,8 +13063,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (el.__map) { try { el.__map.remove(); } catch (e) { } el.__map = null; }
       let box = el.querySelector('[data-hmbox]'); if (box._leaflet_id) { const nb = box.cloneNode(false); box.replaceWith(nb); box = nb; }
       box.innerHTML = '';
-      const m = L.map(box, { zoomControl: true, attributionControl: true }); el.__map = m;
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      const m = L.map(box, { zoomControl: true, attributionControl: true }); el.__map = m; m.__noMe = true;
+      baseTiles(m);
       const ll = d.gps.map(p => [p[0], p[1]]);
       if (!vals) { L.polyline(ll, { color: '#38bdf8', weight: 5 }).addTo(m); leg.textContent = 'Pas de mesures pour colorer le tracé.'; }
       else {
@@ -15345,6 +15493,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
           runSummary: timerState.runSummary, runTrack: timerState.runTrack, runSeg: timerState.runSeg, actualMs: timerState.actualMs,
           run: {
             hrSamples: runData.hrSamples.slice(-5000), track: runData.track, tmKm: runData.tmKm, gpsDist: runData.gps.distKm,
+            gpsPath: (runData.gpsPath || []).slice(-6000), spoken: (runData.spoken || []).slice(-600), rmTot: runData.rmTot || 0, rmOff: runData.rmOff || 0, noRoute: !!runData.noRoute,
             kmAnnounced: runData.kmAnnounced, kmStartAt: runData.kmStartAt, kmStartIdx: runData.kmStartIdx, speedLog: runData.speedLog || [], oneMoreAsked: !!runData.oneMoreAsked, recChk: runData.recChk || {}
           }
         };
@@ -15380,6 +15529,8 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
         kmAnnounced: st.run.kmAnnounced || 0, kmStartAt: st.run.kmStartAt || 0, kmStartIdx: st.run.kmStartIdx || 0, lastSampleAt: 0, speedLog: st.run.speedLog || [], oneMoreAsked: !!st.run.oneMoreAsked, recChk: st.run.recChk || {} });
       runData.gps.distKm = st.run.gpsDist || 0;
       runData.gps.last = null;
+      runData.restored = (runData.restored || 0) + 1;
+      Object.assign(runData, { gpsPath: st.run.gpsPath || [], spoken: st.run.spoken || [], rmTot: st.run.rmTot || 0, rmOff: st.run.rmOff || 0, noRoute: !!st.run.noRoute });
       resetStageFlags();
 
       if (st.finished) {
@@ -15580,40 +15731,122 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
     }
     // ==================== TEXTE À ÉCOUTER PENDANT LA SÉANCE ====================
-    function readCfg() { const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; return c && c.sid === sid && c.text ? c : null; }
-    function readChunks(text) {
+    function readCfg() { const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; if (!(c && c.sid === sid && (c.text || c.chunks))) return null; if (!c.sections) c.sections = readChunks(c.text || c.chunks.join(' '), READ_SEC, READ_SEC + 200); if (!c.aiPos) c.aiPos = { s: 0, p: 0 }; if (!c.model) c.model = 'gemini-3.8-flash-lite-tts'; return c; }
+    function readChunks(text, max = 450, hard = 520) {
       const sents = String(text).replace(/\r/g, '').replace(/[ \t]+/g, ' ').split(/(?<=[.!?…])\s+|\n{1,}/).map(x => x.trim()).filter(Boolean);
       const out = []; let cur = '';
-      sents.forEach(x => { while (x.length > 260) { const cut = x.lastIndexOf(' ', 240) > 80 ? x.lastIndexOf(' ', 240) : 240; (cur ? (out.push(cur), cur = '') : 0); out.push(x.slice(0, cut)); x = x.slice(cut).trim(); } if ((cur + ' ' + x).trim().length > 230 && cur) { out.push(cur); cur = x; } else cur = (cur + ' ' + x).trim(); });
+      sents.forEach(x => { while (x.length > hard) { const cut = x.lastIndexOf(' ', hard - 40) > 120 ? x.lastIndexOf(' ', hard - 40) : hard - 40; (cur ? (out.push(cur), cur = '') : 0); out.push(x.slice(0, cut)); x = x.slice(cut).trim(); } if ((cur + ' ' + x).trim().length > max && cur) { out.push(cur); cur = x; } else cur = (cur + ' ' + x).trim(); });
       if (cur) out.push(cur);
       return out;
     }
-    function updateReadBtn() { const b = document.getElementById('readBtn'); if (!b) return; const c = readCfg(); b.textContent = c ? `📖 Texte : ${c.pos >= c.chunks.length ? 'lu' : `${c.pos}/${c.chunks.length}`}` : '📖 Texte à écouter'; }
+    const READ_SEC = 2400; // caractères par requête vocale (≈ 2 min 30 d'audio)
+    function readIsAi(c) { return c && c.voice === 'ai' && aiVoiceActive(); }
+    function readProgress(c) {
+      if (!readIsAi(c)) return c.pos / Math.max(1, c.chunks.length);
+      const n = c.sections.length; if (!n) return 1; const s = c.aiPos.s, P = readAudio.secs[s];
+      return Math.min(1, (s + (P && P.length ? c.aiPos.p / P.length : 0)) / n);
+    }
+    function readDone(c) { return readIsAi(c) ? c.aiPos.s >= c.sections.length : c.pos >= c.chunks.length; }
+    function updateReadBtn() { const b = document.getElementById('readBtn'); if (!b) return; const c = readCfg(); b.textContent = c ? `📖 Texte : ${readDone(c) ? 'lu' : Math.round(readProgress(c) * 100) + ' %'}` : '📖 Texte à écouter'; }
+    let readAudio = { id: '', secs: [], loading: {} };
+    function readSecKey(c, i) { return aiClipKey(`📖|${c.model}|${c.sections[i]}`); }
+    function readAudioFor(c) { const id = c.sid + '|' + c.model + '|' + c.sections.length + '|' + (c.sections[0] || '').slice(0, 40); if (readAudio.id !== id) readAudio = { id, secs: [], loading: {} }; return readAudio; }
+    async function readFetchText(text, model) {
+      try {
+        const clip = await ttsEnqueue(() => aiRequestAudio(text, { batch: true, model }), 'lo');
+        const expect = text.length / 15; // ≈ 15 caractères par seconde à vitesse normale
+        if (clip && clip.pcm.length / clip.sr < expect * 0.55 && text.length >= 300) throw new Error('audio tronqué');
+        return clip;
+      }
+      catch (e) {
+        if (text.length < 300) return null;
+        const mid = text.lastIndexOf('. ', Math.floor(text.length / 2)) > 100 ? text.lastIndexOf('. ', Math.floor(text.length / 2)) + 1 : Math.floor(text.length / 2);
+        const a = await readFetchText(text.slice(0, mid).trim(), model), b = await readFetchText(text.slice(mid).trim(), model);
+        if (!a || !b) return a || b;
+        const bb = resamplePcm(b.pcm, b.sr, a.sr), all = new Int16Array(a.pcm.length + bb.length); all.set(a.pcm, 0); all.set(bb, a.pcm.length);
+        return { sr: a.sr, pcm: all };
+      }
+    }
+    async function readLoadSection(c, i) {
+      const RA = readAudioFor(c); if (RA.secs[i] || RA.loading[i] || i >= c.sections.length) return !!RA.secs[i];
+      RA.loading[i] = true;
+      try {
+        const k = readSecKey(c, i); let clip = null;
+        try { const st = await aiDbGet(k); if (st && st.pcm) clip = { sr: st.sr, pcm: new Int16Array(st.pcm) }; } catch (e) { }
+        if (!clip) { clip = await readFetchText(c.sections[i], c.model); if (clip) { try { aiDbPut(k, { sr: clip.sr, pcm: clip.pcm.buffer.slice(clip.pcm.byteOffset, clip.pcm.byteOffset + clip.pcm.byteLength) }); } catch (e) { } } }
+        if (!clip) return false;
+        RA.secs[i] = splitAtQuiet(clip.pcm, clip.sr, Math.round(clip.sr * 25)).map(pcm => ({ sr: clip.sr, pcm }));
+        return true;
+      } finally { RA.loading[i] = false; }
+    }
     function openReadModal() {
       let m = document.getElementById('readModal');
       if (!m) { m = document.createElement('div'); m.id = 'readModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
-      const c = readCfg() || { text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone' };
+      const c = readCfg() || { text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts' };
       const opt = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
       m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
         <span style="font-size:18px;font-weight:900">📖 Texte à écouter pendant la séance</span>
         <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle un texte (un mail copié depuis Gmail, un article…). Il est lu par petits morceaux dans les moments calmes, sans couvrir les annonces importantes. Écran allumé ou mode poche (pas écran verrouillé).</span>
-        <textarea id="rdText" rows="7" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="Colle ton texte ici…">${plEsc(c.text || '')}</textarea>
+        <div style="display:flex;gap:6px"><input id="rdUrl" class="pm-in flex-1" placeholder="ou l'adresse d'une page web / d'un Google Doc partagé" style="height:42px;font-size:13px"><button type="button" onclick="readImportUrl()" style="width:52px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900">⬇️</button></div>
+        <textarea id="rdText" rows="7" class="pm-in" oninput="readEstimate()" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="Colle ton texte ici…">${plEsc(c.text || '')}</textarea>
+        <div id="rdEst" style="font-size:12.5px;color:#94a3b8;line-height:1.45"></div>
         <label class="pm-lbl">Début de la lecture<select id="rdStart" class="pm-in" onchange="document.getElementById('rdMinRow').style.display=this.value==='min'?'flex':'none'">${opt('begin', 'Dès le départ', c.start)}${opt('warm', "Après l'échauffement", c.start)}${opt('min', 'À partir de la minute…', c.start)}</select></label>
         <div id="rdMinRow" style="display:${c.start === 'min' ? 'flex' : 'none'};align-items:center;gap:8px;font-weight:800;color:#cbd5e1">Minute <input id="rdMin" type="number" min="0" max="300" value="${c.min || 10}" class="pm-in c" style="width:90px"></div>
-        <label class="pm-lbl">Voix<select id="rdVoice" class="pm-in">${opt('ai', 'Voix du coach (IA)', c.voice)}${opt('phone', 'Voix du téléphone (gratuite)', c.voice)}</select></label>
+        <label class="pm-lbl">Voix<select id="rdVoice" class="pm-in" onchange="readEstimate()">${opt('ai', 'Voix du coach (IA)', c.voice)}${opt('phone', 'Voix du téléphone (gratuite)', c.voice)}</select></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label class="pm-lbl">Vitesse de lecture<select id="rdRate" class="pm-in" onchange="readEstimate()">${[0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5].map(v => opt(String(v), `× ${String(v).replace('.', ',')}`, String(c.rate || 1))).join('')}</select></label>
+          <label class="pm-lbl">Voix IA<select id="rdModel" class="pm-in" onchange="readEstimate()">${opt('gemini-3.8-flash-lite-tts', 'Flash-Lite (éco)', c.model)}${opt('gemini-3.8-flash-tts', 'Flash (plus expressive)', c.model)}</select></label>
+        </div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Lire aussi pendant les fractions rapides<input type="checkbox" id="rdFast" class="sw" ${c.fast ? 'checked' : ''}></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button type="button" onclick="readSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans texte</button>
-          <button type="button" onclick="readSave(true)" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900">Enregistrer</button></div></div>`;
+          <button type="button" onclick="readSave(true)" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900">Enregistrer</button></div>
+        <button type="button" id="rdPrep" onclick="readSave(true, true)" style="min-height:48px;border-radius:14px;border:1px solid rgba(167,139,250,.6);background:rgba(167,139,250,.15);color:#ddd6fe;font-weight:900">⏳ Enregistrer et préparer l'audio maintenant</button>
+        <div id="rdPrepMsg" style="font-size:13px;color:#c4b5fd;font-weight:700"></div></div>`;
+      readEstimate();
     }
-    function readSave(on) {
+    // Durée d'écoute et coût estimés (≈ 150 mots par minute, 25 jetons audio par seconde)
+    function readEstimate() {
+      const el = document.getElementById('rdEst'), t = (document.getElementById('rdText') || {}).value || ''; if (!el) return;
+      const words = (t.trim().match(/\S+/g) || []).length; if (!words) { el.textContent = ''; return; }
+      const rate = parseFloat((document.getElementById('rdRate') || {}).value) || 1, sec = words / 150 * 60, play = sec / rate;
+      const model = (document.getElementById('rdModel') || {}).value || 'gemini-3.8-flash-lite-tts', price = (TTS_PRICE_PER_M[model] || 9);
+      const cost = sec * 25 / 1e6 * price, nReq = readChunks(t.trim(), READ_SEC, READ_SEC + 200).length;
+      el.innerHTML = `${words} mots · écoute ≈ <b style="color:#e2e8f0">${fmtHM(play / 60)}</b> à × ${String(rate).replace('.', ',')}<br>Voix du coach : <b>${nReq} requête${nReq > 1 ? 's' : ''}</b> (≈ 2 min 30 d'audio chacune), ≈ ${(cost * 0.93).toFixed(2).replace('.', ',')} €, préparation ≈ ${Math.max(1, Math.round(nReq * 40 / 2 / 60))} min · Voix du téléphone : gratuit et immédiat`;
+    }
+    async function readImportUrl() {
+      let u = ((document.getElementById('rdUrl') || {}).value || '').trim(); if (!/^https?:\/\//i.test(u)) { showToast('Colle une adresse qui commence par https://'); return; }
+      const msg = document.getElementById('rdEst'); if (msg) msg.textContent = '⏳ Récupération du texte…';
+      const gd = u.match(/docs\.google\.com\/document\/d\/([\w-]+)/); if (gd) u = `https://docs.google.com/document/d/${gd[1]}/export?format=txt`;
+      let text = '';
+      try { const r = await Promise.race([fetch(u), sleep(10000).then(() => { throw new Error('délai'); })]); if (r.ok) { const raw = await r.text(); text = /<html|<body/i.test(raw) ? new DOMParser().parseFromString(raw, 'text/html').body.innerText : raw; } } catch (e) { }
+      if (!text.trim() && getGeminiKey()) {
+        try { text = await geminiText([{ text: `Lis la page ${u} et recopie INTÉGRALEMENT son texte principal (article, mail ou document), mot pour mot, sans résumer, sans commentaire, sans menus ni publicités. Réponds uniquement avec ce texte.` }], { urlContext: true, maxTokens: 30000 }); } catch (e) { }
+      }
+      text = String(text || '').replace(/\n{3,}/g, '\n\n').trim();
+      if (text.length < 40) { if (msg) msg.textContent = '⚠ Texte introuvable : la page doit être publique (pour un Google Doc : Partager › Tous les utilisateurs disposant du lien).'; return; }
+      document.getElementById('rdText').value = text.slice(0, 40000); readEstimate();
+    }
+    async function readPrepareAll() {
+      const c = readCfg(); if (!readIsAi(c)) return;
+      const msg = () => document.getElementById('rdPrepMsg') || { set textContent(v) { } };
+      let done = 0, fail = 0; const tot = c.sections.length;
+      msg().textContent = `⏳ Préparation de l'audio : 0/${tot}…`;
+      const q = c.sections.map((_, i) => i);
+      const worker = async () => { while (q.length) { const i = q.shift(); const ok = await readLoadSection(c, i); done++; if (!ok) fail++; msg().textContent = `⏳ Préparation de l'audio : ${done}/${tot}${fail ? ` (${fail} en échec : la voix du téléphone lira ces parties)` : ''}`; } };
+      await Promise.all([worker(), worker()]);
+      msg().textContent = fail ? `✓ Audio prêt sauf ${fail} partie${fail > 1 ? 's' : ''}` : '✓ Audio prêt : tout est téléchargé, rien d\'autre à attendre';
+      showToast('📖 Audio du texte prêt');
+    }
+    function readSave(on, prep) {
       const t = (document.getElementById('rdText') || {}).value || '';
       if (on && t.trim().length < 3) { showToast('Colle un texte'); return; }
       if (!on) appData.audioSettings.readText = null;
       else {
         const chunks = readChunks(t.trim());
-        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 20000), chunks, pos: 0, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked };
-        if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) readPrefetch(0);
+        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, p: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value };
+        if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readPrepareAll(); return; } readLoadSection(appData.audioSettings.readText, 0); }
+        else if (prep) showToast('Voix du téléphone : rien à préparer, la lecture est immédiate');
       }
       saveAppData(); const m = document.getElementById('readModal'); if (m) m.remove(); updateReadBtn();
       showToast(on ? `📖 ${appData.audioSettings.readText.chunks.length} morceaux à lire pendant la séance` : 'Texte retiré');
@@ -15624,22 +15857,39 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     readPrefetch.busy = {};
     function readTick(cur, elapsedMs, remMs) {
-      const c = readCfg(); if (!c || c.pos >= c.chunks.length || !cur || !timerState.isRunning || tl.active || preCd) return;
+      const c = readCfg(); if (!c || readDone(c) || !cur || !timerState.isRunning || tl.active || preCd) return;
       const el = timerState.totalSessionMs - timerState.totalRemainingMs;
-      const warmEnd = (() => { let t = 0; for (const s of timerState.stages) { if (s.type !== 'chauffe') break; t += s.durationSec * 1000; } return t; })();
+      const warmEnd = (() => { let t = 0; for (const st of timerState.stages) { if (st.type !== 'chauffe') break; t += st.durationSec * 1000; } return t; })();
       if (c.start === 'warm' && el < warmEnd) return;
       if (c.start === 'min' && el < (c.min || 0) * 60000) return;
       if (cur.intensity === 'fast' && !c.fast && !(cur.durationSec >= 600)) return;
-      if (remMs < 25000 || isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 2500) return;
-      if (readTick.waitAi && Date.now() - readTick.waitAi < 8000) return;
-      const txt = c.chunks[c.pos];
-      if (c.voice === 'ai' && aiVoiceActive()) {
-        if (!aiClips.has(aiClipKey(txt))) { if (!readTick.waitAi) { readTick.waitAi = Date.now(); readPrefetch(c.pos); } else if (Date.now() - readTick.waitAi > 8000) { readTick.waitAi = 0; systemSpeak(txt); c.pos++; } return; }
-        readTick.waitAi = 0; speak([txt]);
-      } else { logSpoken(txt); systemSpeak(txt); }
-      c.pos++; readTick.lastEnd = Date.now(); saveAppData(); updateReadBtn();
-      if (c.pos >= c.chunks.length) setTimeout(() => showToast('📖 Texte entièrement lu'), 1000);
-      readPrefetch(c.pos);
+      if (isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 2500) return;
+      const rate = c.rate || 1;
+      if (readIsAi(c)) {
+        if (!c.aiPos) c.aiPos = { s: 0, p: 0 };
+        const RA = readAudioFor(c), P = RA.secs[c.aiPos.s];
+        readLoadSection(c, c.aiPos.s + 1);                                   // la partie suivante se prépare en avance
+        if (!P) {
+          if (!RA.loading[c.aiPos.s]) readLoadSection(c, c.aiPos.s).then(ok => { if (!ok) { // échec : cette partie est lue par la voix du téléphone
+            const sub = readChunks(c.sections[c.aiPos.s]); c.fallback = sub; c.fbPos = 0; } });
+          if (c.fallback && c.fbPos < c.fallback.length) { const tx = c.fallback[c.fbPos]; if (remMs < Math.max(25000, tx.split(/\s+/).length / 150 * 60000 / rate + 10000)) return; logSpoken(tx); systemSpeak(tx, rate); c.fbPos++; readTick.lastEnd = Date.now(); if (c.fbPos >= c.fallback.length) { c.fallback = null; c.aiPos = { s: c.aiPos.s + 1, p: 0 }; } saveAppData(); updateReadBtn(); }
+          return;
+        }
+        const piece = P[c.aiPos.p]; if (!piece) { c.aiPos = { s: c.aiPos.s + 1, p: 0 }; return; }
+        const durMs = piece.pcm.length / piece.sr / rate * 1000;
+        if (remMs < Math.max(25000, durMs + 10000)) return;
+        aiPlayClips([piece], `${readSecKey(c, c.aiPos.s)}|${c.aiPos.p}`, rate);
+        logSpoken(`📖 Texte (partie ${c.aiPos.s + 1}.${c.aiPos.p + 1})`);
+        c.aiPos = c.aiPos.p + 1 < P.length ? { s: c.aiPos.s, p: c.aiPos.p + 1 } : { s: c.aiPos.s + 1, p: 0 };
+        readTick.lastEnd = Date.now() + durMs;
+      } else {
+        const txt = c.chunks[c.pos];
+        const estMs = txt.split(/\s+/).length / 150 * 60000 / rate;
+        if (remMs < Math.max(25000, estMs + 10000)) return;
+        logSpoken(txt); systemSpeak(txt, rate); c.pos++; readTick.lastEnd = Date.now();
+      }
+      saveAppData(); updateReadBtn();
+      if (readDone(c)) setTimeout(() => showToast('📖 Texte entièrement lu'), 1500);
     }
 
     // ==================== SPOTIFY : relancer la musique si elle s'arrête ====================
@@ -15715,7 +15965,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <span style="font-size:18px;font-weight:900">🎵 Spotify</span>
         <span style="font-size:13px;color:#94a3b8;line-height:1.4">Si ta musique s'arrête après une annonce du coach, l'app la relance automatiquement (compte Premium, connexion internet pendant la séance).</span>
         ${on ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(30,215,96,.12);border:1px solid rgba(30,215,96,.5);font-weight:800;color:#bbf7d0">✓ Spotify connecté</div>`
-        : `<div style="font-size:13px;color:#cbd5e1;line-height:1.5;padding:10px 12px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><b>Une seule fois :</b><br>1. Ouvre <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color:#4ade80;text-decoration:underline">developer.spotify.com/dashboard</a> et connecte-toi.<br>2. « Create app » : nom et description au choix, coche « Web API ».<br>3. Redirect URI : colle exactement<br><code style="display:block;margin:4px 0;padding:6px 8px;border-radius:8px;background:#020617;color:#7dd3fc;word-break:break-all;user-select:all">${plEsc(spRedirect())}</code><button type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('${spRedirect()}').then(()=>showToast('Copié'))" style="font-size:12px;color:#7dd3fc;font-weight:800;text-decoration:underline">Copier l'adresse</button><br>4. Enregistre, puis copie le « Client ID » ici :</div>
+        : `<div style="font-size:13px;color:#cbd5e1;line-height:1.5;padding:10px 12px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><b>Une seule fois</b> (plus simple sur ordinateur ; sur téléphone, active « Version pour ordinateur » dans le menu de Chrome) :<br>1. Ouvre <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color:#4ade80;text-decoration:underline">developer.spotify.com/dashboard</a> et connecte-toi.<br>2. « Create app » : nom et description au choix, coche « Web API ».<br>3. Redirect URI : colle exactement<br><code style="display:block;margin:4px 0;padding:6px 8px;border-radius:8px;background:#020617;color:#7dd3fc;word-break:break-all;user-select:all">${plEsc(spRedirect())}</code><button type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('${spRedirect()}').then(()=>showToast('Copié'))" style="font-size:12px;color:#7dd3fc;font-weight:800;text-decoration:underline">Copier l'adresse</button><br>4. Enregistre, puis copie le « Client ID » ici :</div>
           <input id="spClient" class="pm-in" placeholder="Client ID (32 caractères)" value="${plEsc(c.clientId || '')}" style="font-family:monospace">
           <button type="button" onclick="spLogin()" style="min-height:50px;border-radius:14px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px">Se connecter à Spotify</button>`}
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Relancer la musique si elle s'arrête<input type="checkbox" class="sw" ${c.resume ? 'checked' : ''} onchange="spCfg().resume=this.checked;saveAppData();updateSpBtn()"></label>
@@ -15830,7 +16080,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function playSoundTest() {
       const text = soundTestText(), k = aiClipKey(text);
       cancelSpeech();
-      if (aiVoiceActive() && aiClips.has(k)) { aiPlayClips([aiClips.get(k)], k); return 2200; }
+      const en = appData.audioSettings.voiceLang === 'en', phone = en ? "And this is the phone voice, used when the coach voice isn't ready." : "Et voici la voix du téléphone, utilisée quand la voix du coach n'est pas prête.";
+      if (aiVoiceActive() && aiClips.has(k)) { aiPlayClips([aiClips.get(k)], k); setTimeout(() => systemSpeak(phone), 2600); return 7500; }
       systemSpeak(text); return 1800;
     }
     async function soundTest() {
@@ -15849,7 +16100,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!m || !box) return;
       const vol = Math.round(aiGain() * 100);
       box.innerHTML = step === 'ask'
-        ? `<div class="text-[20px] font-black text-white text-center">Tu as bien entendu le coach ?</div>
+        ? `<div class="text-[20px] font-black text-white text-center">${aiVoiceActive() ? 'Tu as bien entendu les deux voix ?' : 'Tu as bien entendu le coach ?'}</div>${aiVoiceActive() ? '<div class="text-[12px] text-slate-400 text-center">La voix du coach, puis celle du téléphone (voix de secours)</div>' : ''}
            <div class="text-[13px] text-slate-400 text-center">Avec ta musique au volume habituel</div>
            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
              <button onclick="closeSoundTestModal()" aria-label="Oui" class="h-20 rounded-2xl text-5xl active:scale-95" style="background:#34d399">👍</button>
