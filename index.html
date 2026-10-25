@@ -5449,7 +5449,19 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       if (saveActiveSessionConfig()) return;
     }
 
+    function finalizeUnfinishedRun() {
+      if (!timerState.sessionStarted || timerState.finished || !(runData.track || []).length) return false;
+      try { if (timerState.isRunning) tickTimerClock(); } catch (e) { }
+      timerState.endedEarly = !getActiveSession().free && timerState.totalRemainingMs > 1000;
+      timerState.actualMs = Math.max(0, timerState.totalSessionMs - timerState.totalRemainingMs);
+      timerState.runSummary = runSummary(); timerState.runTrack = compactTrack(runData.track); timerState.runSeg = segmentStats(runData.track, timerState.stages);
+      try { stopGps(); } catch (e) { } try { if (timerState.isRunning) pauseTimer({ cancelSpeech: false }); } catch (e) { }
+      timerState.finished = true; timerState.stopped = false; timerState.stageRemainingMs = 0; timerState.totalRemainingMs = 0;
+      try { updateUIHeaderAndCircle(); setMainButton('idle'); } catch (e) { }
+      return true;
+    }
     function openValidationModal() {
+      try { finalizeUnfinishedRun(); } catch (e) { console.warn('finalize', e); }
       if (timerState.finished && getGeminiKey() && !runData.autoAnaDone) {
         runData.autoAnaDone = true;
         if (!runData.voiceFeel && !runData.coolAsked && srCtor() && appData.audioSettings.coolFeel !== false) setTimeout(() => askFeelAtEnd(), 500);
@@ -11372,28 +11384,49 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     // Séance sans mesures de l'app : courbe de cardio de la capture étalée sur la durée de la séance
     function synthTrackFromShot(h, hs) {
-      const D = +h.durationMin || +hs.duree_min || hs.courbe[hs.courbe.length - 1][0], km = histKm(h) || +h.km || 0;
+      const sp = h.spShot || {}, es = h.eleShot || {};
+      const D = sp.dur || +h.durationMin || +hs.duree_min || hs.courbe[hs.courbe.length - 1][0], km = sp.km || histKm(h) || +h.km || 0;
       if (!(D > 0)) return [];
-      const n = Math.floor(D * 60 / 5), v = km > 0 ? Math.round(km / (D / 60) * 10) / 10 : null, cD = +hs.duree_min || hs.courbe[hs.courbe.length - 1][0] || D, k = cD / D;
-      const cv = hs.courbe, at = m => { m *= k; if (m <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (m <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return Math.round(a[1] + (b[1] - a[1]) * (m - a[0]) / Math.max(1e-6, b[0] - a[0])); } return cv[cv.length - 1][1]; };
-      const out = []; for (let i = 0; i < n; i++) out.push([i * 5, at(i * 5 / 60), v, 0, null, km > 0 ? Math.round(km * i / n * 1000) / 1000 : null]);
+      const interp = (cv, x) => { if (!cv || !cv.length) return null; if (x <= cv[0][0]) return cv[0][1]; for (let i = 1; i < cv.length; i++) if (x <= cv[i][0]) { const a = cv[i - 1], b = cv[i]; return a[1] + (b[1] - a[1]) * (x - a[0]) / Math.max(1e-6, b[0] - a[0]); } return cv[cv.length - 1][1]; };
+      const span = cv => cv && cv.length ? cv[cv.length - 1][0] || D : D;
+      const n = Math.floor(D * 60 / 5), vAvg = km > 0 ? km / (D / 60) : null;
+      const kHr = (+hs.duree_min || span(hs.courbe)) / D, kSp = sp.courbe ? span(sp.courbe) / D : 1;
+      // vitesse : courbe de la capture, recalée pour que la distance totale soit juste
+      let vs = []; for (let i = 0; i < n; i++) { const m = i * 5 / 60; vs.push(sp.courbe ? interp(sp.courbe, m * kSp) : vAvg); }
+      if (sp.courbe && vAvg) { const mean = vs.reduce((a, b) => a + (b || 0), 0) / Math.max(1, n); if (mean > 0) vs = vs.map(v => v * vAvg / mean); }
+      const out = []; let cum = 0;
+      for (let i = 0; i < n; i++) {
+        const m = i * 5 / 60, v = vs[i] != null ? Math.round(vs[i] * 10) / 10 : null;
+        const ele = es.pts ? (es.unit === 'min' ? interp(es.pts, m * span(es.pts) / D) : interp(es.pts, cum * (es.pts[es.pts.length - 1][0] || km) / Math.max(1e-6, km))) : null;
+        out.push([i * 5, Math.round(interp(hs.courbe, m * kHr)), v, 0, ele != null ? Math.round(ele) : null, km > 0 ? Math.round(cum * 1000) / 1000 : null]);
+        if (v) cum += v * 5 / 3600;
+      }
       return out;
     }
     // Lecture du cardio sur les captures (appel dédié, plus fiable que pendant l'analyse)
     async function extractHrFromShots(shots) {
       if (!shots || !shots.length || !getGeminiKey()) return null;
-      const parts = shots.slice(0, 4).map(d => ({ inline_data: { mime_type: 'image/jpeg', data: String(d).split(',')[1] } }));
+      const parts = shots.slice(0, 6).map(d => ({ inline_data: { mime_type: 'image/jpeg', data: String(d).split(',')[1] } }));
       parts.push({ text: `Ces captures viennent d'une montre ou d'une appli de course. Relève le cardio (fréquence cardiaque) de la séance, tel qu'il apparaît, sans rien inventer.
-Relève aussi le profil d'altitude si une capture le montre (graphique altitude / dénivelé), tel qu'il apparaît.
+Relève aussi le profil d'altitude si une capture le montre (graphique altitude / dénivelé), tel qu'il apparaît, en précisant si l'axe horizontal est le temps ou la distance.
+Relève aussi l'allure ou la vitesse si une capture la montre (graphique d'allure, ou valeurs moyennes), convertie en km/h (allure 6:00/km = 10 km/h), ainsi que la durée et la distance totales si elles sont affichées.
 Réponds uniquement en JSON : {"fc_moy":0,"fc_max":0,"zones_min":[Z1,Z2,Z3,Z4,Z5 en minutes si l'écran les affiche, sinon []],"duree_min":durée totale couverte par le graphique du cardio en minutes (0 si pas de graphique),"courbe":[[minute depuis le départ, FC lue sur le graphique], … environ un point par minute, [] si pas de graphique],
-"altitude":{"dplus":D+ en mètres affiché (0 si absent),"dminus":D− en mètres (0 si absent),"distance_km":distance totale du graphique,"profil":[[km depuis le départ, altitude en m], … environ un point tous les 200 m, [] si pas de graphique d'altitude]}}
+"altitude":{"dplus":D+ en mètres affiché (0 si absent),"dminus":D− en mètres (0 si absent),"distance_km":distance totale (0 si inconnue),"profil_x":"min si l'axe horizontal est le temps, km si c'est la distance","profil":[[minute ou km depuis le départ, altitude en m], … environ 40 points, [] si pas de graphique d'altitude]},
+"vitesse":{"moy_kmh":vitesse moyenne en km/h (0 si absente),"distance_km":distance totale affichée (0 si absente),"duree_min":durée totale de course affichée en minutes (0 si absente),"courbe":[[minute depuis le départ, vitesse en km/h], … environ un point par minute, lissé, [] si pas de graphique d'allure]}}
 Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'altitude, mets "altitude":null.` });
-      try { const txt = await geminiText(parts, { tier: 'full', json: true }); const j = parseJsonLoose(txt); const hs = hrShotFrom(JSON.stringify({ cardio_capture: j })); extractHrFromShots.lastEle = eleShotFrom(j && j.altitude); return hs; } catch (e) { console.warn('hrShot', e); return null; }
+      try { const txt = await geminiText(parts, { tier: 'full', json: true }); const j = parseJsonLoose(txt); const hs = hrShotFrom(JSON.stringify({ cardio_capture: j })); extractHrFromShots.lastEle = eleShotFrom(j && j.altitude); extractHrFromShots.lastSp = spShotFrom(j && j.vitesse); return hs; } catch (e) { console.warn('hrShot', e); return null; }
+    }
+    function spShotFrom(v) {
+      if (!v || typeof v !== 'object') return null;
+      const cv = Array.isArray(v.courbe) ? v.courbe.filter(q => Array.isArray(q) && isFinite(+q[0]) && +q[1] > 2 && +q[1] < 30).map(q => [+q[0], Math.round(+q[1] * 10) / 10]).sort((a, b) => a[0] - b[0]) : [];
+      const o = { moy: +v.moy_kmh > 2 ? +v.moy_kmh : null, km: +v.distance_km > 0 ? +v.distance_km : null, dur: +v.duree_min > 0 ? +v.duree_min : null, courbe: cv.length >= 5 ? cv : null };
+      return o.moy || o.km || o.dur || o.courbe ? o : null;
     }
     function eleShotFrom(a) {
       if (!a || typeof a !== 'object') return null;
       const pr = Array.isArray(a.profil) ? a.profil.filter(q => Array.isArray(q) && isFinite(+q[0]) && isFinite(+q[1])).map(q => [+q[0], +q[1]]).sort((x, y) => x[0] - y[0]) : [];
-      const o = { dplus: Math.round(+a.dplus) || 0, dminus: Math.round(+a.dminus) || 0, km: +a.distance_km || (pr.length ? pr[pr.length - 1][0] : 0), pts: pr.length >= 4 ? pr : null };
+      const unit = a.profil_x === 'min' ? 'min' : 'km';
+      const o = { dplus: Math.round(+a.dplus) || 0, dminus: Math.round(+a.dminus) || 0, km: +a.distance_km || (unit === 'km' && pr.length ? pr[pr.length - 1][0] : 0), pts: pr.length >= 4 ? pr : null, unit };
       return o.pts || o.dplus ? o : null;
     }
     // Applique le profil lu sur la capture : altitudes de la séance, et parcours associé (mes parcours + prochaines séances)
@@ -11402,6 +11435,12 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       if (h.type !== 'exterieur') { if (es.dplus) { h.summary = Object.assign({}, h.summary || {}, { dplus: es.dplus, dminus: es.dminus }); } return ''; }
       const out = [];
       const at = (pts, k) => { if (k <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (k <= pts[i][0]) { const a = pts[i - 1], b = pts[i]; return a[1] + (b[1] - a[1]) * (k - a[0]) / Math.max(1e-6, b[0] - a[0]); } return pts[pts.length - 1][1]; };
+      if (es.pts && es.unit === 'min') {
+        if (Array.isArray(h.track) && h.track.length) { const T = h.track[h.track.length - 1][0] / 60, E = es.pts[es.pts.length - 1][0] || T, f = T > 0 ? E / T : 1; h.track.forEach(r => { r[4] = Math.round(at(es.pts, r[0] / 60 * f) * 10) / 10; }); out.push('altitudes de la séance'); }
+        h.summary = Object.assign({}, h.summary || {}); if (es.dplus) { h.summary.dplus = es.dplus; h.summary.dminus = es.dminus; }
+        h.eleShot = { dplus: es.dplus, dminus: es.dminus, at: todayISO(), pts: es.pts, unit: 'min' };
+        return out.join(' et ');
+      }
       if (es.pts && Array.isArray(h.track) && h.track.length) {
         let T = h.track[h.track.length - 1][5] || 0;
         if (!(T > 0)) { const tot = +h.km || es.km || 0, n = h.track.length; h.track.forEach((r, i) => { r[5] = Math.round(tot * (i + 1) / n * 1000) / 1000; }); T = tot; }
@@ -11435,19 +11474,28 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
           else if (nS) out.push('parcours des prochaines séances');
         }
       }
-      h.eleShot = { dplus: es.dplus, dminus: es.dminus, at: todayISO() };
+      h.eleShot = { dplus: es.dplus, dminus: es.dminus, at: todayISO(), pts: es.pts || undefined, unit: es.pts ? 'km' : undefined, km: es.km || undefined };
       return out.join(' et ');
     }
     async function attachHrShot(h, shots) {
       if (!h || !shots || !shots.length) return;
       showToast('📷 Lecture de ta capture (cardio, altitude)… les résultats se mettront à jour dans quelques secondes');
-      extractHrFromShots.lastEle = null;
+      extractHrFromShots.lastEle = null; extractHrFromShots.lastSp = null;
       const hs = await extractHrFromShots(shots);
+      const sp = extractHrFromShots.lastSp;
+      if (sp) {
+        h.spShot = sp;
+        if (!Array.isArray(h.track) || !h.track.length) {     // pas de mesures de l'app : la montre fait foi pour la durée et la distance
+          const dur = sp.dur || (hs && hs.duree_min) || null, km = sp.km || null;
+          if (dur) h.durationMin = Math.round(dur * 10) / 10;
+          if (km) { h.km = km; h.summary = Object.assign({}, h.summary || {}, { distKm: km }); }
+        }
+      }
       const es = extractHrFromShots.lastEle; let eleMsg = '';
       if (es) { try { eleMsg = applyEleShot(h, es); } catch (e) { console.warn('eleShot', e); } }
       if (hs) h.hrShot = hs; else if (!h.hrShot) { const hs0 = hrShotFrom(h.analysis); if (hs0) h.hrShot = hs0; }
-      if (hs || eleMsg || es) { saveAppData(); try { const open = !document.getElementById('historyModal').classList.contains('hidden'); updateHistoryTable(); if (open) { const d = document.getElementById('detail_' + h.id); if (d) d.classList.remove('hidden'); } } catch (e) { } try { renderHome(); } catch (e) { } }
-      const msgs = [hs ? `❤️ cardio${hs.fc_moy ? ` (moyenne ${hs.fc_moy})` : ''}` : '', eleMsg ? `⛰️ profil corrigé : ${eleMsg}` : es && es.dplus ? `⛰️ D+ ${es.dplus} m` : ''].filter(Boolean);
+      if (hs || eleMsg || es || sp) { saveAppData(); try { const open = !document.getElementById('historyModal').classList.contains('hidden'); updateHistoryTable(); if (open) { const d = document.getElementById('detail_' + h.id); if (d) d.classList.remove('hidden'); } } catch (e) { } try { renderHome(); } catch (e) { } }
+      const msgs = [hs ? `❤️ cardio${hs.fc_moy ? ` (moyenne ${hs.fc_moy})` : ''}` : '', sp ? `⚡ vitesse${sp.moy ? ` (${String(sp.moy).replace('.', ',')} km/h)` : ''}${sp.dur ? ` · ${Math.floor(sp.dur)}'${String(Math.round((sp.dur % 1) * 60)).padStart(2, '0')}` : ''}${sp.km ? ` · ${String(sp.km).replace('.', ',')} km` : ''}` : '', eleMsg ? `⛰️ profil corrigé : ${eleMsg}` : es && es.dplus ? `⛰️ D+ ${es.dplus} m` : ''].filter(Boolean);
       showToast(msgs.length ? 'Capture lue : ' + msgs.join(' · ') : 'Rien de lisible sur la capture (cardio ou altitude)');
     }
     function analysisFormatPrompt() {
@@ -12752,7 +12800,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           ${item.note ? `<div style="font-size:14px;line-height:1.4;color:#e2e8f0;padding:9px 12px;${card}"><span style="font-size:11px;font-weight:800;color:#fbbf24;letter-spacing:.5px">📝 MA NOTE</span><br>${plEsc(item.note)}</div>` : ''}</div>`;
       const hs = hh.hrShot || item.hrShot || null;
       let synth = false;
-      if ((!item.track || !item.track.length) && hs && hs.courbe && hs.courbe.length > 3) { item = Object.assign({}, item, { track: synthTrackFromShot(hh, hs) }); synth = true; }
+      if ((!item.track || !item.track.length) && hs && hs.courbe && hs.courbe.length > 3 && hh.type !== 'tapis' || ((!item.track || !item.track.length) && hs && hs.courbe && hs.courbe.length > 3)) { item = Object.assign({}, item, { track: synthTrackFromShot(hh, hs) }); synth = true; }
       const trk = trackWithShot(item.track, hs), fromShot = trk !== item.track || synth;
       const P = trk && trk.length ? rcPrep(trk, item.seg, { pente }) : null;
       let stats = '', zonesB = '', segTab = '', graphTab = '';
@@ -12814,11 +12862,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         stats = `${ring2 ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span><span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span><span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span></div></div>` : ''}
           <div style="display:flex;align-items:stretch;gap:8px">${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}${tile('Cardio moy.', bHr || '–', '#fda4af')}</div>
           ${(() => { let dp = null, dm = null;
-            if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
+            if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if ((synth || hh.eleShot) && hh.summary && hh.summary.dplus) { dp = Math.round(hh.summary.dplus); dm = Math.round(hh.summary.dminus || 0); } else if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
             else { dp = Math.round(km * 1000 * (pente || 0) / 100); dm = 0; }
             const g = dp != null && km > 0 ? dp / (km * 1000) * 100 : null, sm = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;${card}"><span style="font-size:16px;font-weight:800;color:${c}">${v}</span><span style="font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
             return `<div style="display:flex;gap:8px">${sm('D+', dp != null ? dp + ' m' : '–', '#fb923c')}${sm('D−', dm != null ? dm + ' m' : '–', '#34d399')}${sm('Pente moy. (D+)', g != null ? (Math.round(g * 10) / 10).toFixed(1).replace('.', ',') + ' %' : '–', '#e2e8f0')}</div>`; })()}
-          ${fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">❤️ Cardio lu sur la capture de ta montre (capteur décroché pendant la séance).</span>` : ''}
+          ${synth ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">📷 Séance reconstruite à partir des captures de ta montre (pas de mesures de l'app)${hh.spShot && hh.spShot.courbe ? '' : ' : ajoute la capture du graphique d\'allure pour avoir la vitesse réelle'}.</span>` : fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">❤️ Cardio lu sur la capture de ta montre (capteur décroché pendant la séance).</span>` : ''}
           ${!item.live && item.id ? `<button type="button" onclick="openEvo(${JSON.stringify(kind && kind.label || '').replace(/"/g, '&quot;')})" style="min-height:42px;border-radius:12px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd;font-weight:800;font-size:13px">📈 Comparer avec mes séances du même type</button>` : ''}
           ${fracMode ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes des ${reps.length} répétitions rapides (sans récup, échauffement ni retour au calme).</span>` : body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
         const hrRows = R.filter(r => r.hr);
@@ -15485,7 +15533,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       try {
         const st = {
           v: 1, savedAt: Date.now(), sessId: getActiveSession().id, free: freeSession,
-          isRunning: timerState.isRunning, finished: timerState.finished, endedEarly: !!timerState.endedEarly,
+          isRunning: timerState.isRunning, finished: timerState.finished, endedEarly: !!timerState.endedEarly, stopped: !!timerState.stopped,
           stages: timerState.stages, idx: timerState.currentStageIndex, stageStartTime: timerState.stageStartTime,
           stageRemainingMs: timerState.stageRemainingMs, totalSessionMs: timerState.totalSessionMs,
           extendedMin: timerState.extendedMin || 0, extOfferDone: !!timerState.extOfferDone,
@@ -15518,6 +15566,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       timerState.sessionStarted = true;
       timerState.finished = !!st.finished;
       timerState.endedEarly = !!st.endedEarly;
+      timerState.stopped = !!st.stopped;
       timerState.extendedMin = st.extendedMin || 0;
       timerState.extOfferDone = !!st.extOfferDone;
       timerState.sessionHalfDone = !!st.sessionHalfDone;
@@ -15556,7 +15605,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
         document.getElementById('resumeOverlay').classList.remove('hidden');
       } else {
         recomputeTotalRemaining();
-        setMainButton('paused');
+        setMainButton(timerState.stopped ? undefined : 'paused');
         updateUIHeaderAndCircle();
       }
       showToast("✅ Séance en cours reprise");
