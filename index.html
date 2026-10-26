@@ -738,7 +738,7 @@
         <div class="grid grid-cols-3 gap-1 mb-3.5" style="padding:0 4px 4px;border-radius:0 0 16px 16px;background:#0f172a;border:1px solid #1e293b;border-top:0">
           <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
           <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
-          <button onclick="setHistoryFilter('missed')" id="fltMiss" class="pl-tab">Non faites · <span id="cntMiss">0</span></button>
+          <button onclick="setHistoryFilter('missed')" id="fltMiss" class="pl-tab">Manquées · <span id="cntMiss">0</span></button>
         </div>
         <div id="plKindRow" style="display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 6px"></div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
@@ -1004,11 +1004,10 @@
             <button type="button" onclick="arStep('arSpeed',0.5)" class="ar-pm">+</button></div>
           <div style="font-size:12px;color:#94a3b8;margin-top:4px">Le temps de chaque parcours est calculé avec son profil (ta vitesse ralentit en montée, comme la VAP).</div></div>
         <div><div class="pm-lab">Relief (pente moyenne du D+)</div><div id="arDiff" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px"></div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><div class="pm-lab">Pente max (%)</div><input id="arPmax" type="number" min="2" max="40" step="1" placeholder="libre" inputmode="numeric" class="pm-in c" style="height:44px"></div>
-          <div><div class="pm-lab">Pente moy. D+ max (%)</div><input id="arGmax" type="number" min="0" max="15" step="0.5" placeholder="libre" inputmode="decimal" class="pm-in c" style="height:44px"></div>
-        </div>
-        <div><div class="pm-lab">Type de chemins</div><select id="arMode" class="pm-in" style="height:44px" onchange="routeModeSet(this.value)"></select></div>
+        <div><div class="pm-lab">Forme du parcours</div><div id="arShapes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div></div>
+        <div><div class="pm-lab">Voies acceptées</div><div id="arWays" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div></div>
+        <div><div class="pm-lab">Nombre de propositions</div><div id="arCount" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div></div>
+        <div id="arCrit" style="font-size:12.5px;color:#94a3b8;line-height:1.5;padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"></div>
         <div><div class="pm-lab">Départ</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
             <button type="button" onclick="arUsePos()" class="ar-btn">📍 Ma position</button>
@@ -6149,7 +6148,7 @@ Donne 2 ou 3 axes de travail.`;
       const where = s.type === 'exterieur' ? 'extérieur' : `tapis ${String(s.pente || 0).replace('.', ',')} %`;
       const stats = `${Math.round(item.duration)} min · ${dist} km · ${where}`;
       const past = item.iso && item.iso < todayISO();
-      const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · PASSÉE' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
+      const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · <span style="color:#fb7185">MANQUÉE</span>' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
       const body = `<div class="flex-1 flex flex-col gap-1 min-w-0">${tag}<span class="pl-clamp" style="${isToday ? '-webkit-line-clamp:3;' : ''}font-size:${isToday ? 16 : 15}px;font-weight:800;line-height:1.25">${plEsc(item.details)}</span><span style="font-size:12px;color:#94a3b8;font-weight:600">${stats}</span></div>`;
       const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`);
       const actions = `
@@ -6308,7 +6307,7 @@ Donne 2 ou 3 axes de travail.`;
         list.forEach(i => {
           const iso = i.iso || '';
           let g;
-          if (iso && iso < t) g = 'Séances passées non faites';
+          if (iso && iso < t) g = 'Séances manquées';
           else if (iso === t) g = "Aujourd'hui";
           else if (iso && iso < nextW) g = 'Cette semaine';
           else if (iso && iso < after) g = 'Semaine prochaine';
@@ -6323,12 +6322,12 @@ Donne 2 ou 3 axes de travail.`;
         groupPlanned(upcoming);
         if (upcoming.length) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
       } else if (currentFilter === 'missed') {
-        if (!missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance passée non faite. 👏</div>');
-        else { out.push('<div class="text-[12px] px-1" style="color:#94a3b8">Séances prévues à une date passée et pas faites. Touche ✏️ pour la refaire un autre jour, ou 🗑 pour la retirer.</div>'); missedList(missed); }
+        if (!missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance manquée. 👏</div>');
+        else { out.push('<div class="text-[12px] px-1" style="color:#94a3b8">Séances manquées (prévues à une date passée et pas faites). Touche ✏️ pour la refaire un autre jour, ou 🗑 pour la retirer.</div>'); missedList(missed); }
       } else if (currentFilter === 'all') {
         if (!upcoming.length && !done.length && !missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance.</div>');
         if (upcoming.length) { out.push('<div class="pl-sec" style="color:#7dd3fc">📅 À venir</div>'); groupPlanned(upcoming); }
-        if (missed.length) { out.push('<div class="pl-sec" style="color:#fda4af;margin-top:10px">⏳ Passées non faites</div>'); missedList(missed); }
+        if (missed.length) { out.push('<div class="pl-sec" style="color:#fda4af;margin-top:10px">⏳ Manquées</div>'); missedList(missed); }
         if (done.length) out.push('<div class="pl-sec" style="color:#6ee7b7;margin-top:10px">✅ Faites</div>');
         let cur = '';
         done.forEach(i => {
@@ -10462,7 +10461,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       { const dp = re.eles ? reGain(re.eles) : null, mg = eleMaxGrade(re.eles);
         const d = km > 0.2 && dp != null ? routeDifficulty(km, dp, mg, re.surf) : null;
         document.getElementById('reDiff').innerHTML = d ? diffChipHtml(d, true) : '';
-        document.getElementById('reSurf').innerHTML = km > 0.2 ? (re.surf ? surfBarHtml(re.surf) : re.surfFail ? `<span style="font-size:12px;color:#94a3b8">Revêtement indisponible (serveur OpenStreetMap saturé) · <button type="button" onclick="re.surfSig='';reFetchSurf()" style="color:#6ee7b7;font-weight:800;text-decoration:underline">Réessayer</button></span>` : `<span style="font-size:12px;color:#64748b">Revêtement : analyse en cours…</span>`) : ''; }
+        document.getElementById('reSurf').innerHTML = km > 0.2 ? (re.surf ? surfBarHtml(re.surf) + (re.surf.__roads || re.roads ? `<div style="font-size:11px;font-weight:800;color:#64748b;margin-top:4px">TYPES DE VOIES</div>${roadBarHtml(re.surf.__roads || re.roads)}` : '') : re.surfFail ? `<span style="font-size:12px;color:#94a3b8">Revêtement indisponible (serveur OpenStreetMap saturé) · <button type="button" onclick="re.surfSig='';reFetchSurf()" style="color:#6ee7b7;font-weight:800;text-decoration:underline">Réessayer</button></span>` : `<span style="font-size:12px;color:#64748b">Revêtement : analyse en cours…</span>`) : ''; }
 
 
     }
@@ -10508,9 +10507,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // ===== Outils parcours : itinéraire multi-points, altitudes, pente max, revêtement, difficulté
     function geoOffset(c, distM, brg) { const dLat = distM / 111320, dLon = distM / (111320 * Math.cos(c.lat * Math.PI / 180)); return { lat: c.lat + dLat * Math.cos(brg), lon: c.lon + dLon * Math.sin(brg) }; }
     function bearingDeg(a, b) { const y = Math.sin((b[1] - a[1]) * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180), x = Math.cos(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) - Math.sin(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
-    async function osrmMulti(pts) {
+    async function osrmMulti(pts, prof) {
       try {
-        const url = `${osrmUrl()}${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join(';')}?overview=full&geometries=geojson`;
+        const url = `${osrmUrl(prof)}${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join(';')}?overview=full&geometries=geojson`;
         const r = await Promise.race([fetch(url), sleep(12000).then(() => { throw new Error('délai'); })]);
         const j = await r.json(), c = j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates;
         if (c && c.length >= 2) return c.map(p => [p[1], p[0]]);
@@ -10611,32 +10610,66 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (h === 'path' || h === 'bridleway') return 'terre';
       return 'inconnu';
     }
-    async function surfaceMix(coords) {
-      const s = reSamples(coords, 90); if (s.length < 2) return null;
-      const q = `[out:json][timeout:25];way(around:18,${s.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(',')})[highway];out tags geom;`;
-      let ways = null;
+    const ROAD_CLS = {
+      autoroute: ['🚫', 'Autoroute', '#dc2626'], rapide: ['⚠️', 'Voie rapide', '#f97316'], nationale: ['🛣️', 'Nationale', '#f59e0b'],
+      departementale: ['🛣️', 'Départementale', '#eab308'], petite: ['🏘️', 'Petite route, rue', '#94a3b8'], pieton: ['🚶', 'Voie piétonne, piste cyclable', '#22d3ee'],
+      piste: ['🚜', 'Chemin, piste', '#a16207'], sentier: ['🥾', 'Sentier', '#84cc16'], inconnu: ['❔', 'Non renseigné', '#475569']
+    };
+    function roadClass(t) {
+      const h = String(t.highway || ''), ref = String(t.ref || '').toUpperCase().trim();
+      if (/^motorway/.test(h)) return 'autoroute';
+      if (/^trunk/.test(h)) return /^A\s?\d/.test(ref) ? 'autoroute' : 'rapide';
+      if (/^(primary|secondary|tertiary)/.test(h)) { if (/^N\s?\d/.test(ref)) return 'nationale'; if (/^(D|M|RD)\s?\d/.test(ref)) return 'departementale'; return /^primary/.test(h) ? 'nationale' : 'departementale'; }
+      if (/^(unclassified|residential|living_street|service|road)/.test(h)) return 'petite';
+      if (/^(pedestrian|footway|steps|cycleway|corridor)/.test(h)) return 'pieton';
+      if (h === 'track') return 'piste';
+      if (h === 'path' || h === 'bridleway') return 'sentier';
+      return 'inconnu';
+    }
+    async function overpassWays(samples) {
+      const q = `[out:json][timeout:40];way(around:18,${samples.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(',')})[highway];out tags geom;`;
       for (const srv of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']) {
         try {
-          const r = await Promise.race([fetch(srv, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }), sleep(20000).then(() => { throw new Error('délai'); })]);
+          const r = await Promise.race([fetch(srv, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }), sleep(30000).then(() => { throw new Error('délai'); })]);
           if (!r.ok) continue;
           const j = JSON.parse(await r.text());
-          ways = (j.elements || []).filter(w => w.geometry && w.geometry.length > 1 && w.tags); break;
+          return (j.elements || []).filter(w => w.geometry && w.geometry.length > 1 && w.tags);
         } catch (e) { }
       }
-      if (!ways) return null;
+      return null;
+    }
+    // Revêtement ET type de voie le long d'un tracé (part de la distance en %)
+    function waysMix(s, ways) {
+      if (!ways || s.length < 2) return null;
       const kx = Math.cos(s[0].lat * Math.PI / 180) * 111320, ky = 111320;
       const segD = (p, a, b) => { const ax = a.lon * kx, ay = a.lat * ky, bx = b.lon * kx, by = b.lat * ky, px = p.lon * kx, py = p.lat * ky, dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
-      const acc = {}; let tot = 0;
+      const accS = {}, accR = {}; let tot = 0;
       s.forEach((p, i) => {
         const len = i < s.length - 1 ? s[i + 1].d - p.d : 0; if (len <= 0) return;
         let best = null, bd = 30;
         ways.forEach(w => { for (let k = 1; k < w.geometry.length; k++) { const d = segD(p, w.geometry[k - 1], w.geometry[k]); if (d < bd) { bd = d; best = w; } } });
-        const c = best ? surfClass(best.tags) : 'inconnu';
-        acc[c] = (acc[c] || 0) + len; tot += len;
+        const cs = best ? surfClass(best.tags) : 'inconnu', cr = best ? roadClass(best.tags) : 'inconnu';
+        accS[cs] = (accS[cs] || 0) + len; accR[cr] = (accR[cr] || 0) + len; tot += len;
       });
       if (!tot) return null;
-      const out = {}; Object.keys(acc).forEach(k => out[k] = Math.round(acc[k] / tot * 100));
-      return out;
+      const pc = acc => { const o = {}; Object.keys(acc).forEach(k => o[k] = Math.round(acc[k] / tot * 100)); return o; };
+      const surf = pc(accS); Object.defineProperty(surf, '__roads', { value: pc(accR), enumerable: false, writable: true });
+      return surf;
+    }
+    async function surfaceMix(coords) {
+      const s = reSamples(coords, 90); if (s.length < 2) return null;
+      return waysMix(s, await overpassWays(s));
+    }
+    // Plusieurs tracés en une seule requête OpenStreetMap
+    async function surfaceMixMulti(list) {
+      const S = list.map(c => reSamples(c, 45)), ways = await overpassWays([].concat(...S));
+      return S.map(s => waysMix(s, ways));
+    }
+    function roadBarHtml(rd) {
+      if (!rd) return '';
+      const ks = Object.keys(ROAD_CLS).filter(k => rd[k] > 0); if (!ks.length) return '';
+      return `<div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#1e293b">${ks.map(k => `<div style="width:${rd[k]}%;background:${ROAD_CLS[k][2]}"></div>`).join('')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;font-weight:700;color:#cbd5e1">${ks.sort((a, b) => rd[b] - rd[a]).map(k => `<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${ROAD_CLS[k][2]};margin-right:4px"></span>${ROAD_CLS[k][1]} ${rd[k]} %</span>`).join('')}</div></div>`;
     }
     function surfBarHtml(sf) {
       if (!sf) return '';
@@ -10774,7 +10807,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // ===== Création automatique de parcours
     let ar = null, arBig = null;
     function openAutoRoute() {
-      const prev = ar; ar = { diff: prev ? prev.diff : -1, goal: prev ? prev.goal : 'km', start: prev ? prev.start : null, end: null, cands: [] };
+      const prev = ar; ar = { diff: prev ? prev.diff : -1, goal: prev ? prev.goal : 'km', start: prev ? prev.start : null, end: null, cands: [], shapes: prev ? prev.shapes : { loop: true, ab: true }, ways: prev && prev.ways && 'big' in prev.ways ? prev.ways : { road: true, dep: true, big: false, track: true, path: true }, n: prev ? prev.n : 5 };
       if (!ar.start && runData && runData.gps && runData.gps.lat) ar.start = { lat: runData.gps.lat, lon: runData.gps.lon, label: 'ma position' };
       document.getElementById('autoRouteModal').classList.remove('hidden');
       const sp = document.getElementById('arSpeed'); if (!sp.value) sp.value = String(Math.round(runnerEF() * 2) / 2);
@@ -10826,6 +10859,11 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       document.getElementById('arKmRow').classList.toggle('hidden', ar.goal !== 'km'); document.getElementById('arMinRow').classList.toggle('hidden', ar.goal !== 'time');
       const rng = ['< 1 %', '1 à 2,5 %', '2,5 à 4 %', '> 4 %'];
       document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe', '']].concat(DIFF_LV.map((d, i) => [i, d[0], capFirst(DIFF_TERRAIN[i]), rng[i]])).map(([v, ic, t, r]) => segBtn(ar.diff === v, `ar.diff=${v};arRender()`, `${ic}<br><span style="font-size:11px">${t}</span>${r ? `<br><span style="font-size:10px;opacity:.75">${r}</span>` : ''}`)).join('');
+      const chk = (on, js, html) => segBtn(on, js, `${on ? '✓' : '✕'} ${html}`);
+      document.getElementById('arShapes').innerHTML = chk(ar.shapes.loop, "ar.shapes.loop=!ar.shapes.loop;if(!ar.shapes.loop&&!ar.shapes.ab)ar.shapes.ab=true;arRender()", '🔁 Boucle') + chk(ar.shapes.ab, "ar.shapes.ab=!ar.shapes.ab;if(!ar.shapes.loop&&!ar.shapes.ab)ar.shapes.loop=true;arRender()", '↔️ Aller-retour');
+      document.getElementById('arWays').innerHTML = [['road', '🏘️ Petites routes, rues'], ['dep', '🛣️ Départe­mentales'], ['big', '⚠️ Nationales, voies rapides'], ['track', '🚜 Chemins, pistes'], ['path', '🥾 Sentiers']].map(([k, t]) => chk(ar.ways[k], `ar.ways.${k}=!ar.ways.${k};if(!ar.ways.road&&!ar.ways.dep&&!ar.ways.big&&!ar.ways.track&&!ar.ways.path)ar.ways.road=true;arRender()`, t)).join('');
+      document.getElementById('arCount').innerHTML = [3, 5, 6].map(n => segBtn(ar.n === n, `ar.n=${n};arRender()`, `${n}`)).join('');
+      document.getElementById('arCrit').innerHTML = `<b style="color:#e2e8f0">Critères du classement</b>, du plus important au moins important :<br>1. ${ar.goal === 'time' ? 'durée la plus proche de ta durée max, sans la dépasser (calculée avec le relief)' : 'distance la plus proche de celle demandée'}<br>2. relief : ${ar.diff >= 0 ? `${DIFF_TERRAIN[ar.diff]} (pente moyenne du D+ ${['< 1 %', '1 à 2,5 %', '2,5 à 4 %', '> 4 %'][ar.diff]})` : 'peu importe'}<br>3. ${ar.shapes.loop ? 'boucles : peu de portions empruntées deux fois' : ''}${ar.shapes.loop && ar.shapes.ab ? ' · ' : ''}${ar.shapes.ab ? 'allers-retours : même chemin à l\'aller et au retour' : ''}<br>4. voies : ${[ar.ways.road && 'petites routes', ar.ways.dep && 'départementales', ar.ways.big && 'nationales et voies rapides', ar.ways.track && 'chemins et pistes', ar.ways.path && 'sentiers'].filter(Boolean).join(', ')}${['road', 'dep', 'big', 'track', 'path'].some(k => !ar.ways[k]) ? ' ; part de chaque type vérifiée sur la carte OpenStreetMap (autoroutes toujours exclues)' : ''}<br>5. propositions différentes les unes des autres`;
       const on = document.getElementById('arEndOn').checked; document.getElementById('arEndBox').classList.toggle('hidden', !on);
       if (!on) ar.end = null;
       const fmt = p => p ? `✓ ${p.label || `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`}` : '';
@@ -10945,131 +10983,122 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
       return c;
     }
+    // Coupe un tracé à une distance donnée (km)
+    function cutAtKm(coords, k) {
+      const out = [coords[0]]; let cum = 0;
+      for (let i = 1; i < coords.length; i++) {
+        const d = haversineM({ lat: coords[i - 1][0], lon: coords[i - 1][1] }, { lat: coords[i][0], lon: coords[i][1] }) / 1000;
+        if (cum + d >= k) { const f = d ? (k - cum) / d : 0; out.push([coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * f, coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * f]); return out; }
+        cum += d; out.push(coords[i]);
+      }
+      return out;
+    }
+    async function runPool(tasks, n) { const res = []; let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < tasks.length) { const k = i++; try { res[k] = await tasks[k](); } catch (e) { res[k] = null; } } })); return res; }
     async function arGenerate() {
       if (!ar) return;
       if (!ar.start) { reStatusAr('Choisis d\'abord un départ', true); return; }
       const num = id => parseFloat(String(document.getElementById(id).value).replace(',', '.'));
       const v = Math.max(4, num('arSpeed') || runnerEF()), timeMode = ar.goal === 'time';
       const goalMin = timeMode ? Math.max(10, num('arMin') || 60) : null;
-      const km = timeMode ? goalMin * v / 60 * 0.93 : Math.max(1, num('arKm') || 8);
-      const pmax = num('arPmax') || null, gmax = num('arGmax') || null;
-      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null;
-      // écart (en points de %) entre la pente moyenne du D+ et ce que veut le coureur
-      const terrainGap = avg => { if (avg == null) return 0; let g = 0; if (band) g += avg < band[0] ? band[0] - avg : avg > band[1] ? avg - band[1] : 0; if (gmax && avg > gmax) g += avg - gmax; return g; };
+      let km = timeMode ? goalMin * v / 60 * 0.95 : Math.max(1, num('arKm') || 8);
+      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null, N = ar.n || 5;
+      const W = ar.ways, prof = !W.path && !W.track ? (W.big ? 'car' : 'bike') : !W.path ? 'bike' : 'foot';
+      const terrainGap = avg => { if (avg == null || !band) return 0; return avg < band[0] ? band[0] - avg : avg > band[1] ? avg - band[1] : 0; };
       const end = document.getElementById('arEndOn').checked ? ar.end : null;
       if (document.getElementById('arEndOn').checked && !end) { reStatusAr('Choisis l\'arrivée (adresse ou carte), ou décoche l\'option', true); return; }
       const btn = document.getElementById('arGo'); btn.disabled = true; btn.style.opacity = .6;
       const list = document.getElementById('arList'); list.innerHTML = ''; arCmpClear();
-      const S = ar.start, base = Math.random() * 2 * Math.PI, pool = [];
-      const loopWps = (th, rM, n) => { const C = geoOffset(S, rM, th); const pts = [S]; for (let k = 1; k < n; k++) pts.push(geoOffset(C, rM, th + Math.PI + k * 2 * Math.PI / n)); pts.push({ lat: S.lat, lon: S.lon }); return pts; };
-      const abWps = vias => { const brg = bearingDeg([S.lat, S.lon], [end.lat, end.lon]) * Math.PI / 180; return [S].concat(vias.filter(v => v.h > 30).map(v => geoOffset({ lat: S.lat + (end.lat - S.lat) * v.f, lon: S.lon + (end.lon - S.lon) * v.f }, v.h, brg + v.side * Math.PI / 2))).concat([end]); };
-      const ratio = c => timeMode ? (c.time > 0 ? goalMin * 0.96 / c.time : km / c.km) : km / c.km;
-      const score = c => {
-        let cost = 0;
-        if (timeMode) cost += c.time > goalMin ? (c.time - goalMin) / goalMin * 80 : (goalMin - c.time) / goalMin * 25;
-        else cost += Math.abs(c.km - km) / km * 40;
-        cost += c.reuse * (end ? 15 : 45);                        // portions empruntées deux fois (impasses, allers-retours)
-        if (pmax && c.maxG != null && c.maxG > pmax) cost += 10 + (c.maxG - pmax) * 3;
-        const avg = c.gain != null ? c.gain / (c.km * 10) : null, tg = terrainGap(avg);
-        if (tg > 0) cost += 8 + tg * 15;                            // relief hors de la plage voulue : très pénalisé
-        if (ar.diff >= 0 && c.diff && c.diff.lv !== ar.diff) cost += 4 * Math.abs(c.diff.lv - ar.diff);
-        if (!c.eles) cost += 5;
-        c.cost = cost;
-        const fitOk = timeMode ? c.time <= goalMin * 1.02 && c.time >= goalMin * 0.88 : Math.abs(c.km - km) / km <= 0.06;
-        c.ok = fitOk && c.reuse < 0.1 && (!pmax || c.maxG == null || c.maxG <= pmax) && terrainGap(c.gain != null ? c.gain / (c.km * 10) : null) <= 0.15 && (ar.diff < 0 || !c.diff || c.diff.lv === ar.diff);
-        return c;
-      };
-      // tri provisoire, sans altitude : distance juste et peu de portions empruntées deux fois
-      const pre = c => { c.pre = Math.abs(c.km - km) / km * 40 + c.reuse * (end ? 15 : 45) + (c.cAvg != null && (band || gmax) ? terrainGap(c.cAvg) * 15 : 0); c.cost = c.pre; return c; };
-      // profil grossier (~25 points par tracé) de plusieurs tracés d'un coup : sert à écarter tôt ceux qui n'ont pas le bon relief
-      const coarse = async list => {
-        const todo = list.filter(c => c.cAvg === undefined); if (!todo.length) return;
-        const S2 = todo.map(c => reSamples(c.coords, 25)), all = [].concat(...S2);
-        const e = all.length ? await meteoEles(all, { maxWait: 20000 }) : null; let k = 0;
-        todo.forEach((c, i) => { const n = S2[i].length; if (e) { const pr = S2[i].map((q, j) => [q.d, e[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } else c.cAvg = null; k += n; pre(c); });
-      };
-      // construit un candidat puis ajuste sa taille (sur la distance) jusqu'à 3 fois
-      const build = async (mk, r0) => {
-        let r = r0, c = await arCandidate(mk(r)); if (!c) return null;
-        for (let k = 0; k < 3 && Math.abs(km / c.km - 1) > 0.04; k++) {
-          r *= Math.max(0.5, Math.min(1.8, km / c.km)); await sleep(120);
-          const c2 = await arCandidate(mk(r)); if (!c2) break;
-          if (Math.abs(km / c2.km - 1) < Math.abs(km / c.km - 1)) c = c2;
-        }
-        c.reuse = routeReuse(c.coords, !end); c.r = r; c.mk = mk; return pre(c);
-      };
-      // profil indispensable : on insiste (autres services, attente) tant qu'il manque
-      let profFails = 0;
-      const withProfile = async (c, label) => {
-        const tries = profFails >= 2 ? 1 : 3;
-        for (let a = 0; a < tries && !c.eles; a++) {
-          c.eles = await elesFor(c.coords, 80, { maxWait: profFails >= 2 ? 0 : 45000, onWait: () => reStatusAr(`${label} · service d'altitude saturé, nouvel essai…`) });
-        }
-        if (!c.eles) profFails++;
-        c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles);
-        c.diff = routeDifficulty(c.km, c.gain, c.maxG, null);
-        c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
-        return score(c);
-      };
+      const S = ar.start, cands0 = [];
+      const route = pts => osrmMulti(pts, prof);
+      const mk = (coords, wps, segs, shape) => ({ coords, wps, segs, shape, km: reLenKm(coords) });
       try {
         if (!end) {
-          const r0 = km * 1000 / (2 * Math.PI) * 0.8, n1 = 12;
-          for (let i = 0; i < n1; i++) {
-            reStatusAr(`Étape 1/3 · exploration des directions ${i + 1}/${n1}…`);
-            const th = base + i * 2 * Math.PI / n1;
-            const c = await build(r => loopWps(th, r, 4), r0); if (c) { c.th = th; c.n = 4; pool.push(c); }
-          }
-          if (band || gmax) { reStatusAr('Étape 1/3 · relief des directions…'); await coarse(pool); }
-          pool.sort((x, y) => x.pre - y.pre);
-          const seeds = pool.slice(0, 4); let k = 0;
-          for (const sd of seeds) {
-            for (const [dth, n] of [[0, 3], [0, 5], [0.2, 4], [-0.2, 4]]) {
-              k++; reStatusAr(`Étape 2/3 · affinage des meilleurs tracés ${k}/${seeds.length * 4}…`);
-              const c = await build(r => loopWps(sd.th + dth, r, n), sd.r); if (c) { c.th = sd.th + dth; c.n = n; pool.push(c); }
-            }
-          }
+          // 1) Relief autour du départ : 16 directions × 6 points, en une requête → les directions plates / pentues
+          reStatusAr('Étape 1/3 · relief autour du départ…');
+          const R = km / 2, dirs = Array.from({ length: 16 }, (_, i) => i * Math.PI / 8);
+          const pts = []; dirs.forEach(th => [0.17, 0.33, 0.5, 0.67, 0.83, 1].forEach(f => pts.push(geoOffset(S, R * 1000 * 0.8 * f, th))));
+          const ez = await meteoEles([S].concat(pts), { maxWait: 30000 });
+          const relief = dirs.map((th, i) => { if (!ez) return null; let up = 0, prev = ez[0]; for (let k = 0; k < 6; k++) { const e = ez[1 + i * 6 + k]; up += Math.abs(e - prev); prev = e; } return up / 2 / (R * 0.8 * 10); }); // ≈ pente moyenne du D+ d'un aller-retour (%)
+          const order = dirs.map((th, i) => ({ th, i, r: relief[i] })).sort((a, b) => (terrainGap(a.r) - terrainGap(b.r)) || (Math.random() - 0.5));
+          const pick = order.slice(0, 8);
+          // 2) Tracés : allers-retours coupés pile à la bonne distance (1 requête chacun) et boucles (2 requêtes max)
+          const tasks = [];
+          if (ar.shapes.ab) pick.slice(0, 7).forEach(o => tasks.push(async () => {
+            let far = await route([S, geoOffset(S, R * 1000 * 0.9, o.th)]); if (!far) return null;
+            if (reLenKm(far) < R * 0.97) { const f2 = await route([S, geoOffset(S, R * 1000 * 0.9 * Math.min(2, R / Math.max(0.2, reLenKm(far)) * 1.05), o.th)]); if (f2 && reLenKm(f2) > reLenKm(far)) far = f2; }
+            const L = reLenKm(far), half = L >= R * 0.97 ? cutAtKm(far, R) : far;
+            const back = half.slice().reverse(), all = half.concat(back.slice(1)), turn = half[half.length - 1];
+            const c = mk(all, [S, { lat: turn[0], lon: turn[1] }, { lat: S.lat, lon: S.lon }], [half, back], 'ab'); c.full = far; c.th = o.th; return c;
+          }));
+          if (ar.shapes.loop) pick.slice(0, 7).forEach(o => tasks.push(async () => {
+            const loopWps = r => { const C = geoOffset(S, r, o.th); const p = [S]; for (let k = 1; k < 4; k++) p.push(geoOffset(C, r, o.th + Math.PI + k * Math.PI / 2)); p.push({ lat: S.lat, lon: S.lon }); return p; };
+            let r = km * 1000 / (2 * Math.PI) * 0.8, w = loopWps(r), co = await route(w); if (!co) return null;
+            let L = reLenKm(co);
+            if (Math.abs(km / L - 1) > 0.05) { r *= Math.max(0.5, Math.min(1.8, km / L)); const w2 = loopWps(r), co2 = await route(w2); if (co2 && Math.abs(km / reLenKm(co2) - 1) < Math.abs(km / L - 1)) { w = w2; co = co2; } }
+            const c = mk(co, w, null, 'loop'); c.th = o.th; c.reuse = routeReuse(co, true); return c;
+          }));
+          let done = 0;
+          const res = await runPool(tasks.map(t => async () => { const x = await t(); done++; reStatusAr(`Étape 2/3 · calcul des tracés ${done}/${tasks.length}…`); return x; }), 3);
+          res.filter(Boolean).forEach(c => cands0.push(c));
         } else {
+          // A → B : itinéraire direct + détours de chaque côté
+          reStatusAr('Calcul des parcours…');
           const D = haversineM(S, end), h0 = km * 1000 / 1.25 > D ? Math.sqrt(Math.max(0, Math.pow(km * 1000 / 1.25 / 2, 2) - Math.pow(D / 2, 2))) : 0;
-          const variants = [[]];
-          if (h0) [1, -1].forEach(sd => [0.5, 0.33, 0.67].forEach(f => variants.push([{ side: sd, f, k: 1 }])));
-          if (h0) variants.push([{ side: 1, f: 0.3, k: 0.8 }, { side: -1, f: 0.7, k: 0.8 }], [{ side: -1, f: 0.3, k: 0.8 }, { side: 1, f: 0.7, k: 0.8 }]);
-          for (let i = 0; i < variants.length; i++) {
-            reStatusAr(`Calcul des parcours ${i + 1}/${variants.length}…`);
-            const vv = variants[i];
-            const c = await build(h => abWps(vv.map(x => ({ side: x.side, f: x.f, h: h * x.k }))), h0 || 1);
-            if (c) pool.push(c);
-          }
-          if (band || gmax) await coarse(pool);
+          const brg = bearingDeg([S.lat, S.lon], [end.lat, end.lon]) * Math.PI / 180;
+          const variants = [[]]; if (h0) [1, -1].forEach(sd => [0.5, 0.33, 0.67].forEach(f => variants.push([{ side: sd, f }])));
+          const res = await runPool(variants.map(vv => async () => {
+            const w = [S].concat(vv.map(x => geoOffset({ lat: S.lat + (end.lat - S.lat) * x.f, lon: S.lon + (end.lon - S.lon) * x.f }, h0, brg + x.side * Math.PI / 2))).concat([end]);
+            const co = await route(w); return co ? mk(co, w, null, 'ab2') : null;
+          }), 3);
+          res.filter(Boolean).forEach(c => { c.reuse = routeReuse(c.coords, false); cands0.push(c); });
         }
-        // Étape 3 : profil (altitudes) des 8 meilleurs tracés différents, puis classement final avec pente, D+, difficulté, durée
-        if (band || gmax) { reStatusAr('Étape 2/3 · relief des variantes…'); await coarse(pool); }
-        pool.sort((x, y) => x.pre - y.pre);
-        const short = [];
-        for (const c of pool) { if (short.length >= 8) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.6)) short.push(c); }
-        for (let i = 0; i < short.length; i++) { reStatusAr(`Étape 3/3 · profil des meilleurs tracés ${i + 1}/${short.length}…`); await withProfile(short[i], `Profil ${i + 1}/${short.length}`); }
-        // Durée max : on recale la taille des meilleurs avec leur vrai profil
-        if (timeMode) {
-          short.sort((x, y) => x.cost - y.cost);
-          for (const c of short.slice(0, 4)) {
-            if (!c.eles || Math.abs(ratio(c) - 1) <= 0.05) continue;
-            reStatusAr('Ajustement à ta durée maximum…');
-            const c2 = await arCandidate(c.mk(c.r * Math.max(0.6, Math.min(1.5, ratio(c))))); if (!c2) continue;
-            c2.reuse = routeReuse(c2.coords, !end); c2.r = c.r * ratio(c); c2.mk = c.mk; await withProfile(c2, 'Ajustement');
-            if (c2.eles && c2.cost < c.cost) Object.assign(c, c2);
+        if (!cands0.length) { reStatusAr('Aucun tracé trouvé : vérifie la connexion, ou autorise plus de types de chemins', true); return; }
+        // 3) Profil de chaque tracé (regroupé), classement, puis profil précis des meilleurs
+        reStatusAr('Étape 3/3 · relief des tracés…');
+        const S2 = cands0.map(c => reSamples(c.coords, 30)), allP = [].concat(...S2);
+        const ez2 = await meteoEles(allP, { maxWait: 30000 }); let k = 0;
+        cands0.forEach((c, i) => { const n = S2[i].length; if (ez2) { const pr = S2[i].map((q, j) => [q.d, ez2[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } k += n; });
+        const preScore = c => Math.abs(c.km - km) / km * 40 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : 0) + terrainGap(c.cAvg) * 15;
+        cands0.sort((x, y) => preScore(x) - preScore(y));
+        const short = []; for (const c of cands0) { if (short.length >= N + 2) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.7)) short.push(c); }
+        await runPool(short.map((c, i) => async () => {
+          reStatusAr(`Étape 3/3 · profil précis ${i + 1}/${short.length}…`);
+          c.eles = await elesFor(c.coords, 80, { maxWait: 30000 });
+          c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles);
+          c.diff = routeDifficulty(c.km, c.gain, c.maxG, null); c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
+          // durée max : un aller-retour se recoupe à la bonne longueur sans nouvelle requête
+          if (timeMode && c.shape === 'ab' && c.full && c.time > 0) {
+            const half = cutAtKm(c.full, Math.min(reLenKm(c.full), c.km / 2 * goalMin * 0.97 / c.time));
+            const back = half.slice().reverse(); c.coords = half.concat(back.slice(1)); c.segs = [half, back]; const turn = half[half.length - 1]; c.wps[1] = { lat: turn[0], lon: turn[1] }; c.km = reLenKm(c.coords);
+            c.eles = await elesFor(c.coords, 80, { maxWait: 20000 }); c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles); c.diff = routeDifficulty(c.km, c.gain, c.maxG, null); c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
           }
+        }), 2);
+        // voies refusées : part de chaque type vérifiée sur OpenStreetMap (une seule requête pour tous les tracés)
+        const banned = { petite: !W.road, pieton: !W.road && !W.track && !W.path, departementale: !W.dep, nationale: !W.big, rapide: !W.big, autoroute: true, piste: !W.track, sentier: !W.path };
+        if (Object.keys(banned).some(k => banned[k] && k !== 'autoroute') || true) {
+          reStatusAr('Vérification des types de voies…');
+          const mx = await surfaceMixMulti(short.map(c => c.coords));
+          short.forEach((c, i) => { c.surf = mx[i] || null; c.roads = mx[i] ? mx[i].__roads : null; });
         }
-        pool.length = 0; short.forEach(c => pool.push(c));
+        short.forEach(c => {
+          const avg = c.gain != null ? c.gain / (c.km * 10) : c.cAvg;
+          let cost = timeMode ? (c.time > goalMin ? (c.time - goalMin) / goalMin * 80 : (goalMin - c.time) / goalMin * 25) : Math.abs(c.km - km) / km * 40;
+          cost += terrainGap(avg) * 20 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : 0) + (c.eles ? 0 : 30);
+          let badWay = 0; if (c.roads) Object.keys(banned).forEach(k2 => { if (banned[k2]) badWay += (c.roads[k2] || 0) * (k2 === 'autoroute' ? 5 : 1); }); cost += badWay * 0.5; c.badWay = badWay;
+          c.cost = cost;
+          const fitOk = timeMode ? c.time <= goalMin * 1.02 && c.time >= goalMin * 0.88 : Math.abs(c.km - km) / km <= 0.06;
+          c.ok = fitOk && terrainGap(avg) <= 0.15 && (c.shape !== 'loop' || (c.reuse || 0) < 0.1) && badWay < 15;
+        });
+        short.sort((x, y) => x.cost - y.cost);
+        ar.cands = short.slice(0, N);
       } finally { btn.disabled = false; btn.style.opacity = 1; }
-      // les 3 meilleurs : en priorité ceux qui ont un profil
-      pool.sort((x, y) => (!!y.eles - !!x.eles) || (x.cost - y.cost));
-      const cands = [];
-      for (const c of pool) { if (cands.length >= 3) break; if (!cands.some(o => routeSimilar(o.coords, c.coords) > 0.6)) cands.push(c); }
-      cands.sort((a, b) => a.cost - b.cost); ar.cands = cands;
+      const cands = ar.cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
-      reStatusAr(`${cands.filter(c => c.ok).length === cands.length ? '✓ ' : ''}${cands.length} meilleur${cands.length > 1 ? 's' : ''} parcours (${pool.length} profils analysés)${cands.some(c => !c.eles) ? ' ⚠ profil indisponible pour certains : réessaie dans une minute' : ''}${(band || gmax) && !cands.some(c => c.ok) ? ` ⚠ le relief demandé (${band ? DIFF_TERRAIN[ar.diff] : 'pente moy. D+ max ' + gmax + ' %'}) n'existe pas vraiment autour de ce départ : voici les plus proches` : ''}, du plus proche de ta demande au moins proche${timeMode ? ` (en ${goalMin} min max à ${String(v).replace('.', ',')} km/h sur le plat)` : ''} :`);
+      reStatusAr(`${cands.filter(c => c.ok).length ? `✓ ${cands.filter(c => c.ok).length} sur ${cands.length} respectent tous tes critères` : '⚠ aucun ne respecte tout à fait tes critères'}${band && !cands.some(c => c.ok) ? ` (le relief ${DIFF_TERRAIN[ar.diff]} est rare autour de ce départ : voici les plus proches)` : ''}. Classés du plus proche de ta demande au moins proche :`);
+      const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}${c.gain != null ? ` · ${(c.gain / (c.km * 10)).toFixed(1).replace('.', ',')} %` : ''}</span></div>
-        ${diffChipHtml(c.diff)}${c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:12px;color:#94a3b8;font-weight:800">${shapeLbl(c)}</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}${c.gain != null ? ` · ${(c.gain / (c.km * 10)).toFixed(1).replace('.', ',')} %` : ''}</span></div>
+        ${diffChipHtml(c.diff)}${c.shape === 'loop' && c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${c.roads ? roadBarHtml(c.roads) : ''}${c.badWay >= 10 ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ${Math.round(c.badWay)} % sur des voies que tu as exclues</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
         ${c.eles ? reProfileSvg(c.eles, 40) : '<span style="font-size:12px;color:#64748b">Profil indisponible (service d\'altitude saturé)</span>'}
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arBigOpen('view',${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
         <button type="button" onclick="arChoose(${i})" style="min-height:42px;border-radius:10px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ Choisir et ajuster</button></div></div>`).join('');
@@ -11082,9 +11111,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       await openRouteEditor();
       if (!re) return;
       re.wps = c.wps.map(p => ({ lat: p.lat, lon: p.lon }));
-      await reRebuildAll();
+      if (c.segs && c.segs.length === re.wps.length - 1) re.segs = c.segs.map(sg => sg.map(q => [q[0], q[1]])); else await reRebuildAll();
       reRedraw(true);
-      document.getElementById('reName').value = `${ar.end ? 'Parcours' : 'Boucle'} ${km} km`;
+      document.getElementById('reName').value = `${ar.end ? 'Parcours' : c.shape === 'ab' ? 'Aller-retour' : 'Boucle'} ${km} km`;
       if (sp) { document.getElementById('reSpeed').value = sp; reRenderBar(); }
       reStatus('Parcours proposé : déplace les points pour l\'ajuster, puis enregistre');
     }
@@ -11122,7 +11151,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         eles: re.eles ? re.eles.map(e => [+e[0].toFixed(3), Math.round(e[1])]) : null,
         speed: (() => { const v = parseFloat(String(document.getElementById('reSpeed').value).replace(',', '.')); return v > 3 ? Math.round(v * 10) / 10 : undefined; })(),
         eleSrc: re.keepEles ? ((appData.myRoutes || []).find(r => r.id === re.editId) || {}).eleSrc : undefined,
-        surf: re.surf || undefined, maxGrade: eleMaxGrade(re.eles) ?? undefined
+        surf: re.surf || undefined, roads: (re.surf && re.surf.__roads) || undefined, maxGrade: eleMaxGrade(re.eles) ?? undefined
       };
       item.grade = undefined; routeAvgGrade(item);
       const k = appData.myRoutes.findIndex(r => r.id === item.id);
