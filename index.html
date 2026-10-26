@@ -1003,10 +1003,10 @@
             <input id="arSpeed" type="number" step="0.5" min="4" max="25" inputmode="decimal" class="pm-in c" style="width:90px;height:44px;font-size:20px;font-weight:900"><span style="font-weight:800;color:#cbd5e1">km/h</span>
             <button type="button" onclick="arStep('arSpeed',0.5)" class="ar-pm">+</button></div>
           <div style="font-size:12px;color:#94a3b8;margin-top:4px">Le temps de chaque parcours est calculé avec son profil (ta vitesse ralentit en montée, comme la VAP).</div></div>
-        <div><div class="pm-lab">Difficulté</div><div id="arDiff" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div></div>
+        <div><div class="pm-lab">Relief (pente moyenne du D+)</div><div id="arDiff" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px"></div></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><div class="pm-lab">Pente max (%)</div><input id="arPmax" type="number" min="2" max="40" step="1" placeholder="libre" inputmode="numeric" class="pm-in c" style="height:44px"></div>
-          <div><div class="pm-lab">D+ max (m)</div><input id="arDmax" type="number" min="0" max="3000" step="10" placeholder="libre" inputmode="numeric" class="pm-in c" style="height:44px"></div>
+          <div><div class="pm-lab">Pente moy. D+ max (%)</div><input id="arGmax" type="number" min="0" max="15" step="0.5" placeholder="libre" inputmode="decimal" class="pm-in c" style="height:44px"></div>
         </div>
         <div><div class="pm-lab">Type de chemins</div><select id="arMode" class="pm-in" style="height:44px" onchange="routeModeSet(this.value)"></select></div>
         <div><div class="pm-lab">Départ</div>
@@ -10529,7 +10529,28 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (e.length !== part.length) throw new Error('IGN incomplet');
       return e.map(v => { const z = typeof v === 'object' ? v.z : v; return typeof z === 'number' && z > -1000 ? z : null; });
     }
-    async function meteoEles(pts) {
+    const ELE_PROV = { meteo: { gap: 700, down: 0, last: 0 }, otd: { gap: 1150, down: 0, last: 0 } };
+    async function eleGate(p) { const P = ELE_PROV[p], w = P.last + P.gap - Date.now(); if (w > 0) await sleep(w); P.last = Date.now(); }
+    function inEurope(lat, lon) { return lat > 34 && lat < 72 && lon > -25 && lon < 45; }
+    async function meteoBatch(part) { // part : [[lat, lon]] → tableau ou exception
+      await eleGate('meteo');
+      const r = await Promise.race([fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p[0]).join(',')}&longitude=${part.map(p => p[1]).join(',')}`), sleep(12000).then(() => { throw new Error('délai'); })]);
+      if (r.status === 429) { ELE_PROV.meteo.down = Date.now() + 60000; throw new Error('saturé'); }
+      if (!r.ok) throw new Error('meteo ' + r.status);
+      const j = await r.json(); if (!Array.isArray(j.elevation) || j.elevation.length !== part.length) throw new Error('incomplet');
+      return j.elevation;
+    }
+    async function otdBatch(part) {
+      await eleGate('otd');
+      const ds = part.every(p => inEurope(+p[0], +p[1])) ? 'eudem25m' : 'srtm30m';
+      const r = await Promise.race([fetch(`https://api.opentopodata.org/v1/${ds}?locations=${part.map(p => p[0] + ',' + p[1]).join('|')}`), sleep(15000).then(() => { throw new Error('délai'); })]);
+      if (r.status === 429) { ELE_PROV.otd.down = Date.now() + 60000; throw new Error('saturé'); }
+      if (!r.ok) throw new Error('otd ' + r.status);
+      const j = await r.json(), res = j.results || [];
+      if (res.length !== part.length) throw new Error('incomplet');
+      return res.map(x => x && typeof x.elevation === 'number' ? x.elevation : null);
+    }
+    async function meteoEles(pts, opts = {}) {
       const key = p => p.lat.toFixed(4) + ',' + p.lon.toFixed(4);
       let miss = [...new Set(pts.map(key).filter(k => !ELE_CACHE.has(k)))];
       // 1) IGN pour les points en France
@@ -10542,28 +10563,29 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         }
         miss = miss.filter(k => !ELE_CACHE.has(k));
       }
-      // 2) Open-Meteo pour le reste
+      // 2) Open-Meteo, 3) OpenTopoData ; si les deux sont saturés : on patiente et on réessaie (jusqu'à ~45 s)
+      const t0 = Date.now(), maxWait = opts.maxWait != null ? opts.maxWait : 45000;
       for (let i = 0; i < miss.length; i += 100) {
         const part = miss.slice(i, i + 100).map(k => k.split(','));
-        let ok = false;
-        for (let a = 0; a < 3 && !ok; a++) {
-          if (a) await sleep(900 * a);
-          try {
-            const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${part.map(p => p[0]).join(',')}&longitude=${part.map(p => p[1]).join(',')}`);
-            if (!r.ok) continue;
-            const j = await r.json();
-            if (Array.isArray(j.elevation) && j.elevation.length === part.length) { j.elevation.forEach((e, k) => ELE_CACHE.set(part[k].join(','), e)); ok = true; }
-          } catch (e) { }
+        let got = null;
+        while (!got) {
+          for (const prov of ['meteo', 'otd']) {
+            if (got || ELE_PROV[prov].down > Date.now()) continue;
+            try { const z = await (prov === 'meteo' ? meteoBatch(part) : otdBatch(part)); if (z.every(v => typeof v === 'number')) got = z; } catch (e) { }
+          }
+          if (got) break;
+          if (Date.now() - t0 > maxWait) return null;
+          if (opts.onWait) opts.onWait(); await sleep(5000);
         }
-        if (!ok) return null;
+        got.forEach((e, k) => ELE_CACHE.set(part[k].join(','), e));
       }
-      if (ELE_CACHE.size > 20000) ELE_CACHE.clear();
+      if (ELE_CACHE.size > 30000) { const ks = [...ELE_CACHE.keys()].slice(0, 10000); ks.forEach(k => ELE_CACHE.delete(k)); }
       const out = pts.map(p => ELE_CACHE.get(key(p)));
       return out.every(e => typeof e === 'number') ? out : null;
     }
-    async function elesFor(coords, maxN = 100) {
+    async function elesFor(coords, maxN = 100, opts) {
       const s = reSamples(coords, maxN); if (s.length < 2) return null;
-      const e = await meteoEles(s);
+      const e = await meteoEles(s, opts);
       return e ? s.map((p, i) => [p.d, e[i]]) : null;
     }
     // Pente en un point : sur 100 m (50 m avant, 50 m après) ; la pente max utilise exactement le même calcul que le curseur du profil
@@ -10624,16 +10646,21 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         <div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;font-weight:700;color:#cbd5e1">${ks.sort((a, b) => sf[b] - sf[a]).map(k => `<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${SURF_CLS[k][2]};margin-right:4px"></span>${SURF_CLS[k][1]} ${sf[k]} %</span>`).join('')}</div></div>`;
     }
     const DIFF_LV = [['🟢', 'Facile', '#34d399'], ['🟡', 'Modérée', '#facc15'], ['🟠', 'Difficile', '#fb923c'], ['🔴', 'Très difficile', '#f43f5e']];
+    // Catégories de relief (pente moyenne du D+ = D+ ÷ distance)
+    const DIFF_BANDS = [[0, 1], [1, 2.5], [2.5, 4], [4, 99]];
+    const DIFF_TERRAIN = ['plat', 'vallonné', 'accidenté', 'très accidenté'];
+    function diffLevelFromAvg(avg) { return avg < 1 ? 0 : avg < 2.5 ? 1 : avg < 4 ? 2 : 3; }
     function routeDifficulty(km, gain, maxGrade, surf) {
       if (!(km > 0)) return null;
-      const dpk = (gain || 0) / km; let pts = 0;
-      pts += dpk < 8 ? 0 : dpk < 18 ? 1 : dpk < 30 ? 2 : dpk < 45 ? 3 : 4;
-      if (maxGrade >= 10) pts++; if (maxGrade >= 16) pts++;
-      if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40) pts++;
-      if (km >= 12) pts++; if (km >= 21) pts++; if (km >= 32) pts++;
-      const lv = pts <= 1 ? 0 : pts <= 3 ? 1 : pts <= 5 ? 2 : 3;
-      const why = [`pente moy. ${(dpk / 10).toFixed(1).replace('.', ',')} %`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
-      return { lv, why: why.join(' · ') };
+      const avg = (gain || 0) / (km * 10);
+      let lv = diffLevelFromAvg(avg), bump = [];
+      if (maxGrade >= 12 && lv < 3) { lv++; bump.push('rampe raide'); }
+      if (maxGrade >= 20 && lv < 3) { lv++; }
+      if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40 && lv < 3) { lv++; bump.push('sentier'); }
+      const dpk = avg * 10;
+      const why = [`${DIFF_TERRAIN[diffLevelFromAvg(avg)]} · pente moy. D+ ${avg.toFixed(1).replace('.', ',')} %`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
+      if (bump.length) why.push(bump.join(', '));
+      return { lv, avg, why: why.join(' · ') };
     }
     function diffChipHtml(d, big) { if (!d) return ''; const L0 = DIFF_LV[d.lv]; return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="padding:${big ? '5px 12px' : '2px 8px'};border-radius:12px;background:${L0[2]}22;border:1px solid ${L0[2]};color:${L0[2]};font-weight:900;font-size:${big ? 15 : 12}px">${L0[0]} ${L0[1]}</span><span style="font-size:12px;color:#94a3b8;font-weight:700">${d.why}</span></div>`; }
     function reFetchSurf() {
@@ -10797,7 +10824,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const segBtn = (on, js, html) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:rgba(167,139,250,.2);border:2px solid #a78bfa;color:#fff' : 'background:#0f172a;border:1px solid #1e293b;color:#94a3b8'}">${html}</button>`;
       document.getElementById('arGoal').innerHTML = segBtn(ar.goal === 'km', "ar.goal='km';arRender()", '📏 Une distance') + segBtn(ar.goal === 'time', "ar.goal='time';arRender()", '⏱ Une durée max');
       document.getElementById('arKmRow').classList.toggle('hidden', ar.goal !== 'km'); document.getElementById('arMinRow').classList.toggle('hidden', ar.goal !== 'time');
-      document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe']].concat(DIFF_LV.slice(0, 3).map((d, i) => [i, d[0], d[1]])).map(([v, ic, t]) => segBtn(ar.diff === v, `ar.diff=${v};arRender()`, `${ic}<br>${t}`)).join('');
+      const rng = ['< 1 %', '1 à 2,5 %', '2,5 à 4 %', '> 4 %'];
+      document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe', '']].concat(DIFF_LV.map((d, i) => [i, d[0], capFirst(DIFF_TERRAIN[i]), rng[i]])).map(([v, ic, t, r]) => segBtn(ar.diff === v, `ar.diff=${v};arRender()`, `${ic}<br><span style="font-size:11px">${t}</span>${r ? `<br><span style="font-size:10px;opacity:.75">${r}</span>` : ''}`)).join('');
       const on = document.getElementById('arEndOn').checked; document.getElementById('arEndBox').classList.toggle('hidden', !on);
       if (!on) ar.end = null;
       const fmt = p => p ? `✓ ${p.label || `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`}` : '';
@@ -10924,7 +10952,10 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const v = Math.max(4, num('arSpeed') || runnerEF()), timeMode = ar.goal === 'time';
       const goalMin = timeMode ? Math.max(10, num('arMin') || 60) : null;
       const km = timeMode ? goalMin * v / 60 * 0.93 : Math.max(1, num('arKm') || 8);
-      const pmax = num('arPmax') || null, dmax = num('arDmax') || null;
+      const pmax = num('arPmax') || null, gmax = num('arGmax') || null;
+      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null;
+      // écart (en points de %) entre la pente moyenne du D+ et ce que veut le coureur
+      const terrainGap = avg => { if (avg == null) return 0; let g = 0; if (band) g += avg < band[0] ? band[0] - avg : avg > band[1] ? avg - band[1] : 0; if (gmax && avg > gmax) g += avg - gmax; return g; };
       const end = document.getElementById('arEndOn').checked ? ar.end : null;
       if (document.getElementById('arEndOn').checked && !end) { reStatusAr('Choisis l\'arrivée (adresse ou carte), ou décoche l\'option', true); return; }
       const btn = document.getElementById('arGo'); btn.disabled = true; btn.style.opacity = .6;
@@ -10932,44 +10963,68 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const S = ar.start, base = Math.random() * 2 * Math.PI, pool = [];
       const loopWps = (th, rM, n) => { const C = geoOffset(S, rM, th); const pts = [S]; for (let k = 1; k < n; k++) pts.push(geoOffset(C, rM, th + Math.PI + k * 2 * Math.PI / n)); pts.push({ lat: S.lat, lon: S.lon }); return pts; };
       const abWps = vias => { const brg = bearingDeg([S.lat, S.lon], [end.lat, end.lon]) * Math.PI / 180; return [S].concat(vias.filter(v => v.h > 30).map(v => geoOffset({ lat: S.lat + (end.lat - S.lat) * v.f, lon: S.lon + (end.lon - S.lon) * v.f }, v.h, brg + v.side * Math.PI / 2))).concat([end]); };
-      const ratio = c => timeMode ? (c.time > 0 ? goalMin * 0.96 / c.time : 1) : km / c.km;
+      const ratio = c => timeMode ? (c.time > 0 ? goalMin * 0.96 / c.time : km / c.km) : km / c.km;
       const score = c => {
         let cost = 0;
         if (timeMode) cost += c.time > goalMin ? (c.time - goalMin) / goalMin * 80 : (goalMin - c.time) / goalMin * 25;
         else cost += Math.abs(c.km - km) / km * 40;
         cost += c.reuse * (end ? 15 : 45);                        // portions empruntées deux fois (impasses, allers-retours)
         if (pmax && c.maxG != null && c.maxG > pmax) cost += 10 + (c.maxG - pmax) * 3;
-        if (dmax && c.gain != null && c.gain > dmax) cost += 10 + (c.gain - dmax) / 10;
-        if (ar.diff >= 0 && c.diff && c.diff.lv !== ar.diff) cost += 8 * Math.abs(c.diff.lv - ar.diff);
+        const avg = c.gain != null ? c.gain / (c.km * 10) : null, tg = terrainGap(avg);
+        if (tg > 0) cost += 8 + tg * 15;                            // relief hors de la plage voulue : très pénalisé
+        if (ar.diff >= 0 && c.diff && c.diff.lv !== ar.diff) cost += 4 * Math.abs(c.diff.lv - ar.diff);
         if (!c.eles) cost += 5;
         c.cost = cost;
         const fitOk = timeMode ? c.time <= goalMin * 1.02 && c.time >= goalMin * 0.88 : Math.abs(c.km - km) / km <= 0.06;
-        c.ok = fitOk && c.reuse < 0.1 && (!pmax || c.maxG == null || c.maxG <= pmax) && (!dmax || c.gain == null || c.gain <= dmax) && (ar.diff < 0 || !c.diff || c.diff.lv === ar.diff);
+        c.ok = fitOk && c.reuse < 0.1 && (!pmax || c.maxG == null || c.maxG <= pmax) && terrainGap(c.gain != null ? c.gain / (c.km * 10) : null) <= 0.15 && (ar.diff < 0 || !c.diff || c.diff.lv === ar.diff);
         return c;
       };
-      // construit un candidat puis ajuste sa taille jusqu'à 3 fois pour coller à la distance / durée voulue
+      // tri provisoire, sans altitude : distance juste et peu de portions empruntées deux fois
+      const pre = c => { c.pre = Math.abs(c.km - km) / km * 40 + c.reuse * (end ? 15 : 45) + (c.cAvg != null && (band || gmax) ? terrainGap(c.cAvg) * 15 : 0); c.cost = c.pre; return c; };
+      // profil grossier (~25 points par tracé) de plusieurs tracés d'un coup : sert à écarter tôt ceux qui n'ont pas le bon relief
+      const coarse = async list => {
+        const todo = list.filter(c => c.cAvg === undefined); if (!todo.length) return;
+        const S2 = todo.map(c => reSamples(c.coords, 25)), all = [].concat(...S2);
+        const e = all.length ? await meteoEles(all, { maxWait: 20000 }) : null; let k = 0;
+        todo.forEach((c, i) => { const n = S2[i].length; if (e) { const pr = S2[i].map((q, j) => [q.d, e[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } else c.cAvg = null; k += n; pre(c); });
+      };
+      // construit un candidat puis ajuste sa taille (sur la distance) jusqu'à 3 fois
       const build = async (mk, r0) => {
-        let r = r0, c = await arCandidate(mk(r)); if (!c) return null; await arEval(c, v);
-        for (let k = 0; k < 3 && Math.abs(ratio(c) - 1) > 0.04; k++) {
-          r *= Math.max(0.5, Math.min(1.8, ratio(c))); await sleep(120);
-          const c2 = await arCandidate(mk(r)); if (!c2) break; await arEval(c2, v);
-          if (Math.abs(ratio(c2) - 1) < Math.abs(ratio(c) - 1)) c = c2;
+        let r = r0, c = await arCandidate(mk(r)); if (!c) return null;
+        for (let k = 0; k < 3 && Math.abs(km / c.km - 1) > 0.04; k++) {
+          r *= Math.max(0.5, Math.min(1.8, km / c.km)); await sleep(120);
+          const c2 = await arCandidate(mk(r)); if (!c2) break;
+          if (Math.abs(km / c2.km - 1) < Math.abs(km / c.km - 1)) c = c2;
         }
-        c.reuse = routeReuse(c.coords, !end); c.r = r; return score(c);
+        c.reuse = routeReuse(c.coords, !end); c.r = r; c.mk = mk; return pre(c);
+      };
+      // profil indispensable : on insiste (autres services, attente) tant qu'il manque
+      let profFails = 0;
+      const withProfile = async (c, label) => {
+        const tries = profFails >= 2 ? 1 : 3;
+        for (let a = 0; a < tries && !c.eles; a++) {
+          c.eles = await elesFor(c.coords, 80, { maxWait: profFails >= 2 ? 0 : 45000, onWait: () => reStatusAr(`${label} · service d'altitude saturé, nouvel essai…`) });
+        }
+        if (!c.eles) profFails++;
+        c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles);
+        c.diff = routeDifficulty(c.km, c.gain, c.maxG, null);
+        c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
+        return score(c);
       };
       try {
         if (!end) {
           const r0 = km * 1000 / (2 * Math.PI) * 0.8, n1 = 12;
           for (let i = 0; i < n1; i++) {
-            reStatusAr(`Étape 1/2 · exploration des directions ${i + 1}/${n1}…`);
+            reStatusAr(`Étape 1/3 · exploration des directions ${i + 1}/${n1}…`);
             const th = base + i * 2 * Math.PI / n1;
             const c = await build(r => loopWps(th, r, 4), r0); if (c) { c.th = th; c.n = 4; pool.push(c); }
           }
-          pool.sort((x, y) => x.cost - y.cost);
+          if (band || gmax) { reStatusAr('Étape 1/3 · relief des directions…'); await coarse(pool); }
+          pool.sort((x, y) => x.pre - y.pre);
           const seeds = pool.slice(0, 4); let k = 0;
           for (const sd of seeds) {
             for (const [dth, n] of [[0, 3], [0, 5], [0.2, 4], [-0.2, 4]]) {
-              k++; reStatusAr(`Étape 2/2 · affinage des meilleurs tracés ${k}/${seeds.length * 4}…`);
+              k++; reStatusAr(`Étape 2/3 · affinage des meilleurs tracés ${k}/${seeds.length * 4}…`);
               const c = await build(r => loopWps(sd.th + dth, r, n), sd.r); if (c) { c.th = sd.th + dth; c.n = n; pool.push(c); }
             }
           }
@@ -10984,19 +11039,36 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
             const c = await build(h => abWps(vv.map(x => ({ side: x.side, f: x.f, h: h * x.k }))), h0 || 1);
             if (c) pool.push(c);
           }
+          if (band || gmax) await coarse(pool);
         }
+        // Étape 3 : profil (altitudes) des 8 meilleurs tracés différents, puis classement final avec pente, D+, difficulté, durée
+        if (band || gmax) { reStatusAr('Étape 2/3 · relief des variantes…'); await coarse(pool); }
+        pool.sort((x, y) => x.pre - y.pre);
+        const short = [];
+        for (const c of pool) { if (short.length >= 8) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.6)) short.push(c); }
+        for (let i = 0; i < short.length; i++) { reStatusAr(`Étape 3/3 · profil des meilleurs tracés ${i + 1}/${short.length}…`); await withProfile(short[i], `Profil ${i + 1}/${short.length}`); }
+        // Durée max : on recale la taille des meilleurs avec leur vrai profil
+        if (timeMode) {
+          short.sort((x, y) => x.cost - y.cost);
+          for (const c of short.slice(0, 4)) {
+            if (!c.eles || Math.abs(ratio(c) - 1) <= 0.05) continue;
+            reStatusAr('Ajustement à ta durée maximum…');
+            const c2 = await arCandidate(c.mk(c.r * Math.max(0.6, Math.min(1.5, ratio(c))))); if (!c2) continue;
+            c2.reuse = routeReuse(c2.coords, !end); c2.r = c.r * ratio(c); c2.mk = c.mk; await withProfile(c2, 'Ajustement');
+            if (c2.eles && c2.cost < c.cost) Object.assign(c, c2);
+          }
+        }
+        pool.length = 0; short.forEach(c => pool.push(c));
       } finally { btn.disabled = false; btn.style.opacity = 1; }
-      // altitudes manquantes (service saturé) : on réessaie
-      for (const c of pool.filter(x => !x.eles)) { reStatusAr('Récupération des profils manquants…'); await sleep(1000); await arEval(c, v); score(c); }
-      // les 3 meilleurs parcours vraiment différents
-      pool.sort((x, y) => x.cost - y.cost);
+      // les 3 meilleurs : en priorité ceux qui ont un profil
+      pool.sort((x, y) => (!!y.eles - !!x.eles) || (x.cost - y.cost));
       const cands = [];
       for (const c of pool) { if (cands.length >= 3) break; if (!cands.some(o => routeSimilar(o.coords, c.coords) > 0.6)) cands.push(c); }
       cands.sort((a, b) => a.cost - b.cost); ar.cands = cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
-      reStatusAr(`${cands.filter(c => c.ok).length === cands.length ? '✓ ' : ''}${cands.length} meilleur${cands.length > 1 ? 's' : ''} parcours sur ${pool.length} étudiés, du plus proche de ta demande au moins proche${timeMode ? ` (en ${goalMin} min max à ${String(v).replace('.', ',')} km/h sur le plat)` : ''} :`);
+      reStatusAr(`${cands.filter(c => c.ok).length === cands.length ? '✓ ' : ''}${cands.length} meilleur${cands.length > 1 ? 's' : ''} parcours (${pool.length} profils analysés)${cands.some(c => !c.eles) ? ' ⚠ profil indisponible pour certains : réessaie dans une minute' : ''}${(band || gmax) && !cands.some(c => c.ok) ? ` ⚠ le relief demandé (${band ? DIFF_TERRAIN[ar.diff] : 'pente moy. D+ max ' + gmax + ' %'}) n'existe pas vraiment autour de ce départ : voici les plus proches` : ''}, du plus proche de ta demande au moins proche${timeMode ? ` (en ${goalMin} min max à ${String(v).replace('.', ',')} km/h sur le plat)` : ''} :`);
       list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}${c.gain != null ? ` · ${(c.gain / (c.km * 10)).toFixed(1).replace('.', ',')} %` : ''}</span></div>
         ${diffChipHtml(c.diff)}${c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
         ${c.eles ? reProfileSvg(c.eles, 40) : '<span style="font-size:12px;color:#64748b">Profil indisponible (service d\'altitude saturé)</span>'}
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arBigOpen('view',${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
