@@ -2454,6 +2454,7 @@
     }
 
     // Voix du téléphone (secours si la voix IA n'est pas prête)
+    let readSpeaking = false;
     function systemSpeak(text, rateOv) {
       if (!('speechSynthesis' in window)) {
         playPiercingBeep(1400, 0.18);
@@ -2483,6 +2484,7 @@
         u.onend = done;
         u.onerror = done;
 
+        try { if (!readSpeaking) readDuck(); } catch (e) { }
         pendingUtterances++;
         liveUtterances.push(u); // évite que Chrome libère l'objet avant la fin
         setAudioSessionType('transient');
@@ -2926,6 +2928,7 @@
     // À appeler dans un geste utilisateur (débloque la lecture sur iPhone)
     function aiUnlock() {
       if (!aiVoiceActive()) return;
+      try { if (readCfg()) readUnlock(); } catch (e) { }
       const el = getAiAudioEl();
       if (aiPlaying) return;
       try {
@@ -3032,6 +3035,7 @@
         return;
       }
       if (!aiPlaying) { try { spBeforeAnnounce(aiQueue.length >= 2); } catch (e) { } }
+      try { readDuck(); } catch (e) { }
       aiPlaying = true;
       setAudioSessionType('transient');
       const el = getAiAudioEl();
@@ -3118,6 +3122,13 @@
           };
         }
 
+        if (opts.turns && opts.voices) {
+          const svc = Object.entries(opts.voices).map(([speaker, v]) => ({ speaker, voiceConfig: { prebuiltVoiceConfig: { voiceName: v } } }));
+          const sc = { multiSpeakerVoiceConfig: { speakerVoiceConfigs: svc }, languageCode: profile.lang === 'en' ? 'en-GB' : 'fr-FR' };
+          body = m.fmt === 'new'
+            ? { contents: [{ role: 'user', parts: opts.turns.map(t => ({ text: t.text, speech_metadata: Object.assign({ speaker: t.speaker }, style ? { style } : {}) })) }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: sc } }
+            : { contents: [{ parts: [{ text: opts.turns.map(t => `${t.speaker}: ${t.text}`).join('\n') }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: sc } };
+        }
         let rateHits = 0;
         for (let attempt = 0; attempt < 5; attempt++) {
           await ttsRateGate();
@@ -4424,7 +4435,7 @@
           } else if (okWindow && !isSpeaking()) {
             f.extra.shift();
             const ph = pickNoRepeat(pt.kind);
-            if (ph) { lastEncouragementAt[pt.kind] = now; lastEncouragementAt.any = now; speak([ph]); }
+            if (ph && !readMute()) { lastEncouragementAt[pt.kind] = now; lastEncouragementAt.any = now; speak([ph]); }
           }
         }
       }
@@ -4474,7 +4485,7 @@
               (voiceCoachOn() && srCtor() && !getActiveSession().free)) timerState.sessionHalfDone = true; // le point « comment tu te sens » prend le relais
           else if (remMs > 8000 && elapsedMs >= 4500 && !isSpeaking()) {
             timerState.sessionHalfDone = true;
-            speak([VT().sessionHalf]);
+            if (!readMute()) speak([VT().sessionHalf]);
             timerState.sessionHalfAt = Date.now();
           }
         }
@@ -10011,7 +10022,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const p = runData.dbPending;
       if (p && now >= p.at) {
         if (now > p.until) { runData.dbPending = null; return; }
-        if (!isSpeaking() && remMs > 7000) { runData.dbPending = null; speakLive(p.text); }
+        if (!isSpeaking() && remMs > 7000) { runData.dbPending = null; speakOpt(p.text); }
       }
     }
     function sensorAnnouncements(cur, elapsedMs, remMs) {
@@ -10027,14 +10038,14 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         rt.zflags = rt.zflags || {};
         for (let i = 0; i < ZA.length; i++) {
           const z = ZA[i];
-          if (!rt.zflags[i] && rt.progressKm >= z.km - 0.17 && rt.progressKm < z.km - 0.03) { rt.zflags[i] = true; speakLive(slopeAheadText(z, cur)); return; }
+          if (!rt.zflags[i] && rt.progressKm >= z.km - 0.17 && rt.progressKm < z.km - 0.03) { rt.zflags[i] = true; speakOpt(slopeAheadText(z, cur)); return; }
         }
         for (let i = 0; i < activeRoute().climbs.length; i++) {
           const c = activeRoute().climbs[i];
           const f = rt.flags[i] || (rt.flags[i] = {});
-          if (!f.ahead && rt.progressKm >= c.startKm - 0.27 && rt.progressKm < c.startKm) { f.ahead = true; if (!slopeAnnouncements(activeRoute()).some(z => Math.abs(z.km - c.startKm) < 0.3)) { speak([climbAheadText(c)]); return; } }
-          if (!f.start && rt.progressKm >= c.startKm && rt.progressKm < c.startKm + 0.2) { f.start = f.ahead = true; speak([c.type === 'up' ? t.climbStart : t.descentStart]); return; }
-          if (c.type === 'up' && !f.top && rt.progressKm >= c.startKm + c.lenKm && rt.progressKm < c.startKm + c.lenKm + 0.2) { f.top = true; speak([t.climbTop]); return; }
+          if (!f.ahead && rt.progressKm >= c.startKm - 0.27 && rt.progressKm < c.startKm) { f.ahead = true; if (!slopeAnnouncements(activeRoute()).some(z => Math.abs(z.km - c.startKm) < 0.3)) { speakOptP([climbAheadText(c)]); return; } }
+          if (!f.start && rt.progressKm >= c.startKm && rt.progressKm < c.startKm + 0.2) { f.start = f.ahead = true; speakOptP([c.type === 'up' ? t.climbStart : t.descentStart]); return; }
+          if (c.type === 'up' && !f.top && rt.progressKm >= c.startKm + c.lenKm && rt.progressKm < c.startKm + c.lenKm + 0.2) { f.top = true; speakOptP([t.climbTop]); return; }
           // Dans la montée : VAP moyenne des 500 derniers mètres, tous les 500 m
           if (c.type === 'up' && rt.progressKm >= c.startKm + 0.5 && rt.progressKm < c.startKm + c.lenKm + 0.05) {
             const n = Math.floor((rt.progressKm - c.startKm) / 0.5 + 1e-6);
@@ -10058,7 +10069,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           if (runData.hrHighSince && now - runData.hrHighSince > 20000 && now - runData.lastHrAt > 90000) {
             runData.lastHrAt = now;
             const en = appData.audioSettings.voiceLang === 'en', tap = getActiveSession().type === 'tapis';
-            speakLive(en ? `Heart rate a bit high for ${cur.type === 'chauffe' ? 'a warm-up' : 'a cool-down'}: ${hrNow}. Stay under ${eMax}, slow down${tap ? ' one notch' : ''}.`
+            speakOpt(en ? `Heart rate a bit high for ${cur.type === 'chauffe' ? 'a warm-up' : 'a cool-down'}: ${hrNow}. Stay under ${eMax}, slow down${tap ? ' one notch' : ''}.`
               : `Cardio un peu haut pour ${cur.type === 'chauffe' ? 'un échauffement' : 'un retour au calme'} : ${hrNow}. Reste sous ${eMax}, ralentis${tap ? ' d\'un cran' : ' un peu'}.`);
             return;
           }
@@ -10082,13 +10093,13 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
             const opposite = runData.lastPaceDir && dir && dir !== runData.lastPaceDir && now - runData.lastPaceAt < 120000;
             if (dir && sustained && !opposite && now - runData.lastPaceAt > 60000) {
               runData.lastPaceAt = runData.lastVapAt = now; runData.lastPaceDir = dir;
-              speakLive(paceVerdictText(vap, tgt, gr)); return;
+              speakOpt(paceVerdictText(vap, tgt, gr)); return;
             }
           }
           if (s.announceVap && cur.durationSec >= 120 && now - runData.lastVapAt > 120000 && remMs > 20000) {
             runData.lastVapAt = now;
-            if (s.paceAdvice && tgt) { if (dir) { runData.lastPaceAt = now; runData.lastPaceDir = dir; } speakLive(paceVerdictText(vap, tgt, gr)); }
-            else speakLive(vapText(vap));
+            if (s.paceAdvice && tgt) { if (dir) { runData.lastPaceAt = now; runData.lastPaceDir = dir; } speakOpt(paceVerdictText(vap, tgt, gr)); }
+            else speakOpt(vapText(vap));
             return;
           }
         }
@@ -10114,9 +10125,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (now - st.since < need || now - (runData.lastHrAt || 0) < gap) return false;
       runData.lastHrAt = now;
       const zn = zoneNum(h);
-      if (dir > 0) speakLive(en ? `Heart rate ${h}, zone ${zn}: above your target of ${hT.lo} to ${hT.hi}. Slow down a little${tap ? ', half a kilometre per hour' : ''}.`
+      if (dir > 0) speakOpt(en ? `Heart rate ${h}, zone ${zn}: above your target of ${hT.lo} to ${hT.hi}. Slow down a little${tap ? ', half a kilometre per hour' : ''}.`
         : `Cardio ${h}, zone ${zn} : au-dessus de ta cible, ${hT.lo} à ${hT.hi}. Ralentis un peu${tap ? ', d\'un demi kilomètre heure' : ''}.`);
-      else speakLive(en ? `Heart rate ${h}, zone ${zn}: below your target of ${hT.lo} to ${hT.hi}. You can speed up slightly${tap ? ', half a kilometre per hour' : ''}.`
+      else speakOpt(en ? `Heart rate ${h}, zone ${zn}: below your target of ${hT.lo} to ${hT.hi}. You can speed up slightly${tap ? ', half a kilometre per hour' : ''}.`
         : `Cardio ${h}, zone ${zn} : en dessous de ta cible, ${hT.lo} à ${hT.hi}. Tu peux accélérer légèrement${tap ? ', d\'un demi kilomètre heure' : ''}.`);
       return true;
     }
@@ -10151,7 +10162,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const h = hrAvg(15) || runData.hr, zn = zoneNum(h), en = appData.audioSettings.voiceLang === 'en';
       const T = hrTargetFor(cur);
       const pos = T ? (h > T.hi ? (en ? ', above your target' : ', au-dessus de ta cible') : h < T.lo ? (en ? ', below your target' : ', sous ta cible') : (en ? ', on target' : ', dans ta cible')) : '';
-      speakLive(en ? `Heart rate ${h}, zone ${zn}${pos}.` : `Cardio ${h}, zone ${zn}${pos}.`);
+      speakOpt(en ? `Heart rate ${h}, zone ${zn}${pos}.` : `Cardio ${h}, zone ${zn}${pos}.`);
     }
     // ---------- Affichage en direct ----------
     function updateLiveMetrics() {
@@ -12316,7 +12327,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         runData.kmPending = null;
         const txt = p.text || kmSummaryText(p);
         if (!txt) return;
-        if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]);
+        if (readMute()) { }
+        else if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]);
         else if (!tl.active) systemSpeak(txt);
       }
     }
@@ -12453,7 +12465,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       { const de = drinkEvery(); if (fuelRemindersOn() && de !== 'km' && sessEl >= (runData.nextDrinkMs || de * 60000)) { runData.nextDrinkMs = (runData.nextDrinkMs || de * 60000) + de * 60000; runData.drinkDueAt = runData.drinkDueAt || Date.now(); } }
       if (runData.drinkDueAt && fuelRemindersOn() && isCalmMoment(remMs, elapsedMs)) {
         runData.drinkDueAt = 0;
-        speakLive(drinkText());
+        speakOpt(drinkText());
         return;
       }
       for (const p of plan) {
@@ -12462,7 +12474,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const late = sessEl > p.at + 600000; // après 10 min d'attente, on le dit dès que possible
         if ((late ? (remMs > 9500 && elapsedMs >= 4500 && !isSpeaking()) : isCalmMoment(remMs, elapsedMs))) {
           p.done = true;
-          speak([pickNoRepeat(p.kind)]);
+          speakOptP([pickNoRepeat(p.kind)]);
         }
         return;
       }
@@ -16079,6 +16091,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
     async function radioPrepare() {
       const c = radioCfg();
+      if (readMute()) return;
       if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !getGeminiKey() || radio.loading) return;
       if (radio.key === radioKey(c) && radio.items.length - radio.idx >= 2) return;
       radio.loading = true;
@@ -16123,7 +16136,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
     }
     // ==================== TEXTE À ÉCOUTER PENDANT LA SÉANCE ====================
-    function readCfg() { const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; if (!(c && c.sid === sid && (c.text || c.chunks))) return null; if (!c.sections) c.sections = readChunks(c.text || c.chunks.join(' '), READ_SEC, READ_SEC + 200); if (!c.aiPos) c.aiPos = { s: 0, p: 0 }; if (!c.model) c.model = 'gemini-3.8-flash-lite-tts'; return c; }
+    function readCfg() { const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; if (!(c && c.sid === sid && (c.text || c.chunks))) return null; if (!c.sections) c.sections = readChunks(c.text || c.chunks.join(' '), READ_SEC, READ_SEC + 200); if (!c.aiPos) c.aiPos = { s: 0, t: 0 }; if (c.aiPos.t == null) c.aiPos.t = (c.aiPos.p || 0) * 20; if (!c.model) c.model = 'gemini-3.8-flash-lite-tts'; return c; }
     function readChunks(text, max = 450, hard = 520) {
       const sents = String(text).replace(/\r/g, '').replace(/[ \t]+/g, ' ').split(/(?<=[.!?…])\s+|\n{1,}/).map(x => x.trim()).filter(Boolean);
       const out = []; let cur = '';
@@ -16133,27 +16146,65 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     const READ_SEC = 2400; // caractères par requête vocale (≈ 2 min 30 d'audio)
     function readIsAi(c) { return c && c.voice === 'ai' && aiVoiceActive(); }
+    const READ_TONES = {
+      livre: ['📚 Livre audio (posé)', "lecteur de livre audio, français de France (accent neutre, jamais québécois), voix posée, naturelle et expressive, rythme régulier"],
+      conteur: ['🎭 Conteur expressif', "conteur français de France (accent neutre, jamais québécois), très expressif et vivant, qui fait vivre les personnages et les émotions"],
+      calme: ['🌙 Calme et doux', "français de France (accent neutre, jamais québécois), voix douce, calme et apaisante, rythme tranquille"],
+      info: ['📰 Journaliste radio', "journaliste radio français de France (accent neutre, jamais québécois), clair, informatif et dynamique"],
+      coach: ['🧢 Comme le coach', null]
+    };
+    function voiceGender(v) { return (AI_VOICES.find(x => x[0] === v) || [])[2] || 'H'; }
+    function readProfile(c) { const b = aiProfile(); return { voice: (c && c.aiVoice) || b.voice, style: b.style, lang: b.lang }; }
+    function readStyleText(c) { const t = READ_TONES[(c && c.tone) || 'livre']; return t && t[1] ? t[1] : aiStyleText(); }
+    function readVoice2(c) { if (c.aiVoice2) return c.aiVoice2; return voiceGender(readProfile(c).voice) === 'H' ? 'Sulafat' : 'Charon'; }
+    function readSig(c) { return `${c.model}|${c.aiVoice || ''}|${c.tone || 'livre'}${c.dialog ? '|d' + readVoice2(c) : ''}`; }
     function readProgress(c) {
       if (!readIsAi(c)) return c.pos / Math.max(1, c.chunks.length);
       const n = c.sections.length; if (!n) return 1; const s = c.aiPos.s, P = readAudio.secs[s];
-      return Math.min(1, (s + (P && P.length ? c.aiPos.p / P.length : 0)) / n);
+      return Math.min(1, (s + (P && P.dur ? Math.min(1, (c.aiPos.t || 0) / P.dur) : 0)) / n);
     }
     function readDone(c) { return readIsAi(c) ? c.aiPos.s >= c.sections.length : c.pos >= c.chunks.length; }
     function updateReadBtn() { const b = document.getElementById('readBtn'); if (!b) return; const c = readCfg(); b.textContent = c ? `📖 Texte : ${readDone(c) ? 'lu' : Math.round(readProgress(c) * 100) + ' %'}` : '📖 Texte à écouter'; }
     let readAudio = { id: '', secs: [], loading: {} };
-    function readSecKey(c, i) { return aiClipKey(`📖|${c.model}|${c.sections[i]}`); }
-    function readAudioFor(c) { const id = c.sid + '|' + c.model + '|' + c.sections.length + '|' + (c.sections[0] || '').slice(0, 40); if (readAudio.id !== id) readAudio = { id, secs: [], loading: {} }; return readAudio; }
-    async function readFetchText(text, model) {
+    function readSecKey(c, i) { return aiClipKey(`📖|${readSig(c)}|${c.sections[i]}`); }
+    function readAudioFor(c) { const id = c.sid + '|' + readSig(c) + '|' + c.sections.length + '|' + (c.sections[0] || '').slice(0, 40); if (readAudio.id !== id) readAudio = { id, secs: [], loading: {} }; return readAudio; }
+    // Dialogues : le texte est découpé en répliques (narrateur / personnage féminin / masculin).
+    // Google limite à 2 voix par requête : le narrateur, et une voix de l'autre sexe pour les personnages de l'autre sexe.
+    async function readDialogTurns(c, text) {
+      const gN = voiceGender(readProfile(c).voice);
+      let j = null;
       try {
-        const clip = await ttsEnqueue(() => aiRequestAudio(text, { batch: true, model }), 'lo');
-        const expect = text.length / 15; // ≈ 15 caractères par seconde à vitesse normale
+        j = parseJsonLoose(await geminiText([{ text: `Découpe ce texte en répliques pour une lecture à plusieurs voix. Pour chaque morceau, indique qui parle : "N" pour le narrateur (récit, descriptions, incises comme « dit-il »), "F" pour un personnage féminin, "H" pour un personnage masculin (déduis le sexe du prénom, des accords, du contexte ; si tu ne sais pas, mets "N"). Recopie le texte MOT POUR MOT, sans rien ajouter, enlever ni reformuler, dans l'ordre. Réponds uniquement en JSON : [{"q":"N","t":"..."}]\n\nTEXTE :\n${text}` }], { json: true, maxTokens: 8000 }));
+      } catch (e) { return null; }
+      if (!Array.isArray(j)) return null;
+      const turns = j.filter(x => x && x.t).map(x => ({ g: x.q === 'F' ? 'F' : x.q === 'H' ? 'H' : 'N', t: String(x.t).trim() }));
+      const len = turns.reduce((a, x) => a + x.t.length + 1, 0);
+      if (!turns.length || Math.abs(len - text.length) > text.length * 0.12) return null; // texte modifié : on garde une seule voix
+      if (!turns.some(x => x.g !== 'N' && x.g !== gN)) return null; // aucune réplique de l'autre sexe
+      const out = [];
+      turns.forEach(x => { const sp = x.g !== 'N' && x.g !== gN ? 'Personnage' : 'Narrateur'; const last = out[out.length - 1]; if (last && last.speaker === sp) last.text += ' ' + x.t; else out.push({ speaker: sp, text: x.t }); });
+      return out;
+    }
+    async function readFetchText(c, text, noDialog) {
+      const expect = text.length / 15; // ≈ 15 caractères par seconde à vitesse normale
+      if (c.dialog && !noDialog && text.length >= 80) {
+        const turns = await readDialogTurns(c, text);
+        if (turns) {
+          try {
+            const clip = await ttsEnqueue(() => aiRequestAudio(text, { batch: true, model: c.model, profile: readProfile(c), style: readStyleText(c), turns, voices: { Narrateur: readProfile(c).voice, Personnage: readVoice2(c) } }), 'lo');
+            if (clip && clip.pcm.length / clip.sr >= expect * 0.55) return clip;
+          } catch (e) { }
+        }
+      }
+      try {
+        const clip = await ttsEnqueue(() => aiRequestAudio(text, { batch: true, model: c.model, profile: readProfile(c), style: readStyleText(c) }), 'lo');
         if (clip && clip.pcm.length / clip.sr < expect * 0.55 && text.length >= 300) throw new Error('audio tronqué');
         return clip;
       }
       catch (e) {
         if (text.length < 300) return null;
         const mid = text.lastIndexOf('. ', Math.floor(text.length / 2)) > 100 ? text.lastIndexOf('. ', Math.floor(text.length / 2)) + 1 : Math.floor(text.length / 2);
-        const a = await readFetchText(text.slice(0, mid).trim(), model), b = await readFetchText(text.slice(mid).trim(), model);
+        const a = await readFetchText(c, text.slice(0, mid).trim(), true), b = await readFetchText(c, text.slice(mid).trim(), true);
         if (!a || !b) return a || b;
         const bb = resamplePcm(b.pcm, b.sr, a.sr), all = new Int16Array(a.pcm.length + bb.length); all.set(a.pcm, 0); all.set(bb, a.pcm.length);
         return { sr: a.sr, pcm: all };
@@ -16165,30 +16216,105 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       try {
         const k = readSecKey(c, i); let clip = null;
         try { const st = await aiDbGet(k); if (st && st.pcm) clip = { sr: st.sr, pcm: new Int16Array(st.pcm) }; } catch (e) { }
-        if (!clip) { clip = await readFetchText(c.sections[i], c.model); if (clip) { try { aiDbPut(k, { sr: clip.sr, pcm: clip.pcm.buffer.slice(clip.pcm.byteOffset, clip.pcm.byteOffset + clip.pcm.byteLength) }); } catch (e) { } } }
+        if (!clip) { clip = await readFetchText(c, c.sections[i]); if (clip) { try { aiDbPut(k, { sr: clip.sr, pcm: clip.pcm.buffer.slice(clip.pcm.byteOffset, clip.pcm.byteOffset + clip.pcm.byteLength) }); } catch (e) { } } }
         if (!clip) return false;
-        RA.secs[i] = splitAtQuiet(clip.pcm, clip.sr, Math.round(clip.sr * 25)).map(pcm => ({ sr: clip.sr, pcm }));
+        RA.secs[i] = { sr: clip.sr, pcm: clip.pcm, dur: clip.pcm.length / clip.sr, url: null };
         return true;
       } finally { RA.loading[i] = false; }
     }
+    // ---------- Lecteur du texte : fichier continu (pas de micro-coupures), mis en pause pendant les annonces
+    const rp = { el: null, url: '', s: -1, playing: false, allowed: false, lastAnnEnd: 0, wasSpk: false, lastSave: 0, logged: -1 };
+    function getReadEl() {
+      if (!rp.el) { rp.el = new Audio(); rp.el.preload = 'auto'; rp.el.addEventListener('ended', readOnEnded); rp.el.addEventListener('error', () => { rp.playing = false; }); }
+      return rp.el;
+    }
+    function readUnlock() { try { const el = getReadEl(); if (rp.playing) return; el.src = URL.createObjectURL(buildWavBlob(new Int16Array(240), 24000)); rp.url = ''; el.volume = 0; const p = el.play(); if (p && p.catch) p.catch(() => { }); } catch (e) { } }
+    function readSecUrl(sec) { if (!sec.url) sec.url = URL.createObjectURL(buildWavBlob(amplifyPcm(sec.pcm, aiGain()), sec.sr)); return sec.url; }
+    // Pause (annonce, fraction rapide, pause de séance) : on revient un peu en arrière pour ne pas perdre le mot coupé
+    function readPause(rewind) {
+      if (!rp.playing) return;
+      rp.playing = false;
+      const c = readCfg();
+      try { if (rp.el) { const t = rp.el.currentTime; rp.el.pause(); if (c && rp.s === c.aiPos.s && t > 0) { c.aiPos.t = Math.max(0, t - (rewind || 0)); saveAppData(); } } } catch (e) { }
+    }
+    function readDuck() { try { if (rp.playing) readPause(1.2); } catch (e) { } }
+    function readOnEnded() {
+      const c = readCfg(); if (!rp.playing) return; rp.playing = false; if (!c) return;
+      { const RA = readAudioFor(c), old = RA.secs[c.aiPos.s]; if (old && old.url) { try { URL.revokeObjectURL(old.url); } catch (e) { } } RA.secs[c.aiPos.s] = undefined; rp.url = ''; } // libère la mémoire
+      c.aiPos = { s: c.aiPos.s + 1, t: 0 }; saveAppData(); updateReadBtn();
+      if (readDone(c)) { setTimeout(() => showToast('📖 Texte entièrement lu'), 800); return; }
+      readTryPlay();
+    }
+    function readTryPlay() {
+      const c = readCfg(); if (!readIsAi(c) || rp.playing || readDone(c) || !rp.allowed || isSpeaking()) return;
+      const s0 = c.aiPos.s, RA = readAudioFor(c), sec = RA.secs[s0];
+      readLoadSection(c, s0 + 1); // la partie suivante se prépare en avance
+      if (!sec) {
+        if (!RA.loading[s0]) readLoadSection(c, s0).then(ok => { if (!ok) { c.fallback = readChunks(c.sections[s0]); c.fbPos = 0; } else readTryPlay(); });
+        return;
+      }
+      const el = getReadEl(), url = readSecUrl(sec), rate = Math.min(1.6, Math.max(0.6, c.rate || 1));
+      rp.playing = true; rp.s = s0; c.started = true;
+      if (rp.logged !== s0) { rp.logged = s0; logSpoken(`📖 Texte (partie ${s0 + 1}/${c.sections.length})`); }
+      const go = () => {
+        if (!rp.playing) return;
+        try { el.preservesPitch = true; el.webkitPreservesPitch = true; el.defaultPlaybackRate = rate; el.playbackRate = rate; } catch (e) { }
+        el.volume = Math.min(1, aiGain());
+        try { const t = Math.min(c.aiPos.t || 0, Math.max(0, sec.dur - 0.5)); if (Math.abs(el.currentTime - t) > 0.25) el.currentTime = t; } catch (e) { }
+        const p = el.play(); if (p && p.catch) p.catch(() => { rp.playing = false; });
+      };
+      if (rp.url !== url) { rp.url = url; el.src = url; el.addEventListener('loadedmetadata', go, { once: true }); try { el.load(); } catch (e) { } }
+      else go();
+    }
+    setInterval(() => {
+      try {
+        const spk = isSpeaking();
+        if (rp.wasSpk && !spk) rp.lastAnnEnd = Date.now();
+        rp.wasSpk = spk;
+        if (!rp.playing) return;
+        const c = readCfg();
+        if (!c || spk || !timerState.isRunning || timerState.finished || tl.active || !rp.allowed) { readPause(spk ? 1.2 : 0.4); return; }
+        if (rp.el && !rp.el.paused && c.aiPos.s === rp.s) { c.aiPos.t = rp.el.currentTime; if (Date.now() - rp.lastSave > 10000) { rp.lastSave = Date.now(); saveAppData(); updateReadBtn(); } }
+      } catch (e) { }
+    }, 200);
+    // Pendant la lecture, sauf si on a choisi de tout garder : seules les annonces indispensables passent
+    function readMute() { try { const c = readCfg(); return !!(c && !c.keepAnn && c.started && !readDone(c)); } catch (e) { return false; } }
+    function speakOpt(t) { if (!readMute()) speakLive(t); }
+    function speakOptP(p, o) { if (!readMute()) speak(p, o); }
     function openReadModal() {
       let m = document.getElementById('readModal');
       if (!m) { m = document.createElement('div'); m.id = 'readModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
-      const c = readCfg() || { text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts' };
+      const c = readCfg() || { text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts', tone: 'livre' };
+      const vOpts = (cur, auto) => `<option value="">${auto}</option>` + ['H', 'F'].map(g => `<optgroup label="${g === 'H' ? 'Voix d\'homme' : 'Voix de femme'}">${AI_VOICES.filter(v => v[2] === g).map(v => `<option value="${v[0]}"${v[0] === cur ? ' selected' : ''}>${v[0]} · ${v[1]}</option>`).join('')}</optgroup>`).join('');
       const opt = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
       m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
         <span style="font-size:18px;font-weight:900">📖 Texte à écouter pendant la séance</span>
-        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle un texte (un mail copié depuis Gmail, un article…). Il est lu par petits morceaux dans les moments calmes, sans couvrir les annonces importantes. Écran allumé ou mode poche (pas écran verrouillé).</span>
+        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle un texte (un mail copié depuis Gmail, un article…). Il est lu en continu ; la lecture se met en pause le temps d'une annonce puis reprend. Écran allumé ou mode poche (pas écran verrouillé).</span>
         <div style="display:flex;gap:6px"><input id="rdUrl" class="pm-in flex-1" placeholder="ou l'adresse d'une page web / d'un Google Doc partagé" style="height:42px;font-size:13px"><button type="button" onclick="readImportUrl()" style="width:52px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900">⬇️</button></div>
         <textarea id="rdText" rows="7" class="pm-in" oninput="readEstimate()" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="Colle ton texte ici…">${plEsc(c.text || '')}</textarea>
         <div id="rdEst" style="font-size:12.5px;color:#94a3b8;line-height:1.45"></div>
         <label class="pm-lbl">Début de la lecture<select id="rdStart" class="pm-in" onchange="document.getElementById('rdMinRow').style.display=this.value==='min'?'flex':'none'">${opt('begin', 'Dès le départ', c.start)}${opt('warm', "Après l'échauffement", c.start)}${opt('min', 'À partir de la minute…', c.start)}</select></label>
         <div id="rdMinRow" style="display:${c.start === 'min' ? 'flex' : 'none'};align-items:center;gap:8px;font-weight:800;color:#cbd5e1">Minute <input id="rdMin" type="number" min="0" max="300" value="${c.min || 10}" class="pm-in c" style="width:90px"></div>
-        <label class="pm-lbl">Voix<select id="rdVoice" class="pm-in" onchange="readEstimate()">${opt('ai', 'Voix du coach (IA)', c.voice)}${opt('phone', 'Voix du téléphone (gratuite)', c.voice)}</select></label>
+        <label class="pm-lbl">Voix<select id="rdVoice" class="pm-in" onchange="readEstimate()">${opt('ai', 'Voix IA (humaine)', c.voice)}${opt('phone', 'Voix du téléphone (gratuite)', c.voice)}</select></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label class="pm-lbl">Vitesse de lecture<select id="rdRate" class="pm-in" onchange="readEstimate()">${[0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5].map(v => opt(String(v), `× ${String(v).replace('.', ',')}`, String(c.rate || 1))).join('')}</select></label>
-          <label class="pm-lbl">Voix IA<select id="rdModel" class="pm-in" onchange="readEstimate()">${opt('gemini-3.8-flash-lite-tts', 'Flash-Lite (éco)', c.model)}${opt('gemini-3.8-flash-tts', 'Flash (plus expressive)', c.model)}</select></label>
+          <label class="pm-lbl">Qualité IA<select id="rdModel" class="pm-in" onchange="readEstimate()">${opt('gemini-3.8-flash-lite-tts', 'Flash-Lite (éco)', c.model)}${opt('gemini-3.8-flash-tts', 'Flash (plus expressive)', c.model)}</select></label>
         </div>
+        <div id="rdAiBox" style="display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">
+          <span style="font-size:12px;font-weight:800;color:#c4b5fd">🎙️ Voix IA de la lecture (indépendante du coach)</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label class="pm-lbl">Voix<select id="rdAiVoice" class="pm-in">${vOpts(c.aiVoice || '', 'Celle du coach')}</select></label>
+            <label class="pm-lbl">Ton<select id="rdTone" class="pm-in">${Object.entries(READ_TONES).map(([k, v]) => opt(k, v[0], c.tone || 'livre')).join('')}</select></label>
+          </div>
+          <button type="button" id="rdPrevBtn" onclick="readPreview()" style="min-height:40px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">🔊 Écouter un extrait</button>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Voix différentes pour les dialogues<input type="checkbox" id="rdDialog" class="sw" ${c.dialog ? 'checked' : ''} onchange="document.getElementById('rdV2Row').style.display=this.checked?'flex':'none';readEstimate()"></label>
+          <div id="rdV2Row" style="display:${c.dialog ? 'flex' : 'none'};flex-direction:column;gap:6px">
+            <label class="pm-lbl">Voix des personnages de l'autre sexe<select id="rdAiVoice2" class="pm-in">${vOpts(c.aiVoice2 || '', 'Automatique')}</select></label>
+            <span style="font-size:11.5px;color:#94a3b8;line-height:1.4">Le coach repère qui parle (narrateur, femme, homme). Google ne permet que 2 voix à la fois : le narrateur lit aussi les personnages de son sexe, l'autre voix lit ceux de l'autre sexe.</span>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Garder les annonces du coach<input type="checkbox" id="rdKeepAnn" class="sw" ${c.keepAnn ? 'checked' : ''}></label>
+        <span style="font-size:11.5px;color:#94a3b8;margin-top:-8px;line-height:1.4">Décoché : pendant la lecture, plus d'encouragements, bilans au km, conseils d'allure, rappels boire / manger, radio… Seules les annonces indispensables passent (changement d'allure, compte à rebours, guidage, alerte cardio, fin de séance) : la lecture se met en pause puis reprend.</span>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Lire aussi pendant les fractions rapides<input type="checkbox" id="rdFast" class="sw" ${c.fast ? 'checked' : ''}></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button type="button" onclick="readSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans texte</button>
@@ -16204,7 +16330,21 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const rate = parseFloat((document.getElementById('rdRate') || {}).value) || 1, sec = words / 150 * 60, play = sec / rate;
       const model = (document.getElementById('rdModel') || {}).value || 'gemini-3.8-flash-lite-tts', price = (TTS_PRICE_PER_M[model] || 9);
       const cost = sec * 25 / 1e6 * price, nReq = readChunks(t.trim(), READ_SEC, READ_SEC + 200).length;
-      el.innerHTML = `${words} mots · écoute ≈ <b style="color:#e2e8f0">${fmtHM(play / 60)}</b> à × ${String(rate).replace('.', ',')}<br>Voix du coach : <b>${nReq} requête${nReq > 1 ? 's' : ''}</b> (≈ 2 min 30 d'audio chacune), ≈ ${(cost * 0.93).toFixed(2).replace('.', ',')} €, préparation ≈ ${Math.max(1, Math.round(nReq * 40 / 2 / 60))} min · Voix du téléphone : gratuit et immédiat`;
+      el.innerHTML = `${words} mots · écoute ≈ <b style="color:#e2e8f0">${fmtHM(play / 60)}</b> à × ${String(rate).replace('.', ',')}<br>Voix IA : <b>${nReq} requête${nReq > 1 ? 's' : ''}</b> (≈ 2 min 30 d'audio chacune), ≈ ${(cost * 0.93).toFixed(2).replace('.', ',')} €, préparation ≈ ${Math.max(1, Math.round(nReq * 40 / 2 / 60))} min · Voix du téléphone : gratuit et immédiat`;
+    }
+    // Extrait (≈ 20 s) avec la voix et le ton choisis
+    async function readPreview() {
+      const b = document.getElementById('rdPrevBtn'), t = ((document.getElementById('rdText') || {}).value || '').trim();
+      if (!aiVoiceActive()) { showToast('Active la voix IA (Réglages › Voix) et la clé Gemini'); return; }
+      const cfg = { model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value };
+      let ex = t ? t.slice(0, 320) : "Il était une fois, au bord d'un lac tranquille, une coureuse qui partait chaque matin avant le lever du soleil.";
+      if (t.length > 320) { const k = ex.lastIndexOf('. '); if (k > 120) ex = ex.slice(0, k + 1); }
+      if (b) { b.disabled = true; b.textContent = '⏳ Préparation de l\'extrait…'; }
+      try {
+        const clip = await ttsEnqueue(() => aiRequestAudio(ex, { model: cfg.model, profile: readProfile(cfg), style: readStyleText(cfg) }), 'hi');
+        if (clip) { const el = getReadEl(); readPause(0); rp.url = ''; el.src = URL.createObjectURL(buildWavBlob(amplifyPcm(clip.pcm, aiGain()), clip.sr)); el.playbackRate = parseFloat(document.getElementById('rdRate').value) || 1; el.volume = Math.min(1, aiGain()); el.play().catch(() => { }); }
+      } catch (e) { showToast('Extrait impossible : ' + ((e && (e.msg || e.message)) || e)); }
+      if (b) { b.disabled = false; b.textContent = '🔊 Écouter un extrait'; }
     }
     async function readImportUrl() {
       let u = ((document.getElementById('rdUrl') || {}).value || '').trim(); if (!/^https?:\/\//i.test(u)) { showToast('Colle une adresse qui commence par https://'); return; }
@@ -16236,7 +16376,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!on) appData.audioSettings.readText = null;
       else {
         const chunks = readChunks(t.trim());
-        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, p: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value };
+        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, t: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value, dialog: document.getElementById('rdDialog').checked, aiVoice2: document.getElementById('rdAiVoice2').value, keepAnn: document.getElementById('rdKeepAnn').checked };
         if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readPrepareAll(); return; } readLoadSection(appData.audioSettings.readText, 0); }
         else if (prep) showToast('Voix du téléphone : rien à préparer, la lecture est immédiate');
       }
@@ -16249,37 +16389,31 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     readPrefetch.busy = {};
     function readTick(cur, elapsedMs, remMs) {
-      const c = readCfg(); if (!c || readDone(c) || !cur || !timerState.isRunning || tl.active || preCd) return;
+      const c = readCfg(); if (!c || readDone(c)) { rp.allowed = false; return; }
       const el = timerState.totalSessionMs - timerState.totalRemainingMs;
       const warmEnd = (() => { let t = 0; for (const st of timerState.stages) { if (st.type !== 'chauffe') break; t += st.durationSec * 1000; } return t; })();
-      if (c.start === 'warm' && el < warmEnd) return;
-      if (c.start === 'min' && el < (c.min || 0) * 60000) return;
-      if (cur.intensity === 'fast' && !c.fast && !(cur.durationSec >= 600)) return;
-      if (isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 2500) return;
+      let ok = !!cur && timerState.isRunning && !timerState.finished && !tl.active && !preCd;
+      if (ok && c.start === 'warm' && el < warmEnd) ok = false;
+      if (ok && c.start === 'min' && el < (c.min || 0) * 60000) ok = false;
+      if (ok && cur.intensity === 'fast' && !c.fast && !(cur.durationSec >= 600)) ok = false;
+      rp.allowed = ok;
+      if (!ok) return;
       const rate = c.rate || 1;
       if (readIsAi(c)) {
-        if (!c.aiPos) c.aiPos = { s: 0, p: 0 };
-        const RA = readAudioFor(c), P = RA.secs[c.aiPos.s];
-        readLoadSection(c, c.aiPos.s + 1);                                   // la partie suivante se prépare en avance
-        if (!P) {
-          if (!RA.loading[c.aiPos.s]) readLoadSection(c, c.aiPos.s).then(ok => { if (!ok) { // échec : cette partie est lue par la voix du téléphone
-            const sub = readChunks(c.sections[c.aiPos.s]); c.fallback = sub; c.fbPos = 0; } });
-          if (c.fallback && c.fbPos < c.fallback.length) { const tx = c.fallback[c.fbPos]; if (remMs < Math.max(25000, tx.split(/\s+/).length / 150 * 60000 / rate + 10000)) return; logSpoken(tx); systemSpeak(tx, rate); c.fbPos++; readTick.lastEnd = Date.now(); if (c.fbPos >= c.fallback.length) { c.fallback = null; c.aiPos = { s: c.aiPos.s + 1, p: 0 }; } saveAppData(); updateReadBtn(); }
-          return;
+        if (c.fallback && c.fbPos < c.fallback.length) { // partie impossible à générer : lue par la voix du téléphone
+          if (isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 1500) return;
+          const tx = c.fallback[c.fbPos]; logSpoken(tx); systemSpeak(tx, rate); c.fbPos++; readTick.lastEnd = Date.now(); c.started = true;
+          if (c.fbPos >= c.fallback.length) { c.fallback = null; c.aiPos = { s: c.aiPos.s + 1, t: 0 }; }
+          saveAppData(); updateReadBtn(); return;
         }
-        const piece = P[c.aiPos.p]; if (!piece) { c.aiPos = { s: c.aiPos.s + 1, p: 0 }; return; }
-        const durMs = piece.pcm.length / piece.sr / rate * 1000;
-        if (remMs < Math.max(25000, durMs + 10000)) return;
-        aiPlayClips([piece], `${readSecKey(c, c.aiPos.s)}|${c.aiPos.p}`, rate);
-        logSpoken(`📖 Texte (partie ${c.aiPos.s + 1}.${c.aiPos.p + 1})`);
-        c.aiPos = c.aiPos.p + 1 < P.length ? { s: c.aiPos.s, p: c.aiPos.p + 1 } : { s: c.aiPos.s + 1, p: 0 };
-        readTick.lastEnd = Date.now() + durMs;
-      } else {
+        if (!rp.playing && !isSpeaking() && Date.now() - rp.lastAnnEnd > 900) readTryPlay();
+        return;
+      }
+      if (isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 2500) return;
         const txt = c.chunks[c.pos];
         const estMs = txt.split(/\s+/).length / 150 * 60000 / rate;
         if (remMs < Math.max(25000, estMs + 10000)) return;
-        logSpoken(txt); systemSpeak(txt, rate); c.pos++; readTick.lastEnd = Date.now();
-      }
+        logSpoken(txt); systemSpeak(txt, rate); c.pos++; readTick.lastEnd = Date.now(); c.started = true;
       saveAppData(); updateReadBtn();
       if (readDone(c)) setTimeout(() => showToast('📖 Texte entièrement lu'), 1500);
     }
