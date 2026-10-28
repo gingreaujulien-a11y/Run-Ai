@@ -116,17 +116,17 @@
     .pl-day.on { background: #a78bfa; border-color: #a78bfa; color: #13092b; }
     button, input, select, textarea { font-family: inherit; }
     /* Planning */
-    #historyModal .pl-sec { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 4px 0; }
-    #historyModal [data-plsid] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-    #historyModal .pl-card { padding: 12px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; }
-    #historyModal .pl-card.today { padding: 16px; border-radius: 22px; background: #0f172a; border: 1.5px solid #38bdf8; box-shadow: 0 8px 28px rgba(56,189,248,.15); }
-    #historyModal .pl-card.done { background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.3); }
-    #historyModal .pl-card.past { opacity: .6; }
-    #historyModal .pl-date { width: 48px; height: 52px; border-radius: 14px; background: #131f35; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
-    #historyModal .pl-tab { font-size: 12px !important; }
-    #historyModal .pl-tab { height: 40px; border-radius: 12px; font-weight: 800; font-size: 13px; color: #94a3b8; background: transparent; }
-    #historyModal .pl-tab.on { background: #38bdf8; color: #04121f; }
-    #historyModal .pl-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #historyModal .pl-sec, #plOv .pl-sec { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 4px 0; }
+    #historyModal [data-plsid], #plOv [data-plsid] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    #historyModal .pl-card, #plOv .pl-card { padding: 12px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; }
+    #historyModal .pl-card.today, #plOv .pl-card.today { padding: 16px; border-radius: 22px; background: #0f172a; border: 1.5px solid #38bdf8; box-shadow: 0 8px 28px rgba(56,189,248,.15); }
+    #historyModal .pl-card.done, #plOv .pl-card.done { background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.3); }
+    #historyModal .pl-card.past, #plOv .pl-card.past { opacity: .6; }
+    #historyModal .pl-date, #plOv .pl-date { width: 48px; height: 52px; border-radius: 14px; background: #131f35; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    #historyModal .pl-tab, #plOv .pl-tab { font-size: 12px !important; }
+    #historyModal .pl-tab, #plOv .pl-tab { height: 40px; border-radius: 12px; font-weight: 800; font-size: 13px; color: #94a3b8; background: transparent; }
+    #historyModal .pl-tab.on, #plOv .pl-tab.on { background: #38bdf8; color: #04121f; }
+    #historyModal .pl-clamp, #plOv .pl-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     #splash {
       position: fixed; inset: 0; z-index: 200; background: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem;
@@ -729,18 +729,13 @@
         </button>
       </div>
       <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 96px">
+        <div style="display:grid;grid-template-columns:1fr 56px;gap:8px;margin-bottom:12px">
+          <button onclick="openOffModal()" class="flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6-6 6"/><path d="M12 6l6 6-6 6"/></svg>Décaler le planning</button>
+          <button onclick="openPlSearch()" aria-label="Rechercher une séance" title="Rechercher une séance" class="flex items-center justify-center active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(56,189,248,.45);background:rgba(56,189,248,.1);color:#7dd3fc"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button>
+        </div>
         <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
-        <button onclick="openOffModal()" class="w-full mt-3 flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74">🚫 Jours sans sport · décaler le planning</button>
-        <div class="grid gap-1 mt-3.5" style="grid-template-columns:1fr 1fr;padding:4px;border-radius:16px 16px 0 0;background:#0f172a;border:1px solid #1e293b;border-bottom:0">
-          <button onclick="setHistoryFilter('week')" id="fltWeek" class="pl-tab">Semaine</button>
-          <button onclick="setHistoryFilter('all')" id="fltAll" class="pl-tab">Toutes</button>
-        </div>
-        <div class="grid grid-cols-3 gap-1 mb-3.5" style="padding:0 4px 4px;border-radius:0 0 16px 16px;background:#0f172a;border:1px solid #1e293b;border-top:0">
-          <button onclick="setHistoryFilter('planned')" id="fltPlan" class="pl-tab">À venir · <span id="cntPlan">0</span></button>
-          <button onclick="setHistoryFilter('validated')" id="fltVal" class="pl-tab">Faites · <span id="cntVal">0</span></button>
-          <button onclick="setHistoryFilter('missed')" id="fltMiss" class="pl-tab">Manquées · <span id="cntMiss">0</span></button>
-        </div>
-        <div id="plKindRow" style="display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 6px"></div>
+        <div class="hidden"><span id="fltWeek"></span><span id="fltAll"></span><span id="fltPlan"></span><span id="fltVal"></span><span id="fltMiss"></span><span id="cntPlan"></span><span id="cntVal"></span><span id="cntMiss"></span><div id="plKindRow"></div></div>
+        <div class="pl-sec" style="margin-top:14px">Séances de la semaine</div>
         <div id="historyTableBody" class="flex flex-col gap-2.5"></div>
       </div>
     </div>
@@ -5588,6 +5583,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       refreshAllIcons();
     }
     function closeHistoryModal() {
+      { const o = document.getElementById('plOv'); if (o) o.remove(); plOv = null; }
       document.getElementById('historyModal').classList.add('hidden');
     }
 
@@ -5597,6 +5593,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
         const b = document.getElementById(id); if (b) b.classList.toggle('on', f === k);
       });
       updateHistoryTable();
+      if (f && f !== 'week') { plSearchQ = Object.assign({ period: 'all', kinds: [], from: '', to: '', text: '', place: 'all' }, { period: f }); plOvOpen({ mode: 'results' }); } // anciens onglets → recherche
     }
 
     // Type de séance (étiquette colorée du planning)
@@ -5906,7 +5903,7 @@ Donne 2 ou 3 axes de travail.`;
     }
     function renderProgress() {
       renderProgressInner();
-      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('afterbegin', strengthsCardHtml());
+      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('afterbegin', `<button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;margin-bottom:12px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Évolution de mes séances (comparer)</button>` + strengthsCardHtml());
     }
     function renderProgressInner() {
       const box = document.getElementById('progressPanel');
@@ -5989,7 +5986,7 @@ Donne 2 ou 3 axes de travail.`;
       wk.innerHTML = `
         <div class="flex items-center justify-between gap-2">
           <div class="flex flex-col gap-0.5">
-            <span style="font-size:12px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.2px">${plWeekOff === 0 ? 'Cette semaine' : plWeekOff === 1 ? 'Semaine prochaine' : plWeekOff === -1 ? 'Semaine dernière' : 'Semaine'} · ${parseISODateLocal(w0).getDate()} au ${fmt(w6)}</span>
+            <span style="font-size:12px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.2px">${planWeekNum(w0, w6) ? `Semaine ${planWeekNum(w0, w6)}` : plWeekOff === 0 ? 'Cette semaine' : 'Semaine'} · ${toDDMM(parseISODateLocal(w0))} au ${toDDMM(parseISODateLocal(w6))}</span>
             <span style="font-size:20px;font-weight:800">${doneRun.length} séance${doneRun.length > 1 ? 's' : ''} sur ${nPlan}</span>
           </div>
           <div class="flex flex-col items-end gap-0.5 shrink-0">
@@ -6099,12 +6096,62 @@ Donne 2 ou 3 axes de travail.`;
     }
     // « Annuler » remet la séance à sa date d'origine
     function plMoveUndoId(sid, from) { window.__plMoveUndo = { sid, from }; return '__move'; }
+    // Numéro de semaine du plan : celui des séances de la semaine, sinon déduit de la séance la plus proche
+    function planWeekNum(w0, w6) {
+      const S = (appData.sessions || []).filter(x => x.dateISO && +x.semaine > 0);
+      const inW = S.filter(x => x.dateISO >= w0 && x.dateISO <= w6).map(x => +x.semaine);
+      if (inW.length) { const c = {}; inW.forEach(n => c[n] = (c[n] || 0) + 1); return +Object.keys(c).sort((a, b) => c[b] - c[a])[0]; }
+      if (!S.length) return null;
+      const ref = S.slice().sort((a, b) => Math.abs(parseISODateLocal(a.dateISO) - parseISODateLocal(w0)) - Math.abs(parseISODateLocal(b.dateISO) - parseISODateLocal(w0)))[0];
+      const n = +ref.semaine + Math.round((parseISODateLocal(w0) - parseISODateLocal(weekStartISO(ref.dateISO))) / (7 * 86400000));
+      return n >= 1 ? n : null;
+    }
     let plKinds = [];
     function plToggleKind(k) { if (!k) plKinds = []; else plKinds = plKinds.includes(k) ? plKinds.filter(x => x !== k) : plKinds.concat(k); updateHistoryTable(); }
+    // ===== Fenêtres par-dessus le calendrier : détail d'un jour, recherche de séances
+    let plOv = null, plAllKinds = [], plSearchQ = { period: 'all', kinds: [], from: '', to: '', text: '', place: 'all' };
+    function plOvOpen(o) {
+      plOv = o;
+      let m = document.getElementById('plOv');
+      if (!m) { m = document.createElement('div'); m.id = 'plOv'; m.style.cssText = 'position:fixed;inset:0;z-index:50;background:#050a16;color:#f1f5f9'; const hm = document.getElementById('historyModal'); if (hm) hm.after(m); else document.body.appendChild(m); } // juste au-dessus du planning, sous les autres fenêtres
+      plOvRender();
+    }
+    function plOvClose() { const m = document.getElementById('plOv'); if (m) m.remove(); plOv = null; try { updateHistoryTable(); } catch (e) { } }
+    function plOvRender() {
+      const m = document.getElementById('plOv'); if (!m || !plOv) return;
+      const head = (title, extra) => `<div class="h-full w-full max-w-md mx-auto flex flex-col"><div style="display:flex;align-items:center;gap:8px;padding:20px 16px 12px"><span style="flex:1;font-size:21px;font-weight:900;line-height:1.2">${title}</span>${extra || ''}<button type="button" onclick="plOvClose()" aria-label="Retour au calendrier" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#cbd5e1;font-size:18px;font-weight:900;flex-shrink:0">✕</button></div>`;
+      if (plOv.mode === 'day') {
+        m.innerHTML = head(capFirst(parseISODateLocal(plOv.day).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })))
+          + `<div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 40px"><div id="plOvBody" class="flex flex-col gap-2.5"></div></div></div>`;
+        updateHistoryTable({ mode: 'day', box: 'plOvBody', day: plOv.day });
+      } else if (plOv.mode === 'filters') {
+        const q = plSearchQ, chip = (on, js, t) => `<button type="button" onclick="${js}" style="min-height:40px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:none' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${t}</button>`;
+        m.innerHTML = head('🔍 Rechercher des séances') + `<div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 40px;display:flex;flex-direction:column;gap:14px">
+          <div><div class="pm-lab">Séances</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${[['all', 'Toutes'], ['planned', 'À venir'], ['validated', 'Faites'], ['missed', 'Manquées']].map(([k, t]) => chip(q.period === k, `plSearchQ.period='${k}';plOvRender()`, t)).join('')}</div></div>
+          <div><div class="pm-lab">Type de séance</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chip(!q.kinds.length, `plSearchQ.kinds=[];plOvRender()`, 'Tous types')}${plAllKinds.map(k => chip(q.kinds.includes(k), `plSearchToggleKind(${JSON.stringify(k).replace(/"/g, '&quot;')})`, capFirst(k.toLowerCase()))).join('')}</div></div>
+          <div><div class="pm-lab">Lieu</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${[['all', 'Partout'], ['exterieur', '🌳 Extérieur'], ['tapis', '🏃 Tapis']].map(([k, t]) => chip(q.place === k, `plSearchQ.place='${k}';plOvRender()`, t)).join('')}</div></div>
+          <div><div class="pm-lab">Période</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="pm-lbl">Du<input type="date" class="pm-in" value="${q.from}" onchange="plSearchQ.from=this.value"></label><label class="pm-lbl">Au<input type="date" class="pm-in" value="${q.to}" onchange="plSearchQ.to=this.value"></label></div></div>
+          <div><div class="pm-lab">Mot dans la séance (option)</div><input class="pm-in" value="${plEsc(q.text)}" placeholder="ex. côtes, 30/30, parc…" oninput="plSearchQ.text=this.value"></div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button type="button" onclick="plSearchQ={ period: 'all', kinds: [], from: '', to: '', text: '', place: 'all' };plOvRender()" style="min-height:50px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Effacer</button>
+            <button type="button" onclick="plOvOpen({ mode: 'results' })" style="min-height:50px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:16px">Afficher</button></div></div></div>`;
+      } else {
+        const q = plSearchQ, v = Object.assign({ mode: 'search', box: 'plOvBody' }, q);
+        const sum = [{ all: 'Toutes', planned: 'À venir', validated: 'Faites', missed: 'Manquées' }[q.period], q.kinds.length ? q.kinds.map(k => capFirst(k.toLowerCase())).join(', ') : '', q.place !== 'all' ? (q.place === 'tapis' ? 'tapis' : 'extérieur') : '', q.from || q.to ? `${q.from ? fmtDateShort(q.from) : '…'} → ${q.to ? fmtDateShort(q.to) : '…'}` : '', q.text ? `« ${plEsc(q.text)} »` : ''].filter(Boolean).join(' · ');
+        m.innerHTML = head('Séances', `<button type="button" onclick="plOvOpen({ mode: 'filters' })" aria-label="Modifier la recherche" style="width:44px;height:44px;border-radius:22px;border:1px solid rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button>`)
+          + `<div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 40px"><div id="plOvSum" style="font-size:13px;color:#94a3b8;font-weight:700;margin-bottom:8px"></div><div id="plOvBody" class="flex flex-col gap-2.5"></div></div></div>`;
+        updateHistoryTable(v);
+        const sm = document.getElementById('plOvSum'); if (sm) sm.textContent = `${v.count || 0} séance${(v.count || 0) > 1 ? 's' : ''} · ${sum}`;
+      }
+      const body = document.getElementById('plOvBody');
+      if (body) body.onclick = e => { if (e.target.closest('button, a, input, select, textarea, label, [id^="detail_"]')) return; const card = e.target.closest('.pl-card'); const d = card && card.querySelector('[id^="detail_"]'); if (d) d.classList.toggle('hidden'); };
+      refreshAllIcons();
+    }
+    function plSearchToggleKind(k) { const a = plSearchQ.kinds; plSearchQ.kinds = a.includes(k) ? a.filter(x => x !== k) : a.concat(k); plOvRender(); }
+    function openPlSearch() { try { updateHistoryTable(); } catch (e) { } plOvOpen({ mode: 'filters' }); }
     function plDayClick(iso) {
       const t = todayISO();
       const has = (appData.history || []).some(h => histISO(h) === iso) || appData.sessions.some(x => x.dateISO === iso) || (appData.crossPlan || []).some(c => c.dateISO === iso) || iso === raceISO();
-      if (has) { currentFilter = 'week'; plSelDay = plSelDay === iso ? '' : iso; updateHistoryTable(); return; }
+      if (has) { plOvOpen({ mode: 'day', day: iso }); return; }
       if (iso < t) { showToast('Jour passé : aucune séance ce jour-là'); return; }
       plSelDay = ''; updateHistoryTable();
       openActivityWizard('', iso);
@@ -6251,9 +6298,12 @@ Donne 2 ou 3 axes de travail.`;
         </div>
       </div>`;
     }
-    function updateHistoryTable() {
-      const box = document.getElementById('historyTableBody');
+    function updateHistoryTable(view) {
+      view = view || { mode: 'main' };
+      const box = document.getElementById(view.box || 'historyTableBody');
       if (!box) return;
+      const fltSel = view.mode === 'search' ? (view.period || 'all') : view.mode === 'day' ? 'day' : 'week';
+      const kindsSel = view.mode === 'search' ? (view.kinds || []) : [];
       try { window.__recIds = recordHistIds(); } catch (e) { window.__recIds = {}; }
       const t = todayISO();
       const items = [];
@@ -6271,23 +6321,28 @@ Donne 2 ou 3 axes de travail.`;
       // Filtre par type de séance
       const kindOf = i => i.type === 'crossplan' ? 'AUTRE ACTIVITÉ' : i.type === 'race' ? 'COURSE' : i.type === 'validated' ? (i.cross ? 'AUTRE ACTIVITÉ' : sessionKind(i.linked || i).label) : sessionKind(appData.sessions[i.rawIdx] || i).label;
       items.forEach(i => { try { i._kind = kindOf(i); } catch (e) { i._kind = ''; } });
-      { const kinds = [...new Set(items.map(i => i._kind).filter(Boolean))];
+      plAllKinds = [...new Set(items.map(i => i._kind).filter(Boolean))];
+      if (false) { const kinds = plAllKinds;
         plKinds = plKinds.filter(k => kinds.includes(k));
         const kr = document.getElementById('plKindRow');
         if (kr) kr.innerHTML = kinds.length > 1 ? ['', ...kinds].map(k => { const on = k ? plKinds.includes(k) : !plKinds.length; return `<button type="button" onclick="plToggleKind(${JSON.stringify(k).replace(/"/g, '&quot;')})" style="min-height:32px;padding:0 11px;border-radius:16px;font-size:12px;font-weight:800;white-space:nowrap;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${k ? capFirst(k.toLowerCase()) : 'Tous types'}</button>`; }).join('')
           + `<button type="button" onclick="openEvo(${JSON.stringify(plKinds[0] || '').replace(/"/g, '&quot;')})" style="min-height:32px;padding:0 11px;border-radius:16px;font-size:12px;font-weight:800;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.45)">📈 Évolution</button>` : ''; }
-      const kOk = i => !plKinds.length || plKinds.includes(i._kind);
+      const placeOf = i => i.type === 'validated' ? (appData.history[i.rawIdx] || {}).type : i.type === 'planned' ? (appData.sessions[i.rawIdx] || {}).type : i.type === 'crossplan' ? 'autre' : 'exterieur';
+      const txtOf = i => [i.title, i.details, i.note, i.notes, i._kind, i.item && (i.item.titre || i.item.type)].filter(Boolean).join(' ').toLowerCase();
+      const kOk = i => (!kindsSel.length || kindsSel.includes(i._kind))
+        && (view.mode !== 'search' || ((!view.from || (i.iso && i.iso >= view.from)) && (!view.to || (i.iso && i.iso <= view.to))
+          && (!view.place || view.place === 'all' || placeOf(i) === view.place) && (!view.text || txtOf(i).includes(view.text.toLowerCase()))));
       const done = items.filter(i => i.type === 'validated' && kOk(i));
       const planned = items.filter(i => (i.type === 'planned' || i.type === 'crossplan' || i.type === 'race') && kOk(i)).sort((a, b) => String(a.iso || '9').localeCompare(String(b.iso || '9')));
       const upcoming = planned.filter(i => !i.iso || i.iso >= t);
       const missed = planned.filter(i => i.iso && i.iso < t && i.type === 'planned').sort((a, b) => String(b.iso).localeCompare(String(a.iso)));
+      if (view.mode === 'search') view.count = fltSel === 'planned' ? upcoming.length : fltSel === 'validated' ? done.length : fltSel === 'missed' ? missed.length : upcoming.length + done.length + missed.length;
       { const c = document.getElementById('cntMiss'); if (c) c.textContent = missed.length; }
       document.getElementById('cntVal').textContent = done.length;
       document.getElementById('cntPlan').textContent = upcoming.length;
       const badge = document.getElementById('badgeHistCount'); if (badge) badge.textContent = done.length;
       setTimeout(() => ['week', 'all', 'validated', 'planned', 'missed'].forEach(k => { const b = document.getElementById({ week: 'fltWeek', all: 'fltAll', validated: 'fltVal', planned: 'fltPlan', missed: 'fltMiss' }[k]); if (b) b.classList.toggle('on', currentFilter === k); }), 0);
-      renderPlanningHeader(items);
-      plDragInit();
+      if (view.mode === 'main') { renderPlanningHeader(items); plDragInit(); }
 
       const out = [];
       const sec = txt => out.push(`<div class="pl-sec">${txt}</div>`);
@@ -6317,14 +6372,14 @@ Donne 2 ou 3 axes de travail.`;
           out.push(i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, iso === t));
         });
       };
-      if (currentFilter === 'planned') {
+      if (fltSel === 'planned') {
         if (!upcoming.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance à venir.<br>Importe un plan (Profil › Coach IA) ou ajoute une séance.</div>');
         groupPlanned(upcoming);
-        if (upcoming.length) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
-      } else if (currentFilter === 'missed') {
+        if (upcoming.length && !(view.kinds || []).length && !view.text && (!view.place || view.place === 'all') && !view.from && !view.to) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
+      } else if (fltSel === 'missed') {
         if (!missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance manquée. 👏</div>');
         else { out.push('<div class="text-[12px] px-1" style="color:#94a3b8">Séances manquées (prévues à une date passée et pas faites). Touche ✏️ pour la refaire un autre jour, ou 🗑 pour la retirer.</div>'); missedList(missed); }
-      } else if (currentFilter === 'all') {
+      } else if (fltSel === 'all') {
         if (!upcoming.length && !done.length && !missed.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance.</div>');
         if (upcoming.length) { out.push('<div class="pl-sec" style="color:#7dd3fc">📅 À venir</div>'); groupPlanned(upcoming); }
         if (missed.length) { out.push('<div class="pl-sec" style="color:#fda4af;margin-top:10px">⏳ Manquées</div>'); missedList(missed); }
@@ -6335,7 +6390,7 @@ Donne 2 ou 3 axes de travail.`;
           if (m !== cur) { sec(m); cur = m; }
           out.push(plDoneCard(i));
         });
-      } else if (currentFilter === 'validated') {
+      } else if (fltSel === 'validated') {
         if (!done.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance faite pour l\'instant.</div>');
         let cur = '';
         done.forEach(i => {
@@ -6343,17 +6398,22 @@ Donne 2 ou 3 axes de travail.`;
           if (m !== cur) { sec(m); cur = m; }
           out.push(plDoneCard(i));
         });
+      } else if (fltSel === 'day') {
+        const all = items.filter(i => i.iso === view.day).sort((a, b) => (a.type === 'validated' ? -1 : 1));
+        if (!all.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Plus de séance ce jour-là.</div>');
+        all.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
       } else {
         const [w0, w6] = plWeekRange();
-        const inW = i => i.iso && (plSelDay ? i.iso === plSelDay : i.iso >= w0 && i.iso <= w6);
-        if (plSelDay) out.push(`<div class="flex items-center justify-between gap-2"><div class="pl-sec" style="margin:0">${capFirst(parseISODateLocal(plSelDay).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</div><button onclick="plSelDay='';updateHistoryTable()" class="text-[12px] font-bold" style="color:#7dd3fc">Toute la semaine</button></div>`);
+        const inW = i => i.iso && i.iso >= w0 && i.iso <= w6;
+        if (false) out.push(`<div class="flex items-center justify-between gap-2"><div class="pl-sec" style="margin:0">${capFirst(parseISODateLocal(plSelDay).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</div><button onclick="plSelDay='';updateHistoryTable()" class="text-[12px] font-bold" style="color:#7dd3fc">Toute la semaine</button></div>`);
         const wl = done.filter(inW).concat(planned.filter(inW)).sort((a, b) => String(a.iso).localeCompare(String(b.iso)) || (a.type === 'validated' ? -1 : 1));
         if (!wl.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance cette semaine.</div>');
         wl.forEach(i => out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t)));
       }
-      { const n = (appData.trash || []).filter(x => x.at > Date.now() - 30 * 86400000).length; if (n) out.push(`<button type="button" onclick="openTrash()" class="mt-2 self-center" style="min-height:38px;padding:0 14px;border-radius:12px;border:1px dashed #475569;background:transparent;color:#94a3b8;font-weight:800;font-size:13px">🗑 Corbeille (${n})</button>`); }
+      { const n = view.mode !== 'main' ? 0 : (appData.trash || []).filter(x => x.at > Date.now() - 30 * 86400000).length; if (n) out.push(`<button type="button" onclick="openTrash()" class="mt-2 self-center" style="min-height:38px;padding:0 14px;border-radius:12px;border:1px dashed #475569;background:transparent;color:#94a3b8;font-weight:800;font-size:13px">🗑 Corbeille (${n})</button>`); }
       box.innerHTML = out.join('');
-      if (plSelDay && currentFilter === 'week') box.querySelectorAll('[id^="detail_"]').forEach(d => d.classList.remove('hidden'));
+      if (view.mode === 'day') box.querySelectorAll('[id^="detail_"]').forEach(d => d.classList.remove('hidden'));
+      if (view.mode === 'main' && plOv && document.getElementById('plOv')) setTimeout(() => plOvRender(), 0);
       box.onclick = e => {
         if (e.target.closest('button, a, input, select, textarea, label, [id^="detail_"]')) return;
         const card = e.target.closest('.pl-card');
