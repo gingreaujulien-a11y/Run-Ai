@@ -75,6 +75,11 @@
     .pm-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
+    .pm-subhide { display: none !important; }
+    .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 8px; margin-bottom: -4px; background: #050a14; scrollbar-width: none; }
+    .pm-subtabs::-webkit-scrollbar { display: none; }
+    .pm-subtabs button { flex: none; min-height: 34px; padding: 0 13px; border-radius: 17px; font-size: 13px; font-weight: 800; background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; white-space: nowrap; }
+    .pm-subtabs button.on { background: var(--acc, #fbbf24); color: #111827; border-color: var(--acc, #fbbf24); }
     .pm-card { padding: 14px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 10px; }
     .pm-cap { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase; }
     .pm-lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #94a3b8; font-weight: 700; }
@@ -813,7 +818,7 @@
 
         <!-- ===== OBJECTIF ===== -->
         <div class="pm-panel pm-off" data-p="objectif">
-          <div id="goalSummary" class="pm-card" style="background:linear-gradient(180deg,#2a1d06 0%,#17120a 100%);border-color:#78501a"></div>
+          <div id="goalSummary" data-sub="Objectif" class="pm-card" style="background:linear-gradient(180deg,#2a1d06 0%,#17120a 100%);border-color:#78501a"></div>
           <div class="pm-card">
             <span class="pm-cap">Modifier</span>
             <label class="pm-lbl">Date (JJ/MM/AAAA)<input type="text" id="goalDateInput" placeholder="ex. 20/12/2026" class="pm-in" oninput="updateGoalVAPCalculation()"></label>
@@ -839,6 +844,7 @@
             <div id="goalProbBox"></div>
             <button type="button" onclick="coachGoalOpinion()" class="pm-btn" style="border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd">🧠 Avis du coach sur mes chances</button>
             <div id="goalCoachOut" class="text-[12px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-xl p-2.5 hidden"></div>
+            <div class="pm-row"><div class="pm-rt">Avis du coach automatique<small>Après chaque séance validée (clé Gemini nécessaire)</small></div><input type="checkbox" id="chkAutoGoalCoach" class="sw" checked onchange="setAutoGoalCoach(this.checked)"></div>
           </div>
         </div>
 
@@ -5571,6 +5577,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       { const s0 = getActiveSession(); delete s0.extensionOffer; }
       recordGoalProbability();
       renderGoalProbability();
+      autoGoalCoachAfterRun();
       clearLiveRun();
       if (timerState.finished) { freeSession = null; reloadChrono(); showHome(); }
     }
@@ -5718,7 +5725,8 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     function computeRecords() {
       const H = runHistory();
       const best = (fn) => { let b = null; H.forEach(h => { const v = fn(h); if (v && (!b || v > b.v)) b = { v, iso: h._iso }; }); return b; };
-      const segBest = minSec => h => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const segBest0 = minSec => h => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const segBest = minSec => h => Math.max(segBest0(minSec)(h), trackBest(h, minSec));
       return {
         dist: best(h => histKm(h)),
         dur: best(h => +h.durationMin || 0),
@@ -5726,6 +5734,28 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         v10: best(segBest(600)),
         n: H.length
       };
+    }
+    // Meilleure vitesse moyenne tenue sur une fenêtre glissante de la trace (distance cumulée / temps)
+    function trackBest(h, win) {
+      const T = Array.isArray(h.track) ? h.track.filter(r => r && r[0] != null) : [];
+      if (T.length < 3) return 0;
+      const hasD = T.filter(r => r[5] > 0).length > T.length / 2;
+      const t = [], d = []; let acc = 0;
+      T.forEach((r, i) => {
+        if (i && !hasD) { const dt = Math.min(15, Math.max(0, r[0] - T[i - 1][0])); acc += (r[2] || 0) * dt / 3600; }
+        t.push(r[0]); d.push(hasD ? (+r[5] || (d.length ? d[d.length - 1] : 0)) : acc);
+      });
+      let best = 0, j = 0;
+      for (let i = 0; i < t.length; i++) {
+        while (j < t.length && t[j] - t[i] < win) j++;
+        if (j >= t.length) break;
+        const dt = t[j] - t[i]; if (dt > win * 1.3) continue;
+        const v = (d[j] - d[i]) / (dt / 3600);
+        const ks = T.slice(i, j + 1).map(r => r[2]).filter(x => x > 0);
+        const avgK = ks.length ? ks.reduce((a, b) => a + b, 0) / ks.length : 0;
+        if (v > 3 && v <= 25 && (!avgK || v <= avgK * 1.25)) best = Math.max(best, v);
+      }
+      return Math.round(best * 10) / 10;
     }
     // Cardio à vitesse d'endurance : premières séances comparées aux dernières
     function hrProgress() {
@@ -5803,10 +5833,10 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         const h = Math.max(d.km > 0 ? 4 : 0, (Hh - pad - 18) * d.km / max), x = 4 + i * bw + bw * 0.18, w = bw * 0.64, y = Hh - pad - h;
         const cur = i === data.length - 1;
         const label = `Semaine du ${fmtDateShort(d.start)} : ${d.km.toFixed(1).replace('.', ',')} km (${d.n} séance${d.n > 1 ? 's' : ''})`;
-        return `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${label.replace(/'/g, "\\'")}'">
+        return `<g>
           <rect x="${x - bw * 0.18}" y="0" width="${bw}" height="${Hh - pad}" fill="transparent"></rect>
           ${h ? `<path d="M${x},${Hh - pad} V${y + 4} Q${x},${y} ${x + 4},${y} H${x + w - 4} Q${x + w},${y} ${x + w},${y + 4} V${Hh - pad} Z" fill="${cur ? '#34d399' : 'rgba(52,211,153,.55)'}"><title>${label}</title></path>` : ''}
-          ${cur || d.km === max ? `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" font-size="11" font-weight="800" fill="#e2e8f0">${d.km.toFixed(0)}</text>` : ''}
+          ${d.km > 0 ? `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" font-size="11" font-weight="800" fill="${cur ? '#6ee7b7' : '#e2e8f0'}">${(d.km < 10 ? d.km.toFixed(1) : d.km.toFixed(0)).replace('.', ',')}</text>` : ''}
           <text x="${x + w / 2}" y="${Hh - 6}" text-anchor="middle" font-size="10" fill="#64748b">${cur ? 'cette sem.' : parseISODateLocal(d.start).getDate() + '/' + (parseISODateLocal(d.start).getMonth() + 1)}</text>
         </g>`;
       }).join('');
@@ -5863,7 +5893,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
           ${(A.j.travail || []).map((w, i) => `<div style="padding:10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b;display:flex;flex-direction:column;gap:4px"><b style="font-size:14px">🛠️ ${esc(w.titre)}</b><span style="font-size:13px;color:#cbd5e1">${esc(w.pourquoi)}</span>${w.exemple ? `<span style="font-size:13px;color:#7dd3fc">Exemple : ${esc(w.exemple)}</span>` : ''}
             ${w.seance && w.seance.segments ? (w.added ? `<span style="font-size:12px;font-weight:800;color:#34d399">✓ Ajoutée au planning le ${esc(w.added)}</span>` : `<button type="button" onclick="addSwToPlan(${i})" style="align-self:flex-start;min-height:36px;padding:0 12px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:13px">➕ Ajouter au planning</button>`) : ''}</div>`).join('')}
           <span style="font-size:11px;color:#64748b">Analyse du ${fmtDateShort(A.at)}</span></div>` : '';
-      return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🧭 Points forts et axes de progrès</span>
+      return `<div class="pm-card" data-sub="Analyse" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🧭 Points forts et axes de progrès</span>
         <span style="font-size:12px;color:#94a3b8">Le coach étudie tes séances (et ce que tu as indiqué dans Moi › Ce que j'aime) pour trouver tes points forts et quoi travailler.</span>
         <button type="button" id="swBtn" onclick="runStrengthsAnalysis()" style="margin-top:6px;min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:14px">🧠 ${A ? "Refaire l'analyse du coach" : 'Analyse du coach : mes points forts et faibles'}</button>
         <div id="swOut">${res}</div></div>`;
@@ -5913,13 +5943,16 @@ Donne 2 ou 3 axes de travail.`;
     }
     function renderProgress() {
       renderProgressInner();
-      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', `<button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Évolution de mes séances (comparer)</button>` + strengthsCardHtml());
+      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', strengthsCardHtml() + `<div class="pm-card" data-sub="Comparer" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span>
+        <span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span>
+        <button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer</button></div>`);
+      applySubTabs(box);
     }
     function renderProgressInner() {
       const box = document.getElementById('progressPanel');
       if (!box) return;
       const R0 = computeRecords();
-      if (!R0.n) { box.innerHTML = `<div class="pm-card"><span class="text-[14px] text-slate-300">Tes records et tes progrès apparaîtront ici après ta première séance validée.</span></div>`; return; }
+      if (!R0.n) { box.innerHTML = `<div class="pm-card" data-sub="Records"><span class="text-[14px] text-slate-300">Tes records et tes progrès apparaîtront ici après ta première séance validée.</span></div>`; return; }
       const row = (ic, lbl, val, iso) => `<div class="pm-row"><div class="pm-rt">${ic} ${lbl}${iso ? `<small>${fmtDateShort(iso)}</small>` : ''}</div><span style="font-size:18px;font-weight:800;color:#fde68a;white-space:nowrap">${val}</span></div>`;
       const rec = [
         R0.dist ? row('🛣️', 'Plus longue distance', `${R0.dist.v.toFixed(1).replace('.', ',')} km`, R0.dist.iso) : '',
@@ -5935,10 +5968,9 @@ Donne 2 ou 3 axes de travail.`;
         hp ? `<div class="pm-row"><div class="pm-rt">❤️ Cardio à ${formatSpeed(hp.speed).replace('.', ',')} km/h<small>${hp.now < hp.before ? 'plus bas : ta forme progresse' : hp.now > hp.before ? 'plus haut : fatigue ou chaleur ?' : 'stable'}</small></div><span style="font-size:18px;font-weight:800;color:${hp.now <= hp.before ? '#34d399' : '#fbbf24'}">${hp.before} → ${hp.now}</span></div>` : '',
         `<div class="pm-row"><div class="pm-rt">✅ Séances validées</div><span style="font-size:18px;font-weight:800">${R0.n}</span></div>`
       ].join('');
-      box.innerHTML = `<div class="pm-card" style="gap:0;border-color:rgba(251,191,36,.45)"><span class="pm-cap" style="color:#fbbf24;padding-bottom:6px">🏆 Mes records</span>${rec || '<span class="text-[13px] text-slate-400 py-2">Pas encore de record mesuré (il faut des séances avec capteurs ou GPS).</span>'}</div>
-        <div class="pm-card" style="gap:0"><span class="pm-cap" style="padding-bottom:6px">📈 Mes progrès</span>${prog}</div>
+      box.innerHTML = `<div class="pm-card" data-sub="Records" style="gap:0;border-color:rgba(251,191,36,.45)"><span class="pm-cap" style="color:#fbbf24;padding-bottom:6px">🏆 Mes records</span>${rec || '<span class="text-[13px] text-slate-400 py-2">Pas encore de record mesuré (il faut des séances avec capteurs ou GPS).</span>'}</div>
         ${vmaCardHtml()}
-        <div class="pm-card"><span class="pm-cap">Kilomètres par semaine</span>${barChartSvg(wk, 'wkChart')}<span id="wkChartCap" class="text-[12px] text-slate-400">Touche une barre pour le détail</span></div>
+        <div class="pm-card" data-sub="Km / semaine"><span class="pm-cap">Kilomètres par semaine</span>${barChartSvg(wk, 'wkChart')}</div>
 `;
     }
     function weekStartISO(iso) {
@@ -6229,7 +6261,7 @@ Donne 2 ou 3 axes de travail.`;
             <span style="font-size:16px;font-weight:800;line-height:1.25">${g.distanceKm || '?'} km en ${g.durationMin || '?'}'</span>
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${g.hilly ? `vallonnée, pente ${g.pente} %` : 'Ton objectif'}</span>
           </div>
-          ${plIconBtns('closeHistoryModal();openGoalModal();setPmTab(\'goalModal\',\'objectif\')', '')}
+          ${plIconBtns('closeHistoryModal();openGoalModal();setPmTab(\'goalModal\',\'objectif\');pmSelectSub(\'objectif\',\'Objectif\')', '')}
         </div></div>`;
     }
     function plCrossCard(i) {
@@ -6806,6 +6838,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       { const ce = document.getElementById('chkCoachExpert'); if (ce) ce.checked = !!appData.coachExpert; }
       renderGoalSummary();
       try { renderLikes(); } catch (e) { }
+      try { renderGoalProbability(); applyAllSubTabs(); } catch (e) { }
       document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
       refreshAllIcons();
@@ -6916,6 +6949,33 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     }
 
     function openCoachModal() { openAudioModal(); setPmTab('audioModal', 'coach'); }
+    // Sous-onglets : un par bloc (carte) de chaque onglet du profil
+    const PM_SUB_LBL = { 'Identité': 'Identité', 'Cardio': 'Cardio', 'Mon niveau actuel': 'Niveau', 'Allures et routine': 'Allures', "👍 Ce que j'aime": "J'aime",
+      'Modifier': 'Objectif', 'Mes chances': 'Mes chances', 'Mon plan actuel': 'Mon plan', 'Générer mon plan avec le coach': 'Générer', 'Importer un plan PDF': 'Import PDF', 'Séances proposées': 'Import PDF' };
+    const pmSubSel = {};
+    function pmBlockLabel(b) {
+      if (b.dataset && b.dataset.sub) return b.dataset.sub;
+      const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
+      const t = c.textContent.trim(); return PM_SUB_LBL[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
+    }
+    function applySubTabs(panel) {
+      if (!panel) return;
+      let bar = panel.querySelector(':scope > .pm-subtabs');
+      const blocks = [...panel.children].filter(e => !e.classList.contains('pm-subtabs'));
+      let prev = '';
+      let labs = blocks.map(pmBlockLabel).map(l => l ? (prev = l) : prev);
+      const firstL = labs.find(Boolean) || ''; labs = labs.map(l => l || firstL);
+      const uniq = [...new Set(labs)].filter(Boolean);
+      if (uniq.length < 2) { if (bar) bar.remove(); blocks.forEach(b => b.classList.remove('pm-subhide')); return; }
+      const key = panel.dataset.p || panel.id;
+      let sel = pmSubSel[key]; if (!uniq.includes(sel)) sel = uniq[0];
+      if (!bar) { bar = document.createElement('div'); bar.className = 'pm-subtabs'; panel.prepend(bar); }
+      bar.innerHTML = uniq.map(u => `<button type="button" class="${u === sel ? 'on' : ''}" data-u="${plEsc(u).replace(/"/g, '&quot;')}">${plEsc(u)}</button>`).join('');
+      bar.onclick = e => { const b = e.target.closest('button'); if (!b) return; pmSubSel[key] = b.dataset.u; applySubTabs(panel); const body = panel.closest('.pm-body'); if (body) body.scrollTop = 0; };
+      blocks.forEach((b, i) => b.classList.toggle('pm-subhide', labs[i] !== sel));
+    }
+    function pmSelectSub(panelP, label) { pmSubSel[panelP] = label; applySubTabs(document.querySelector(`#goalModal .pm-panel[data-p="${panelP}"]`)); }
+    function applyAllSubTabs() { document.querySelectorAll('#goalModal .pm-panel').forEach(applySubTabs); }
     function setPmTab(modalId, tab) {
       const m = document.getElementById(modalId);
       if (!m) return;
@@ -6926,6 +6986,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       if (tab === 'progres') renderProgress();
       if (tab === 'moi') renderLikes();
       if (tab === 'plan') renderPlanSummary();
+      if (modalId === 'goalModal') applyAllSubTabs();
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
     function mergeSensorsIntoAudio() {
@@ -12159,16 +12220,22 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         ${recTipsOpen ? `<div class="mt-1.5 px-3 py-2.5 rounded-xl text-[13px] leading-relaxed text-slate-200" style="background:#0f172a;border:1px solid #1e293b">${recoveryTipsHtml(r)}</div>` : ''}`;
     }
     // ==================== ÉVOLUTION VMA / VO2max ====================
-    function vmaSeries(weeks = 12) {
+    let _vmaSerCache = null;
+    function vmaSeries(maxDays = 120) {
+      const H = runHistory().map(h => h._iso).filter(Boolean).sort();
+      const key = todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + JSON.stringify(runnerLevels());
+      if (_vmaSerCache && _vmaSerCache.key === key) return _vmaSerCache.v;
       const out = [];
-      const d0 = new Date();
-      for (let i = weeks - 1; i >= 0; i--) {
-        const d = new Date(d0); d.setDate(d.getDate() - 7 * i);
+      const lim = new Date(); lim.setDate(lim.getDate() - maxDays);
+      const start = H.length ? new Date(Math.max(parseISODateLocal(H[0]), lim)) : new Date();
+      const days = Math.round((new Date() - start) / 864e5);
+      for (let i = days; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i); d.setHours(23, 59, 0, 0);
         const e = estimateVma(d);
         if (e && e.vma) out.push({ d: toISODateLocal(d), v: Math.round(e.vma * 10) / 10 });
       }
-      // ne garder que les points qui changent ou le premier / dernier
-      return out.filter((p, i, a) => i === 0 || i === a.length - 1 || p.v !== a[i - 1].v);
+      _vmaSerCache = { key, v: out };
+      return out;
     }
     function valueLineSvg(pts, id, unit, color) {
       const W = 340, Hh = 140, pad = 22, n = pts.length;
@@ -12176,18 +12243,18 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const span = Math.max(1, hi - lo), mn = lo - span * 0.25, mx = hi + span * 0.25;
       const x = i => 14 + (W - 28) * (n === 1 ? 0.5 : i / (n - 1)), y = v => 10 + (Hh - pad - 18) * (1 - (v - mn) / (mx - mn));
       const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-      const dots = pts.map((p, i) => `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${fmtDateShort(p.d)} : ${String(p.v).replace('.', ',')} ${unit}'"><circle cx="${x(i)}" cy="${y(p.v)}" r="12" fill="transparent"></circle><circle cx="${x(i)}" cy="${y(p.v)}" r="${i === n - 1 ? 5 : 3}" fill="${color}" stroke="#0c1424" stroke-width="2"></circle></g>`).join('');
+      const dots = pts.map((p, i) => `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${fmtDateShort(p.d)} : ${String(p.v).replace('.', ',')} ${unit}'"><circle cx="${x(i)}" cy="${y(p.v)}" r="${n > 25 ? 6 : 12}" fill="transparent"></circle><circle cx="${x(i)}" cy="${y(p.v)}" r="${i === n - 1 ? 5 : n > 25 ? 1.6 : 3}" fill="${color}" stroke="#0c1424" stroke-width="2"></circle></g>`).join('');
       const labs = [lo, hi].map(v => `<text x="2" y="${y(v) - 4}" font-size="9" fill="#64748b">${String(v).replace('.', ',')}</text>`).join('');
       return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" height="${Hh}">${labs}<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"></path>${dots}<text x="${x(0)}" y="${Hh - 6}" font-size="10" fill="#64748b" text-anchor="start">${fmtDateShort(pts[0].d)}</text><text x="${x(n - 1)}" y="${Hh - 6}" font-size="10" fill="#64748b" text-anchor="end">${fmtDateShort(pts[n - 1].d)}</text></svg>`;
     }
     function vmaCardHtml() {
       const cur = estimateVma();
       if (!cur || !cur.vma) return '';
-      const ser = vmaSeries(12);
+      const ser = vmaSeries(120);
       const vo2 = v => Math.round(v * 3.5);
       const first = ser[0];
       const delta = first && ser.length > 1 ? Math.round((cur.vma - first.v) * 10) / 10 : 0;
-      return `<div class="pm-card"><span class="pm-cap">🫁 VMA et VO2max estimées</span>
+      return `<div class="pm-card" data-sub="VMA"><span class="pm-cap">🫁 VMA et VO2max estimées</span>
         <div class="flex items-baseline gap-4 flex-wrap"><span style="font-size:24px;font-weight:900;color:#a78bfa">${formatSpeed(Math.round(cur.vma * 10) / 10).replace('.', ',')} <span style="font-size:13px;color:#94a3b8">km/h VMA</span></span><span style="font-size:24px;font-weight:900;color:#f472b6">${vo2(cur.vma)} <span style="font-size:13px;color:#94a3b8">ml/kg/min</span></span></div>
         ${delta ? `<span class="text-[12px] font-bold" style="color:${delta > 0 ? '#34d399' : '#fbbf24'}">${delta > 0 ? '+' : ''}${String(delta).replace('.', ',')} km/h de VMA depuis le ${fmtDateShort(first.d)} (VO2max ${delta > 0 ? '+' : ''}${Math.round(delta * 3.5)})</span>` : ''}
         ${ser.length >= 2 ? `${valueLineSvg(ser.map(p => ({ d: p.d, v: p.v })), 'vmaChart', 'km/h', '#a78bfa')}<span id="vmaChartCap" class="text-[12px] text-slate-400">Touche un point · VO2max ≈ VMA × 3,5</span>` : '<span class="text-[12px] text-slate-400">La courbe apparaîtra avec quelques semaines de séances. VO2max ≈ VMA × 3,5.</span>'}
@@ -14943,7 +15010,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         if (d && parseISODateLocal(d) < since) return;
         if (asOf && d && parseISODateLocal(d) > ref) return;
         (h.seg || []).forEach(s => {
-          if (!s.avgKmh || !s.sec || s.sec < 150 || /chauff|calme/i.test(s.name || '')) return;
+          if (!s.avgKmh || !s.sec || s.sec < 45 || /chauff|calme|récup/i.test(s.name || '')) return;
+          if (s.sec < 150) { // répétition courte (fractionné) : courue autour de 100-110 % de la VMA → borne basse prudente
+            if (s.avgKmh >= 8 && s.avgKmh <= 26) { lb.push(s.avgKmh / 1.08); n++; }
+            return;
+          }
           n++;
           const tMin = s.sec / 60;
           lb.push(s.avgKmh / Math.min(1, Math.pow(Math.max(tMin, 6) / 6, -0.07)));
@@ -14980,7 +15051,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const gd = parseGoalDate(g.date);
       const ref = asOf ? new Date(asOf + 'T23:59:00') : new Date();
       const weeks = gd ? Math.max(0, (gd - ref) / (7 * 864e5)) : 0;
-      const vGoalDay = vNow * (1 + Math.min(0.06, 0.004 * weeks));
+      // Progression attendue : plus rapide les premiers mois de pratique
+      const firstRun = runHistory().map(h => h._iso).filter(Boolean).sort()[0];
+      const monthsRun = firstRun ? (ref - parseISODateLocal(firstRun)) / (30 * 864e5) : 0;
+      const beginner = monthsRun < 6;
+      const vGoalDay = vNow * (1 + Math.min(beginner ? 0.10 : 0.06, (beginner ? 0.005 : 0.004) * weeks));
       // Incertitude réaliste : estimation de VMA (±4 %), sans cardio, peu de données, et plus l'objectif est loin plus c'est incertain
       const sigma = 0.04 + (est.withHr ? 0 : 0.015) + (est.n < 4 ? 0.015 : 0) + 0.005 * Math.sqrt(weeks);
       const pNow = normCdf((vNow / vGoal - 1) / sigma);
@@ -15016,6 +15091,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (p.noData) {
         if (home) home.classList.add('hidden');
         const cp0 = appData.goalCoachProb;
+        setTimeout(goalCoachOutFill, 0);
         if (box) box.innerHTML = cp0 ? `<div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black text-amber-300">${cp0.pDay} % <span class="text-xs font-bold text-slate-400">le jour J</span></span>${cp0.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp0.tMin)}${cp0.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp0.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div><div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp0.at)} (pas encore assez de séances pour le calcul de l'app)</div>` : '<span class="text-slate-400">Enregistrez quelques séances (idéalement avec cardio) pour calculer vos chances.</span>';
         return;
       }
@@ -15031,6 +15107,13 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         <div class="text-[10px] text-slate-300">Le jour J, dans ${p.weeks} sem. avec la progression attendue : temps prédit ${formatMinSec(p.tDay)} pour ${formatMinSec(+g.durationMin)} visé</div>
         <div class="text-[10px] text-slate-500">VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}</div>
         ${goalProbChartHtml()}`;
+      goalCoachOutFill();
+    }
+    function goalCoachOutFill() {
+      const out = document.getElementById('goalCoachOut'); if (!out || /animate-spin/.test(out.innerHTML)) return;
+      const cp = appData.goalCoachProb;
+      if (cp && cp.avis) { out.classList.remove('hidden'); out.innerHTML = coachAvisHtml(cp); }
+      const t = document.getElementById('chkAutoGoalCoach'); if (t) t.checked = autoGoalCoachOn();
     }
     // Série « app » recalculée pour chaque jour avec la même formule et l'objectif actuel (pas de mélange)
     let _gpsCache = null;
@@ -15050,7 +15133,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const app = goalProbSeries(30);
       const gk = goalKey(), cp = appData.goalCoachProb;
       const lim = app.length ? app[0].d : todayISO();
-      const coach = (appData.goalProbHist || []).filter(x => x.d >= lim && (x.src === 'coach' ? x.g === gk : (!x.src && cp && x.d === cp.at && x.p === cp.pDay)));
+      migrateGoalProbHist();
+      const coach = (appData.goalProbHist || []).map((x, i) => Object.assign({ i }, x)).filter(x => x.d >= lim && x.src === 'coach' && x.g === gk);
       if (app.length < 2) return '';
       return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b"><span class="pm-cap">Évolution sur 30 jours</span>${probChartSvg(app, coach, 'pbChart')}
         <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#94a3b8"><span><b style="color:#fbbf24">━</b> calcul de l'app</span>${coach.length ? '<span><b style="color:#c084fc">◆</b> avis du coach IA</span>' : ''}</div>
@@ -15065,16 +15149,43 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const path = app.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.p).toFixed(1)}`).join(' ');
       const cap = t => `onclick="document.getElementById('${id}Cap').textContent='${t}'"`;
       const dots = app.map((p, i) => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (calcul de l\\'app)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.p)}" r="${i === app.length - 1 ? 4.5 : 2}" fill="#fbbf24"></circle></g>`).join('');
-      const cdots = coach.map(p => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (avis du coach IA)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.p) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.p)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>`).join('');
+      const cdots = coach.map(p => `<g style="cursor:pointer" onclick="showCoachProbEntry(${p.i})"><circle cx="${x(p.d)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.p) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.p)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>`).join('');
       const last = app[app.length - 1];
       return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chances de réussite">${grid}<path d="${path}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"></path>${dots}${cdots}
         <text x="${Math.min(W - 30, x(last.d))}" y="${Math.max(12, y(last.p) - 10)}" text-anchor="middle" font-size="12" font-weight="800" fill="#fde68a">${last.p} %</text>
         <text x="10" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>`;
     }
-    async function coachGoalOpinion() {
+    // Anciennes valeurs (avant la v94) sans source : on retrouve celles du coach (très différentes du calcul de l'app ce jour-là)
+    function migrateGoalProbHist() {
+      if (appData.gphMig96 || !Array.isArray(appData.goalProbHist)) return;
+      const gk = goalKey(), cp = appData.goalCoachProb;
+      appData.goalProbHist.forEach(x => {
+        if (x.src) return;
+        let app = null; try { const q = computeGoalProbability(x.d); app = q && !q.noData ? q.pDay : null; } catch (e) { }
+        if ((cp && x.d === cp.at && x.p === cp.pDay) || (app != null && x.p > 4 && x.p < 96 && Math.abs(x.p - app) >= 15)) { x.src = 'coach'; x.g = gk; } else x.src = 'app';
+      });
+      appData.gphMig96 = true; saveAppData();
+    }
+    function coachAvisHtml(e) {
+      if (!e || !e.avis) return '';
+      return `<div class="text-[11px] font-bold text-purple-300 mb-1">🧠 Avis du coach du ${fmtDateShort(e.d || e.at)}${e.p || e.pDay ? ` · ${e.p || e.pDay} %` : ''}${e.tMin ? ` · ⏱ ${fmtClock(e.tMin)}` : ''}</div>${mdLite(String(e.avis))}${(e.leviers || []).length ? `<div class="mt-1.5 flex flex-col gap-1">${e.leviers.slice(0, 3).map(l => `<span>👉 ${plEsc(l)}</span>`).join('')}</div>` : ''}`;
+    }
+    function showCoachProbEntry(i) {
+      const e = (appData.goalProbHist || [])[i]; if (!e) return;
+      const c = document.getElementById('pbChartCap'); if (c) c.textContent = `${fmtDateShort(e.d)} : ${e.p} % (avis du coach IA)${e.tMin ? ` · chrono estimé ${fmtClock(e.tMin)}` : ''}`;
       const out = document.getElementById('goalCoachOut');
+      if (out) { out.classList.remove('hidden'); out.innerHTML = e.avis ? coachAvisHtml(e) : '<span class="text-slate-400">Texte non conservé pour cet ancien avis.</span>'; }
+    }
+    function autoGoalCoachOn() { return appData.audioSettings.autoGoalCoach !== false; }
+    function setAutoGoalCoach(on) { appData.audioSettings.autoGoalCoach = !!on; saveAppData(); }
+    // Après chaque séance validée : avis du coach en arrière-plan (si clé Gemini + objectif)
+    function autoGoalCoachAfterRun() {
+      try { const g = appData.goal || {}; if (!autoGoalCoachOn() || !getGeminiKey() || !parseFloat(g.distanceKm) || !parseFloat(g.durationMin)) return; setTimeout(() => coachGoalOpinion({ silent: true }), 6000); } catch (e) { }
+    }
+    async function coachGoalOpinion(opt = {}) {
+      const out = document.getElementById('goalCoachOut') || document.createElement('div');
       const p = computeGoalProbability();
-      if (!getGeminiKey()) { out.classList.remove('hidden'); out.innerHTML = '<span class="text-rose-400">Clé Gemini nécessaire.</span>'; return; }
+      if (!getGeminiKey()) { if (opt.silent) return; out.classList.remove('hidden'); out.innerHTML = '<span class="text-rose-400">Clé Gemini nécessaire.</span>'; return; }
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach évalue tes chances…</div>';
       const g = appData.goal;
@@ -15086,6 +15197,7 @@ Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().a
 Séances récentes :
 ${hist}
 ${backgroundText()}
+Sois cohérent : la probabilité doit correspondre à ton chrono estimé. Si ton chrono estimé le jour J est plus lent que l'objectif, la probabilité doit être inférieure à 50 % ; s'il est nettement plus rapide, supérieure à 50 %. Tiens compte des vitesses atteintes en fractionné, de la progression possible d'ici la date et du niveau du coureur.
 Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { tier: 'full', json: true })) || {};
@@ -15096,16 +15208,20 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
           const D = parseFloat(g.distanceKm) || 0;
           if (!(cm > 0) && kv > 0 && D) cm = D / kv * 60;
           if (!(kv > 0) && cm > 0 && D) kv = D / (cm / 60);
-          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null };
+          const avis = String(j.avis || '').slice(0, 1200), leviers = (j.leviers || []).slice(0, 3).map(x => String(x).slice(0, 200));
+          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null, avis, leviers, auto: !!opt.silent };
           if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
-          appData.goalProbHist = appData.goalProbHist.filter(x => !(x.d === todayISO() && x.src === 'coach'));
-          appData.goalProbHist.push({ d: todayISO(), p: pj, src: 'coach', g: goalKey() });
+          migrateGoalProbHist();
+          appData.goalProbHist.push({ d: todayISO(), t: Date.now(), p: pj, src: 'coach', g: goalKey(), tMin: appData.goalCoachProb.tMin, avis, leviers, auto: !!opt.silent });
+          { const cs = appData.goalProbHist.filter(x => x.src === 'coach'); if (cs.length > 40) { const drop = new Set(cs.slice(0, cs.length - 40)); appData.goalProbHist = appData.goalProbHist.filter(x => !drop.has(x)); } }
           saveAppData();
           renderGoalProbability();
         }
-        out.innerHTML = `${mdLite(String(j.avis || ''))}${(j.leviers || []).length ? `<div class="mt-1.5 flex flex-col gap-1">${j.leviers.slice(0, 3).map(l => `<span>👉 ${plEsc(l)}</span>`).join('')}</div>` : ''}`;
+        const o2 = document.getElementById('goalCoachOut');
+        if (o2) { o2.classList.remove('hidden'); o2.innerHTML = appData.goalCoachProb && appData.goalCoachProb.at === todayISO() ? coachAvisHtml(appData.goalCoachProb) : `${mdLite(String(j.avis || ''))}`; }
+        if (opt.silent && pj) showToast(`🧠 Avis du coach mis à jour : ${pj} % de chances`);
       }
-      catch (e) { out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`; }
+      catch (e) { if (!opt.silent) out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`; else { const o2 = document.getElementById('goalCoachOut'); if (o2) o2.innerHTML = coachAvisHtml(appData.goalCoachProb); } }
     }
 
     // ==================== PROLONGATION DE LA SÉANCE ====================
