@@ -729,9 +729,9 @@
         </button>
       </div>
       <div class="flex-1 overflow-y-auto custom-scroll" style="padding:0 16px 96px">
-        <div style="display:grid;grid-template-columns:1fr 56px;gap:8px;margin-bottom:12px">
-          <button onclick="openOffModal()" class="flex items-center justify-center gap-2 font-extrabold text-[14px] active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6-6 6"/><path d="M12 6l6 6-6 6"/></svg>Décaler le planning</button>
-          <button onclick="openPlSearch()" aria-label="Rechercher une séance" title="Rechercher une séance" class="flex items-center justify-center active:scale-95 transition" style="height:48px;border-radius:16px;border:1px solid rgba(56,189,248,.45);background:rgba(56,189,248,.1);color:#7dd3fc"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <button onclick="openOffModal()" class="flex items-center justify-center gap-1.5 font-extrabold text-[13px] active:scale-95 transition" style="height:48px;white-space:nowrap;padding:0 6px;border-radius:16px;border:1px solid rgba(251,146,60,.45);background:rgba(251,146,60,.1);color:#fdba74"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6l6 6-6 6"/><path d="M12 6l6 6-6 6"/></svg>Décaler le planning</button>
+          <button onclick="openPlSearch()" class="flex items-center justify-center gap-1.5 font-extrabold text-[13px] active:scale-95 transition" style="height:48px;white-space:nowrap;padding:0 6px;border-radius:16px;border:1px solid rgba(56,189,248,.45);background:rgba(56,189,248,.1);color:#7dd3fc"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>Chercher une séance</button>
         </div>
         <div id="plWeek" class="flex flex-col gap-3.5" style="padding:16px;border-radius:24px;background:linear-gradient(180deg,#0f1d33 0%,#0c1526 100%);border:1px solid #1d3352"></div>
         <div class="hidden"><span id="fltWeek"></span><span id="fltAll"></span><span id="fltPlan"></span><span id="fltVal"></span><span id="fltMiss"></span><span id="cntPlan"></span><span id="cntVal"></span><span id="cntMiss"></span><div id="plKindRow"></div></div>
@@ -748,11 +748,10 @@
         <h2 class="pm-title">Mon profil</h2>
         <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <div class="pm-tabs" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+      <div class="pm-tabs" style="grid-template-columns:repeat(4,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
         <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
         <button type="button" class="pm-tab" data-t="progres" onclick="setPmTab('goalModal','progres')">Progrès</button>
-        <button type="button" class="pm-tab" data-t="coach" onclick="setPmTab('goalModal','coach')">Coach</button>
         <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')">Plan</button>
       </div>
       <div class="pm-body custom-scroll">
@@ -809,6 +808,7 @@
             <div id="efNote" class="text-[12px] text-slate-400"></div>
             <button type="button" onclick="computeEfWithAI(true)" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour avec le coach</button>
           </div>
+          <div id="likesBox" style="display:contents"></div>
         </div>
 
         <!-- ===== OBJECTIF ===== -->
@@ -844,24 +844,6 @@
 
         <!-- ===== PROGRÈS ===== -->
         <div class="pm-panel pm-off" data-p="progres" id="progressPanel"></div>
-
-        <!-- ===== COACH ===== -->
-        <div class="pm-panel pm-off" data-p="coach">
-          <div id="coachProfileBox" class="pm-card" style="border-color:#3b2a63">
-            <div class="flex items-center justify-between gap-2"><span class="pm-cap" style="color:#a78bfa">Personnalité du coach</span>
-              <button type="button" onclick="previewCoachProfile()" class="pm-btn" style="height:36px">🔊 Écouter</button></div>
-            <div id="coachProfileChips" class="grid grid-cols-3 gap-1.5"></div>
-            <div id="coachProfileDesc" class="text-[12px] text-slate-400 leading-snug"></div>
-          </div>
-          <div class="pm-card" style="gap:0">
-            <span class="pm-cap" style="padding-bottom:6px">Pendant la séance</span>
-            <div class="pm-row"><div class="pm-rt">Conseil avant la séance<small>Lu au départ, selon tes sensations</small></div><input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="sw"></div>
-            <div class="pm-row"><div class="pm-rt">Parler au coach<small>Bouton micro et point à mi-séance</small></div><input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="sw"></div>
-            <input type="checkbox" id="chkStartCd" class="hidden">
-            <div class="pm-row"><div class="pm-rt">Rappels boire / manger<small>Chaque km, et toutes les 45 min</small></div><input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="sw"></div>
-            <div class="pm-row"><div class="pm-rt">Prénom du coach<small>Optionnel</small></div><input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="pm-in c" style="width:120px"></div>
-          </div>
-        </div>
 
         <!-- ===== PLAN ===== -->
         <div class="pm-panel pm-off" data-p="plan">
@@ -1363,13 +1345,32 @@
         <h2 class="pm-title">Réglages</h2>
         <button onclick="closeAudioModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <div class="pm-tabs" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="pm-tabs" style="grid-template-columns:repeat(5,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="voix" onclick="setPmTab('audioModal','voix')">Voix</button>
+        <button type="button" class="pm-tab" data-t="coach" onclick="setPmTab('audioModal','coach')">Coach</button>
         <button type="button" class="pm-tab" data-t="montre" onclick="setPmTab('audioModal','montre')">Montre</button>
         <button type="button" class="pm-tab" data-t="donnees" onclick="setPmTab('audioModal','donnees')">Données</button>
         <button type="button" class="pm-tab" data-t="avance" onclick="setPmTab('audioModal','avance')">Avancé</button>
       </div>
       <div class="pm-body custom-scroll">
+
+        <!-- ===== COACH ===== -->
+        <div class="pm-panel pm-off" data-p="coach">
+          <div id="coachProfileBox" class="pm-card" style="border-color:#3b2a63">
+            <div class="flex items-center justify-between gap-2"><span class="pm-cap" style="color:#a78bfa">Personnalité du coach</span>
+              <button type="button" onclick="previewCoachProfile()" class="pm-btn" style="height:36px">🔊 Écouter</button></div>
+            <div id="coachProfileChips" class="grid grid-cols-3 gap-1.5"></div>
+            <div id="coachProfileDesc" class="text-[12px] text-slate-400 leading-snug"></div>
+          </div>
+          <div class="pm-card" style="gap:0">
+            <span class="pm-cap" style="padding-bottom:6px">Pendant la séance</span>
+            <div class="pm-row"><div class="pm-rt">Conseil avant la séance<small>Lu au départ, selon tes sensations</small></div><input type="checkbox" id="chkCoachTip" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Parler au coach<small>Bouton micro et point à mi-séance</small></div><input type="checkbox" id="chkVoiceCoach" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <input type="checkbox" id="chkStartCd" class="hidden">
+            <div class="pm-row"><div class="pm-rt">Rappels boire / manger<small>Chaque km, et toutes les 45 min</small></div><input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="sw"></div>
+            <div class="pm-row"><div class="pm-rt">Prénom du coach<small>Optionnel</small></div><input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="pm-in c" style="width:120px"></div>
+          </div>
+        </div>
 
         <!-- ===== VOIX ===== -->
         <div class="pm-panel" data-p="voix">
@@ -5837,7 +5838,20 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const parts = [L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}` : '', L.deteste.length ? `n'aime pas / moins à l'aise sur (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : '', L.faibles ? `points faibles connus du coureur (à prendre en compte dans les conseils et le plan) : ${L.faibles}` : ''].filter(Boolean);
       return parts.length ? `Ressenti du coureur sur les types de séances : ${parts.join(' ; ')}. Le but est de progresser en prenant du plaisir : ne jamais imposer souvent une séance qu'il déteste, préférer une variante qu'il tolère mieux.` : '';
     }
-    function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); saveAppData(); renderProgress(); }
+    function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); saveAppData(); renderLikes(); }
+    function renderLikes() { const b = document.getElementById('likesBox'); if (b) b.innerHTML = likesCardHtml(); }
+    function likesCardHtml() {
+      const L = runnerLikes();
+      const esc = x => plEsc(String(x || ''));
+      const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l}</button>`; }).join('')}</div>`;
+      const sec = (t, cat) => `<span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">${t}</span>${chips(cat)}`;
+      return `<div class="pm-card" style="border-color:rgba(56,189,248,.4)"><span class="pm-cap" style="color:#7dd3fc">👍 Ce que j'aime</span>
+        <span style="font-size:12px;color:#94a3b8">Le coach en tient compte pour te faire progresser en prenant du plaisir.</span>
+        ${sec("👍 J'aime / je suis à l'aise", 'aime')}${sec("👎 Je n'aime pas / je suis moins à l'aise", 'deteste')}
+        <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
+        <span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">⚠️ Mes points faibles (ce que le coach ne peut pas deviner)</span>
+        <textarea id="likesWeak" rows="2" placeholder="Ex. je crampe facilement après 1 h, genou droit fragile en descente, je pars toujours trop vite…" onchange="runnerLikes().faibles=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:56px">${esc(L.faibles)}</textarea></div>`;
+    }
     function strengthsCardHtml() {
       const L = runnerLikes(), A = appData.coachSW;
       const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${on ? '✓ ' : ''}${l}</button>`; }).join('')}</div>`;
@@ -5850,11 +5864,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
             ${w.seance && w.seance.segments ? (w.added ? `<span style="font-size:12px;font-weight:800;color:#34d399">✓ Ajoutée au planning le ${esc(w.added)}</span>` : `<button type="button" onclick="addSwToPlan(${i})" style="align-self:flex-start;min-height:36px;padding:0 12px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:13px">➕ Ajouter au planning</button>`) : ''}</div>`).join('')}
           <span style="font-size:11px;color:#64748b">Analyse du ${fmtDateShort(A.at)}</span></div>` : '';
       return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🧭 Points forts et axes de progrès</span>
-        <span style="font-size:12px;color:#94a3b8">Dis au coach ce que tu aimes et où tu es à l'aise : il en tient compte pour te faire progresser en prenant du plaisir.</span>
-        ${sec("👍 J'aime / je suis à l'aise", 'aime')}${sec("👎 Je n'aime pas / je suis moins à l'aise", 'deteste')}
-        <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
-        <span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">⚠️ Mes points faibles (ce que le coach ne peut pas deviner)</span>
-        <textarea id="likesWeak" rows="2" placeholder="Ex. je crampe facilement après 1 h, genou droit fragile en descente, je pars toujours trop vite…" onchange="runnerLikes().faibles=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:56px">${esc(L.faibles)}</textarea>
+        <span style="font-size:12px;color:#94a3b8">Le coach étudie tes séances (et ce que tu as indiqué dans Moi › Ce que j'aime) pour trouver tes points forts et quoi travailler.</span>
         <button type="button" id="swBtn" onclick="runStrengthsAnalysis()" style="margin-top:6px;min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:14px">🧠 ${A ? "Refaire l'analyse du coach" : 'Analyse du coach : mes points forts et faibles'}</button>
         <div id="swOut">${res}</div></div>`;
     }
@@ -5903,7 +5913,7 @@ Donne 2 ou 3 axes de travail.`;
     }
     function renderProgress() {
       renderProgressInner();
-      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('afterbegin', `<button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;margin-bottom:12px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Évolution de mes séances (comparer)</button>` + strengthsCardHtml());
+      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', `<button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Évolution de mes séances (comparer)</button>` + strengthsCardHtml());
     }
     function renderProgressInner() {
       const box = document.getElementById('progressPanel');
@@ -5925,12 +5935,11 @@ Donne 2 ou 3 axes de travail.`;
         hp ? `<div class="pm-row"><div class="pm-rt">❤️ Cardio à ${formatSpeed(hp.speed).replace('.', ',')} km/h<small>${hp.now < hp.before ? 'plus bas : ta forme progresse' : hp.now > hp.before ? 'plus haut : fatigue ou chaleur ?' : 'stable'}</small></div><span style="font-size:18px;font-weight:800;color:${hp.now <= hp.before ? '#34d399' : '#fbbf24'}">${hp.before} → ${hp.now}</span></div>` : '',
         `<div class="pm-row"><div class="pm-rt">✅ Séances validées</div><span style="font-size:18px;font-weight:800">${R0.n}</span></div>`
       ].join('');
-      const ph = (appData.goalProbHist || []).slice(-30);
       box.innerHTML = `<div class="pm-card" style="gap:0;border-color:rgba(251,191,36,.45)"><span class="pm-cap" style="color:#fbbf24;padding-bottom:6px">🏆 Mes records</span>${rec || '<span class="text-[13px] text-slate-400 py-2">Pas encore de record mesuré (il faut des séances avec capteurs ou GPS).</span>'}</div>
         <div class="pm-card" style="gap:0"><span class="pm-cap" style="padding-bottom:6px">📈 Mes progrès</span>${prog}</div>
         ${vmaCardHtml()}
         <div class="pm-card"><span class="pm-cap">Kilomètres par semaine</span>${barChartSvg(wk, 'wkChart')}<span id="wkChartCap" class="text-[12px] text-slate-400">Touche une barre pour le détail</span></div>
-        ${ph.length >= 2 ? `<div class="pm-card"><span class="pm-cap">Chances de réussir l'objectif</span>${lineChartSvg(ph, 'pbChart')}<span id="pbChartCap" class="text-[12px] text-slate-400">Touche un point pour le détail</span></div>` : ''}`;
+`;
     }
     function weekStartISO(iso) {
       const d = parseISODateLocal(iso) || new Date();
@@ -6372,8 +6381,21 @@ Donne 2 ou 3 axes de travail.`;
           out.push(i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, iso === t));
         });
       };
-      if (fltSel === 'planned') {
-        if (!upcoming.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance à venir.<br>Importe un plan (Profil › Coach IA) ou ajoute une séance.</div>');
+      if (view.mode === 'search') {
+        const sel = fltSel === 'planned' ? upcoming : fltSel === 'validated' ? done : fltSel === 'missed' ? missed : done.concat(missed, upcoming);
+        const L = sel.slice().sort((a, b) => String(a.iso || '9999').localeCompare(String(b.iso || '9999')) || (a.type === 'validated' ? -1 : 1));
+        if (!L.length) out.push(`<div class="text-center py-8 text-sm" style="color:#64748b">${fltSel === 'missed' ? 'Aucune séance manquée. 👏' : fltSel === 'planned' ? 'Aucune séance à venir.' : fltSel === 'validated' ? "Aucune séance faite pour l'instant." : 'Aucune séance.'}</div>`);
+        else out.push(`<div class="text-[12px] px-1" style="color:#94a3b8">${L.length} séance${L.length > 1 ? 's' : ''}, de la plus ancienne à la plus récente.</div>`);
+        let cur = '', todayMark = false;
+        L.forEach(i => {
+          const m = i.iso ? capFirst(parseISODateLocal(i.iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })) : 'Sans date';
+          if (m !== cur) { sec(m); cur = m; }
+          if (!todayMark && i.iso && i.iso >= t && L[0].iso && L[0].iso < t) { todayMark = true; out.push(`<div class="pl-sec" style="color:#7dd3fc;margin:2px 0">— Aujourd'hui —</div>`); }
+          out.push(i.type === 'validated' ? plDoneCard(i) : i.type === 'race' ? plRaceCard(i) : i.type === 'crossplan' ? plCrossCard(i) : plPlannedCard(i, i.iso === t));
+        });
+        if (fltSel === 'planned' && L.length && !(view.kinds || []).length && !view.text && (!view.place || view.place === 'all') && !view.from && !view.to) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
+      } else if (fltSel === 'planned') {
+        if (!upcoming.length) out.push('<div class="text-center py-8 text-sm" style="color:#64748b">Aucune séance à venir.<br>Importe un plan (Profil › Plan) ou ajoute une séance.</div>');
         groupPlanned(upcoming);
         if (upcoming.length && !(view.kinds || []).length && !view.text && (!view.place || view.place === 'all') && !view.from && !view.to) out.push(`<button onclick="clearUpcomingSessions()" class="mt-3 self-center text-[12px] font-bold underline" style="color:#fb7185">Supprimer toutes les séances à venir</button>`);
       } else if (fltSel === 'missed') {
@@ -6783,6 +6805,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       try { fillPlanPrefs(); } catch (e) { }
       { const ce = document.getElementById('chkCoachExpert'); if (ce) ce.checked = !!appData.coachExpert; }
       renderGoalSummary();
+      try { renderLikes(); } catch (e) { }
       document.querySelectorAll('#goalModal input').forEach(i => { i.enterKeyHint = 'done'; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
       document.getElementById('goalModal').classList.remove('hidden');
       refreshAllIcons();
@@ -6892,7 +6915,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       showSavedBig('Profil enregistré');
     }
 
-    function openCoachModal() { openGoalModal(); setPmTab('goalModal', 'coach'); }
+    function openCoachModal() { openAudioModal(); setPmTab('audioModal', 'coach'); }
     function setPmTab(modalId, tab) {
       const m = document.getElementById(modalId);
       if (!m) return;
@@ -6901,6 +6924,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
       if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
       if (tab === 'progres') renderProgress();
+      if (tab === 'moi') renderLikes();
       if (tab === 'plan') renderPlanSummary();
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
@@ -7731,6 +7755,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       loadVoices();
       updateAudioModalUI();
       fillSensorsUI();
+      try { fillCoachTabUI(); renderCoachProfileChips(); } catch (e) { }
       const kIn = document.getElementById('geminiApiKeyInput');
       if (kIn) kIn.value = getGeminiKey();
       updateGeminiStatusBadge(!!getGeminiKey());
@@ -14942,19 +14967,22 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (vL) { vma = (vma + vL) / 2; n += 2; }
       return { vma, n, withHr: hrEst.length };
     }
-    function computeGoalProbability() {
+    function goalKey() { const g = appData.goal || {}; return `${parseFloat(g.distanceKm) || 0}|${parseFloat(g.durationMin) || 0}|${g.date || ''}`; }
+    function computeGoalProbability(asOf) {
       const g = appData.goal || {};
       const D = parseFloat(g.distanceKm), T = parseFloat(g.durationMin);
       if (!D || !T) return null;
-      const est = estimateVma();
+      const est = estimateVma(asOf ? asOf + 'T23:59:00' : undefined);
       if (!est) return { noData: true };
       const vGoal = D / (T / 60);
       const f = Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(D / 5)));
       const vNow = est.vma * f;
       const gd = parseGoalDate(g.date);
-      const weeks = gd ? Math.max(0, (gd - new Date()) / (7 * 864e5)) : 0;
+      const ref = asOf ? new Date(asOf + 'T23:59:00') : new Date();
+      const weeks = gd ? Math.max(0, (gd - ref) / (7 * 864e5)) : 0;
       const vGoalDay = vNow * (1 + Math.min(0.06, 0.004 * weeks));
-      const sigma = 0.03 + (est.withHr ? 0 : 0.015) + (est.n < 4 ? 0.015 : 0);
+      // Incertitude réaliste : estimation de VMA (±4 %), sans cardio, peu de données, et plus l'objectif est loin plus c'est incertain
+      const sigma = 0.04 + (est.withHr ? 0 : 0.015) + (est.n < 4 ? 0.015 : 0) + 0.005 * Math.sqrt(weeks);
       const pNow = normCdf((vNow / vGoal - 1) / sigma);
       const pDay = normCdf((vGoalDay / vGoal - 1) / sigma);
       return {
@@ -14966,19 +14994,17 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     function recordGoalProbability() {
       const p = computeGoalProbability();
       if (!p || p.noData) return;
-      if (appData.goalCoachProb && appData.goalCoachProb.at === todayISO()) return;
       if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
       const t = todayISO();
-      appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== t);
-      appData.goalProbHist.push({ d: t, p: p.pDay });
+      appData.goalProbHist = appData.goalProbHist.filter(x => !(x.d === t && x.src !== 'coach'));
+      appData.goalProbHist.push({ d: t, p: p.pDay, src: 'app', g: goalKey() });
       appData.goalProbHist = appData.goalProbHist.slice(-60);
       saveAppData();
     }
     function goalProbTrend(pDay) {
-      const h = appData.goalProbHist || [];
-      const lim = new Date(); lim.setDate(lim.getDate() - 6);
-      const old = h.filter(x => parseISODateLocal(x.d) <= lim).pop();
-      if (!old) return '';
+      const lim = new Date(); lim.setDate(lim.getDate() - 7);
+      const old = computeGoalProbability(toISODateLocal(lim));
+      if (!old || old.noData) return '';
       const d = pDay - old.p;
       return d === 0 ? ' (stable)' : ` (${d > 0 ? '↗ +' : '↘ '}${d} pts en 1 sem.)`;
     }
@@ -14999,11 +15025,51 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const g = appData.goal;
       if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
       if (box) box.innerHTML = `
-        <div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${goalProbTrend(shown)}</span></span>${cp && cp.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp.tMin)}${cp.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div>
+        <div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${cp ? '' : goalProbTrend(shown)}</span></span>${cp && cp.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp.tMin)}${cp.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div>
         ${cp ? `<div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp.at)} · calcul de l'app : ${p.pDay} %</div>` : ''}
         <div class="text-[10px] text-slate-300">Si la course était aujourd'hui : <b>${p.pNow} %</b> (temps prédit ${formatMinSec(p.tNow)})</div>
         <div class="text-[10px] text-slate-300">Le jour J, dans ${p.weeks} sem. avec la progression attendue : temps prédit ${formatMinSec(p.tDay)} pour ${formatMinSec(+g.durationMin)} visé</div>
-        <div class="text-[10px] text-slate-500">VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}</div>`;
+        <div class="text-[10px] text-slate-500">VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}</div>
+        ${goalProbChartHtml()}`;
+    }
+    // Série « app » recalculée pour chaque jour avec la même formule et l'objectif actuel (pas de mélange)
+    let _gpsCache = null;
+    function goalProbSeries(days = 30) {
+      const key = goalKey() + '|' + todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + JSON.stringify(runnerLevels());
+      if (_gpsCache && _gpsCache.key === key) return _gpsCache.v;
+      const out = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const iso = toISODateLocal(d);
+        try { const p = computeGoalProbability(iso); if (p && !p.noData) out.push({ d: iso, p: p.pDay }); } catch (e) { }
+      }
+      _gpsCache = { key, v: out };
+      return out;
+    }
+    function goalProbChartHtml() {
+      const app = goalProbSeries(30);
+      const gk = goalKey(), cp = appData.goalCoachProb;
+      const lim = app.length ? app[0].d : todayISO();
+      const coach = (appData.goalProbHist || []).filter(x => x.d >= lim && (x.src === 'coach' ? x.g === gk : (!x.src && cp && x.d === cp.at && x.p === cp.pDay)));
+      if (app.length < 2) return '';
+      return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b"><span class="pm-cap">Évolution sur 30 jours</span>${probChartSvg(app, coach, 'pbChart')}
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#94a3b8"><span><b style="color:#fbbf24">━</b> calcul de l'app</span>${coach.length ? '<span><b style="color:#c084fc">◆</b> avis du coach IA</span>' : ''}</div>
+        <span id="pbChartCap" class="text-[12px] text-slate-400">Touche un point pour le détail</span></div>`;
+    }
+    function probChartSvg(app, coach, id) {
+      const W = 340, Hh = 140, pad = 22;
+      const ds = app.concat(coach).map(p => p.d).sort();
+      const d0 = parseISODateLocal(ds[0]), span = Math.max(1, (parseISODateLocal(ds[ds.length - 1]) - d0) / 864e5);
+      const x = d => 12 + (W - 24) * ((parseISODateLocal(d) - d0) / 864e5) / span, y = v => 8 + (Hh - pad - 16) * (1 - v / 100);
+      const grid = [25, 50, 75].map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b" stroke-width="1"></line><text x="2" y="${y(v) - 3}" font-size="9" fill="#475569">${v} %</text>`).join('');
+      const path = app.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.p).toFixed(1)}`).join(' ');
+      const cap = t => `onclick="document.getElementById('${id}Cap').textContent='${t}'"`;
+      const dots = app.map((p, i) => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (calcul de l\\'app)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.p)}" r="${i === app.length - 1 ? 4.5 : 2}" fill="#fbbf24"></circle></g>`).join('');
+      const cdots = coach.map(p => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (avis du coach IA)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.p) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.p)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>`).join('');
+      const last = app[app.length - 1];
+      return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chances de réussite">${grid}<path d="${path}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"></path>${dots}${cdots}
+        <text x="${Math.min(W - 30, x(last.d))}" y="${Math.max(12, y(last.p) - 10)}" text-anchor="middle" font-size="12" font-weight="800" fill="#fde68a">${last.p} %</text>
+        <text x="10" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>`;
     }
     async function coachGoalOpinion() {
       const out = document.getElementById('goalCoachOut');
@@ -15032,8 +15098,8 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
           if (!(kv > 0) && cm > 0 && D) kv = D / (cm / 60);
           appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null };
           if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
-          appData.goalProbHist = appData.goalProbHist.filter(x => x.d !== todayISO());
-          appData.goalProbHist.push({ d: todayISO(), p: pj });
+          appData.goalProbHist = appData.goalProbHist.filter(x => !(x.d === todayISO() && x.src === 'coach'));
+          appData.goalProbHist.push({ d: todayISO(), p: pj, src: 'coach', g: goalKey() });
           saveAppData();
           renderGoalProbability();
         }
