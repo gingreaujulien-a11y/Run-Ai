@@ -84,7 +84,7 @@
     #readViewBody span.rv-past { color: #475569; }
     .rv-b { min-width: 40px; height: 34px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-weight: 800; font-size: 14px; }
     body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-circle #circleZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
-    .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 8px; margin-bottom: -4px; background: #050a14; scrollbar-width: none; }
+    .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 8px; margin-bottom: -4px; background: #050a14; scrollbar-width: none; }
     .pm-subtabs::-webkit-scrollbar { display: none; }
     .pm-subtabs button { flex: none; min-height: 34px; padding: 0 13px; border-radius: 17px; font-size: 13px; font-weight: 800; background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; white-space: nowrap; }
     .pm-subtabs button.on { background: var(--acc, #fbbf24); color: #111827; border-color: var(--acc, #fbbf24); }
@@ -105,7 +105,7 @@
     .pm-foot { padding: 10px 16px 20px; }
     .pm-save { width: 100%; height: 52px; border-radius: 16px; font-weight: 800; font-size: 16px; background: var(--acc); color: #0b0f19; }
     .pm-det summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #cbd5e1; }
-    .pm-lvl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 96px; align-items: center; gap: 8px; }
+    .pm-lvl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 104px; align-items: center; gap: 8px; }
     .pm-lvl > span:first-child { font-size: 14px; font-weight: 800; }
     .pm-lvl > span:last-child { font-size: 12px; color: #94a3b8; font-weight: 600; line-height: 1.25; }
     .sw { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 46px; height: 28px; border-radius: 14px; background: #334155; position: relative; cursor: pointer; transition: background .2s; }
@@ -801,6 +801,7 @@
               <input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c" style="width:96px">
             </div>
             <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
+            <div id="tapisHrBox" class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid rgba(251,113,133,.35)"></div>
             <div class="flex items-center justify-between gap-2"><span class="pm-lbl" style="margin:0">FC de repos (au réveil)</span><input type="number" id="fcRestProfile" min="30" max="110" inputmode="numeric" placeholder="60" onchange="runnerProfile().fcRest = parseInt(this.value) || undefined; saveAppData()" class="pm-in c" style="width:96px"></div>
             <details class="pm-det" open><summary>Mes zones cardio (réglables)</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-3 text-[12px]"></div></details>
           </div>
@@ -813,6 +814,8 @@
             <div class="pm-lvl"><span>Semi</span><input id="lvl21" class="pm-in c" placeholder="h:mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl21Info"></span></div>
             <div class="pm-lvl"><span>Marathon</span><input id="lvl42" class="pm-in c" placeholder="h:mm:ss" inputmode="numeric" oninput="renderLevelInfo()"><span id="lvl42Info"></span></div>
             <div id="lvlNote" class="text-[12px] text-cyan-300"></div>
+            <div id="lvlApp" class="text-[12px] text-slate-400 leading-snug"></div>
+            <span class="text-[11px] text-slate-500 leading-snug">Tu saisis ton niveau au départ ; ensuite, si « Mise à jour par le coach » est activé (onglet Allures), le coach IA le réestime après chaque séance validée. La ligne 📱 est le calcul de l'app à partir de ta VMA estimée.</span>
           </div>
 
           <div class="pm-card">
@@ -830,7 +833,6 @@
             <div id="efNote" class="text-[12px] text-slate-400"></div>
             <button type="button" onclick="computeEfWithAI(true)" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour avec le coach</button>
           </div>
-          <div id="likesBox" style="display:contents"></div>
         </div>
 
         <!-- ===== OBJECTIF ===== -->
@@ -876,6 +878,13 @@
             <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'), true)" class="pm-btn" style="height:48px;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800;font-size:14px">📝 Ma pratique avant l'app</button>
             <div class="flex flex-col gap-1"><span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Style du plan</span><div id="planStyleChips" class="grid grid-cols-2 gap-2"></div></div>
             <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #334155"><input type="checkbox" id="chkCoachExpert" onchange="setCoachExpert(this.checked, this)" class="w-5 h-5 mt-0.5 accent-purple-400 shrink-0"><span class="flex flex-col gap-0.5"><span class="text-[14px] font-extrabold text-white">🧠 Coach expert (Gemini 4 Argon)</span><span class="text-[12px] text-slate-400">Analyse et génération du plan plus poussées. Payant : environ 5 × le prix de Flash.</span></span></label>
+ <div class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid #334155">
+              <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Ce que le coach doit analyser</span>
+              <div id="planAnaCrit" class="grid grid-cols-2 gap-1.5"></div>
+              <label class="pm-lbl">Type d'analyse<select id="planAnaMode" class="pm-in" onchange="planAnaCfg().mode=this.value;saveAppData()"><option value="full">Complète (plus précise)</option><option value="eco">Allégée (moins de crédit, réponse courte)</option></select></label>
+              <button type="button" onclick="fillCardioLocal()" class="pm-btn" style="height:44px;border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-weight:800;font-size:13px">❤️ Calculer les cardios cibles manquants (gratuit, sans IA)</button>
+              <span class="text-[11px] text-slate-500 leading-snug">Sans analyse du coach, l'app calcule déjà la cible de chaque séance au moment de la faire (FC max sur les fractions courtes, FC moyenne sinon, abaissée sur tapis). Ce bouton l'inscrit dans le plan.</span>
+            </div>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
@@ -928,6 +937,7 @@
             </div>
             <button onclick="confirmPdfImport()" class="pm-btn" style="height:48px;border:none;background:#38bdf8;color:#04121f;font-weight:800">Valider ces séances</button>
           </div>
+          <div id="likesBox" style="display:contents"></div>
         </div>
       </div>
       <div class="pm-foot"><button onclick="saveGoalSettings()" class="pm-save">Enregistrer</button></div>
@@ -5015,6 +5025,7 @@ ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
 ${tapisHrText()}
+${weakText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
 Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
@@ -5062,6 +5073,7 @@ ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
 ${tapisHrText()}
+${weakText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds de façon concrète et personnalisée. En cas de douleur inquiétante, conseille de consulter. Si c'est utile, tu peux proposer de modifier UNE séance prévue ci-dessus (donne sa date exacte).
 Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","seance_date":"AAAA-MM-JJ de la séance à modifier, sinon vide","resume":"la modification en une phrase","nouvelle_date":"AAAA-MM-JJ si tu conseilles de la déplacer, sinon vide","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
@@ -5768,7 +5780,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     }
     // Économie cardio : vitesse par battement au-dessus du repos (segments d'au moins 5 min, cardio du tapis corrigé)
     function ecoOf(h) {
-      const rest = +runnerProfile().fcRest || 60, off = h.type === 'tapis' ? Math.max(0, tapisHrOffset().off ?? 5) : 0;
+      const rest = +runnerProfile().fcRest || 60, off = h.type === 'tapis' ? tapisHrEff() : 0;
       let b = null;
       (h.seg || []).forEach(x => { if (x.sec >= 300 && x.avgHr && x.avgKmh && !/chauff|calme/i.test(x.name || '')) { const hr = x.avgHr + off; if (hr - rest < 25) return; const e = x.avgKmh / (hr - rest) * 100; if (!b || e > b.e) b = { e, kmh: x.avgKmh, hr: x.avgHr, tap: h.type === 'tapis' }; } });
       return b;
@@ -5796,21 +5808,92 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       }
       return Math.round(best * 10) / 10;
     }
-    // Écart de cardio tapis / extérieur à vitesse comparable (propre au coureur)
-    let _thoCache = null;
-    function tapisHrOffset() {
-      const key = (appData.history || []).length; if (_thoCache && _thoCache.key === key) return _thoCache.v;
-      const pts = { tapis: [], exterieur: [] };
-      runHistory().forEach(h => { const t = h.type === 'tapis' ? 'tapis' : h.type === 'exterieur' ? 'exterieur' : null; if (!t) return; (h.seg || []).forEach(x => { if (x.sec >= 180 && x.avgHr && x.avgKmh && !/chauff|calme/i.test(x.name || '')) pts[t].push([x.avgKmh, x.avgHr]); }); });
-      const diffs = [];
-      pts.tapis.forEach(([v, hr]) => { const near = pts.exterieur.filter(p => Math.abs(p[0] - v) <= 0.5).map(p => p[1]); if (near.length) diffs.push(near.reduce((a, b) => a + b, 0) / near.length - hr); });
-      diffs.sort((a, b) => a - b);
-      const v = diffs.length >= 3 ? { off: Math.round(diffs[Math.floor(diffs.length / 2)]), n: diffs.length } : { off: null, n: diffs.length };
-      _thoCache = { key, v }; return v;
+    // Écart de cardio tapis / extérieur à effort égal (propre au coureur)
+    const TAPIS_HR_DEFAULT = 8;
+    function tapisHrCfg() { const r = runnerProfile(); if (!r.tapisHr || typeof r.tapisHr !== 'object') r.tapisHr = { mode: 'auto' }; return r.tapisHr; }
+    // Fenêtres de 3 min stables (après 8 min de course) : VAP (dénivelé corrigé dehors, pente du tapis dedans) et cardio moyen
+    function hrWindows(h) {
+      const T = Array.isArray(h.track) ? h.track.filter(r => r && r[0] != null) : [];
+      if (T.length < 20) return [];
+      const pente = h.type === 'tapis' ? (parseFloat(h.pente) || 0) : 0, out = [];
+      let i = 0;
+      while (i < T.length) {
+        if (T[i][0] < 480) { i++; continue; }
+        let j = i; while (j < T.length && T[j][0] - T[i][0] < 180) j++;
+        if (j >= T.length) break;
+        const rows = T.slice(i, j + 1), hrs = rows.filter(r => r[1] > 0).length, vs = rows.map(r => r[2]).filter(x => x > 0);
+        if (hrs >= rows.length * 0.7 && vs.length >= rows.length * 0.6 && Math.max(...vs) - Math.min(...vs) <= 1.2) {
+          const st = trackChunkStats(rows, { pente });
+          if (st && st.hr && st.vap > 5 && st.vap < 22 && (h.type === 'tapis' || st.hasEle || true)) out.push([st.vap, st.hr]);
+        }
+        i = j;
+      }
+      return out;
     }
+    let _thmCache = null;
+    function tapisHrMeasure() {
+      const key = (appData.history || []).length; if (_thmCache && _thmCache.key === key) return _thmCache.v;
+      const W = { tapis: [], exterieur: [] };
+      runHistory().forEach(h => { const t = h.type === 'tapis' ? 'tapis' : h.type === 'exterieur' ? 'exterieur' : null; if (t) hrWindows(h).forEach(w => W[t].push(w)); });
+      // Modèle : cardio = a + b × VAP + écart (tapis), pente b commune aux deux (dérive des vitesses différentes corrigée)
+      const st = A => { const n = A.length, mv = A.reduce((x, q) => x + q[0], 0) / n, mh = A.reduce((x, q) => x + q[1], 0) / n; let sxy = 0, sxx = 0; A.forEach(q => { sxy += (q[0] - mv) * (q[1] - mh); sxx += (q[0] - mv) ** 2; }); return { n, mv, mh, sxy, sxx }; };
+      let v = { off: null, n: Math.min(W.tapis.length, W.exterieur.length), nT: W.tapis.length, nE: W.exterieur.length };
+      if (W.tapis.length >= 5 && W.exterieur.length >= 5) {
+        const T = st(W.tapis), E = st(W.exterieur), sxx = T.sxx + E.sxx;
+        let b = sxx > 0.5 * (T.n + E.n) * 0.25 ? (T.sxy + E.sxy) / sxx : 7;
+        b = Math.max(3, Math.min(15, b));
+        if (Math.abs(T.mv - E.mv) <= 2.5) { v.off = Math.round(E.mh + b * (T.mv - E.mv) - T.mh); v.slope = Math.round(b * 10) / 10; v.vT = Math.round(T.mv * 10) / 10; v.vE = Math.round(E.mv * 10) / 10; }
+      }
+      _thmCache = { key, v }; return v;
+    }
+    function tapisHrOffset() {
+      const c = tapisHrCfg();
+      if (c.mode === 'manual' && c.manual != null && c.manual !== '') return { off: +c.manual, n: 0, src: 'manual' };
+      if (c.mode === 'ia' && c.ia && c.ia.v != null) return { off: +c.ia.v, n: 0, src: 'ia' };
+      const m = tapisHrMeasure();
+      return m.off != null ? Object.assign({ src: 'app' }, m) : Object.assign({}, m, { off: null, src: 'default' });
+    }
+    function tapisHrEff() { const o = tapisHrOffset(); return Math.max(0, o.off ?? TAPIS_HR_DEFAULT); }
+    function renderTapisHr() {
+      const box = document.getElementById('tapisHrBox'); if (!box) return;
+      const c = tapisHrCfg(), o = tapisHrOffset(), m = tapisHrMeasure();
+      const btn = (k, l) => `<button type="button" onclick="setTapisHrMode('${k}')" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;${(c.mode || 'auto') === k ? 'background:#fb7185;color:#1f0a10;border:1px solid #fb7185' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
+      const val = o.off != null ? `${o.off} bpm` : `${TAPIS_HR_DEFAULT} bpm (valeur par défaut)`;
+      const srcTxt = { app: `calculé par l'app à VAP égale (${o.nT} portions tapis, ${o.nE} dehors${o.vT ? ` ; VAP moyenne ${String(o.vT).replace('.', ',')} tapis / ${String(o.vE).replace('.', ',')} dehors` : ''})`, ia: `estimé par le coach IA le ${c.ia && c.ia.at ? fmtDateShort(c.ia.at) : ''}`, manual: 'choisi par toi', default: `pas encore assez de données (il faut au moins 5 portions stables de 3 min sur tapis ET dehors : ${m.nT || 0} / ${m.nE || 0})` }[o.src];
+      box.innerHTML = `<div class="flex items-baseline justify-between gap-2"><span class="text-[14px] font-extrabold text-white">Cardio plus bas sur tapis</span><span class="text-[20px] font-black" style="color:#fda4af">−${val}</span></div>
+        <span class="text-[11.5px] text-slate-400 -mt-1">${srcTxt}</span>
+        <div class="grid grid-cols-3 gap-1.5">${btn('auto', '📱 App')}${btn('ia', '🧠 Coach IA')}${btn('manual', '✋ Manuel')}</div>
+        ${c.mode === 'manual' ? `<label class="flex items-center justify-between gap-2 text-[13px] font-bold text-slate-200">Écart (bpm)<input type="number" min="-10" max="30" step="1" value="${c.manual ?? ''}" placeholder="ex. 12" class="pm-in c" style="width:96px" onchange="tapisHrCfg().manual=this.value===''?null:Math.round(+this.value);_thoReset();saveAppData();renderTapisHr()"></label>` : ''}
+        ${c.mode === 'ia' ? `<button type="button" id="tapisHrIaBtn" onclick="tapisHrWithAI()" class="pm-btn" style="height:42px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:13px">🧠 ${c.ia ? 'Recalculer' : 'Calculer'} avec le coach IA</button>${c.ia && c.ia.note ? `<span class="text-[12px] text-slate-300">${plEsc(c.ia.note)}</span>` : ''}` : ''}
+        <span class="text-[11px] text-slate-500 leading-snug">Comparaison à effort égal : VAP dehors (dénivelé corrigé), vitesse et pente du tapis dedans, sur des portions stables de 3 min après 8 min de course${m.nT || m.nE ? ` · calcul de l'app : ${m.off != null ? m.off + ' bpm' : 'pas assez de données'}` : ''}. Sert à corriger la VMA estimée, les cibles cardio sur tapis et l'analyse du coach.</span>`;
+    }
+    function _thoReset() { _thmCache = null; }
+    function setTapisHrMode(k) { tapisHrCfg().mode = k; saveAppData(); renderTapisHr(); if (k === 'ia' && !tapisHrCfg().ia) tapisHrWithAI(); }
+    async function tapisHrWithAI() {
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire'); return; }
+      const b = document.getElementById('tapisHrIaBtn'); if (b) { b.disabled = true; b.textContent = '⏳ Le coach compare tes séances…'; }
+      const lines = runHistory().slice(0, 30).map(h => { const w = hrWindows(h); if (!w.length && !(h.summary && h.summary.hrAvg)) return '';
+        const v = w.length ? w.reduce((x, q) => x + q[0], 0) / w.length : 0, hr = w.length ? Math.round(w.reduce((x, q) => x + q[1], 0) / w.length) : h.summary.hrAvg;
+        return `- ${h._iso || h.date} | ${h.type === 'tapis' ? `tapis pente ${h.pente || 0} %` : 'extérieur'} | ${sessionKind(h).label} | ${Math.round(+h.durationMin || 0)} min | VAP moyenne (hors échauffement) ${v ? v.toFixed(1) : '?'} km/h | FC moyenne ${hr}${h.feeling ? ` | ressenti ${h.feeling}` : ''}`; }).filter(Boolean).join('\n');
+      const m = tapisHrMeasure();
+      const prompt = `Tu es un entraîneur de course à pied. Estime de combien de battements par minute le cardio de ce coureur est plus bas sur tapis qu'en extérieur À EFFORT ÉGAL (même VAP : vitesse corrigée du dénivelé dehors, de la pente dedans). Tiens compte du type de séance, de la durée (dérive cardiaque), du ressenti, de la chaleur probable en intérieur et des limites du tapis (vitesse parfois mal étalonnée).
+FC max : ${runnerFcMax() || '?'}. Calcul de l'app (portions stables de 3 min, modèle cardio selon la VAP) : ${m.off != null ? `${m.off} bpm` : 'pas assez de données'}.
+Séances :
+${lines || '- aucune séance avec cardio'}
+Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phrases en tutoyant"}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true })) || {};
+        const v = Math.round(parseFloat(j.ecart_bpm));
+        if (!(v >= -10 && v <= 30)) throw new Error('réponse incohérente');
+        tapisHrCfg().ia = { v, at: todayISO(), note: String(j.explication || '').slice(0, 300) }; saveAppData();
+        showToast(`🧠 Écart tapis estimé : ${v} bpm`);
+      } catch (e) { showToast('Calcul impossible : ' + (e.message || e)); }
+      renderTapisHr();
+    }
+    function weakText() { try { const L = runnerLikes(); return L.faibles ? `- Points faibles connus du coureur (à prendre en compte dans tes conseils) : ${L.faibles}` : ''; } catch (e) { return ''; } }
     function tapisHrText() {
       const o = tapisHrOffset();
-      return `- TAPIS : le cardio y est souvent plus bas qu'en extérieur à vitesse affichée égale (pas de vent ni de relief, sol qui défile, vitesse du tapis parfois mal étalonnée). ${o.off != null ? `Chez ce coureur, à vitesse comparable, son cardio sur tapis est en moyenne ${Math.abs(o.off)} bpm ${o.off >= 0 ? 'plus bas' : 'plus haut'} qu'en extérieur (${o.n} comparaisons).` : "L'écart propre à ce coureur n'est pas encore mesuré (compte en général 0 à 10 bpm de moins sur tapis)."} Ne t'enflamme donc pas sur un cardio bas sur tapis : ne conclus pas à un gros progrès de forme ou de VMA, et compare le cardio entre séances du même type (tapis avec tapis, extérieur avec extérieur).`;
+      return `- TAPIS : le cardio y est souvent plus bas qu'en extérieur à vitesse affichée égale (pas de vent ni de relief, sol qui défile, vitesse du tapis parfois mal étalonnée). ${o.off != null ? `Chez ce coureur, à effort égal (même VAP), son cardio sur tapis est ${Math.abs(o.off)} bpm ${o.off >= 0 ? 'plus bas' : 'plus haut'} qu'en extérieur (${{ app: `mesuré par l'app à VAP égale sur ${o.nT} portions tapis et ${o.nE} dehors`, ia: 'estimé par le coach', manual: 'valeur donnée par le coureur' }[o.src] || ''}).` : `L'écart propre à ce coureur n'est pas encore mesuré : compte environ ${TAPIS_HR_DEFAULT} bpm de moins sur tapis.`} Ne t'enflamme donc pas sur un cardio bas sur tapis : ne conclus pas à un gros progrès de forme ou de VMA, et compare le cardio entre séances du même type (tapis avec tapis, extérieur avec extérieur).`;
     }
     // Cardio à vitesse d'endurance : premières séances comparées aux dernières
     function hrProgress() {
@@ -5931,7 +6014,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l}</button>`; }).join('')}</div>`;
       const sec = (t, cat) => `<span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">${t}</span>${chips(cat)}`;
       return `<div class="pm-card" style="border-color:rgba(56,189,248,.4)"><span class="pm-cap" style="color:#7dd3fc">👍 Ce que j'aime</span>
-        <span style="font-size:12px;color:#94a3b8">Le coach en tient compte pour te faire progresser en prenant du plaisir.</span>
+        <span style="font-size:12px;color:#94a3b8">Utilisé quand le coach crée ou analyse ton plan, et dans l'analyse de tes points forts. Tes points faibles sont aussi pris en compte dans l'analyse de chaque séance et dans les discussions.</span>
         ${sec("👍 J'aime / je suis à l'aise", 'aime')}${sec("👎 Je n'aime pas / je suis moins à l'aise", 'deteste')}
         <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
         <span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">⚠️ Mes points faibles (ce que le coach ne peut pas deviner)</span>
@@ -6026,6 +6109,7 @@ Donne 2 ou 3 axes de travail.`;
       ].join('');
       box.innerHTML = `<div class="pm-card" data-sub="Records" style="gap:0;border-color:rgba(251,191,36,.45)"><span class="pm-cap" style="color:#fbbf24;padding-bottom:6px">🏆 Mes records</span>${rec || '<span class="text-[13px] text-slate-400 py-2">Pas encore de record mesuré (il faut des séances avec capteurs ou GPS).</span>'}</div>
         ${vmaCardHtml()}
+        ${chronosCardHtml()}
         <div class="pm-card" data-sub="Km / semaine"><span class="pm-cap">Kilomètres par semaine</span>${barChartSvg(wk, 'wkChart')}</div>
 `;
     }
@@ -6892,6 +6976,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       fillCoachTabUI();
       renderPlanDays();
       try { fillPlanPrefs(); } catch (e) { }
+      try { renderPlanAnaCrit(); } catch (e) { }
       { const ce = document.getElementById('chkCoachExpert'); if (ce) ce.checked = !!appData.coachExpert; }
       renderGoalSummary();
       try { renderLikes(); } catch (e) { }
@@ -7041,7 +7126,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
       if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
       if (tab === 'progres') renderProgress();
-      if (tab === 'moi') renderLikes();
+      if (tab === 'plan') renderLikes();
       if (tab === 'plan') renderPlanSummary();
       if (modalId === 'goalModal') applyAllSubTabs();
     }
@@ -7301,6 +7386,26 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const text = `Composition du plan jusqu'à la course (calculée par l'app, ${n} séances de course) : ${top.map(([k, c]) => `${k} ${c} (${Math.round(c / n * 100)} %)`).join(', ')}. Types clés absents : ${missing.length ? missing.join(', ') : 'aucun'}. Temps en intensité ≈ ${hardPct} % du temps total (repère : 15 à 25 %).${top[0] && top[0][1] / n >= 0.4 && n >= 5 ? ` Attention : « ${top[0][0]} » représente ${Math.round(top[0][1] / n * 100)} % des séances, le plan manque de variété.` : ''}`;
       return { counts: top, missing, hardPct, n, text };
     }
+    const PLAN_CRIT = [['cardio', '❤️ Cardio cible', "le cardio cible de chaque séance (FC moyenne visée ou FC max à ne pas dépasser selon le type, en tenant compte du tapis)"],
+      ['allures', '🏃 Vitesses / allures', "les vitesses et allures de chaque séance (VMA, seuil, allure spécifique, endurance)"],
+      ['volume', '📈 Volume et progression', "le volume hebdomadaire et sa progression, les semaines allégées"],
+      ['types', '🧩 Types de séances', "la répartition des types de séances et les séances clés pour l'objectif"],
+      ['recup', '🛌 Récupération et affûtage', "la récupération entre séances dures et l'affûtage avant la course"],
+      ['prefs', "😀 Mes préférences", "le respect de ce que le coureur aime ou n'aime pas et de ses points faibles"]];
+    function planAnaCfg() { if (!appData.planAnaCfg) appData.planAnaCfg = { crit: PLAN_CRIT.map(c => c[0]), mode: 'full' }; return appData.planAnaCfg; }
+    function renderPlanAnaCrit() {
+      const box = document.getElementById('planAnaCrit'); if (!box) return; const C = planAnaCfg();
+      box.innerHTML = PLAN_CRIT.map(([k, l]) => { const on = C.crit.includes(k); return `<button type="button" onclick="togglePlanCrit('${k}')" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;text-align:left;padding:0 10px;${on ? 'background:rgba(52,211,153,.15);color:#6ee7b7;border:1px solid rgba(52,211,153,.6)' : 'background:#0f172a;color:#64748b;border:1px solid #1e293b'}">${on ? '☑' : '☐'} ${l}</button>`; }).join('');
+      const m = document.getElementById('planAnaMode'); if (m) m.value = C.mode || 'full';
+    }
+    function togglePlanCrit(k) { const C = planAnaCfg(); C.crit = C.crit.includes(k) ? C.crit.filter(x => x !== k) : C.crit.concat(k); if (!C.crit.length) C.crit = [k]; saveAppData(); renderPlanAnaCrit(); }
+    function fillCardioLocal() {
+      if (!runnerFcMax()) { showToast('Renseigne ta FC max (Profil › Moi › Cardio)'); return; }
+      let n = 0;
+      upcomingPlanSessions().forEach(sx => { if (sx.cardio || sx.free || ['test', 'course'].includes(sx.kind)) return; const g = sessHrGoal(sx); if (!g) return; sx.cardio = g.kind === 'max' ? { max: g.max } : { moy: [g.lo, g.hi] }; sx.cardioSrc = 'app'; n++; });
+      saveAppData(); try { updateHistoryTable(); renderPlanSummary(); } catch (e) { }
+      showToast(n ? `❤️ Cardio cible ajouté à ${n} séance${n > 1 ? 's' : ''}` : 'Toutes les séances ont déjà un cardio cible');
+    }
     async function analyzePlanWithCoach(skipBg) {
       const st = document.getElementById('planAnaStatus');
       const say = (t, err) => { st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
@@ -7321,8 +7426,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       try { const p = computeGoalProbability(); if (p && !p.noData) { pApp = p.pDay; prob = `Probabilité d'atteindre l'objectif le jour J calculée par l'app : ${p.pDay} % (chrono estimé ${fmtClock(p.tDay)} pour ${g.durationMin} min visées). Ce calcul part de la VMA estimée actuelle et d'une progression standard : il ne tient PAS compte du contenu du plan.`; } } catch (e) { }
       const compo = planComposition(upTo.filter(x => !x.free));
       const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      const AC = planAnaCfg(), eco = AC.mode === 'eco', all = PLAN_CRIT.every(c => AC.crit.includes(c[0]));
+      const scope = all ? '' : `\nPÉRIMÈTRE CHOISI PAR LE COUREUR : analyse UNIQUEMENT ${PLAN_CRIT.filter(c => AC.crit.includes(c[0])).map(c => c[2]).join(' ; ')}. Ne propose des modifications que sur ces points et ne change rien d'autre dans les séances (garde le reste identique).`;
+      const ecoTxt = eco ? `\nANALYSE ALLÉGÉE : réponse courte. 3 constats maximum dans "points", "semaines" vide [], seulement les modifications les plus importantes.` : '';
       const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
-Analyse le plan d'entraînement à venir de ton coureur par rapport à son objectif, et propose des modifications seulement si elles sont vraiment utiles.
+Analyse le plan d'entraînement à venir de ton coureur par rapport à son objectif, et propose des modifications seulement si elles sont vraiment utiles.${scope}${ecoTxt}
 Aujourd'hui : ${todayISO()}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${guessISOFromDDMM(g.date) || g.date || '?'}${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
@@ -7359,7 +7467,7 @@ Règles : "cardio" = cardio cible de la partie rapide (ou de toute la séance si
       say('');
       st.innerHTML = '<div class="flex items-center gap-3 py-3 px-3 rounded-xl" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.4)"><div class="animate-spin shrink-0" style="width:26px;height:26px;border-radius:50%;border:3px solid #475569;border-top-color:#a78bfa"></div><div class="flex flex-col"><span class="text-[14px] font-extrabold text-white">Le coach analyse ton plan…</span><span class="text-[12px] text-slate-400">Semaine par semaine jusqu\'à la course : 30 s à 2 min</span></div></div>';
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const txt = await geminiText([{ text: prompt }], eco ? { json: true, maxTokens: 12000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) } : { tier: 'full', expert: true, json: true, maxTokens: 32000, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const j = parseJsonLoose(txt) || {};
         const mods = parseCoachMods(j.modifications, refs, null, 100000);
         const verdict = ['ok', 'ajuster', 'revoir'].includes(j.verdict) ? j.verdict : (mods.length ? 'ajuster' : 'ok');
@@ -10164,7 +10272,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const h = hrAvg(20); if (!h) return false;
       const en = appData.audioSettings.voiceLang === 'en', tap = (getActiveSession() || {}).type === 'tapis';
       const st = runData.hrAdv || (runData.hrAdv = { dir: 0, since: 0 });
-      const lowLim = hT.lo - 8 - (tap ? Math.max(0, tapisHrOffset().off ?? 5) : 0);
+      const lowLim = hT.lo - 8 - (tap ? tapisHrEff() : 0);
       const dir = h > hT.hi + 5 ? 1 : (h < lowLim && elapsedMs > (fast ? 60000 : 150000)) ? -1 : 0;
       if (dir !== st.dir) { st.dir = dir; st.since = now; }
       if (!dir) return false;
@@ -11807,6 +11915,7 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
     function analysisFormatPrompt() {
       return `${COACH_RECUL}
 ${tapisHrText()}
+${weakText()}
 Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
 Réponds uniquement en JSON :
 {"verdict":"bonne|correcte|difficile","titre":"le bilan en une phrase de 12 mots maximum","points":["3 points clés de 12 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller"],"action":"LA chose à faire pour la suite, 15 mots maximum","record":"le record ou progrès du jour en une phrase avec le chiffre (d'après les records calculés par l'app ou un progrès net visible dans les données), sinon vide","alerte":"signal santé ou surmenage (douleur, cardio anormal, fatigue qui s'accumule) en une phrase, sinon vide","details":[
@@ -12045,7 +12154,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') r = [0.62, 0.74];
       else if (st.intensity === 'fast') r = fastHrRange(k, getActiveSession());
       else r = k === 'seuil' ? [0.84, 0.9] : k === 'course' || k === 'test' ? [0.85, 0.93] : [0.68, 0.79];
-      return { lo: pctToBpm(r[0]), hi: pctToBpm(r[1]), mid: pctToBpm((r[0] + r[1]) / 2) };
+      const off0 = (getActiveSession() || {}).type === 'tapis' && st.intensity !== 'fast' && k !== 'seuil' ? tapisHrEff() : 0;
+      return { lo: pctToBpm(r[0]) - off0, hi: pctToBpm(r[1]) - off0, mid: pctToBpm((r[0] + r[1]) / 2) - off0 };
     }
     const spF = v => formatSpeed(Math.round(v * 10) / 10).replace('.', appData.audioSettings.voiceLang === 'en' ? '.' : ',');
     function gradeWords(g) {
@@ -12283,7 +12393,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     let _vmaSerCache = null;
     function vmaSeries(maxDays = 120) {
       const H = runHistory().map(h => h._iso).filter(Boolean).sort();
-      const key = todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + JSON.stringify(runnerLevels());
+      const key = todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + tapisHrEff() + '|' + JSON.stringify(runnerLevels());
       if (_vmaSerCache && _vmaSerCache.key === key) return _vmaSerCache.v;
       const out = [];
       const lim = new Date(); lim.setDate(lim.getDate() - maxDays);
@@ -12306,6 +12416,62 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const dots = pts.map((p, i) => `<g style="cursor:pointer" onclick="document.getElementById('${id}Cap').textContent='${fmtDateShort(p.d)} : ${String(p.v).replace('.', ',')} ${unit}'"><circle cx="${x(i)}" cy="${y(p.v)}" r="${n > 25 ? 6 : 12}" fill="transparent"></circle><circle cx="${x(i)}" cy="${y(p.v)}" r="${i === n - 1 ? 5 : n > 25 ? 1.6 : 3}" fill="${color}" stroke="#0c1424" stroke-width="2"></circle></g>`).join('');
       const labs = [lo, hi].map(v => `<text x="2" y="${y(v) - 4}" font-size="9" fill="#64748b">${String(v).replace('.', ',')}</text>`).join('');
       return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" height="${Hh}">${labs}<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"></path>${dots}<text x="${x(0)}" y="${Hh - 6}" font-size="10" fill="#64748b" text-anchor="start">${fmtDateShort(pts[0].d)}</text><text x="${x(n - 1)}" y="${Hh - 6}" font-size="10" fill="#64748b" text-anchor="end">${fmtDateShort(pts[n - 1].d)}</text></svg>`;
+    }
+    // Chronos estimés : app (VMA mesurée sur tes séances, sans tes niveaux déclarés), coach IA, et moyenne des deux
+    const CHR_D = [[5, '5 km'], [10, '10 km'], [21.1, 'Semi'], [42.2, 'Marathon']];
+    let chrSel = 10, _chrCache = null;
+    function chrFrac(d) { return Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(d / 5))); }
+    function chrAppSeries(maxDays = 120) {
+      const H = runHistory().map(h => h._iso).filter(Boolean).sort();
+      const key = todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + tapisHrEff();
+      if (_chrCache && _chrCache.key === key) return _chrCache.v;
+      const out = [], lim = new Date(); lim.setDate(lim.getDate() - maxDays);
+      const start = H.length ? new Date(Math.max(parseISODateLocal(H[0]), lim)) : new Date();
+      const days = Math.round((new Date() - start) / 864e5);
+      for (let i = days; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); d.setHours(23, 59, 0, 0); const e = estimateVma(d, { noLevels: true }); if (e && e.vma) out.push({ d: toISODateLocal(d), vma: e.vma }); }
+      _chrCache = { key, v: out }; return out;
+    }
+    function chronosCardHtml() {
+      const A = chrAppSeries(), LH = levelsHist();
+      if (!A.length && !LH.length) return '';
+      const dist = chrSel, f = chrFrac(dist);
+      const app = A.map(p => ({ d: p.d, s: dist / (p.vma * f) * 3600 }));
+      const coach = LH.filter(x => x.src === 'coach' && x.L && x.L[dist]).map(x => ({ d: x.d, s: x.L[dist] }));
+      const decl = LH.filter(x => x.src === 'moi' && x.L && x.L[dist]).map(x => ({ d: x.d, s: x.L[dist] }));
+      const appAt = d => { const e = app.filter(q => q.d <= d).pop() || app[0]; return e ? e.s : null; };
+      const avg = coach.map(c => { const a = appAt(c.d); return a ? { d: c.d, s: (a + c.s) / 2 } : null; }).filter(Boolean);
+      const tm = sec => sec ? fmtTime(Math.round(sec)) : '–';
+      const chips = CHR_D.map(([d, l]) => `<button type="button" onclick="chrSel=${d};renderProgress()" style="flex:1;min-height:36px;border-radius:10px;font-size:13px;font-weight:800;${d === dist ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`).join('');
+      // tableau : toutes les distances
+      const lastApp = A[A.length - 1], lastC = LH.filter(x => x.src === 'coach').pop();
+      const rows = CHR_D.map(([d, l]) => { const a = lastApp ? d / (lastApp.vma * chrFrac(d)) * 3600 : null, c = lastC && lastC.L[d] ? lastC.L[d] : null;
+        return `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;font-weight:800;color:#e2e8f0">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${tm(a)}</td><td style="text-align:center;font-weight:800;color:#c084fc">${tm(c)}</td><td style="text-align:center;font-weight:900;color:#34d399">${a && c ? tm((a + c) / 2) : '–'}</td></tr>`; }).join('');
+      // graphique (plus haut = plus rapide)
+      const all = app.concat(coach, decl, avg);
+      let svg = '<span class="text-[12px] text-slate-400">Pas encore assez de données pour cette distance.</span>';
+      if (all.length >= 2) {
+        const W = 340, Hh = 220, pad = 24;
+        const ds = all.map(p => p.d).sort(), d0 = parseISODateLocal(ds[0]), span = Math.max(1, (parseISODateLocal(ds[ds.length - 1]) - d0) / 864e5);
+        const lo = Math.min(...all.map(p => p.s)), hi = Math.max(...all.map(p => p.s)), mg = Math.max(20, (hi - lo) * 0.15), mn = lo - mg, mx = hi + mg;
+        const x = d => 44 + (W - 56) * ((parseISODateLocal(d) - d0) / 864e5) / span, y = v => 12 + (Hh - pad - 22) * ((v - mn) / (mx - mn));
+        const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => mn + (mx - mn) * t).map(v => `<line x1="40" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b"></line><text x="2" y="${y(v) + 3}" font-size="9" fill="#475569">${fmtTime(Math.round(v))}</text>`).join('');
+        const line = (pts, col, dash) => pts.length > 1 ? `<path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.s).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2"${dash ? ' stroke-dasharray="5 4"' : ''}></path>` : '';
+        const lab = (p, col, dy) => `<text x="${Math.max(30, Math.min(W - 18, x(p.d)))}" y="${Math.max(10, Math.min(Hh - pad, y(p.s) + dy))}" text-anchor="middle" font-size="10" font-weight="800" fill="${col}">${fmtTime(Math.round(p.s))}</text>`;
+        const cap = t => `onclick="document.getElementById('chrCap').textContent='${t}'"`;
+        const dotsA = app.map((p, i) => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (app)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="8" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="${i === app.length - 1 ? 4 : 1.8}" fill="#fbbf24"></circle></g>`).join('');
+        const labA = app.filter((p, i) => i === 0 || i === app.length - 1).map(p => lab(p, '#fde68a', -8)).join('');
+        const dotsC = coach.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (coach IA)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="11" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.s) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.s)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>${lab(p, '#d8b4fe', (avg.find(q => q.d === p.d) || { s: 1e9 }).s < p.s ? 16 : -9)}`).join('');
+        const dotsM = avg.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (moyenne)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="4" fill="#34d399" stroke="#0b1324" stroke-width="1.5"></circle></g>${lab(p, '#6ee7b7', (coach.find(q => q.d === p.d) || { s: -1 }).s < p.s ? 16 : -9)}`).join('');
+        const dotsD = decl.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (saisi par toi)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="4" fill="none" stroke="#94a3b8" stroke-width="2"></circle></g>`).join('');
+        svg = `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chronos estimés">${ticks}${line(app, '#fbbf24')}${line(coach, '#c084fc', true)}${line(avg, '#34d399', true)}${dotsA}${labA}${dotsD}${dotsM}${dotsC}
+          <text x="44" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 6}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#94a3b8"><span><b style="color:#fbbf24">━</b> app</span><span><b style="color:#c084fc">◆</b> coach IA</span><span><b style="color:#34d399">●</b> moyenne</span>${decl.length ? '<span><b style="color:#94a3b8">○</b> saisi par toi</span>' : ''}<span>↑ plus rapide</span></div>
+          <span id="chrCap" class="text-[12px] text-slate-400">Touche un point pour le détail</span>`;
+      }
+      return `<div class="pm-card" data-sub="Chronos"><span class="pm-cap">⏱️ Chronos estimés</span>
+        <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase"><th style="text-align:left;padding-bottom:4px"></th><th>📱 App</th><th>🧠 Coach${lastC ? `<br><span style="font-size:9.5px;text-transform:none">${fmtDateShort(lastC.d)}</span>` : ''}</th><th>⚖️ Moyenne</th></tr></thead><tbody>${rows}</tbody></table>
+        <div style="display:flex;gap:6px;margin-top:6px">${chips}</div>${svg}
+        <span class="text-[11px] text-slate-500 leading-snug">App : d'après ta VMA mesurée sur tes séances (sans tes niveaux déclarés), avec le pourcentage de VMA tenable sur la distance. Coach : ses estimations après chaque séance validée (Moi › Niveau). La moyenne des deux est souvent la plus fiable.</span></div>`;
     }
     function vmaCardHtml() {
       const cur = estimateVma();
@@ -13137,7 +13303,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         let score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
         const col = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
-        const tile = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px;${card}"><span style="font-size:22px;font-weight:800;line-height:1;color:${c}">${v}</span><span style="font-size:11px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
+        const tile = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px;${card}"><span style="font-size:19px;font-weight:800;line-height:1;color:${c};white-space:nowrap">${v}</span><span style="font-size:10.5px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
         // Moyennes du corps de séance (sans échauffement ni retour au calme)
         const body = G.filter(g => !isWarm(g));
         const fracMode = reps.length > 1 || (varied && reps.length > 0);
@@ -13178,10 +13344,29 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const col2 = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring2 = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col2}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
         void ring;
+        // Cardio : FC moyenne et FC max de la partie principale, comparées à la cible (FC max ou FC moyenne selon la séance)
+        const hrMaxB = (() => { let m = 0; (avgSet.length ? avgSet : G).forEach(g => { for (let i = g.a; i <= g.b; i++) if (R[i].hr > m) m = R[i].hr; }); return m || W.hrMax || (hs && hs.fc_max) || null; })();
+        const hg = (() => { try { const base = Object.assign({ type: hh.type }, item.linked || { kind: hh.kind }); return sessHrGoal(base, { frac: fracMode, fsec: reps.length ? (reps.map(g => g.sec).sort((a, b) => a - b)[Math.floor(reps.length / 2)]) : 9999 }); } catch (e) { return null; } })();
+        const hrRowHtml = (() => {
+          if (!bHr && !hrMaxB) return '';
+          const cmpV = hg ? (hg.kind === 'max' ? hrMaxB : bHr) : null;
+          let ind = '';
+          if (hg && cmpV) {
+            let sym, col, txt;
+            if (hg.kind === 'max') { const d = cmpV - hg.max; if (d <= 0) { sym = '≤'; col = '#34d399'; txt = 'OK'; } else { sym = '▲'; col = '#fb7185'; txt = `+${d}`; } }
+            else { if (cmpV > hg.hi) { sym = '▲'; col = '#fb923c'; txt = `+${cmpV - hg.hi}`; } else if (cmpV < hg.lo) { sym = '▼'; col = '#38bdf8'; txt = `−${hg.lo - cmpV}`; } else { sym = '='; col = '#34d399'; txt = 'OK'; } }
+            ind = `<div style="flex:0 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:22px;font-weight:900;line-height:1;color:${col}">${sym}</span><span style="font-size:10px;font-weight:800;color:${col}">${txt}</span></div>`;
+          }
+          const tM = tile('FC moy.', bHr || '–', '#fda4af'), tX = tile('FC max', hrMaxB || '–', '#fb7185');
+          const tC = hg ? tile(hg.kind === 'max' ? 'Cible FC max' : 'Cible FC moy.', hg.kind === 'max' ? `≤ ${hg.max}` : `${hg.lo}–${hg.hi}`, '#fde68a') : '';
+          const order = hg ? (hg.kind === 'max' ? tM + tX + ind + tC : tX + tM + ind + tC) : tM + tX;
+          return `<div style="display:flex;align-items:stretch;gap:6px">${order}</div>${hg ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Cible ${hg.kind === 'max' ? 'FC max à ne pas dépasser (fractions courtes)' : `FC moyenne${fracMode ? ' sur les rapides' : ' sur la séance'}`}${hg.src === 'app' ? ", calculée par l'app" : ', fixée par le coach'}${hg.tap ? ' · tapis' : ''}.</span>` : ''}`;
+        })();
         const totSec = W.sec || (+hh.durationMin || 0) * 60, totTxt = totSec >= 3600 ? `${Math.floor(totSec / 3600)} h ${String(Math.round(totSec % 3600 / 60)).padStart(2, '0')}` : `${Math.round(totSec / 60)} min`;
-        const extraL = `${hrGoal && !/cardio/i.test(goal) ? `<span style="font-size:13px;font-weight:700;color:#fda4af;line-height:1.3">❤️ Cardio cible : ${plEsc(hrGoal)}</span>` : ''}<span style="font-size:13px;font-weight:700;color:#cbd5e1;line-height:1.3">📏 Séance complète : ${f1(km)} km · ${totTxt}</span>`;
-        stats = `${ring2 || goal ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2 || ''}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span>${goal ? `<span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span>` : ''}${why ? `<span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span>` : ''}${extraL}</div></div>` : `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;${card}">${extraL}</div>`}
-          <div style="display:flex;align-items:stretch;gap:8px">${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}${tile('Cardio moy.', bHr || '–', '#fda4af')}</div>
+        void hrGoal; const extraL = `${hrGoal && !/cardio/i.test(goal) ? `<span style="font-size:13px;font-weight:700;color:#fda4af;line-height:1.3">❤️ Cardio cible : ${plEsc(hrGoal)}</span>` : ''}<span style="font-size:13px;font-weight:700;color:#cbd5e1;line-height:1.3">📏 Séance complète : ${f1(km)} km · ${totTxt}</span>`;
+        stats = `${ring2 || goal ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2 || ''}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span>${goal ? `<span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span>` : ''}${why ? `<span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span>` : ''}</div></div>` : ''}
+          <div style="display:flex;align-items:stretch;gap:6px">${tile('Temps total', totTxt, '#e2e8f0')}${tile('Distance', f1(km) + '<small style="font-size:12px"> km</small>', '#e2e8f0')}${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}</div>
+          ${hrRowHtml}
           ${(() => { let dp = null, dm = null;
             if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if ((synth || hh.eleShot) && hh.summary && hh.summary.dplus) { dp = Math.round(hh.summary.dplus); dm = Math.round(hh.summary.dminus || 0); } else if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
             else { dp = Math.round(km * 1000 * (pente || 0) / 100); dm = 0; }
@@ -13254,14 +13439,14 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const fmtS = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
       const spokenTab = !item.live ? (spk.length ? `<div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
         : `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas d'annonces enregistrées pour cette séance (faite avant la mise à jour qui les garde, ou sans le chrono de l'app).</div>`) : '';
-      const tabs = [['coach', '🧠 Coach', item.live ? '' : coachTab], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab], ['map', '🗺️ Carte', mapTab], ['spoken', '📜 Annonces', spokenTab]].filter(t => t[2]);
+      const tabs = [['coach', '🧠 Coach', item.live ? '' : coachTab], ['feel', '😀 Ressenti', item.live ? '' : top], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab], ['map', '🗺️ Carte', mapTab], ['spoken', '📜 Annonces', spokenTab]].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach';
       const tid = 'ht' + Math.random().toString(36).slice(2, 8);
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
-      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${noData}${stats}${zonesB}${item.live ? '' : top}${recLine}
+      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${noData}${stats}${zonesB}${recLine}
         <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:${tabs.length > 4 ? 11.5 : 13}px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
@@ -14380,10 +14565,35 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       main = main.replace(/à (\d+(?:,\d)?)$/, 'à $1 km/h');
       return { main: `${where} : ${main}`, rec: [m ? `Récup : ${m[1]}` : '', recB].filter(Boolean).join(' · ') };
     }
+    // Cardio cible d'une séance : FC MAX à ne pas dépasser (fractions courtes < 2 min) ou FC MOYENNE visée (fractions longues, seuil, endurance)
+    // Sur tapis, les cibles calculées par l'app tiennent compte du cardio plus bas qu'en extérieur
+    function sessHrGoal(s, o = {}) {
+      s = s || {};
+      const tap = s.type === 'tapis';
+      let k = s.kind || 'endurance', G = null, fsec = 9999;
+      try { k = guideKind(s); G = gSegs(s); if (G.fast[0]) fsec = G.fast[0].unit === 'km' ? G.fast[0].distance / G.vmax * 3600 : G.fast[0].duration * 60; } catch (e) { }
+      if (o.fsec) fsec = o.fsec;
+      const frac = o.frac != null ? o.frac : !!(G && G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k));
+      const src = s.cardioSrc === 'app' ? 'app' : 'coach';
+      if (s.cardio) {
+        const c = s.cardio;
+        if (frac && fsec < 120 && c.max) return { kind: 'max', max: c.max, src, tap };
+        if (c.moy && c.moy[0]) return { kind: 'moy', lo: c.moy[0], hi: c.moy[1], max: c.max || null, src, tap };
+        if (c.max) return { kind: 'max', max: c.max, src, tap };
+      }
+      if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return null;
+      const off = tap ? tapisHrEff() : 0;
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(pctToBpm); return fsec < 120 ? { kind: 'max', max: hi, src: 'app', tap } : { kind: 'moy', lo, hi, src: 'app', tap }; }
+      const [lo, hi] = (k === 'recup' ? [0.62, 0.74] : [0.68, 0.79]).map(pctToBpm);
+      return { kind: 'moy', lo: lo - off, hi: hi - off, src: 'app', tap };
+    }
+    function hrGoalText(g) { if (!g) return ''; return g.kind === 'max' ? `FC max ≤ ${g.max}` : `FC moy. ${g.lo}–${g.hi}`; }
     // Cardio cible de la partie rapide (fractionné court : cardio max à ne pas dépasser ; plus long : cardio moyen)
     // Cardio cible en une ligne (accueil)
     function hrTargetShort(s) {
       if (!s || s.free) return '';
+      { const g = sessHrGoal(s); if (!g) return ''; const G0 = gSegs(s); const fr = G0.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(guideKind(s));
+        return g.kind === 'max' ? `Cardio cible : FC max ${g.max} en fin de répétition${g.tap && g.src === 'app' ? ' (tapis)' : ''}` : `Cardio cible${fr ? ' sur les fractions' : ''} : FC moyenne ${g.lo}–${g.hi}${g.max ? `, max ${g.max}` : ''}${g.tap && g.src === 'app' ? ' (tapis)' : ''}`; }
       const k = guideKind(s), G = gSegs(s);
       const fsec = G.fast[0] ? (G.fast[0].unit === 'km' ? G.fast[0].distance / G.vmax * 3600 : G.fast[0].duration * 60) : 9999;
       const frac = G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k);
@@ -14399,8 +14609,8 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (s.cardio) {
         const c = s.cardio, f = G.fast[0], sec = f ? (f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60) : 9999;
         const part = G.fast.length ? 'sur chaque fraction' : 'sur la séance';
-        if (sec < 120 && c.max) return `Fractions courtes : cardio max à ne pas dépasser ${c.max} en fin de répétition (cible fixée par le coach).`;
-        return [c.moy ? `Cardio moyen ${part} entre ${c.moy[0]} et ${c.moy[1]}` : '', c.max ? `sans dépasser ${c.max}` : ''].filter(Boolean).join(', ') + ' (cible fixée par le coach).';
+        if (sec < 120 && c.max) return `Fractions courtes : cardio max à ne pas dépasser ${c.max} en fin de répétition (${s.cardioSrc === 'app' ? "cible calculée par l'app" : 'cible fixée par le coach'}).`;
+        return [c.moy ? `Cardio moyen ${part} entre ${c.moy[0]} et ${c.moy[1]}` : '', c.max ? `sans dépasser ${c.max}` : ''].filter(Boolean).join(', ') + (s.cardioSrc === 'app' ? " (cible calculée par l'app)." : ' (cible fixée par le coach).');
       }
       const fc = runnerFcMax(); if (!fc) return '';
       if (k === 'test' || k === 'course' || k === 'libre') return '';
@@ -14412,6 +14622,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
           ? `Fractions courtes : cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
           : `Cardio moyen sur chaque fraction entre ${lo} et ${hi}. S'il dépasse ${hi} dès les premières, la vitesse est trop haute pour aujourd'hui.`;
       }
+      { const g = sessHrGoal(s); if (g && g.kind === 'moy') return `Cardio moyen entre ${g.lo} et ${g.hi}${g.tap ? ' (cible abaissée sur tapis, où ton cardio est plus bas)' : ''} : tu dois pouvoir parler en courant.`; }
       const [lo, hi] = k === 'recup' ? pc(0.62, 0.74) : pc(0.68, 0.79);
       return `Cardio moyen entre ${lo} et ${hi} : tu dois pouvoir parler en courant.`;
     }
@@ -14514,6 +14725,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (!inp) return;
       inp.value = formatSpeed(runnerEF());
       renderRunnerTier();
+      try { renderTapisHr(); } catch (e) { }
       { const L = runnerLevels(); LEVEL_DISTS.forEach(([d, id]) => { const el = document.getElementById(id); if (el) el.value = L[d] ? fmtTime(L[d]) : ''; });
         renderLevelInfo();
         const ln = document.getElementById('lvlNote');
@@ -14564,7 +14776,7 @@ FC max connue : ${sensors().fcMax || 'inconnue'}. Objectif : ${g.distanceKm || '
 Séances :
 ${lines}
 Mon niveau actuel déclaré (temps possibles aujourd'hui) : ${runnerLevelsText()}.
-Estime aussi mon niveau actuel sur 5 km, 10 km, semi-marathon (21,1 km) et marathon (42,2 km) : le temps que je pourrais réaliser aujourd'hui. Pars du niveau déclaré et ajuste-le seulement si les séances le justifient. Mets null pour une distance que je ne suis pas capable de courir aujourd'hui (d'après mes plus longues sorties et mon niveau).
+Estime aussi mon niveau actuel sur 5 km, 10 km, semi-marathon (21,1 km) et marathon (42,2 km) : le temps que je pourrais réaliser aujourd'hui, PRÉCIS à 5 secondes près (jamais arrondi à la minute ni aux 5 minutes). Pars du niveau déclaré et ajuste-le seulement si les séances le justifient. Mets null pour une distance que je ne suis pas capable de courir aujourd'hui (d'après mes plus longues sorties et mon niveau).
 Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "une phrase courte, en tutoyant", "niveaux": {"5": "mm:ss" ou null, "10": "mm:ss" ou null, "21": "h:mm:ss" ou null, "42": "h:mm:ss" ou null}, "niveaux_explication": "une phrase courte"}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
@@ -14579,7 +14791,7 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
             const sec = parseTimeStr(j.niveaux[k]);
             if (sec && d / (sec / 3600) > 5 && d / (sec / 3600) < 26) L[d] = sec;
           });
-          if (Object.keys(L).length) { r.levels = L; r.levelsSrc = 'coach'; r.levelsAt = todayISO(); r.levelsNote = String(j.niveaux_explication || '').slice(0, 160); }
+          if (Object.keys(L).length) { r.levels = L; r.levelsSrc = 'coach'; r.levelsAt = todayISO(); r.levelsNote = String(j.niveaux_explication || '').slice(0, 160); pushLevelsHist(L, 'coach'); }
         }
         saveAppData();
         reloadChrono();
@@ -14999,8 +15211,10 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       LEVEL_DISTS.forEach(([d, id]) => {
         const sec = parseTimeStr((document.getElementById(id) || {}).value);
         const info = document.getElementById(id + 'Info');
-        if (info) info.innerHTML = sec ? `${formatSpeed(Math.round(d / (sec / 3600) * 10) / 10)} km/h<br>${paceText(d / (sec / 3600))}/km` : '';
+        if (info) info.innerHTML = sec ? `<b style="font-size:17px;font-weight:900;color:#7dd3fc">${formatSpeed(Math.round(d / (sec / 3600) * 10) / 10).replace('.', ',')}</b> <span style="font-size:11px">km/h</span><br>${paceText(d / (sec / 3600))}/km` : '';
       });
+      try { const est = estimateVma(), n = document.getElementById('lvlApp');
+        if (n) n.innerHTML = est && est.vma ? `📱 D'après ta VMA estimée (${formatSpeed(Math.round(est.vma * 10) / 10).replace('.', ',')} km/h) : ${LEVEL_DISTS.map(([d0]) => { const v = est.vma * Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(d0 / 5))); return `${d0 === 21.1 ? 'semi' : d0 === 42.2 ? 'marathon' : d0 + ' km'} ≈ <b>${fmtTime(Math.round(d0 / v * 3600))}</b>`; }).join(' · ')}` : ''; } catch (e) { }
     }
     function runnerLevels() { const r = runnerProfile(); return r.levels && typeof r.levels === 'object' ? r.levels : {}; }
     const RUNNER_TIERS = [['debutant', '🌱 Débutant', 'moins d\'1 an · 1 à 2 séances/sem.'], ['intermediaire', '🏃 Intermédiaire', 'courses régulières · 2 à 3 séances/sem.'], ['confirme', '💪 Confirmé', 'entraînement structuré · 4 à 5 séances/sem.'], ['elite', '🏆 Élite', 'compétition · 6 séances/sem. ou plus']];
@@ -15032,7 +15246,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         const before = JSON.stringify(runnerLevels());
         const L = {};
         LEVEL_DISTS.forEach(([d, id]) => { const sec = parseTimeStr(document.getElementById(id).value); if (sec) L[d] = sec; });
-        if (JSON.stringify(L) !== before) { r.levels = L; r.levelsSrc = 'moi'; r.levelsAt = todayISO(); }
+        if (JSON.stringify(L) !== before) { r.levels = L; r.levelsSrc = 'moi'; r.levelsAt = todayISO(); pushLevelsHist(L, 'moi'); }
       }
     }
 
@@ -15064,7 +15278,13 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       return x > 0 ? 1 - p : p;
     }
     // VMA estimée d'après les segments des séances (cardio = réserve cardiaque ; sinon borne basse selon la durée)
-    function estimateVma(asOf) {
+    function levelsHist() {
+      const r = runnerProfile();
+      if (!Array.isArray(r.levelsHist)) { r.levelsHist = []; if (r.levels && Object.keys(r.levels).length && r.levelsAt) r.levelsHist.push({ d: r.levelsAt, L: Object.assign({}, r.levels), src: r.levelsSrc === 'coach' ? 'coach' : 'moi' }); }
+      return r.levelsHist;
+    }
+    function pushLevelsHist(L, src) { const H = levelsHist(), t = todayISO(); const r = runnerProfile(); r.levelsHist = H.filter(x => !(x.d === t && x.src === src)).concat({ d: t, L: Object.assign({}, L), src }).slice(-80); }
+    function estimateVma(asOf, opt = {}) {
       { const vt = runnerProfile().vmaTest, ref0 = asOf ? new Date(asOf) : new Date();
         if (vt && vt.v > 5 && vt.at && (ref0 - parseISODateLocal(vt.at)) / 864e5 <= 120 && (ref0 - parseISODateLocal(vt.at)) >= -864e5) return { vma: vt.v, n: 8, withHr: 2, fromTest: true, testAt: vt.at }; }
       const fc = runnerFcMax();
@@ -15086,14 +15306,14 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           const tMin = s.sec / 60;
           lb.push(s.avgKmh / Math.min(1, Math.pow(Math.max(tMin, 6) / 6, -0.07)));
           if (s.avgHr && fc) {
-            const hrC = s.avgHr + (h.type === 'tapis' ? Math.max(0, tapisHrOffset().off ?? 5) : 0); // tapis : cardio plus bas qu'en extérieur
+            const hrC = s.avgHr + (h.type === 'tapis' ? tapisHrEff() : 0); // tapis : cardio plus bas qu'en extérieur
             const hrr = (hrC - 60) / (fc - 60);
             if (hrr >= 0.55 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr);
           }
         });
       });
       // Niveau actuel déclaré ou mis à jour par le coach
-      const L = runnerLevels();
+      const L = opt.noLevels ? {} : runnerLevels();
       const vLev = Object.keys(L).map(Number).filter(d => L[d]).map(d => (d / (L[d] / 3600)) / Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(d / 5))));
       const vL = vLev.length ? Math.max(...vLev) : 0;
       if (!n) return vL ? { vma: vL, n: 3, withHr: 0, fromLevels: true } : null;
@@ -15164,10 +15384,28 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         return;
       }
       const cp = appData.goalCoachProb && (parseISODateLocal(todayISO()) - parseISODateLocal(appData.goalCoachProb.at)) / 864e5 <= 14 ? appData.goalCoachProb : null;
-      const shown = cp ? cp.pDay : p.pDay;
+      const mean = (a, b) => a != null && b != null ? (a + b) / 2 : null;
+      const mP = cp ? Math.round((p.pDay + cp.pDay) / 2) : null;
+      const shown = mP ?? p.pDay;
       const col = shown >= 70 ? 'text-emerald-300' : shown >= 40 ? 'text-amber-300' : 'text-rose-300';
       const g = appData.goal;
       if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
+      const tm = v => v > 0 ? fmtClock(v) : '–', pc = v => v != null ? `${Math.round(v)} %` : '–';
+      const cNow = cp && cp.tNow, cDay = cp && cp.tMin;
+      const rowT = (l, a, c2) => `<tr style="border-top:1px solid #1e293b"><td style="padding:8px 4px 8px 0;font-weight:700;color:#cbd5e1;line-height:1.25">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${a}</td><td style="text-align:center;font-weight:800;color:#c084fc">${c2}</td><td style="text-align:center;font-weight:900;color:#34d399">${cp ? '' : ''}${arguments.length ? '' : ''}</td></tr>`;
+      void rowT;
+      const row = (l, a, c2, m) => `<tr style="border-top:1px solid #1e293b"><td style="padding:8px 4px 8px 0;font-weight:700;color:#cbd5e1;line-height:1.25">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${a}</td><td style="text-align:center;font-weight:800;color:#c084fc">${c2}</td><td style="text-align:center;font-weight:900;color:#34d399">${m}</td></tr>`;
+      const table = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding-bottom:6px"></th><th style="padding-bottom:6px">📱 App</th><th style="padding-bottom:6px">🧠 Coach${cp ? `<br><span style="font-size:9.5px;text-transform:none">${fmtDateShort(cp.at)}</span>` : ''}</th><th style="padding-bottom:6px">⚖️ Moyenne</th></tr></thead><tbody>
+          ${row("⏱ Temps estimé aujourd'hui", tm(p.tNow), tm(cNow), tm(mean(p.tNow, cNow)))}
+          ${row('🏁 Temps estimé le jour J', tm(p.tDay), tm(cDay), tm(mean(p.tDay, cDay)))}
+          ${row(`🎯 Chances de faire ${fmtClock(+g.durationMin)} le jour J`, pc(p.pDay), pc(cp && cp.pDay), pc(mP))}
+        </tbody></table>`;
+      if (box) box.innerHTML = `<div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J · ${cp ? 'moyenne app + coach' : "calcul de l'app"}${cp ? '' : goalProbTrend(shown)}</span></span></div>
+        ${table}
+        <div class="text-[10px] text-slate-500 mt-1">Le jour J dans ${p.weeks} sem., avec la progression attendue. VMA estimée ${formatSpeed(Math.round(p.vma * 10) / 10)} km/h • ${p.n} segments analysés${p.withHr ? ` dont ${p.withHr} avec cardio` : ' (sans cardio)'} • fiabilité ${p.conf}${cp ? '' : " • lance l'avis du coach pour remplir la colonne Coach"}</div>
+        ${goalProbChartHtml()}`;
+      goalCoachOutFill();
+      return;
       if (box) box.innerHTML = `
         <div class="flex items-baseline flex-wrap gap-x-3"><span class="text-2xl font-black ${col}">${shown} % <span class="text-xs font-bold text-slate-400">le jour J${cp ? '' : goalProbTrend(shown)}</span></span>${cp && cp.tMin ? `<span class="text-[17px] font-black text-white">⏱ ${fmtClock(cp.tMin)}${cp.kmh ? ` <span class="text-[13px] font-bold text-slate-400">· ${formatSpeed(cp.kmh).replace('.', ',')} km/h</span>` : ''}</span>` : ''}</div>
         ${cp ? `<div class="text-[11px] font-bold text-purple-300">🧠 Estimation du coach du ${fmtDateShort(cp.at)} · calcul de l'app : ${p.pDay} %</div>` : ''}
@@ -15186,7 +15424,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     // Série « app » recalculée pour chaque jour avec la même formule et l'objectif actuel (pas de mélange)
     let _gpsCache = null;
     function goalProbSeries(days = 30) {
-      const key = goalKey() + '|' + todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + JSON.stringify(runnerLevels());
+      const key = goalKey() + '|' + todayISO() + '|' + (appData.history || []).length + '|' + JSON.stringify(runnerProfile().vmaTest || '') + '|' + tapisHrEff() + '|' + JSON.stringify(runnerLevels());
       if (_gpsCache && _gpsCache.key === key) return _gpsCache.v;
       const out = [];
       for (let i = days - 1; i >= 0; i--) {
@@ -15205,23 +15443,27 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const coach = (appData.goalProbHist || []).map((x, i) => Object.assign({ i }, x)).filter(x => x.d >= lim && x.src === 'coach' && x.g === gk);
       if (app.length < 2) return '';
       return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b"><span class="pm-cap">Évolution sur 30 jours</span>${probChartSvg(app, coach, 'pbChart')}
-        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#94a3b8"><span><b style="color:#fbbf24">━</b> calcul de l'app</span>${coach.length ? '<span><b style="color:#c084fc">◆</b> avis du coach IA</span>' : ''}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#94a3b8"><span><b style="color:#fbbf24">━</b> calcul de l'app</span>${coach.length ? '<span><b style="color:#c084fc">◆</b> avis du coach IA</span><span><b style="color:#34d399">●</b> moyenne</span>' : ''}</div>
         <span id="pbChartCap" class="text-[12px] text-slate-400">Touche un point pour le détail</span></div>`;
     }
     function probChartSvg(app, coach, id) {
-      const W = 340, Hh = 140, pad = 22;
+      const W = 340, Hh = 220, pad = 24;
       const ds = app.concat(coach).map(p => p.d).sort();
       const d0 = parseISODateLocal(ds[0]), span = Math.max(1, (parseISODateLocal(ds[ds.length - 1]) - d0) / 864e5);
-      const x = d => 12 + (W - 24) * ((parseISODateLocal(d) - d0) / 864e5) / span, y = v => 8 + (Hh - pad - 16) * (1 - v / 100);
-      const grid = [25, 50, 75].map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b" stroke-width="1"></line><text x="2" y="${y(v) - 3}" font-size="9" fill="#475569">${v} %</text>`).join('');
-      const path = app.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.p).toFixed(1)}`).join(' ');
+      const x = d => 16 + (W - 40) * ((parseISODateLocal(d) - d0) / 864e5) / span, y = v => 14 + (Hh - pad - 26) * (1 - v / 100);
+      const grid = [0, 25, 50, 75, 100].map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b" stroke-width="1"></line><text x="2" y="${y(v) - 3}" font-size="9" fill="#475569">${v} %</text>`).join('');
+      const line = (pts, col, dash) => pts.length > 1 ? `<path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.p).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"${dash ? ' stroke-dasharray="5 4"' : ''}></path>` : '';
       const cap = t => `onclick="document.getElementById('${id}Cap').textContent='${t}'"`;
-      const dots = app.map((p, i) => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (calcul de l\\'app)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.p)}" r="${i === app.length - 1 ? 4.5 : 2}" fill="#fbbf24"></circle></g>`).join('');
-      const cdots = coach.map(p => `<g style="cursor:pointer" onclick="showCoachProbEntry(${p.i})"><circle cx="${x(p.d)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.p) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.p)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>`).join('');
-      const last = app[app.length - 1];
-      return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chances de réussite">${grid}<path d="${path}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"></path>${dots}${cdots}
-        <text x="${Math.min(W - 30, x(last.d))}" y="${Math.max(12, y(last.p) - 10)}" text-anchor="middle" font-size="12" font-weight="800" fill="#fde68a">${last.p} %</text>
-        <text x="10" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>`;
+      const lab = (p, col, dy) => `<text x="${Math.max(12, Math.min(W - 12, x(p.d)))}" y="${Math.max(10, Math.min(Hh - pad - 2, y(p.p) + dy))}" text-anchor="middle" font-size="10.5" font-weight="800" fill="${col}">${Math.round(p.p)}</text>`;
+      // moyenne app + coach aux dates des avis du coach
+      const appAt = d => { const e = app.find(q => q.d === d) || app.filter(q => q.d <= d).pop() || app[0]; return e ? e.p : null; };
+      const avg = coach.map(c => { const a2 = appAt(c.d); return a2 == null ? null : { d: c.d, p: (a2 + c.p) / 2 }; }).filter(Boolean);
+      const dots = app.map((p, i) => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${p.p} % (calcul de l\\'app)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.p)}" r="${i === app.length - 1 ? 4.5 : 2.5}" fill="#fbbf24"></circle></g>`).join('');
+      const appLab = app.filter((p, i) => i === app.length - 1 || i === 0 || Math.abs(p.p - app[i - 1].p) >= 3 || i % 6 === 0).map(p => lab(p, '#fde68a', -8)).join('');
+      const cdots = coach.map(p => `<g style="cursor:pointer" onclick="showCoachProbEntry(${p.i})"><circle cx="${x(p.d)}" cy="${y(p.p)}" r="12" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.p) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.p)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>${lab(p, '#d8b4fe', (avg.find(q => q.d === p.d) || { p: -1 }).p > p.p ? 17 : -10)}`).join('');
+      const adots = avg.map(p => `<g style="cursor:pointer" ${cap(`${fmtDateShort(p.d)} : ${Math.round(p.p)} % (moyenne app + coach)`)}><circle cx="${x(p.d)}" cy="${y(p.p)}" r="10" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.p)}" r="4" fill="#34d399" stroke="#0b1324" stroke-width="1.5"></circle></g>${lab(p, '#6ee7b7', (coach.find(q => q.d === p.d) || { p: 101 }).p > p.p ? 16 : -9)}`).join('');
+      return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chances de réussite">${grid}${line(app, '#fbbf24')}${line(coach, '#c084fc', true)}${line(avg, '#34d399', true)}${dots}${appLab}${adots}${cdots}
+        <text x="16" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 10}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>`;
     }
     // Anciennes valeurs (avant la v94) sans source : on retrouve celles du coach (très différentes du calcul de l'app ce jour-là)
     function migrateGoalProbHist() {
@@ -15267,7 +15509,7 @@ ${hist}
 ${backgroundText()}
 ${tapisHrText()}
 Sois cohérent : la probabilité doit correspondre à ton chrono estimé. Si ton chrono estimé le jour J est plus lent que l'objectif, la probabilité doit être inférieure à 50 % ; s'il est nettement plus rapide, supérieure à 50 %. Tiens compte des vitesses atteintes en fractionné, de la progression possible d'ici la date et du niveau du coureur.
-Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
+Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la course était aujourd'hui, "chrono_estime_min" = chrono probable le jour J avec la progression) : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_aujourdhui_min":54.5,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { tier: 'full', json: true })) || {};
         const pj = Math.max(1, Math.min(99, Math.round(parseFloat(j.proba_jour_j))));
@@ -15278,7 +15520,8 @@ Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_e
           if (!(cm > 0) && kv > 0 && D) cm = D / kv * 60;
           if (!(kv > 0) && cm > 0 && D) kv = D / (cm / 60);
           const avis = String(j.avis || '').slice(0, 1200), leviers = (j.leviers || []).slice(0, 3).map(x => String(x).slice(0, 200));
-          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null, avis, leviers, auto: !!opt.silent };
+          const cn = parseFloat(String(j.chrono_aujourdhui_min).replace(',', '.'));
+          appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tNow: cn > 0 ? Math.round(cn * 10) / 10 : null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null, avis, leviers, auto: !!opt.silent };
           if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
           migrateGoalProbHist();
           appData.goalProbHist.push({ d: todayISO(), t: Date.now(), p: pj, src: 'coach', g: goalKey(), tMin: appData.goalCoachProb.tMin, avis, leviers, auto: !!opt.silent });
