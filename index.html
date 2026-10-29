@@ -76,6 +76,14 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    .val-t2 { display: none; }
+    #validationModal.val-min .val-x, #validationModal.val-min .val-t1 { display: none !important; }
+    #validationModal.val-min .val-t2 { display: inline; }
+    #validationModal.val-min .val-lbl { font-size: 15px; color: #e2e8f0; text-transform: none; margin: 8px 0 12px; }
+    #validationModal.val-min #feelGreen, #validationModal.val-min #feelYellow, #validationModal.val-min #feelRed { padding: 18px 6px; }
+    #validationModal.val-min #feelGreen .text-2xl, #validationModal.val-min #feelYellow .text-2xl, #validationModal.val-min #feelRed .text-2xl { font-size: 42px; line-height: 1.1; }
+    #validationModal.val-min #feelGreen span + span, #validationModal.val-min #feelYellow span + span, #validationModal.val-min #feelRed span + span { font-size: 14px; }
+    #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
     body.rv-tall #readView { max-height: 62vh; flex: 1; }
@@ -214,7 +222,7 @@
     body.running #circleZone, body.started #circleZone { flex: 1 1 0; min-height: 0; margin: 0; width: 100%; }
     body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
     body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
-    .csc-btn { width: 3rem; height: 3rem; border-radius: 999px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 1.7rem; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .csc-btn { width: 4.6rem; height: 4.6rem; font-size: 2.6rem !important; border-radius: 999px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 1.7rem; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
     .csc-btn:active { transform: scale(.92); background: #334155; }
     input[type="date"] {
       color-scheme: dark;
@@ -372,7 +380,7 @@
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
       <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
-        <div id="circleSpdCtl" class="pointer-events-auto hidden" style="display:flex;gap:1.6rem;margin-bottom:.35rem">
+        <div id="circleSpdCtl" class="pointer-events-auto hidden" style="display:flex;gap:2.4rem;margin-bottom:.35rem">
           <button type="button" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="csc-btn">−</button>
           <button type="button" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="csc-btn">+</button>
         </div>
@@ -391,11 +399,11 @@
     <div id="runRouteRow" class="hidden" style="width:100%;gap:.4rem;margin-bottom:6px"></div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
-      <div id="oneMoreMsg" class="text-center text-[14px] font-bold text-white mb-2 leading-snug">🧠 Le coach analyse ta séance…</div>
+      <div id="oneMoreMsg" class="hidden"></div>
       <div class="grid grid-cols-3 gap-2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
-        <button id="omStop" onclick="oneMoreChoice('stop')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#334155;color:#fff">🛑<br>J'arrête là</button>
-        <button id="omOne" onclick="oneMoreChoice('one')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#0ea5e9;color:#04121f">✅<br>Comme prévu</button>
-        <button id="omTwo" onclick="oneMoreChoice('two')" class="rounded-2xl font-extrabold text-[13px] leading-tight active:scale-95" style="min-height:64px;background:#34d399;color:#04140d">💪<br>+1 série</button>
+        <button id="omStop" onclick="oneMoreChoice('stop')" aria-label="Arrêter là (une répétition de moins)" class="rounded-2xl font-black active:scale-95" style="min-height:96px;font-size:40px;background:#334155;color:#fff">−1</button>
+        <button id="omOne" onclick="oneMoreChoice('one')" aria-label="Comme prévu" class="rounded-2xl font-black active:scale-95" style="min-height:96px;font-size:44px;background:#0ea5e9;color:#04121f">=</button>
+        <button id="omTwo" onclick="oneMoreChoice('two')" aria-label="Une série de plus" class="rounded-2xl font-black active:scale-95" style="min-height:96px;font-size:40px;background:#34d399;color:#04140d">+1</button>
       </div>
     </div>
     <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
@@ -587,7 +595,7 @@
             </div>
             <div class="hidden">
               <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse récup (km/h)</label>
-              <input type="number" id="cfgVitRecupBloc" value="6" min="1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
+              <input type="number" id="cfgVitRecupBloc" value="6" min="1" step="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()">
             </div>
           </div>
         </div>
@@ -1145,23 +1153,23 @@
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto custom-scroll">
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
-          <span class="text-base font-bold text-white block">Valider la séance</span>
-          <span class="text-[10px] text-slate-400">Enregistrer votre forme du jour</span>
+          <span class="text-base font-bold text-white block val-t1">Valider la séance</span>
+          <span class="text-[10px] text-slate-400 val-x">Enregistrer votre forme du jour</span><span class="val-t2 text-[20px] font-black text-white">Séance terminée 🎉</span>
         </div>
         <button onclick="closeValidationModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
           <span class="icon-slot" data-icon="x"></span>
         </button>
       </div>
 
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center val-x">
         <span id="valSessTitle" class="font-bold text-white text-sm block">Semaine 1 • Mardi</span>
         <span id="valSessDetails" class="text-[10px] text-slate-400 font-mono">Pente 1% • Durée 33.0'</span>
         <span id="valSummary" class="block text-[10px] text-rose-300 font-mono mt-0.5 hidden"></span>
       </div>
-      <div id="valRunData"></div>
+      <div id="valRunData" class="val-x"></div>
 
       <div>
-        <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1.5 text-center">Ressenti de l'effort :</label>
+        <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1.5 text-center val-lbl">Ressenti de l'effort :</label>
         <div class="grid grid-cols-3 gap-2">
           <button type="button" onclick="selectFeeling('green')" id="feelGreen" class="p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-center transition active:scale-95">
             <span class="text-2xl block">😊</span>
@@ -1178,8 +1186,8 @@
         </div>
       </div>
 
-      <button type="button" id="valSpokenBtn" onclick="openSpokenLog()" class="w-full py-2.5 rounded-xl text-[13px] font-bold" style="background:rgba(168,85,247,.14);border:1px solid rgba(192,132,252,.5);color:#e9d5ff">📜 Script de la séance et ce qui a été dit</button>
-      <div>
+      <button type="button" id="valSpokenBtn" onclick="openSpokenLog()" class="val-x w-full py-2.5 rounded-xl text-[13px] font-bold" style="background:rgba(168,85,247,.14);border:1px solid rgba(192,132,252,.5);color:#e9d5ff">📜 Script de la séance et ce qui a été dit</button>
+      <div class="val-x">
         <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Note personnelle (facultatif)</label>
         <div class="flex gap-2 items-stretch">
           <textarea id="valNoteInput" rows="3" placeholder="Écrivez ou touchez 🎙️ pour dicter votre ressenti..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
@@ -1187,7 +1195,7 @@
         </div>
       </div>
 
-      <div class="bg-slate-950 p-2.5 rounded-xl border border-purple-500/30 space-y-2">
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-purple-500/30 space-y-2 val-x">
         <span class="text-[10px] text-purple-300 uppercase font-bold block">📸 Données de la montre (facultatif)</span>
         <div id="valShots" class="flex flex-wrap gap-2"></div>
         <div class="grid grid-cols-2 gap-2">
@@ -1202,7 +1210,7 @@
 
       <div class="pt-1">
         <button onclick="confirmValidation()" class="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition shadow active:scale-95 text-xs">
-          Confirmer & Enregistrer dans le Suivi
+          <span class="val-x">Confirmer & Enregistrer dans le Suivi</span><span class="val-t2">✅ Valider</span>
         </button>
       </div>
     </div>
@@ -2149,6 +2157,8 @@
         st.isPeak = st.type === 'palier' && maxS > minS && v === maxS && new Set(pal).size >= 3 && !st.isRepStart;
         if (st.isFree) { st.intensity = 'normal'; st.isPeak = false; }
       });
+      // Échauffement, récups et retour au calme : vitesses au km/h près
+      stages.forEach(st => { if (isSlowStage(st) && parseFloat(st.speed) > 0) st.speed = Math.max(3, Math.round(parseFloat(st.speed))); });
       timerState.totalSessionMs = stages.reduce((a, st) => a + st.durationSec * 1000, 0);
       stages.forEach((st, i) => { st.goVar = (i * 5 + 3) % 7; }); // variété des « Top » sans répétition immédiate
       { const cnt = {}; stages.forEach(st => { const k0 = `${st.type}-${st.blocIndex || 0}-${st.repIndex || 0}`; cnt[k0] = (cnt[k0] || 0) + 1; st.key = `${k0}-${cnt[k0]}`; }); }
@@ -4776,7 +4786,7 @@
       foot.innerHTML = '';
       const t = todayISO(), r = runnerProfile(), g = appData.goal || {};
       const s0 = appData.sessions.find(x => x.dayFeel && x.dayFeel.at === t);
-      const past = (appData.history || []).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
+      const past = (appData.history || []).filter(h => h.id !== opts.saveTo).slice(0, 6).map(h => `- ${h.date} ${h.sessionTitle} : ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}`).join('\n') || '- aucune';
       const around = appData.sessions.filter(x => x.dateISO && x.dateISO >= t && !isSessionDone(x)).slice(0, 8).map(x => `- ${x.dateISO} : ${describeSessionHuman(x)}${x.id === src.id ? ' (séance copiée)' : ''}`).join('\n') || '- aucune';
       const segs = (s.pyramide || []).map(p => `{"vitesse":${p.speed},"duree_min":${round2(p.duration)}}`).join(',');
       const prompt = `Tu es un coach de course à pied prudent et précis. ${coachToneText()}
@@ -5378,9 +5388,11 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       sess.repet = v.repet;
       sess.nbBlocs = v.nbBlocs;
       sess.recupBloc = v.recupBloc;
-      sess.vitRecupBloc = v.vitRecupBloc;
+      sess.vitRecupBloc = Math.max(1, Math.round(+v.vitRecupBloc || 6));
       sess.recup = v.recup;
       sess.route = modalRoute;
+      { const sp = (pyr || []).map(x => +x.speed || 0).filter(Boolean), mn = Math.min(...sp), mx = Math.max(...sp);
+        if (sp.length >= 2 && mx > mn) pyr.forEach(x => { if (+x.speed === mn && (+x.duration || 0) <= 3 && x.unit !== 'km') x.speed = Math.max(1, Math.round(+x.speed)); }); } // récups au km/h près
       sess.pyramide = pyr;
       sess.kind = cfgKind;
       if (KIND_CONT.includes(cfgKind)) sess.wcIn = true;
@@ -5505,11 +5517,11 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
     }
     function openValidationModal() {
       try { finalizeUnfinishedRun(); } catch (e) { console.warn('finalize', e); }
-      if (timerState.finished && getGeminiKey() && !runData.autoAnaDone) {
+      if (timerState.finished && !runData.autoAnaDone) {
         runData.autoAnaDone = true;
-        if (!runData.voiceFeel && !runData.coolAsked && srCtor() && appData.audioSettings.coolFeel !== false) setTimeout(() => askFeelAtEnd(), 500);
-        else setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, 700);
+        if (!runData.voiceFeel && srCtor() && appData.audioSettings.coolFeel !== false) setTimeout(() => askFeelAtEnd(), 500);
       }
+      document.getElementById('validationModal').classList.toggle('val-min', !!timerState.finished);
       const sess = getActiveSession();
       const totalMin = computeSessionTotalMin(sess);
 
@@ -5613,8 +5625,9 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       try { const lr = timerState.finished && routeLearnFromGps(sess); if (lr) setTimeout(() => showToast(`🗺️ Profil du parcours corrigé avec ton GPS (D+ ${lr.gain} m)`), 2800); } catch (e) { console.warn('route gps', e); }
       saveAppData();
       updateHistoryTable();
+      if (timerState.finished && getGeminiKey() && !lastAnalysis) { try { analyzeSessionWithAI({ auto: true, saveTo: newEntry.id }); } catch (e) { } }
       closeValidationModal();
-      showToast("Séance validée avec succès ! ✓");
+      showToast(timerState.finished && getGeminiKey() && !lastAnalysis ? "Séance validée ✓ · le coach analyse ta séance, il te la commente dans un instant" : "Séance validée avec succès ! ✓");
       if (runnerProfile().efAuto !== false) setTimeout(() => computeEfWithAI(false), 1500);
       { const s0 = getActiveSession(); delete s0.extensionOffer; }
       recordGoalProbability();
@@ -6476,7 +6489,6 @@ Donne 2 ou 3 axes de travail.`;
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
           ${item.cross ? `${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}` : histRecapHtml(item, k, recs)}
-          ${(appData.history[item.rawIdx] || {}).spoken && appData.history[item.rawIdx].spoken.length ? `<button type="button" onclick="openSpokenLog('${item.id}')" style="min-height:40px;border-radius:12px;border:1px solid rgba(192,132,252,.5);background:rgba(168,85,247,.12);color:#e9d5ff;font-weight:800;font-size:13px">📜 Ce que le coach a dit pendant la séance</button>` : ''}
         </div>
       </div>`;
     }
@@ -9851,12 +9863,13 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     // Cardio max d'un effort facile (échauffement, retour au calme)
     function easyHrMax() { const fc = runnerFcMax(); return fc ? pctToBpm(0.75) : null; }
     function easyHrTxt(en) { const m = easyHrMax(); return m ? (en ? `, heart rate under ${m}` : `, cardio sous ${m}`) : ''; }
+    function isSlowStage(st) { return !!st && (st.type === 'chauffe' || st.type === 'recup' || isRecoveryStage(st)); }
     function isRecoveryStage(st) { return !!st && (st.type === 'recupBloc' || (st.type === 'palier' && st.intensity === 'easy' && !st.isFree)); }
     // ---------- Vitesse tapis réglée en direct (+ / − 1 km/h)
     function adjustStageSpeed(sign) {
       const i = timerState.currentStageIndex, st = timerState.stages[i];
       if (!st || !timerState.sessionStarted || timerState.finished) return;
-      const from = parseFloat(st.speed) || 0, to = Math.max(3, Math.min(25, Math.round((from + sign) * 2) / 2));
+      const from = parseFloat(st.speed) || 0, slow = isSlowStage(st), to = Math.max(3, Math.min(25, slow ? Math.round(from + Math.sign(sign)) : Math.round((from + sign) * 2) / 2));
       if (to === from) return;
       const elapsed = Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000);
       const base = st.plannedSpeed ?? from, apply = [i];
@@ -9906,7 +9919,7 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
         if (runData.recChk[idx]) return; runData.recChk[idx] = true;
         const hr = runData.hr && now - runData.hrAt < 6000 ? runData.hr : null; if (!hr) return;
         const prevHr = (runData.track || []).filter(r => r[3] === idx - 1 && r[1]).map(r => r[1]);
-        runData.recHrPending = { peak: prevHr.length ? Math.max(...prevHr) : null, end: hr, recSec: cur.durationSec, for: idx + 1 };
+        runData.recHrPending = { peak: prevHr.length ? Math.max(...prevHr) : null, end: hr, recSec: cur.durationSec, recKmh: parseFloat(cur.speed) || 0, for: idx + 1 };
         return;
       }
       const P = runData.recHrPending;
@@ -9916,10 +9929,12 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       if (el < 7000 || remMs < 8000 || isSpeaking()) return;
       runData.recHrPending = null;
       const en = appData.audioSettings.voiceLang === 'en', drop = P.peak ? P.peak - P.end : null;
-      const good = P.end <= pctToBpm(0.75) || (drop != null && drop >= 25), ok = drop != null && drop >= 15;
+      // Récup trottinée (proche de l'endurance) : le cardio baisse naturellement moins qu'en marchant
+      const jog = P.recKmh && P.recKmh >= (runnerEF() || 9) - 2, shortR = (P.recSec || 60) < 75;
+      const gT = jog ? (shortR ? 15 : 20) : (shortR ? 20 : 25), oT = jog ? (shortR ? 8 : 12) : (shortR ? 12 : 15);
+      const good = P.end <= pctToBpm(0.75) || (drop != null && drop >= gT), ok = drop != null && drop >= oT;
       const verdict = good ? (en ? 'good recovery' : 'bonne récupération') : ok ? (en ? 'correct recovery' : 'récupération correcte') : (en ? 'recovery a bit short, keep this one under control' : 'récupération un peu juste, garde cette répétition sous contrôle');
-      speakLive(en ? `During the recovery your heart rate ${drop != null ? `dropped ${drop} beats, from ${P.peak} to ${P.end}` : `came down to ${P.end}`}: ${verdict}.`
-        : `Pendant la récup, ton cardio ${drop != null ? `est descendu de ${drop} battements, de ${P.peak} à ${P.end}` : `est redescendu à ${P.end}`} : ${verdict}.`);
+      speakOpt(drop != null ? (en ? `Heart rate down ${drop} beats during the recovery: ${verdict}.` : `Cardio descendu de ${drop} battements pendant la récup : ${verdict}.`) : (en ? `Recovery: ${verdict}.` : `Récup : ${verdict}.`));
     }
     // ---------- Une répétition de plus ?
     function fastStageIdx() { return timerState.stages.map((x, k) => x.type === 'palier' && x.intensity === 'fast' && !x.isExtension && !x.isFree ? k : -1).filter(k => k >= 0); }
@@ -9936,11 +9951,10 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       runData.oneMoreAsked = true; runData.oneMoreAt = idx;
       if (box) box.classList.remove('hidden');
       omHighlight('');
-      const m = document.getElementById('oneMoreMsg'); if (m) m.textContent = '🧠 Le coach analyse ta séance…';
       coachRepAdvice(idx);
     }
     function omHighlight(k) {
-      [['stop', 'omStop'], ['one', 'omOne'], ['two', 'omTwo']].forEach(([x, id]) => { const b = document.getElementById(id); if (b) b.style.outline = x === k ? '3px solid #fde047' : 'none'; });
+      [['stop', 'omStop'], ['one', 'omOne'], ['two', 'omTwo']].forEach(([x, id]) => { const b = document.getElementById(id); if (b) { b.style.outline = x === k ? '5px solid #fde047' : 'none'; b.style.outlineOffset = '2px'; b.style.opacity = k && x !== k ? '.55' : '1'; } });
     }
     // Le coach donne son avis : s'arrêter, finir comme prévu (encore 1) ou ajouter une série (encore 2)
     async function coachRepAdvice(idx) {
@@ -9974,11 +9988,13 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         runData.omSpeed = v && base && Math.abs(v - base) >= 0.5 && Math.abs(v - base) <= 2 ? v : 0;
       } catch (e) { }
       if (runData.oneMoreAt !== timerState.currentStageIndex) return; // la récup est déjà finie
-      const m = document.getElementById('oneMoreMsg');
       const lbl = { stop: "le coach conseille d'arrêter là", one: 'le coach conseille de finir comme prévu', two: 'le coach te pense capable d\'en ajouter une' }[ch];
-      if (m) m.textContent = phrase ? `🧠 ${phrase}` : 'Il reste la dernière répétition prévue : tu arrêtes, tu finis comme prévu, ou tu ajoutes une série ?';
       omHighlight(ch);
-      speakLive((phrase ? phrase + ' ' : '') + (en ? 'Stop now, finish as planned, or add one repetition? Choose on the screen.' : 'Tu arrêtes là, tu finis comme prévu, ou tu ajoutes une série ? Choisis sur l\'écran.'));
+      // Avis en une phrase très courte
+      const short = en ? ({ stop: "I'd stop here.", one: 'Carry on as planned.', two: 'Looking at your stats, you can do one more.' }[ch] || 'Your call: minus one, as planned, or plus one.')
+        : ({ stop: 'Je te conseille de t\'arrêter là.', one: 'On continue comme prévu.', two: 'Au vu des stats, tu peux encore en faire une.' }[ch] || 'À toi de choisir : moins un, comme prévu, ou plus un.');
+      const spTxt = runData.omSpeed && ch !== 'stop' ? (en ? ` At ${formatSpeed(runData.omSpeed)}.` : ` À ${formatSpeed(runData.omSpeed).replace('.', ',')}.`) : '';
+      speakLive(short + spTxt);
       runData.omAdvice = { ch, phrase, lbl };
     }
     function oneMoreChoice(k) {
@@ -10217,14 +10233,18 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         const hrNow = runData.hr && now - runData.hrAt < 5000 ? runData.hr : null;
         const eMax = easyHrMax();
         const ksx = getActiveSession() || {};
-        if (isRecoveryStage(cur) || ksx.kind === 'test' || ksx.kind === 'course') { runData.hrHighSince = 0; } // récup de fractionné : bilan à la fin seulement
-        else if ((cur.type === 'chauffe' || cur.type === 'recup') && eMax && hrNow) {
-          if (hrNow > eMax + 3) { if (!runData.hrHighSince) runData.hrHighSince = now; } else runData.hrHighSince = 0;
-          if (runData.hrHighSince && now - runData.hrHighSince > 20000 && now - runData.lastHrAt > 90000) {
+        const slowSeg = isRecoveryStage(cur) || cur.type === 'chauffe' || cur.type === 'recup';
+        if (ksx.kind === 'test' || ksx.kind === 'course') { runData.hrHighSince = 0; }
+        else if (slowSeg) {
+          // Segment lent : silence, sauf cardio BEAUCOUP trop haut après 1'30 de segment
+          const lim = cur.type === 'chauffe' || cur.type === 'recup' ? (eMax ? eMax + 10 : null) : (hT ? hT.hi + 15 : null);
+          if (lim && hrNow && elapsedMs >= 90000 && hrNow > lim) { if (!runData.hrHighSince) runData.hrHighSince = now; } else runData.hrHighSince = 0;
+          if (runData.hrHighSince && now - runData.hrHighSince > 15000 && now - runData.lastHrAt > 120000) {
             runData.lastHrAt = now;
             const en = appData.audioSettings.voiceLang === 'en', tap = getActiveSession().type === 'tapis';
-            speakOpt(en ? `Heart rate a bit high for ${cur.type === 'chauffe' ? 'a warm-up' : 'a cool-down'}: ${hrNow}. Stay under ${eMax}, slow down${tap ? ' one notch' : ''}.`
-              : `Cardio un peu haut pour ${cur.type === 'chauffe' ? 'un échauffement' : 'un retour au calme'} : ${hrNow}. Reste sous ${eMax}, ralentis${tap ? ' d\'un cran' : ' un peu'}.`);
+            const what = cur.type === 'chauffe' ? (en ? 'a warm-up' : 'un échauffement') : cur.type === 'recup' ? (en ? 'a cool-down' : 'un retour au calme') : (en ? 'a recovery' : 'une récup');
+            speakLive(en ? `Heart rate far too high for ${what}: ${hrNow}. Slow down${tap ? ' one notch' : ''}.`
+              : `Cardio beaucoup trop haut pour ${what} : ${hrNow}. Ralentis${tap ? ' d\'un cran' : ' nettement'}.`);
             return;
           }
         }
@@ -10310,6 +10330,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!hrFresh()) { paceInfoTick(cur, elapsedMs, remMs, every); return; }
       if (remMs < 12000 || elapsedMs < 8000 || isSpeaking() || tl.active || preCd) return;
       if (cur.intensity === 'fast' && cur.durationSec < 150) return;
+      if (isRecoveryStage(cur) || cur.type === 'chauffe' || cur.type === 'recup') return; // pas d'info cardio sur les segments lents
       const el = timerState.totalSessionMs - timerState.totalRemainingMs;
       if (el - (runData.hrInfoAt || 0) < every * 60000 || el < every * 60000 - 1000) return;
       if (Date.now() - (runData.lastHrAt || 0) < 45000) { runData.hrInfoAt = el; return; }
@@ -11690,6 +11711,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     const COACH_RECUL = `Raisonne comme un bon coach qui prend du recul :
 - Cherche la vraie cause avant de conclure. Commence par vérifier si la séance PRÉVUE était adaptée au coureur (durée, vitesse, enchaînement) par rapport à ce qu'il fait d'habitude (voir sa capacité récente). Si elle était trop longue ou trop dure, dis-le clairement et assume : c'est le plan (donc toi) qu'il faut corriger, pas le coureur.
 - Le cardio monte naturellement avec la durée à vitesse constante (dérive cardiaque, souvent +10 à 20 bpm sur 40 min, davantage avec la chaleur, le tapis, la fatigue, le manque de sommeil ou d'hydratation). Un écart de 0,5 km/h n'explique presque jamais à lui seul un cardio élevé. Regarde l'évolution dans le temps et les moyennes, pas seulement la FC max.
+- Récupération cardiaque entre les fractions : juge-la en tenant compte de la VITESSE pendant la récup (une récup trottinée près de l'endurance fondamentale fait beaucoup moins baisser le cardio qu'une récup marchée ou arrêtée) et de sa durée ; une baisse modeste en récup trottinée n'est pas un mauvais signe.
 - Ne fais pas de fixation sur une valeur isolée (un pic de FC max est souvent un artefact du capteur ou le dernier effort).
 - Si le coureur conteste ou apporte un élément nouveau, réexamine honnêtement. Reconnais quand tu t'es trompé ou que ton explication était incomplète, et ne répète pas un argument déjà donné.`;
     // Ce que le coureur fait habituellement (6 dernières semaines) : sert à juger si une séance prévue était réaliste
@@ -11986,12 +12008,12 @@ Analyse la séance que je viens de faire${valShots.length ? ' à partir des capt
 Séance prévue : ${formatSessTitle(sess)} ; ${describeSessionProgram(sess)} ; ${plannedMin.toFixed(0)} min ; pente ${sess.pente} % ; ${sess.type === 'tapis' ? 'tapis' : 'extérieur'} ; vitesses en km/h ; échauffement et retour au calme au ressenti (cardio sous ${easyHrMax() || '75 % FC max'}).
 ${speedLogText(runData.speedLog)}
 Réalisé : ${actualMin.toFixed(0)} min${timerState.endedEarly ? ' (séance arrêtée avant la fin)' : ''}${sess.dayFeel ? ` ; sensations avant la séance : ${feelSummary(sess.dayFeel)}` : ''}${sess.adapted ? ` ; séance adaptée par le coach : ${sess.adapted.resume}` : ''} ; ressenti ${feelLbl}${document.getElementById('valNoteInput').value.trim() ? ` ; note : « ${document.getElementById('valNoteInput').value.trim()} »` : ''}${runData.voiceFeel && runData.voiceFeel !== document.getElementById('valNoteInput').value.trim() ? ` ; ressenti dit à voix haute pendant le retour au calme : « ${runData.voiceFeel} »` : ''}${summaryText(sum) ? ` ; capteurs : ${summaryText(sum)}` : ''}.
-${runData.voiceFeel ? 'Le coureur a décrit son ressenti à voix haute pendant le retour au calme (voir la note) : réponds-y directement dans ton bilan.' : ''}
+${runData.voiceFeel ? 'Le coureur a décrit son ressenti à voix haute à la fin de la séance (voir la note) : réponds-y directement dans ton bilan.' : ''}
 ${zonesText()}${(() => { const ss = getActiveSession(); const c = ss.cardio ? cardioText(ss.cardio) : ''; const gt = guideHrText(ss); return c || gt ? `\nCardio cible de la séance : ${c || gt}` : ''; })()}
 ${timerState.runSeg && timerState.runSeg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(timerState.runSeg)}\n` : ''}${trackInsights(timerState.runTrack) ? `Courbes : ${trackInsights(timerState.runTrack)}.\n` : ''}${trackSlicesText(timerState.runTrack) ? trackSlicesText(timerState.runTrack) + '\n' : ''}${recentCapacityText(todayISO())}
 Origine de la séance : ${sess.free ? 'séance libre lancée par le coureur' : 'séance du plan, préparée par toi (le coach)'}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
-Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg }, appData.history)}.
+Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg, track: timerState.runTrack, type: sess.type }, (appData.history || []).filter(h => h.id !== opts.saveTo))}.
 Séances précédentes :
 ${hist}
 ${planAheadText(sess.id)}
@@ -12003,7 +12025,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
         const parts = valShots.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }));
         parts.push({ text: prompt });
         lastAnalysis = tagAnalysis(await geminiText(parts, { tier: 'full', json: true }));
-        if (opts.auto || timerState.finished) speakAnalysis(lastAnalysis);
+        if (opts.saveTo) {
+          const h = (appData.history || []).find(x => x.id === opts.saveTo);
+          if (h) { h.analysis = lastAnalysis; try { const hs = hrShotFrom(lastAnalysis); if (hs) h.hrShot = hs; } catch (e) { } saveAppData(); try { updateHistoryTable(); } catch (e) { } }
+          speakAnalysis(lastAnalysis);
+          showToast('🧠 Analyse du coach prête : Planning › ta séance');
+          return;
+        }
         out.innerHTML = analysisHtml(lastAnalysis) + `<button type="button" onclick="openValChat()" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>`;
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Analyse impossible : ${e.message || e}</span>`;
@@ -13302,7 +13330,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && (d <= 0.6 || (repHrMax && g.hr && g.hr <= repHrMax) || (!g.hr && d <= 1.5)); };
         let score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
         const col = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
-        const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
+        const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="56" text-anchor="middle" font-size="${score >= 100 ? 18 : 21}" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
         const tile = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px;${card}"><span style="font-size:19px;font-weight:800;line-height:1;color:${c};white-space:nowrap">${v}</span><span style="font-size:10.5px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
         // Moyennes du corps de séance (sans échauffement ni retour au calme)
         const body = G.filter(g => !isWarm(g));
@@ -13323,9 +13351,12 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           else { const em = easyHrMax(); if (em && !reps.length) hrGoal = `≤ ${em} bpm (aisance)`; } }
         if (score != null && fracMode) {
           const nOk = reps.filter(okRep).length, durs = reps.map(g => g.sec).sort((a, b) => a - b), dm = durs[Math.floor(durs.length / 2)];
-          goal = `${reps.length} × ${fmtD(dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
+          const fmtP = sec => { const r5 = Math.round(sec / 5) * 5; return r5 >= 60 ? `${Math.floor(r5 / 60)}'${r5 % 60 ? String(r5 % 60).padStart(2, '0') : ''}` : `${r5}"`; };
+          const plannedSec = (() => { try { const lk = item.linked; if (!lk) return 0; const G0 = gSegs(lk), f = G0.fast[0]; if (!f) return 0; return f.unit === 'km' ? 0 : f.duration * 60; } catch (e) { return 0; } })();
+          const plannedKm = (() => { try { const f = gSegs(item.linked).fast[0]; return f && f.unit === 'km' ? f.distance : 0; } catch (e) { return 0; } })();
+          goal = `${reps.length} × ${plannedKm ? (plannedKm < 1 ? Math.round(plannedKm * 1000) + ' m' : String(plannedKm).replace('.', ',') + ' km') : fmtP(plannedSec || dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
           const nFast = reps.filter(g => okRep(g) && vOf(g) - g.target > 0.6).length;
-          why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} réussie${nOk > 1 ? 's' : ''} (cible ±0,5 km/h${nFast ? `, dont ${nFast} plus vite avec un cardio maîtrisé` : ''})`;
+          why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} réussie${nOk > 1 ? 's' : ''}${nFast ? `, dont ${nFast} plus vite avec un cardio maîtrisé` : ''}`;
         } else if (body.length) {
           const lk = item.linked || {};
           const hrMax = lk.cardio && lk.cardio.moy ? lk.cardio.moy[1] : easyHrMax();
@@ -13360,7 +13391,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const tM = tile('FC moy.', bHr || '–', '#fda4af'), tX = tile('FC max', hrMaxB || '–', '#fb7185');
           const tC = hg ? tile(hg.kind === 'max' ? 'Cible FC max' : 'Cible FC moy.', hg.kind === 'max' ? `≤ ${hg.max}` : `${hg.lo}–${hg.hi}`, '#fde68a') : '';
           const order = hg ? (hg.kind === 'max' ? tM + tX + ind + tC : tX + tM + ind + tC) : tM + tX;
-          return `<div style="display:flex;align-items:stretch;gap:6px">${order}</div>${hg ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Cible ${hg.kind === 'max' ? 'FC max à ne pas dépasser (fractions courtes)' : `FC moyenne${fracMode ? ' sur les rapides' : ' sur la séance'}`}${hg.src === 'app' ? ", calculée par l'app" : ', fixée par le coach'}${hg.tap ? ' · tapis' : ''}.</span>` : ''}`;
+          return `<div style="display:flex;align-items:stretch;gap:6px">${order}</div>`;
         })();
         const totSec = W.sec || (+hh.durationMin || 0) * 60, totTxt = totSec >= 3600 ? `${Math.floor(totSec / 3600)} h ${String(Math.round(totSec % 3600 / 60)).padStart(2, '0')}` : `${Math.round(totSec / 60)} min`;
         void hrGoal; const extraL = `${hrGoal && !/cardio/i.test(goal) ? `<span style="font-size:13px;font-weight:700;color:#fda4af;line-height:1.3">❤️ Cardio cible : ${plEsc(hrGoal)}</span>` : ''}<span style="font-size:13px;font-weight:700;color:#cbd5e1;line-height:1.3">📏 Séance complète : ${f1(km)} km · ${totTxt}</span>`;
@@ -13373,7 +13404,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
             const g = dp != null && km > 0 ? dp / (km * 1000) * 100 : null, sm = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;${card}"><span style="font-size:16px;font-weight:800;color:${c}">${v}</span><span style="font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
             return `<div style="display:flex;gap:8px">${sm('D+', dp != null ? dp + ' m' : '–', '#fb923c')}${sm('D−', dm != null ? dm + ' m' : '–', '#34d399')}${sm('Pente moy. (D+)', g != null ? (Math.round(g * 10) / 10).toFixed(1).replace('.', ',') + ' %' : '–', '#e2e8f0')}</div>`; })()}
           ${synth ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">📷 Séance reconstruite à partir des captures de ta montre (pas de mesures de l'app)${hh.spShot && hh.spShot.courbe ? '' : ' : ajoute la capture du graphique d\'allure pour avoir la vitesse réelle'}.</span>` : fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">❤️ Cardio lu sur la capture de ta montre (capteur décroché pendant la séance).</span>` : ''}
-          ${fracMode ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes des ${reps.length} répétitions rapides (sans récup, échauffement ni retour au calme).</span>` : body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
+          `;
         const hrRows = R.filter(r => r.hr);
         if (hrRows.length <= 10 && hs && hs.zones_min) {
           const zc = RC_HR_Z.map((z, i) => ({ n: z[2], c: z[1], s: hs.zones_min[i] * 60 })), tot = zc.reduce((a, z) => a + z.s, 0) || 1;
@@ -13437,9 +13468,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <div data-hmleg style="font-size:12px;color:#94a3b8"></div></div>` : '';
       const spk = item.live ? (runData.spoken || []) : (hh.spoken || []);
       const fmtS = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
-      const spokenTab = !item.live ? (spk.length ? `<div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
+      const spokenTab = !item.live ? (spk.length ? `<button type="button" onclick="openSpokenLog('${item.id}')" style="min-height:42px;border-radius:12px;border:1px solid rgba(192,132,252,.5);background:rgba(168,85,247,.12);color:#e9d5ff;font-weight:800;font-size:13px">📜 Ce que le coach a dit pendant la séance (plein écran)</button><div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
         : `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas d'annonces enregistrées pour cette séance (faite avant la mise à jour qui les garde, ou sans le chrono de l'app).</div>`) : '';
-      const tabs = [['coach', '🧠 Coach', item.live ? '' : coachTab], ['feel', '😀 Ressenti', item.live ? '' : top], ['seg', '📋 Segments', segTab], ['graph', '📈 Graphique', graphTab], ['map', '🗺️ Carte', mapTab], ['spoken', '📜 Annonces', spokenTab]].filter(t => t[2]);
+      const tabs = [['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['feel', '😀', item.live ? '' : top, 'Ressenti'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graphique'], ['map', '🗺️', mapTab, 'Carte'], ['spoken', '📜', spokenTab, 'Script de la séance']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach';
@@ -13447,7 +13478,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
       return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${noData}${stats}${zonesB}${recLine}
-        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:${tabs.length > 4 ? 11.5 : 13}px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l, , al]) => `<button type="button" role="tab" aria-label="${al}" title="${al}" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:46px;border:none;border-radius:10px;font-size:24px;line-height:1;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
     // ==================== ÉVOLUTION : séances du même type ====================
@@ -15794,7 +15825,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         const wishes = ACT_WISHES[actIsRun() ? 'run' : act.type];
         if (!act.dur) act.dur = 45;
         const durs = []; for (let m = 10; m <= 180; m += 5) durs.push(m);
-        body.innerHTML = `<div class="pm-card"><span class="pm-cap">Durée de l'activité</span>${wheelHtml('actWheel', durs, act.dur, m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`)}</div>
+        body.innerHTML = `<div class="pm-card"><span class="pm-cap">Durée de l'activité</span><div class="grid grid-cols-2 gap-2"><button type="button" class="act-chip ${!act.durCoach ? 'on' : ''}" onclick="act.durCoach=false;renderActKeepWheel()">⏱️ Je choisis</button><button type="button" class="act-chip ${act.durCoach ? 'on' : ''}" onclick="act.durCoach=true;renderAct()">🧠 Au choix du coach</button></div>${act.durCoach ? `<span class="text-[13px] text-slate-400">Le coach choisit la durée la plus utile aujourd'hui (fatigue, séances autour, objectif).</span>` : wheelHtml('actWheel', durs, act.dur, m => m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`)}</div>
           <div class="pm-card"><span class="pm-cap">Difficulté</span><div class="grid grid-cols-3 gap-2">${[['facile', '🙂 Facile'], ['moderee', '💪 Modérée'], ['difficile', '🔥 Difficile']].map(([v, l]) => `<button type="button" class="act-chip ${act.diff === v ? 'on' : ''}" onclick="act.diff='${v}';renderActKeepWheel()">${l}</button>`).join('')}</div></div>
           <div class="pm-card"><span class="pm-cap">Envie</span><div class="flex flex-wrap gap-2">${wishes.map(w => `<button type="button" class="act-chip ${act.wish === w ? 'on' : ''}" onclick="act.wish='${w.replace(/'/g, "\\'")}';renderActKeepWheel()">${w}</button>`).join('')}</div></div>`;
         setTimeout(() => wheelInit('actWheel', act.dur), 0);
@@ -16000,6 +16031,21 @@ ${past}
 Prochaines séances prévues :
 ${next}`;
     }
+    // Critères communs à la proposition du coach ET à son avis sur une séance modifiée (sinon il se contredit)
+    function actCriteriaText() {
+      const diff = ({ facile: 'facile', moderee: 'modérée', difficile: 'difficile' })[act.diff] || 'modérée';
+      const wish = act.mode === 'coach' && act.wish && act.wish !== 'Au choix du coach' ? `type de séance souhaité « ${act.wish} »` : 'type de séance au choix du coach';
+      const dur = act.mode === 'coach' ? (act.durCoach ? 'durée au choix du coach' : act.dur ? `durée d'environ ${act.dur} minutes au total` : '') : '';
+      return `Demande du coureur : ${[act.mode === 'coach' ? `difficulté ${diff}` : '', act.mode === 'coach' ? wish : '', dur].filter(Boolean).join(', ') || 'séance choisie par le coureur'}.
+CRITÈRES DE JUGEMENT (les mêmes pour proposer et pour donner un avis) :
+- adaptée à la fatigue du moment et aux séances des jours d'avant et d'après (pas deux séances dures collées) ;
+- utile pour l'objectif et cohérente avec le niveau actuel (vitesses réalistes par rapport à la VMA et à l'endurance fondamentale) ;
+- conforme à la demande (difficulté, type, durée) ;
+- récupérations suffisantes entre les fractions ; échauffement et retour au calme présents.
+Ne juge que sur ces critères. Une petite variation (±0,5 km/h sur une récupération, ±1 répétition, ±5 min) ne change pas le verdict.
+${(() => { try { return tapisHrText() + '\n' + weakText(); } catch (e) { return ''; } })()}
+${zonesText ? (() => { try { return zonesText(); } catch (e) { return ''; } })() : ''}`;
+    }
     async function proposeActivityWithCoach() {
       if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données) : réglage manuel"); act.mode = 'manual'; act.step = actIsRun() ? 4 : 5; renderAct(); return; }
       act.step = 5; act.loading = true; renderAct();
@@ -16011,7 +16057,8 @@ ${next}`;
           : `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":30,"detail":"consignes (échauffement, récupérations)","exercices":[{"nom":"Pont fessier","nom_en":"glute bridge","dosage":"3 × 15"}]}`;
       const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
 ${actContextText()}
-Propose ${kind}${act.dur ? ` d'environ ${act.dur} minutes au total` : ''}, difficulté ${({ facile: 'facile', moderee: 'modérée', difficile: 'difficile' })[act.diff] || 'modérée'}${act.wish && act.wish !== 'Au choix du coach' ? `, type de séance souhaité : « ${act.wish} »` : ' (type de séance au choix du coach)'}. Tiens compte de la fatigue et des séances autour : si la difficulté demandée n'est pas raisonnable aujourd'hui, dis-le dans l'avis et propose plus doux.
+${actCriteriaText()}
+Propose ${kind}${act.durCoach ? ' (choisis toi-même la durée la plus utile aujourd\'hui)' : act.dur ? ` d'environ ${act.dur} minutes au total` : ''}, difficulté ${({ facile: 'facile', moderee: 'modérée', difficile: 'difficile' })[act.diff] || 'modérée'}${act.wish && act.wish !== 'Au choix du coach' ? `, type de séance souhaité : « ${act.wish} »` : ' (type de séance au choix du coach)'}. Tiens compte de la fatigue et des séances autour : si la difficulté demandée n'est pas raisonnable aujourd'hui, dis-le dans l'avis et propose plus doux.
 ${actIsRun() ? `Vitesses en km/h ; "segments" = la partie principale répétée "repet" fois (une récupération entre fractions est un segment lent) ; échauffement et retour au calme à l'endurance fondamentale ; ${act.type === 'tapis' ? '"pente" en % (1 par défaut)' : '"pente" = 0'}.` : ''}
 Réponds uniquement en JSON : ${fmt}`;
       try {
@@ -16036,6 +16083,7 @@ Réponds uniquement en JSON : ${fmt}`;
       }
       act.loading = false;
       renderAct();
+      try { act.propText = actFormText(); act.propAt = Date.now(); } catch (e) { }
     }
     async function askCoachOnActivity() {
       const box = document.getElementById('actAdvice');
@@ -16044,11 +16092,14 @@ Réponds uniquement en JSON : ${fmt}`;
       box.innerHTML = `<div class="pm-card"><div class="flex items-center gap-2 text-purple-300 font-bold"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach regarde ta séance…</div></div>`;
       const prompt = `Tu es un coach de course à pied et de préparation physique, prudent et précis. ${coachToneText()}
 ${actContextText()}
-Le coureur veut faire : ${txt}.
-Donne ton avis : est-ce adapté aujourd'hui (fatigue, séances autour, objectif) ? Si besoin, une modification concrète.
+${actCriteriaText()}
+${act.propText ? `Séance que TU as proposée toi-même juste avant : ${act.propText}.
+Version modifiée par le coureur : ${txt}.
+${act.propText === txt ? "Le coureur n'a rien changé." : "Repère précisément ce qui a changé entre les deux versions."} Ta proposition respectait ces critères : juge la version modifiée avec EXACTEMENT les mêmes critères. Si les changements sont mineurs, garde le même verdict que pour ta proposition (en principe « ok ») et dis simplement si la modification est neutre, meilleure ou moins bonne. Ne découvre pas après coup un problème qui existait déjà dans ta proposition ; si tu en vois un, reconnais que ta proposition l'avait aussi.` : `Le coureur veut faire : ${txt}.`}
+Donne ton avis. Si besoin, une modification concrète.
 Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à 2 phrases courtes en tutoyant","conseil":"une modification concrète, ou vide"}`;
       try {
-        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         const v = String(j.verdict || 'ok').toLowerCase();
         const V = v.startsWith('dec') ? ['⛔ Déconseillé', '#fb7185'] : v.startsWith('att') ? ['⚠️ À ajuster', '#fbbf24'] : ['✅ Bonne séance', '#34d399'];
         act.advice = `<div class="pm-card" style="border-color:${V[1]}66"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(j.avis || '')}</span>${j.conseil ? `<span class="text-[13px] text-slate-400">💡 ${actEsc(j.conseil)}</span>` : ''}</div>`;
@@ -16324,7 +16375,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
     function adjustFreeSpeed(delta) {
       const st = timerState.stages[timerState.currentStageIndex];
-      if (st && !st.isFree) { adjustStageSpeed(delta > 0 ? 0.5 : -0.5); return; }
+      if (st && !st.isFree) { adjustStageSpeed(isSlowStage(st) ? (delta > 0 ? 1 : -1) : (delta > 0 ? 0.5 : -0.5)); return; }
       if (!st || !st.isFree) return;
       st.speed = Math.max(3, Math.min(25, Math.round(((parseFloat(st.speed) || 0) + delta) * 2) / 2));
       if (freeSession) freeSession.pyramide[0].speed = st.speed;
@@ -16624,7 +16675,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     setInterval(() => { try { readViewUpdate(); } catch (e) { } }, 400);
     // Pendant la lecture, sauf si on a choisi de tout garder : seules les annonces indispensables passent
-    function readMute() { try { const c = readCfg(); return !!(c && !c.keepAnn && c.started && !readDone(c)); } catch (e) { return false; } }
+    function omActive() { const b = document.getElementById('oneMoreBox'); return !!(b && !b.classList.contains('hidden')); }
+    function readMute() { try { if (omActive()) return true; const c = readCfg(); return !!(c && !c.keepAnn && c.started && !readDone(c)); } catch (e) { return false; } }
     function speakOpt(t) { if (!readMute()) speakLive(t); }
     function speakOptP(p, o) { if (!readMute()) speak(p, o); }
     function openReadModal() {
@@ -17140,6 +17192,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     // ---------- Ressenti à chaud pendant le retour au calme ----------
     function coolFeelTick(cur, elapsedMs, remMs) {
+      return; // le ressenti se demande uniquement quand la séance est terminée
       if (!cur || cur.type !== 'recup' || runData.coolAsked || elapsedMs < 60000 || remMs < 40000 || !timerState.isRunning) return;
       if (isSpeaking() || tl.active || !srCtor() || appData.audioSettings.coolFeel === false) return;
       runData.coolAsked = true;
@@ -17204,7 +17257,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const atEnd = runData.feelAtEnd; runData.feelAtEnd = false;
       if (skip) runData.voiceFeel = '';
       else if (runData.voiceFeel) speakLive(en ? 'Thanks, noted. I\'ll take it into account in my analysis.' : 'Merci, c\'est noté, j\'en tiens compte dans mon analyse.');
-      if (atEnd) { const ni = document.getElementById('valNoteInput'); if (ni && runData.voiceFeel && !ni.value.trim()) ni.value = runData.voiceFeel; setTimeout(() => { try { analyzeSessionWithAI({ auto: true }); } catch (e) { } }, runData.voiceFeel ? 2500 : 300); }
+      if (atEnd) { const ni = document.getElementById('valNoteInput'); if (ni && runData.voiceFeel && !ni.value.trim()) ni.value = runData.voiceFeel; if (false) setTimeout(() => { }, runData.voiceFeel ? 2500 : 300); }
     }
     function stopRec() { try { vc.rec && vc.rec.abort(); } catch (e) {} vc.rec = null; }
 
