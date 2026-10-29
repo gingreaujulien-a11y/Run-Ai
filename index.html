@@ -76,6 +76,14 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
+    #readView.on { display: flex; }
+    body.rv-tall #readView { max-height: 62vh; flex: 1; }
+    #readViewBody { position: relative; overflow-y: auto; line-height: 1.45; color: #64748b; font-weight: 600; min-height: 0; }
+    #readViewBody span.rv-cur { color: #f8fafc; }
+    #readViewBody span.rv-past { color: #475569; }
+    .rv-b { min-width: 40px; height: 34px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-weight: 800; font-size: 14px; }
+    body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-circle #circleZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
     .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 8px; margin-bottom: -4px; background: #050a14; scrollbar-width: none; }
     .pm-subtabs::-webkit-scrollbar { display: none; }
     .pm-subtabs button { flex: none; min-height: 34px; padding: 0 13px; border-radius: 17px; font-size: 13px; font-weight: 800; background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; white-space: nowrap; }
@@ -399,6 +407,15 @@
       </div>
     </div>
 
+    <div id="readView">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="readViewHead" style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#7dd3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📖 Lecture</span>
+        <button type="button" onclick="readFont(-2)" aria-label="Texte plus petit" class="rv-b">A−</button>
+        <button type="button" onclick="readFont(2)" aria-label="Texte plus grand" class="rv-b">A+</button>
+        <button type="button" onclick="readViewToggle(false)" aria-label="Masquer le texte" class="rv-b">✕</button>
+      </div>
+      <div id="readViewBody" class="custom-scroll"></div>
+    </div>
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
       <div id="idleRow" class="grid grid-cols-3 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
@@ -4997,6 +5014,7 @@ Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date 
 ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
+${tapisHrText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
 Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
@@ -5043,6 +5061,7 @@ ${upTxt}${cross ? `\nActivités complémentaires prévues :\n${cross}` : ''}
 ${COACH_METHOD}
 ${recentCapacityText()}
 ${COACH_RECUL}
+${tapisHrText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds de façon concrète et personnalisée. En cas de douleur inquiétante, conseille de consulter. Si c'est utile, tu peux proposer de modifier UNE séance prévue ci-dessus (donne sa date exacte).
 Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","seance_date":"AAAA-MM-JJ de la séance à modifier, sinon vide","resume":"la modification en une phrase","nouvelle_date":"AAAA-MM-JJ si tu conseilles de la déplacer, sinon vide","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
@@ -5743,9 +5762,18 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         dur: best(h => +h.durationMin || 0),
         v3: best(segBest(180)),
         v10: best(segBest(600)),
+        eco: bestEco(H),
         n: H.length
       };
     }
+    // Économie cardio : vitesse par battement au-dessus du repos (segments d'au moins 5 min, cardio du tapis corrigé)
+    function ecoOf(h) {
+      const rest = +runnerProfile().fcRest || 60, off = h.type === 'tapis' ? Math.max(0, tapisHrOffset().off ?? 5) : 0;
+      let b = null;
+      (h.seg || []).forEach(x => { if (x.sec >= 300 && x.avgHr && x.avgKmh && !/chauff|calme/i.test(x.name || '')) { const hr = x.avgHr + off; if (hr - rest < 25) return; const e = x.avgKmh / (hr - rest) * 100; if (!b || e > b.e) b = { e, kmh: x.avgKmh, hr: x.avgHr, tap: h.type === 'tapis' }; } });
+      return b;
+    }
+    function bestEco(H) { let b = null; H.forEach(h => { const e = ecoOf(h); if (e && (!b || e.e > b.v.e)) b = { v: e, iso: h._iso }; }); return b; }
     // Meilleure vitesse moyenne tenue sur une fenêtre glissante de la trace (distance cumulée / temps)
     function trackBest(h, win) {
       const T = Array.isArray(h.track) ? h.track.filter(r => r && r[0] != null) : [];
@@ -5767,6 +5795,22 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
         if (v > 3 && v <= 25 && (!avgK || v <= avgK * 1.25)) best = Math.max(best, v);
       }
       return Math.round(best * 10) / 10;
+    }
+    // Écart de cardio tapis / extérieur à vitesse comparable (propre au coureur)
+    let _thoCache = null;
+    function tapisHrOffset() {
+      const key = (appData.history || []).length; if (_thoCache && _thoCache.key === key) return _thoCache.v;
+      const pts = { tapis: [], exterieur: [] };
+      runHistory().forEach(h => { const t = h.type === 'tapis' ? 'tapis' : h.type === 'exterieur' ? 'exterieur' : null; if (!t) return; (h.seg || []).forEach(x => { if (x.sec >= 180 && x.avgHr && x.avgKmh && !/chauff|calme/i.test(x.name || '')) pts[t].push([x.avgKmh, x.avgHr]); }); });
+      const diffs = [];
+      pts.tapis.forEach(([v, hr]) => { const near = pts.exterieur.filter(p => Math.abs(p[0] - v) <= 0.5).map(p => p[1]); if (near.length) diffs.push(near.reduce((a, b) => a + b, 0) / near.length - hr); });
+      diffs.sort((a, b) => a - b);
+      const v = diffs.length >= 3 ? { off: Math.round(diffs[Math.floor(diffs.length / 2)]), n: diffs.length } : { off: null, n: diffs.length };
+      _thoCache = { key, v }; return v;
+    }
+    function tapisHrText() {
+      const o = tapisHrOffset();
+      return `- TAPIS : le cardio y est souvent plus bas qu'en extérieur à vitesse affichée égale (pas de vent ni de relief, sol qui défile, vitesse du tapis parfois mal étalonnée). ${o.off != null ? `Chez ce coureur, à vitesse comparable, son cardio sur tapis est en moyenne ${Math.abs(o.off)} bpm ${o.off >= 0 ? 'plus bas' : 'plus haut'} qu'en extérieur (${o.n} comparaisons).` : "L'écart propre à ce coureur n'est pas encore mesuré (compte en général 0 à 10 bpm de moins sur tapis)."} Ne t'enflamme donc pas sur un cardio bas sur tapis : ne conclus pas à un gros progrès de forme ou de VMA, et compare le cardio entre séances du même type (tapis avec tapis, extérieur avec extérieur).`;
     }
     // Cardio à vitesse d'endurance : premières séances comparées aux dernières
     function hrProgress() {
@@ -5969,8 +6013,9 @@ Donne 2 ou 3 axes de travail.`;
         R0.dist ? row('🛣️', 'Plus longue distance', `${R0.dist.v.toFixed(1).replace('.', ',')} km`, R0.dist.iso) : '',
         R0.dur ? row('⏱️', 'Plus longue séance', formatMinSec(R0.dur.v).replace(/'\d+"$/, "'").replace(/"$/, ''), R0.dur.iso) : '',
         R0.v3 ? row('⚡', 'Meilleure vitesse tenue 3 min', `${formatSpeed(R0.v3.v).replace('.', ',')} km/h`, R0.v3.iso) : '',
-        R0.v10 ? row('🔥', 'Meilleure vitesse tenue 10 min', `${formatSpeed(R0.v10.v).replace('.', ',')} km/h`, R0.v10.iso) : ''
-      ].join('');
+        R0.v10 ? row('🔥', 'Meilleure vitesse tenue 10 min', `${formatSpeed(R0.v10.v).replace('.', ',')} km/h`, R0.v10.iso) : '',
+        R0.eco ? row('❤️', `Meilleure économie cardio<small style="display:block">${formatSpeed(R0.eco.v.kmh).replace('.', ',')} km/h à ${R0.eco.v.hr} bpm${R0.eco.v.tap ? ' (tapis, cardio corrigé)' : ''}</small>`, `${(Math.round(R0.eco.v.e * 10) / 10).toFixed(1).replace('.', ',')}`, R0.eco.iso) : ''
+      ].join('') + `<span class="text-[11px] text-slate-500 pt-2">Économie cardio = vitesse ÷ (cardio − cardio de repos) × 100, sur un bloc d'au moins 5 min : plus c'est haut, moins ton cœur travaille pour la même vitesse.</span>`;
       const wk = weeklyKm(8);
       const last4 = wk.slice(4).reduce((a, w) => a + w.km, 0), prev4 = wk.slice(0, 4).reduce((a, w) => a + w.km, 0);
       const hp = hrProgress();
@@ -6297,19 +6342,20 @@ Donne 2 ou 3 axes de travail.`;
     // Séances où un record a été battu (distance, durée, vitesse tenue 3 et 10 min)
     function recordHistIds() {
       const H = runHistory().slice().sort((a, b) => String(a._iso || '').localeCompare(String(b._iso || '')) || (a.endAt || 0) - (b.endAt || 0));
-      const segBest = (h, minSec) => Math.max(0, ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
-      const best = { d: 0, t: 0, v3: 0, v10: 0 }, ids = {};
+      const segBest = (h, minSec) => Math.max(trackBest(h, minSec), ...(h.seg || []).filter(x => x.sec >= minSec && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const best = { d: 0, t: 0, v3: 0, v10: 0, eco: 0 }, ids = {};
       H.forEach((h, i) => {
-        const v = { d: histKm(h), t: +h.durationMin || 0, v3: segBest(h, 180), v10: segBest(h, 600) };
+        const v = { d: histKm(h), t: +h.durationMin || 0, v3: segBest(h, 180), v10: segBest(h, 600), eco: (ecoOf(h) || {}).e || 0 };
         const beat = [];
         if (i > 0) {
           if (v.d > best.d + 0.05) beat.push(`plus longue distance (${v.d.toFixed(1).replace('.', ',')} km)`);
           if (v.t > best.t + 0.5) beat.push(`plus longue séance (${Math.round(v.t)} min)`);
           if (best.v3 && v.v3 > best.v3) beat.push(`vitesse tenue 3 min (${formatSpeed(v.v3).replace('.', ',')} km/h)`);
           if (best.v10 && v.v10 > best.v10) beat.push(`vitesse tenue 10 min (${formatSpeed(v.v10).replace('.', ',')} km/h)`);
+          if (best.eco && v.eco > best.eco + 0.1) beat.push(`économie cardio (${(Math.round(v.eco * 10) / 10).toFixed(1).replace('.', ',')})`);
         }
         if (beat.length) ids[h.id] = beat;
-        best.d = Math.max(best.d, v.d); best.t = Math.max(best.t, v.t); best.v3 = Math.max(best.v3, v.v3); best.v10 = Math.max(best.v10, v.v10);
+        best.d = Math.max(best.d, v.d); best.t = Math.max(best.t, v.t); best.v3 = Math.max(best.v3, v.v3); best.v10 = Math.max(best.v10, v.v10); best.eco = Math.max(best.eco, v.eco);
       });
       return ids;
     }
@@ -10118,7 +10164,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const h = hrAvg(20); if (!h) return false;
       const en = appData.audioSettings.voiceLang === 'en', tap = (getActiveSession() || {}).type === 'tapis';
       const st = runData.hrAdv || (runData.hrAdv = { dir: 0, since: 0 });
-      const dir = h > hT.hi + 5 ? 1 : (h < hT.lo - 8 && elapsedMs > (fast ? 60000 : 150000)) ? -1 : 0;
+      const lowLim = hT.lo - 8 - (tap ? Math.max(0, tapisHrOffset().off ?? 5) : 0);
+      const dir = h > hT.hi + 5 ? 1 : (h < lowLim && elapsedMs > (fast ? 60000 : 150000)) ? -1 : 0;
       if (dir !== st.dir) { st.dir = dir; st.since = now; }
       if (!dir) return false;
       const need = dir > 0 ? 30000 : 60000, gap = dir > 0 ? 120000 : 180000;
@@ -11515,16 +11562,17 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const maxDur = Math.max(0, ...runs.map(h => +h.durationMin || 0));
       if (dur > maxDur + 0.5) out.push(`plus longue séance (${Math.round(dur)} min, ancien record ${Math.round(maxDur)} min)`);
       // Meilleure vitesse moyenne tenue sur un segment d'au moins 3 min
-      const bestSeg = seg => Math.max(0, ...(seg || []).filter(x => x.sec >= 180 && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
-      const vNow = bestSeg(cur.seg), vOld = Math.max(0, ...runs.map(h => bestSeg(h.seg)));
+      const bestSeg0 = seg => Math.max(0, ...(seg || []).filter(x => x.sec >= 180 && x.avgKmh && !/chauff|calme/i.test(x.name || '')).map(x => x.avgKmh));
+      const bestH = h => Math.max(bestSeg0(h.seg), trackBest(h, 180));
+      const vNow = bestH(cur), vOld = Math.max(0, ...runs.map(bestH));
       if (vNow > 0 && vOld > 0 && vNow > vOld + 0.05) out.push(`meilleure vitesse tenue 3 min ou plus (${formatSpeed(vNow)} km/h, ancien record ${formatSpeed(vOld)} km/h)`);
       // Cardio plus bas à vitesse comparable (±0,5 km/h)
       const pairs = (cur.seg || []).filter(x => x.sec >= 180 && x.avgKmh && x.avgHr);
       for (const p of pairs) {
-        const ref = runs.flatMap(h => (h.seg || []).filter(x => x.sec >= 180 && x.avgHr && x.avgKmh && Math.abs(x.avgKmh - p.avgKmh) <= 0.5)).map(x => x.avgHr);
+        const ref = runs.filter(h => (h.type === 'tapis') === (cur.type === 'tapis')).flatMap(h => (h.seg || []).filter(x => x.sec >= 180 && x.avgHr && x.avgKmh && Math.abs(x.avgKmh - p.avgKmh) <= 0.5)).map(x => x.avgHr);
         if (ref.length >= 2) {
           const m = ref.reduce((a, b) => a + b, 0) / ref.length;
-          if (p.avgHr <= m - 4) { out.push(`cardio plus bas à ${formatSpeed(p.avgKmh)} km/h (${p.avgHr} bpm contre ${Math.round(m)} habituellement)`); break; }
+          if (p.avgHr <= m - 4) { out.push(`cardio plus bas à ${formatSpeed(p.avgKmh)} km/h (${p.avgHr} bpm contre ${Math.round(m)} habituellement ${cur.type === 'tapis' ? 'sur tapis' : 'en extérieur'})`); break; }
         }
       }
       return out.length ? out.join(' ; ') : 'aucun record mesuré par l\'app (cherche un progrès dans les données si tu en vois un, sinon laisse vide)';
@@ -11758,6 +11806,7 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
     }
     function analysisFormatPrompt() {
       return `${COACH_RECUL}
+${tapisHrText()}
 Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
 Réponds uniquement en JSON :
 {"verdict":"bonne|correcte|difficile","titre":"le bilan en une phrase de 12 mots maximum","points":["3 points clés de 12 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller"],"action":"LA chose à faire pour la suite, 15 mots maximum","record":"le record ou progrès du jour en une phrase avec le chiffre (d'après les records calculés par l'app ou un progrès net visible dans les données), sinon vide","alerte":"signal santé ou surmenage (douleur, cardio anormal, fatigue qui s'accumule) en une phrase, sinon vide","details":[
@@ -13100,7 +13149,12 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const mmss = sec => `${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`;
         const pctG = g => `${g > 0.05 ? '+' : ''}${(Math.round(g * 10) / 10).toFixed(1).replace('.', ',')} %`;
         const fmtD = sec => sec >= 60 ? `${Math.round(sec / 60)}'` : `${Math.round(sec)}"`;
-        let goal = '', why = '';
+        let goal = '', why = '', hrGoal = '';
+        { const lk0 = item.linked || {}, cc = lk0.cardio || null;
+          if (fracMode) { if (repHrMax) hrGoal = `≤ ${repHrMax} bpm sur les rapides`; }
+          else if (cc && cc.moy && cc.moy[0]) hrGoal = `${cc.moy[0]}–${cc.moy[1]} bpm`;
+          else if (cc && cc.max) hrGoal = `≤ ${cc.max} bpm`;
+          else { const em = easyHrMax(); if (em && !reps.length) hrGoal = `≤ ${em} bpm (aisance)`; } }
         if (score != null && fracMode) {
           const nOk = reps.filter(okRep).length, durs = reps.map(g => g.sec).sort((a, b) => a - b), dm = durs[Math.floor(durs.length / 2)];
           goal = `${reps.length} × ${fmtD(dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
@@ -13124,7 +13178,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const col2 = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring2 = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col2}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="25" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
         void ring;
-        stats = `${ring2 ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span><span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span><span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span></div></div>` : ''}
+        const totSec = W.sec || (+hh.durationMin || 0) * 60, totTxt = totSec >= 3600 ? `${Math.floor(totSec / 3600)} h ${String(Math.round(totSec % 3600 / 60)).padStart(2, '0')}` : `${Math.round(totSec / 60)} min`;
+        const extraL = `${hrGoal && !/cardio/i.test(goal) ? `<span style="font-size:13px;font-weight:700;color:#fda4af;line-height:1.3">❤️ Cardio cible : ${plEsc(hrGoal)}</span>` : ''}<span style="font-size:13px;font-weight:700;color:#cbd5e1;line-height:1.3">📏 Séance complète : ${f1(km)} km · ${totTxt}</span>`;
+        stats = `${ring2 || goal ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2 || ''}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">OBJECTIF</span>${goal ? `<span style="font-size:15px;font-weight:800;color:#f1f5f9;line-height:1.25">${plEsc(goal)}</span>` : ''}${why ? `<span style="font-size:13px;font-weight:700;color:${col2};line-height:1.3">${plEsc(why)}</span>` : ''}${extraL}</div></div>` : `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;${card}">${extraL}</div>`}
           <div style="display:flex;align-items:stretch;gap:8px">${tile('Vitesse moy.', f1(bKmh), '#7dd3fc')}${showVap ? tile('VAP moy.', f1(bVap), '#c4b5fd') : ''}${tile('Cardio moy.', bHr || '–', '#fda4af')}</div>
           ${(() => { let dp = null, dm = null;
             if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if ((synth || hh.eleShot) && hh.summary && hh.summary.dplus) { dp = Math.round(hh.summary.dplus); dm = Math.round(hh.summary.dminus || 0); } else if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
@@ -13132,7 +13188,6 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
             const g = dp != null && km > 0 ? dp / (km * 1000) * 100 : null, sm = (l, v, c) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;${card}"><span style="font-size:16px;font-weight:800;color:${c}">${v}</span><span style="font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap">${l}</span></div>`;
             return `<div style="display:flex;gap:8px">${sm('D+', dp != null ? dp + ' m' : '–', '#fb923c')}${sm('D−', dm != null ? dm + ' m' : '–', '#34d399')}${sm('Pente moy. (D+)', g != null ? (Math.round(g * 10) / 10).toFixed(1).replace('.', ',') + ' %' : '–', '#e2e8f0')}</div>`; })()}
           ${synth ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">📷 Séance reconstruite à partir des captures de ta montre (pas de mesures de l'app)${hh.spShot && hh.spShot.courbe ? '' : ' : ajoute la capture du graphique d\'allure pour avoir la vitesse réelle'}.</span>` : fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af;margin-top:-4px">❤️ Cardio lu sur la capture de ta montre (capteur décroché pendant la séance).</span>` : ''}
-          ${!item.live && item.id ? `<button type="button" onclick="openEvo(${JSON.stringify(kind && kind.label || '').replace(/"/g, '&quot;')})" style="min-height:42px;border-radius:12px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd;font-weight:800;font-size:13px">📈 Comparer avec mes séances du même type</button>` : ''}
           ${fracMode ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes des ${reps.length} répétitions rapides (sans récup, échauffement ni retour au calme).</span>` : body.length && body.length < G.length ? `<span style="font-size:11px;color:#64748b;margin-top:-4px">Moyennes du corps de séance, sans échauffement ni retour au calme.</span>` : ''}`;
         const hrRows = R.filter(r => r.hr);
         if (hrRows.length <= 10 && hs && hs.zones_min) {
@@ -13206,7 +13261,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const tid = 'ht' + Math.random().toString(36).slice(2, 8);
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
-      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${item.live ? '' : top}${noData}${stats}${zonesB}${recLine}
+      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${noData}${stats}${zonesB}${item.live ? '' : top}${recLine}
         <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l]) => `<button type="button" role="tab" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:40px;border:none;border-radius:9px;font-size:${tabs.length > 4 ? 11.5 : 13}px;font-weight:800;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
@@ -15031,7 +15086,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           const tMin = s.sec / 60;
           lb.push(s.avgKmh / Math.min(1, Math.pow(Math.max(tMin, 6) / 6, -0.07)));
           if (s.avgHr && fc) {
-            const hrr = (s.avgHr - 60) / (fc - 60);
+            const hrC = s.avgHr + (h.type === 'tapis' ? Math.max(0, tapisHrOffset().off ?? 5) : 0); // tapis : cardio plus bas qu'en extérieur
+            const hrr = (hrC - 60) / (fc - 60);
             if (hrr >= 0.55 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr);
           }
         });
@@ -15209,6 +15265,7 @@ Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().a
 Séances récentes :
 ${hist}
 ${backgroundText()}
+${tapisHrText()}
 Sois cohérent : la probabilité doit correspondre à ton chrono estimé. Si ton chrono estimé le jour J est plus lent que l'objectif, la probabilité doit être inférieure à 50 % ; s'il est nettement plus rapide, supérieure à 50 %. Tiens compte des vitesses atteintes en fractionné, de la progression possible d'ici la date et du niveau du coureur.
 Réponds uniquement en JSON : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
       try {
@@ -16277,6 +16334,52 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         if (rp.el && !rp.el.paused && c.aiPos.s === rp.s) { c.aiPos.t = rp.el.currentTime; if (Date.now() - rp.lastSave > 10000) { rp.lastSave = Date.now(); saveAppData(); updateReadBtn(); } }
       } catch (e) { }
     }, 200);
+    // ---------- Texte affiché en même temps que la lecture
+    const READ_KEEP = [['top', '⏱️ Chrono et infos'], ['circle', '🎯 Vitesse / cercle'], ['map', '🗺️ Carte'], ['hr', '❤️ Barre cardio']];
+    function readKeep(c) { return Object.assign({ top: true, circle: false, map: false, hr: true }, (c && c.keep) || {}); }
+    const rv = { key: '', idx: -1, sents: [], w: [], tot: 0 };
+    function readSents(t) { return String(t || '').replace(/\r/g, '').split(/(?<=[.!?…»])\s+|\n+/).map(x => x.trim()).filter(Boolean); }
+    function readFont(d) { const c = readCfg(); if (!c) return; c.fontSize = Math.max(14, Math.min(40, (c.fontSize || 22) + d)); saveAppData(); const b = document.getElementById('readViewBody'); if (b) b.style.fontSize = c.fontSize + 'px'; rv.idx = -1; readViewUpdate(); }
+    function readViewToggle(on) { const c = readCfg(); if (!c) return; c.show = !!on; saveAppData(); readViewUpdate(); showToast(on ? '📖 Texte affiché' : '📖 Texte masqué (réactivable dans 📖 Texte à écouter)'); }
+    function readViewUpdate() {
+      const box = document.getElementById('readView'); if (!box) return;
+      const c = readCfg();
+      const on = !!(c && c.show !== false && c.started && !readDone(c) && timerState.sessionStarted && !timerState.finished);
+      box.classList.toggle('on', on);
+      const K = readKeep(c), B = document.body.classList;
+      B.toggle('rv-on', on); READ_KEEP.forEach(([k]) => B.toggle('rv-hide-' + k, !K[k]));
+      B.toggle('rv-tall', on && !K.circle && !K.map);
+      if (!on) return;
+      const body = document.getElementById('readViewBody'), head = document.getElementById('readViewHead');
+      body.style.fontSize = (c.fontSize || 22) + 'px';
+      let text = '', f = 0, label = '';
+      if (readIsAi(c)) {
+        const s0 = Math.min(c.aiPos.s, c.sections.length - 1), sec = readAudio.secs[s0];
+        text = c.fallback ? c.fallback.join(' ') : c.sections[s0] || '';
+        const t = rp.playing && rp.el && rp.s === s0 ? rp.el.currentTime : (c.aiPos.t || 0);
+        f = c.fallback ? Math.max(0, c.fbPos - 1) / Math.max(1, c.fallback.length) : sec && sec.dur ? Math.min(1, t / sec.dur) : 0;
+        label = `📖 Partie ${s0 + 1}/${c.sections.length}`;
+      } else {
+        const i = Math.max(0, c.pos - 1); text = c.chunks.slice(Math.max(0, i - 1), i + 3).join(' ');
+        const prev = i > 0 ? c.chunks[i - 1].length + 1 : 0, cur = (c.chunks[i] || '').length; f = (prev + cur * 0.5) / Math.max(1, text.length);
+        label = `📖 Morceau ${c.pos}/${c.chunks.length}`;
+      }
+      const paused = readIsAi(c) ? !rp.playing : !isSpeaking();
+      head.textContent = `${label} · ${Math.round(readProgress(c) * 100)} %${paused ? ' · ⏸ en pause' : ''}`;
+      const key = text.length + '|' + text.slice(0, 60);
+      if (rv.key !== key) {
+        rv.key = key; rv.idx = -1; rv.jump = true; rv.sents = readSents(text);
+        rv.w = rv.sents.map(x => x.length + 10); rv.tot = rv.w.reduce((a, b) => a + b, 0) || 1;
+        body.innerHTML = rv.sents.map((x, i) => `<span data-i="${i}">${plEsc(x)} </span>`).join('');
+      }
+      let acc = 0, idx = 0; for (let i = 0; i < rv.w.length; i++) { acc += rv.w[i]; if (acc / rv.tot > f) { idx = i; break; } idx = i; }
+      if (idx !== rv.idx) { rv.idx = idx; body.querySelectorAll('span[data-i]').forEach(sp => { const i = +sp.dataset.i; sp.className = i === idx ? 'rv-cur' : i < idx ? 'rv-past' : ''; }); }
+      const el = body.querySelector(`span[data-i="${idx}"]`);
+      if (!el || !body.clientHeight) return;
+      const vis = el.offsetTop >= body.scrollTop + 2 && el.offsetTop + Math.min(el.offsetHeight, body.clientHeight * 0.5) <= body.scrollTop + body.clientHeight * 0.75;
+      if (!vis && !rv.scrolling) { rv.scrolling = true; setTimeout(() => { rv.scrolling = false; }, 700); body.scrollTo({ top: Math.max(0, el.offsetTop - body.clientHeight * 0.3), behavior: rv.jump ? 'auto' : 'smooth' }); rv.jump = false; }
+    }
+    setInterval(() => { try { readViewUpdate(); } catch (e) { } }, 400);
     // Pendant la lecture, sauf si on a choisi de tout garder : seules les annonces indispensables passent
     function readMute() { try { const c = readCfg(); return !!(c && !c.keepAnn && c.started && !readDone(c)); } catch (e) { return false; } }
     function speakOpt(t) { if (!readMute()) speakLive(t); }
@@ -16313,8 +16416,15 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
             <span style="font-size:11.5px;color:#94a3b8;line-height:1.4">Le coach repère qui parle (narrateur, femme, homme). Google ne permet que 2 voix à la fois : le narrateur lit aussi les personnages de son sexe, l'autre voix lit ceux de l'autre sexe.</span>
           </div>
         </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Afficher le texte pendant la lecture<input type="checkbox" id="rdShow" class="sw" ${c.show !== false ? 'checked' : ''}></label>
+          <label class="pm-lbl">Taille du texte<select id="rdFont" class="pm-in">${[[16, 'Petite'], [20, 'Moyenne'], [24, 'Grande'], [30, 'Très grande'], [36, 'Énorme']].map(([v, l]) => opt(String(v), l, String(c.fontSize || 24))).join('')}</select></label>
+          <span style="font-size:12px;font-weight:800;color:#cbd5e1">Garder à l'écran avec le texte</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${READ_KEEP.map(([k, l]) => `<label style="display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;border-radius:10px;background:#0f172a;border:1px solid #1e293b;font-size:13px;font-weight:700;color:#e2e8f0"><input type="checkbox" data-rdkeep="${k}" ${readKeep(c)[k] ? 'checked' : ''} style="width:18px;height:18px">${l}</label>`).join('')}</div>
+          <span style="font-size:11.5px;color:#94a3b8;line-height:1.4">Les boutons pause / arrêt restent toujours visibles. Pendant la séance : A− / A+ pour la taille, ✕ pour masquer le texte.</span>
+        </div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Garder les annonces du coach<input type="checkbox" id="rdKeepAnn" class="sw" ${c.keepAnn ? 'checked' : ''}></label>
-        <span style="font-size:11.5px;color:#94a3b8;margin-top:-8px;line-height:1.4">Décoché : pendant la lecture, plus d'encouragements, bilans au km, conseils d'allure, rappels boire / manger, radio… Seules les annonces indispensables passent (changement d'allure, compte à rebours, guidage, alerte cardio, fin de séance) : la lecture se met en pause puis reprend.</span>
+        <span style="font-size:11.5px;color:#94a3b8;margin-top:-8px;line-height:1.4">Décoché : pendant la lecture, plus d'encouragements, bilans au km, conseils d'allure, rappels boire / manger, radio… Les annonces indispensables passent toujours, même si rien d'autre n'est affiché : changement de segment (annonce du suivant puis départ), compte à rebours, guidage, alerte cardio, fin de séance. La lecture se met en pause puis reprend.</span>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Lire aussi pendant les fractions rapides<input type="checkbox" id="rdFast" class="sw" ${c.fast ? 'checked' : ''}></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button type="button" onclick="readSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans texte</button>
@@ -16376,7 +16486,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!on) appData.audioSettings.readText = null;
       else {
         const chunks = readChunks(t.trim());
-        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, t: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value, dialog: document.getElementById('rdDialog').checked, aiVoice2: document.getElementById('rdAiVoice2').value, keepAnn: document.getElementById('rdKeepAnn').checked };
+        appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, t: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value, dialog: document.getElementById('rdDialog').checked, aiVoice2: document.getElementById('rdAiVoice2').value, keepAnn: document.getElementById('rdKeepAnn').checked, show: document.getElementById('rdShow').checked, fontSize: parseFloat(document.getElementById('rdFont').value) || 24, keep: Object.fromEntries([...document.querySelectorAll('[data-rdkeep]')].map(x => [x.dataset.rdkeep, x.checked])) };
         if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readPrepareAll(); return; } readLoadSection(appData.audioSettings.readText, 0); }
         else if (prep) showToast('Voix du téléphone : rien à préparer, la lecture est immédiate');
       }
