@@ -76,6 +76,11 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    .pm-hrrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; }
+    .pm-hrrow > span { font-size: 14px; font-weight: 800; color: #e2e8f0; display: flex; flex-direction: column; }
+    .pm-hrrow > span small { font-size: 11px; font-weight: 600; color: #94a3b8; }
+    .pm-hrin { width: 96px !important; height: 44px !important; flex: none; }
+    .pm-hrro { display: flex; align-items: center; justify-content: center; color: #94a3b8; background: #0b1220 !important; }
     .pm-tabs6 .pm-tab { font-size: 12.5px !important; padding-left: 0 !important; padding-right: 0 !important; }
     .pm-autosave { flex: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); text-align: center; font-size: 12px; font-weight: 700; color: #64748b; transition: color .3s; }
     .pm-autosave.on { color: #34d399; }
@@ -95,9 +100,9 @@
     #readViewBody span.rv-past { color: #475569; }
     .rv-b { min-width: 40px; height: 34px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-weight: 800; font-size: 14px; }
     body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-circle #circleZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
-    .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 8px; margin-bottom: -4px; background: #050a14; scrollbar-width: none; }
+    .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: wrap; gap: 3px; padding: 4px; margin: 6px 0 2px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 -8px 0 #050a14; scrollbar-width: none; }
     .pm-subtabs::-webkit-scrollbar { display: none; }
-    .pm-subtabs button { flex: none; min-height: 34px; padding: 0 13px; border-radius: 17px; font-size: 13px; font-weight: 800; background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; white-space: nowrap; }
+    .pm-subtabs button { flex: 1 1 auto; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; font-weight: 800; background: transparent; color: #94a3b8; border: 0; white-space: nowrap; }
     .pm-subtabs button.on { background: var(--acc, #fbbf24); color: #111827; border-color: var(--acc, #fbbf24); }
     .pm-card { padding: 14px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 10px; }
     .pm-cap { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase; }
@@ -811,14 +816,13 @@
 
           <div class="pm-card">
             <span class="pm-cap">Cardio</span>
-            <div class="flex items-center justify-between gap-3">
-              <div class="pm-rt">FC max (bpm)<small>Saisis ta valeur (test, course…) · vide = théorique</small></div>
-              <input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c" style="width:96px">
-            </div>
-            <div id="fcMaxNote" class="text-[12px] text-slate-400"></div>
+            <div class="pm-hrrow"><span>FC max</span><input type="number" id="fcMaxProfile" min="120" max="230" inputmode="numeric" oninput="readRunnerBody(); syncFcMax(); renderRunnerBody()" onchange="readRunnerBody(); syncFcMax(); saveAppData(); renderRunnerBody()" class="pm-in c pm-hrin"></div>
+            <div class="pm-hrrow"><span>FC max théorique<small id="fcTheoSrc"></small></span><div id="fcTheoBox" class="pm-in c pm-hrin pm-hrro">–</div></div>
+            <div class="pm-hrrow"><span>Utiliser la FC max théorique</span><input type="checkbox" id="fcUseTheo" class="sw" onchange="runnerProfile().fcUseTheo=this.checked;syncFcMax();saveAppData();renderRunnerBody()"></div>
+            <div class="pm-hrrow"><span>FC de repos<small>au réveil</small></span><input type="number" id="fcRestProfile" min="30" max="110" inputmode="numeric" placeholder="60" onchange="runnerProfile().fcRest = parseInt(this.value) || undefined; saveAppData()" class="pm-in c pm-hrin"></div>
+            <div id="fcMaxNote" class="hidden"></div>
             <div id="tapisHrBox" class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid rgba(251,113,133,.35)"></div>
-            <div class="flex items-center justify-between gap-2"><span class="pm-lbl" style="margin:0">FC de repos (au réveil)</span><input type="number" id="fcRestProfile" min="30" max="110" inputmode="numeric" placeholder="60" onchange="runnerProfile().fcRest = parseInt(this.value) || undefined; saveAppData()" class="pm-in c" style="width:96px"></div>
-            <details class="pm-det" open><summary>Mes zones cardio (réglables)</summary><div id="hrZonesBox" class="mt-2 bg-slate-900 border border-slate-800 rounded-lg p-3 text-[12px]"></div></details>
+            <span class="pm-cap" style="margin-top:4px">Zones cardio</span><div id="hrZonesBox" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-[12px]"></div>
           </div>
 
 
@@ -826,10 +830,9 @@
           <div id="likesBox" style="display:contents"></div>
           <div class="pm-card" data-sub="Matériel">
             <span class="pm-cap">🏃 Mon matériel</span>
-            <span class="text-[12px] text-slate-400 -mt-1">Le coach en tient compte pour créer ton plan et tes séances (jamais au-delà de ce que ton tapis permet).</span>
             <div class="grid grid-cols-2 gap-2">
-              <label class="pm-lbl">Pente max du tapis (%)<input id="ppPente" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 15"></label>
-              <label class="pm-lbl">Vitesse max du tapis (km/h)<input id="ppVit" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 18"></label>
+              <label class="pm-lbl">Tapis : pente max (%)<input id="ppPente" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 15"></label>
+              <label class="pm-lbl">Tapis : vitesse max<input id="ppVit" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 18"></label>
               <label class="pm-lbl">Côtes dehors ?<select id="ppCotes" onchange="readPlanPrefs()" class="pm-in"><option value="">—</option><option value="oui">Oui</option><option value="non">Non</option></select></label>
             </div>
           </div>
@@ -876,12 +879,6 @@
               <label class="pm-lbl">Retour au calme (min)<input id="coolInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
             </div>
             <span class="text-[12px] text-slate-400 leading-snug">Appliqués à tes séances à venir et utilisés par le coach quand il crée ton plan ou une séance. Tu peux toujours les changer dans une séance avant de la lancer. Le coach choisit la vitesse selon la séance.</span>
-          </div>
-          <div class="pm-card" data-sub="Après la séance">
-            <span class="pm-cap">🧠 Après chaque séance</span>
-            <div class="pm-row" style="border-top:0"><div class="pm-rt">Le coach met à jour mon profil<small>Chronos estimés, chances, points forts et faibles, écart tapis (si mode coach)</small></div><input type="checkbox" id="efAuto" class="sw"></div>
-            <div id="efNote" class="text-[12px] text-slate-400"></div>
-            <button type="button" onclick="runProfileUpdates(null, { manual: true })" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour maintenant</button>
           </div>
           <div class="pm-card" data-sub="Comparer" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span>
             <span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span>
@@ -961,7 +958,7 @@
           </div>
         </div>
       </div>
-      <div class="pm-autosave">✓ Enregistrement automatique</div>
+
     </div>
   </div>
 
@@ -1423,6 +1420,12 @@
             <input type="checkbox" id="chkStartCd" class="hidden">
             <div class="pm-row"><div class="pm-rt">Rappels boire / manger<small>Chaque km, et toutes les 45 min</small></div><input type="checkbox" id="chkFuel" checked onchange="onAiSettingsChange()" class="sw"></div>
             <div class="pm-row"><div class="pm-rt">Prénom du coach<small>Optionnel</small></div><input id="coachNameInput" type="text" maxlength="15" placeholder="ex. Max" onchange="onAiSettingsChange()" class="pm-in c" style="width:120px"></div>
+          </div>
+          <div class="pm-card" data-sub="Après la séance">
+            <span class="pm-cap">🧠 Après chaque séance</span>
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Le coach met à jour mon profil<small>Chronos estimés, chances, points forts et faibles, écart tapis (si mode coach)</small></div><input type="checkbox" id="efAuto" class="sw" onchange="runnerProfile().efAuto=this.checked;saveAppData()"></div>
+            <div id="efNote" class="text-[12px] text-slate-400"></div>
+            <button type="button" onclick="runProfileUpdates(null, { manual: true })" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour maintenant</button>
           </div>
         </div>
 
@@ -5632,6 +5635,13 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       if (newEntry.vmaTest) { runnerProfile().vmaTest = { v: newEntry.vmaTest, at: todayISO(), proto: (sess.test || {}).proto }; showToast(`🧪 VMA mesurée : ${formatSpeed(newEntry.vmaTest).replace('.', ',')} km/h`); }
       let profBefore = null; try { profBefore = profileSnapshot(); } catch (e) { }
       appData.history.unshift(newEntry);
+      // FC max : si la séance la dépasse (moyenne glissante de 15 s, pour ignorer les pics du capteur), on met le profil à jour
+      try {
+        const hrs = (newEntry.track || []).map(r => r[1]).filter(x => x > 0);
+        let mx = 0; for (let k = 2; k < hrs.length; k++) { const m3 = (hrs[k] + hrs[k - 1] + hrs[k - 2]) / 3; if (m3 > mx) mx = m3; }
+        mx = Math.round(mx); const cur = runnerFcMax(), r0 = runnerProfile();
+        if (mx >= 150 && mx <= 225 && cur && mx > cur) { r0.fcMax = mx; r0.fcUseTheo = false; r0.fcMaxAt = todayISO(); syncFcMax(); setTimeout(() => showToast(`❤️ FC max mise à jour : ${mx} bpm (mesurée pendant la séance)`), 3500); }
+      } catch (e) { }
       appData.audioSettings.youtube = null; // la vidéo ne repart pas sur la séance suivante
       appData.audioSettings.readText = null;
       if (valShots && valShots.length) attachHrShot(newEntry, valShots.slice());
@@ -5876,6 +5886,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const c = tapisHrCfg();
       if (c.mode === 'manual' && c.manual != null && c.manual !== '') return { off: +c.manual, n: 0, src: 'manual' };
       if (c.mode === 'ia' && c.ia && c.ia.v != null) return { off: +c.ia.v, n: 0, src: 'ia' };
+      if (c.mode === 'default') return { off: TAPIS_HR_DEFAULT, n: 0, src: 'fixed' };
       const m = tapisHrMeasure();
       return m.off != null ? Object.assign({ src: 'app' }, m) : Object.assign({}, m, { off: null, src: 'default' });
     }
@@ -5884,14 +5895,13 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
       const box = document.getElementById('tapisHrBox'); if (!box) return;
       const c = tapisHrCfg(), o = tapisHrOffset(), m = tapisHrMeasure();
       const btn = (k, l) => `<button type="button" onclick="setTapisHrMode('${k}')" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;${(c.mode || 'auto') === k ? 'background:#fb7185;color:#1f0a10;border:1px solid #fb7185' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
-      const val = o.off != null ? `${o.off} bpm` : `${TAPIS_HR_DEFAULT} bpm (valeur par défaut)`;
+      const val = o.off != null ? `${o.off} bpm` : `${TAPIS_HR_DEFAULT} bpm`;
       const srcTxt = { app: `calculé par l'app à VAP égale (${o.nT} portions tapis, ${o.nE} dehors${o.vT ? ` ; VAP moyenne ${String(o.vT).replace('.', ',')} tapis / ${String(o.vE).replace('.', ',')} dehors` : ''})`, ia: `estimé par le coach IA le ${c.ia && c.ia.at ? fmtDateShort(c.ia.at) : ''}`, manual: 'choisi par toi', default: `pas encore assez de données (il faut au moins 5 portions stables de 3 min sur tapis ET dehors : ${m.nT || 0} / ${m.nE || 0})` }[o.src];
       box.innerHTML = `<div class="flex items-baseline justify-between gap-2"><span class="text-[14px] font-extrabold text-white">Cardio plus bas sur tapis</span><span class="text-[20px] font-black" style="color:#fda4af">−${val}</span></div>
-        <span class="text-[11.5px] text-slate-400 -mt-1">${srcTxt}</span>
-        <div class="grid grid-cols-3 gap-1.5">${btn('auto', '📱 App')}${btn('ia', '🧠 Coach IA')}${btn('manual', '✋ Manuel')}</div>
-        ${c.mode === 'manual' ? `<label class="flex items-center justify-between gap-2 text-[13px] font-bold text-slate-200">Écart (bpm)<input type="number" min="-10" max="30" step="1" value="${c.manual ?? ''}" placeholder="ex. 12" class="pm-in c" style="width:96px" onchange="tapisHrCfg().manual=this.value===''?null:Math.round(+this.value);_thoReset();saveAppData();renderTapisHr()"></label>` : ''}
-        ${c.mode === 'ia' ? `<button type="button" id="tapisHrIaBtn" onclick="tapisHrWithAI()" class="pm-btn" style="height:42px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:13px">🧠 ${c.ia ? 'Recalculer' : 'Calculer'} avec le coach IA</button>${c.ia && c.ia.note ? `<span class="text-[12px] text-slate-300">${plEsc(c.ia.note)}</span>` : ''}` : ''}
-        <span class="text-[11px] text-slate-500 leading-snug">Comparaison à effort égal : VAP dehors (dénivelé corrigé), vitesse et pente du tapis dedans, sur des portions stables de 3 min après 8 min de course${m.nT || m.nE ? ` · calcul de l'app : ${m.off != null ? m.off + ' bpm' : 'pas assez de données'}` : ''}. Sert à corriger la VMA estimée, les cibles cardio sur tapis et l'analyse du coach.</span>`;
+        ${o.src === 'default' ? `<span class="text-[11.5px] text-slate-400 -mt-1">(par défaut : pas encore assez de séances pour le calcul)</span>` : ''}
+        <div class="grid grid-cols-4 gap-1.5">${btn('auto', '📱 App')}${btn('ia', '🧠 IA')}${btn('manual', '✋ Manuel')}${btn('default', `Défaut`)}</div>
+        ${c.mode === 'manual' ? `<label class="flex items-center justify-between gap-2 text-[13px] font-bold text-slate-200">Écart (bpm)<input type="number" min="-10" max="30" step="1" value="${c.manual ?? ''}" placeholder="ex. 12" class="pm-in c pm-hrin" onchange="tapisHrCfg().manual=this.value===''?null:Math.round(+this.value);_thoReset();saveAppData();renderTapisHr()"></label>` : ''}
+        ${c.mode === 'ia' ? `<button type="button" id="tapisHrIaBtn" onclick="tapisHrWithAI()" class="pm-btn" style="height:42px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:13px">🧠 ${c.ia ? 'Recalculer' : 'Calculer'} avec le coach IA</button>${c.ia && c.ia.note ? `<span class="text-[12px] text-slate-300">${plEsc(c.ia.note)}</span>` : ''}` : ''}`;
     }
     function _thoReset() { _thmCache = null; }
     function setTapisHrMode(k) { tapisHrCfg().mode = k; saveAppData(); renderTapisHr(); if (k === 'ia' && !tapisHrCfg().ia) tapisHrWithAI(); }
@@ -5916,9 +5926,9 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
       } catch (e) { showToast('Calcul impossible : ' + (e.message || e)); }
       renderTapisHr();
     }
-    function weakText() { try { const L = runnerLikes(); return L.faibles ? `- Points faibles connus du coureur (à prendre en compte dans tes conseils) : ${L.faibles}` : ''; } catch (e) { return ''; } }
+    function weakText() { try { const L = runnerLikes(), k = (L.faiblesK || []).map(x => (CAPA.find(c => c[0] === x) || [x, x])[1].toLowerCase()); const t = [k.join(', '), L.faibles].filter(Boolean).join(' ; '); return t ? `- Points faibles connus du coureur (à prendre en compte dans tes conseils) : ${t}` : ''; } catch (e) { return ''; } }
     function tapisHrText() {
-      const o = tapisHrOffset();
+      const o0 = tapisHrOffset(), o = o0.src === 'fixed' ? Object.assign({}, o0, { off: null }) : o0;
       return `- TAPIS : le cardio y est souvent plus bas qu'en extérieur à vitesse affichée égale (pas de vent ni de relief, sol qui défile, vitesse du tapis parfois mal étalonnée). ${o.off != null ? `Chez ce coureur, à effort égal (même VAP), son cardio sur tapis est ${Math.abs(o.off)} bpm ${o.off >= 0 ? 'plus bas' : 'plus haut'} qu'en extérieur (${{ app: `mesuré par l'app à VAP égale sur ${o.nT} portions tapis et ${o.nE} dehors`, ia: 'estimé par le coach', manual: 'valeur donnée par le coureur' }[o.src] || ''}).` : `L'écart propre à ce coureur n'est pas encore mesuré : compte environ ${TAPIS_HR_DEFAULT} bpm de moins sur tapis.`} Ne t'enflamme donc pas sur un cardio bas sur tapis : ne conclus pas à un gros progrès de forme ou de VMA, et compare le cardio entre séances du même type (tapis avec tapis, extérieur avec extérieur).`;
     }
     // Cardio à vitesse d'endurance : premières séances comparées aux dernières
@@ -6029,22 +6039,30 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
     }
     function runnerLikesText() {
       const L = runnerLikes(), n = k => (SESS_TYPES_PREF.find(x => x[0] === k) || [k, k])[1].toLowerCase();
-      const parts = [L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}` : '', L.deteste.length ? `n'aime pas / moins à l'aise sur (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : '', L.faibles ? `points faibles connus du coureur (à prendre en compte dans les conseils et le plan) : ${L.faibles}` : ''].filter(Boolean);
+      const cn = k => (CAPA.find(x => x[0] === k) || [k, k])[1].toLowerCase();
+      const parts = [L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}${L.noteAime ? ` (${L.noteAime})` : ''}` : (L.noteAime ? `aime : ${L.noteAime}` : ''),
+        (L.forts || []).length || L.fortsNote ? `points forts déclarés : ${(L.forts || []).map(cn).join(', ')}${L.fortsNote ? ` (${L.fortsNote})` : ''}` : '',
+        (L.faiblesK || []).length ? `points faibles déclarés : ${L.faiblesK.map(cn).join(', ')}` : '', L.deteste.length ? `n'aime pas / moins à l'aise sur (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : '', L.faibles ? `points faibles connus du coureur (à prendre en compte dans les conseils et le plan) : ${L.faibles}` : ''].filter(Boolean);
       return parts.length ? `Ressenti du coureur sur les types de séances : ${parts.join(' ; ')}. Le but est de progresser en prenant du plaisir : ne jamais imposer souvent une séance qu'il déteste, préférer une variante qu'il tolère mieux.` : '';
     }
     function likesToggle(cat, k) { const L = runnerLikes(); L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); if (cat === 'aime') L.deteste = L.deteste.filter(x => x !== k); if (cat === 'deteste') L.aime = L.aime.filter(x => x !== k); saveAppData(); renderLikes(); }
-    function renderLikes() { const b = document.getElementById('likesBox'); if (b) b.innerHTML = likesCardHtml(); }
+    function renderLikes() { const b = document.getElementById('likesBox'); if (b) { b.innerHTML = likesCardHtml(); try { applySubTabs(b.closest('.pm-panel')); } catch (e) { } } }
+    const CAPA = [['endurance', 'Endurance'], ['vitesse', 'Vitesse'], ['vma', 'VMA / fractionné'], ['seuil', 'Seuil / tempo'], ['montee', 'Montées'], ['descente', 'Descentes'], ['recup', 'Récupération'], ['allure', 'Régularité d\'allure'], ['gestion', 'Gestion de l\'effort'], ['force', 'Force musculaire'], ['mental', 'Mental'], ['technique', 'Foulée / technique'], ['chaleur', 'Chaleur'], ['blessure', 'Fragilité / blessures']];
+    function capaToggle(cat, k) { const L = runnerLikes(); if (!Array.isArray(L.forts)) L.forts = []; if (!Array.isArray(L.faiblesK)) L.faiblesK = []; const o = cat === 'forts' ? 'faiblesK' : 'forts'; L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); L[o] = L[o].filter(x => x !== k); saveAppData(); renderLikes(); }
     function likesCardHtml() {
-      const L = runnerLikes();
+      const L = runnerLikes(); if (!Array.isArray(L.forts)) L.forts = []; if (!Array.isArray(L.faiblesK)) L.faiblesK = [];
       const esc = x => plEsc(String(x || ''));
-      const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => { const on = L[cat].includes(k); return `<button type="button" onclick="likesToggle('${cat}','${k}')" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #1e293b'}">${l}</button>`; }).join('')}</div>`;
-      const sec = (t, cat) => `<span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">${t}</span>${chips(cat)}`;
-      return `<div class="pm-card" style="border-color:rgba(56,189,248,.4)"><span class="pm-cap" style="color:#7dd3fc">👍 Ce que j'aime</span>
-        <span style="font-size:12px;color:#94a3b8">Utilisé quand le coach crée ou analyse ton plan, quand il te propose une séance, et dans l'analyse de tes points forts. Tes points faibles servent aussi dans l'analyse de chaque séance et les discussions.</span>
-        ${sec("👍 J'aime / je suis à l'aise", 'aime')}${sec("👎 Je n'aime pas / je suis moins à l'aise", 'deteste')}
-        <textarea id="likesNote" rows="2" placeholder="Précisions (ex. j'adore les côtes dehors mais je déteste le tapis en pente)" onchange="runnerLikes().note=this.value.trim();saveAppData()" class="pm-in" style="margin-top:6px;font-size:13px;min-height:56px">${esc(L.note)}</textarea>
-        <span style="font-size:12px;font-weight:800;color:#cbd5e1;margin-top:6px">⚠️ Mes points faibles (ce que le coach ne peut pas deviner)</span>
-        <textarea id="likesWeak" rows="2" placeholder="Ex. je crampe facilement après 1 h, genou droit fragile en descente, je pars toujours trop vite…" onchange="runnerLikes().faibles=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:56px">${esc(L.faibles)}</textarea></div>`;
+      const chip = (on, js, l, col) => `<button type="button" onclick="${js}" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? `background:${col};color:#04121f;border:1px solid ${col}` : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
+      const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => chip(L[cat].includes(k), `likesToggle('${cat}','${k}')`, l, '#38bdf8')).join('')}</div>`;
+      const cchips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${CAPA.map(([k, l]) => chip(L[cat].includes(k), `capaToggle('${cat}','${k}')`, l, cat === 'forts' ? '#34d399' : '#fb923c')).join('')}</div>`;
+      const ttl = t => `<span style="font-size:13px;font-weight:800;color:#e2e8f0;margin-top:4px">${t}</span>`;
+      const ta = (id, field, ph) => `<textarea id="${id}" rows="2" placeholder="${ph}" onchange="runnerLikes().${field}=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:52px">${esc(L[field])}</textarea>`;
+      return `<div class="pm-card" data-sub="Préférence">
+        ${ttl("👍 J'aime / je suis à l'aise")}${chips('aime')}${ta('likesNoteAime', 'noteAime', 'Précisions (ex. j\'adore les côtes dehors)')}
+        ${ttl("👎 Je n'aime pas / je suis moins à l'aise")}${chips('deteste')}${ta('likesNote', 'note', 'Précisions (ex. je déteste le tapis en pente)')}</div>
+        <div class="pm-card" data-sub="Capacités">
+        ${ttl('💪 Mes points forts')}${cchips('forts')}${ta('likesStrong', 'fortsNote', 'Précisions (ex. je tiens bien l\'allure sur la durée)')}
+        ${ttl('🎯 Mes points faibles')}${cchips('faiblesK')}${ta('likesWeak', 'faibles', 'Précisions (ex. je crampe après 1 h, genou fragile en descente…)')}</div>`;
     }
     function strengthsCardHtml() {
       const L = runnerLikes(), A = appData.coachSW;
@@ -7128,12 +7146,12 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function pmBlockLabel(b) {
       if (b.dataset && b.dataset.sub) return b.dataset.sub;
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
-      const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
+      const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel', 'Personnalité du coach': 'Personnalité', 'Pendant la séance': 'Pendant la séance' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
     function applySubTabs(panel) {
       if (!panel) return;
       let bar = panel.querySelector(':scope > .pm-subtabs');
-      const blocks = [...panel.children].filter(e => !e.classList.contains('pm-subtabs'));
+      const blocks = [].concat(...[...panel.children].filter(e => !e.classList.contains('pm-subtabs') && e.type !== 'hidden').map(e => e.style && e.style.display === 'contents' ? [...e.children] : [e]));
       let prev = '';
       let labs = blocks.map(pmBlockLabel).map(l => l ? (prev = l) : prev);
       const firstL = labs.find(Boolean) || ''; labs = labs.map(l => l || firstL);
@@ -7159,6 +7177,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       if (tab === 'moi') { renderLikes(); try { fillPlanPrefs(); } catch (e) { } }
       if (tab === 'plan') renderPlanSummary();
       if (modalId === 'goalModal') applyAllSubTabs();
+      if (modalId === 'audioModal' && tab === 'coach') applySubTabs(m.querySelector('.pm-panel[data-p="coach"]'));
     }
     // Déplace le contenu de l'ancienne fenêtre « Coach IA » dans « Profil & objectif »
     function mergeSensorsIntoAudio() {
@@ -7339,8 +7358,9 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function focusText(f, txt) {
       if (!f) return '';
       const L = (() => { try { return runnerLikes(); } catch (e) { return {}; } })(), A = appData.coachSW && appData.coachSW.j || {};
-      if (f === 'faibles') return `AXE DE TRAVAIL CHOISI : renforcer les points faibles du coureur${L.faibles ? ` (déclarés : ${L.faibles})` : ''}${(A.faibles || []).length ? ` ; repérés par l'analyse : ${A.faibles.join(', ')}` : ''}. Oriente les séances vers ces points, progressivement.`;
-      if (f === 'forts') return `AXE DE TRAVAIL CHOISI : s'appuyer sur les qualités du coureur${(A.forts || []).length ? ` (${A.forts.join(', ')})` : ''}${(L.aime || []).length ? ` et ce qu'il aime` : ''} pour progresser en prenant du plaisir.`;
+      const cn = k => (CAPA.find(x => x[0] === k) || [k, k])[1].toLowerCase();
+      if (f === 'faibles') return `AXE DE TRAVAIL CHOISI : renforcer les points faibles du coureur${(L.faiblesK || []).length || L.faibles ? ` (déclarés : ${[(L.faiblesK || []).map(cn).join(', '), L.faibles].filter(Boolean).join(' ; ')})` : ''}${(A.faibles || []).length ? ` ; repérés par l'analyse : ${A.faibles.join(', ')}` : ''}. Oriente les séances vers ces points, progressivement.`;
+      if (f === 'forts') return `AXE DE TRAVAIL CHOISI : s'appuyer sur les qualités du coureur${(L.forts || []).length ? ` (déclarées : ${L.forts.map(cn).join(', ')})` : ''}${(A.forts || []).length ? ` (${A.forts.join(', ')})` : ''}${(L.aime || []).length ? ` et ce qu'il aime` : ''} pour progresser en prenant du plaisir.`;
       if (f === 'specifique') return `AXE DE TRAVAIL CHOISI : travailler spécifiquement « ${txt || 'un point précis'} » (séances, exercices de renforcement, côtes, gammes… adaptés à ce point).`;
       return '';
     }
@@ -8029,7 +8049,8 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       loadVoices();
       updateAudioModalUI();
       fillSensorsUI();
-      try { fillCoachTabUI(); renderCoachProfileChips(); } catch (e) { }
+      try { fillCoachTabUI(); renderCoachProfileChips(); renderRunnerProfile(); } catch (e) { }
+      try { applySubTabs(document.querySelector('#audioModal .pm-panel[data-p="coach"]')); } catch (e) { }
       const kIn = document.getElementById('geminiApiKeyInput');
       if (kIn) kIn.value = getGeminiKey();
       updateGeminiStatusBadge(!!getGeminiKey());
@@ -15203,6 +15224,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     }
     function runnerFcMax() {
       const r = runnerProfile();
+      if (r.fcUseTheo && theoreticalFcMax()) return theoreticalFcMax();
       return r.fcMax || theoreticalFcMax() || sensors().fcMax || null;
     }
     function syncFcMax() { sensors().fcMax = runnerFcMax(); }
@@ -15273,6 +15295,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (document.activeElement !== document.getElementById('fcMaxProfile')) document.getElementById('fcMaxProfile').value = r.fcMax || '';
       { const fr = document.getElementById('fcRestProfile'); if (fr && document.activeElement !== fr) fr.value = r.fcRest || ''; }
       document.getElementById('fcMaxProfile').placeholder = th ? String(th) : 'ex. 190';
+      { const tb = document.getElementById('fcTheoBox'); if (tb) tb.textContent = th ? String(th) : '–'; const ts = document.getElementById('fcTheoSrc'); if (ts) ts.textContent = th ? `${r.sex === 'F' ? 'Gulati' : 'Tanaka'}, ${r.age} ans` : 'âge et sexe nécessaires';
+        const ut = document.getElementById('fcUseTheo'); if (ut) ut.checked = !!r.fcUseTheo; const fi = document.getElementById('fcMaxProfile'); if (fi) { fi.disabled = !!r.fcUseTheo; fi.style.opacity = r.fcUseTheo ? .5 : 1; } }
       let note = th ? `Théorique (${r.sex === 'F' ? 'Gulati' : 'Tanaka'}, âge ${r.age}) : ${th} bpm.` : 'Renseignez âge et sexe pour la FC max théorique.';
       if (obs) note += ` Max observée dans vos séances : ${obs} bpm.`;
       if (obs && fc && obs > fc) note += ` ⚠ Plus haute que la FC max utilisée.`;
@@ -15280,12 +15304,14 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const zs = hrZones(fc), custom = Array.isArray(r.hrZoneB);
       const zc = ['#64748b', '#38bdf8', '#34d399', '#fb923c', '#f43f5e'];
       const zb = document.getElementById('hrZonesBox');
-      if (zb && !zb.contains(document.activeElement)) zb.innerHTML = zs.length ? `<div class="text-[12px] text-slate-400 mb-2">FC max ${fc} · ${custom ? 'zones réglées à la main' : 'zones calculées en % de la FC max'}. Règle le début de chaque zone d'après tes sensations en courant :</div>` +
+      const autoB = fc ? ZPCT.map(x => Math.round(fc * x)) : [];
+      if (zb && !zb.contains(document.activeElement)) zb.innerHTML = zs.length ? 
         zs.map((z, i) => `<div class="flex flex-col gap-1 py-2" style="border-top:1px solid #1e293b">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="text-[14px] font-extrabold" style="color:${zc[i]};flex:1;min-width:0">${z.n} · ${z.l}</span>
               <span style="display:flex;align-items:center;gap:4px;flex:none;font-size:14px;font-weight:700;color:#e2e8f0">${i === 0 ? `<span style="width:4.5rem;text-align:center">${z.lo}</span>` : `<input type="number" inputmode="numeric" value="${z.lo}" onchange="setZoneBound(${i - 1}, this.value)" class="pm-in c" style="width:4.5rem;height:2.2rem;font-size:14px">`}<span style="color:#64748b">–</span><span style="width:2.5rem;text-align:center">${z.hi}</span></span></div>
+            ${custom && i > 0 && z.lo !== autoB[i] ? `<span class="text-[11px] font-bold" style="color:#fbbf24">✏️ Modifié · par défaut ${autoB[i]} (${Math.round(ZPCT[i] * 100)} % de la FC max)</span>` : ''}
             <span class="text-[12px] text-slate-400 leading-snug">${z.d}</span></div>`).join('')
-          + (custom ? `<button type="button" onclick="resetZones()" class="pm-btn mt-2" style="height:40px;font-size:13px">↺ Revenir au calcul automatique</button>` : '') : '';
+          + (custom ? `<button type="button" onclick="resetZones()" class="pm-btn my-2" style="height:42px;font-size:13px;width:100%">↺ Réinitialiser selon les % de la FC max</button>` : '') : '';
     }
     function useObservedFcMax() {
       const obs = maxObservedHr();
@@ -15407,7 +15433,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           lb.push(s.avgKmh / Math.min(1, Math.pow(Math.max(tMin, 6) / 6, -0.07)));
           if (s.avgHr && fc) {
             const hrC = s.avgHr + (h.type === 'tapis' ? tapisHrEff() : 0); // tapis : cardio plus bas qu'en extérieur
-            const hrr = (hrC - 60) / (fc - 60);
+            const rest = +runnerProfile().fcRest || 60, hrr = (hrC - rest) / (fc - rest);
             if (hrr >= 0.55 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr);
           }
         });
@@ -15490,7 +15516,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const col = shown >= 70 ? 'text-emerald-300' : shown >= 40 ? 'text-amber-300' : 'text-rose-300';
       const g = appData.goal;
       if (home) home.classList.add('hidden'); // visible dans « Profil & objectif »
-      const tm = v => v > 0 ? fmtClock(v) : '–', pc = v => v != null ? `${Math.round(v)} %` : '–';
+      const gD = parseFloat(g.distanceKm) || 0, gP = g.hilly ? (parseFloat(g.pente) || 0) : 0;
+      const tm = v => { if (!(v > 0)) return '–'; const k = gD / (v / 60); return `${fmtClock(v)}<br><span style="font-size:10.5px;font-weight:700;color:#94a3b8">${formatSpeed(Math.round(k * 10) / 10).replace('.', ',')} km/h · VAP ${formatSpeed(Math.round(vapKmh(k, gP) * 10) / 10).replace('.', ',')}</span>`; }, pc = v => v != null ? `${Math.round(v)} %` : '–';
       const cNow = cp && cp.tNow, cDay = cp && cp.tMin;
       const rowT = (l, a, c2) => `<tr style="border-top:1px solid #1e293b"><td style="padding:8px 4px 8px 0;font-weight:700;color:#cbd5e1;line-height:1.25">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${a}</td><td style="text-align:center;font-weight:800;color:#c084fc">${c2}</td><td style="text-align:center;font-weight:900;color:#34d399">${cp ? '' : ''}${arguments.length ? '' : ''}</td></tr>`;
       void rowT;
@@ -17799,7 +17826,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     // ---------- Profil mis à jour par le coach après une séance : avant / après
     function profileSnapshot() {
       const est = estimateVma(), p = computeGoalProbability(), cp = appData.goalCoachProb, A = appData.coachSW;
-      return { vma: est && est.vma ? Math.round(est.vma * 10) / 10 : null, levels: Object.assign({}, runnerLevels()), pApp: p && !p.noData ? p.pDay : null, pCoach: cp ? cp.pDay : null, pCoachAt: cp ? cp.at : '', tapis: (() => { try { return tapisHrEff(); } catch (e) { return null; } })(), swAt: A ? A.at : '', forts: A && A.j ? A.j.forts || [] : [], faibles: A && A.j ? A.j.faibles || [] : [] };
+      return { fcMax: runnerFcMax(), vma: est && est.vma ? Math.round(est.vma * 10) / 10 : null, levels: Object.assign({}, runnerLevels()), pApp: p && !p.noData ? p.pDay : null, pCoach: cp ? cp.pDay : null, pCoachAt: cp ? cp.at : '', tapis: (() => { try { return tapisHrEff(); } catch (e) { return null; } })(), swAt: A ? A.at : '', forts: A && A.j ? A.j.forts || [] : [], faibles: A && A.j ? A.j.faibles || [] : [] };
     }
     let profUpdRunning = false;
     async function runProfileUpdates(before, o = {}) {
@@ -17816,6 +17843,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const after = profileSnapshot();
       const fT = sec => sec ? fmtTime(Math.round(sec)) : '–', items = [];
       const num = (l, a, b, u, better) => items.push({ l, a: a != null ? `${String(a).replace('.', ',')}${u}` : '–', b: b != null ? `${String(b).replace('.', ',')}${u}` : '–', d: a != null && b != null ? (b > a ? 1 : b < a ? -1 : 0) * (better || 1) : 0 });
+      if (before.fcMax !== after.fcMax) num('❤️ FC max', before.fcMax, after.fcMax, ' bpm', 0);
       num('🫁 VMA estimée (app)', before.vma, after.vma, ' km/h', 1);
       CHR_D.forEach(([d, l]) => { const a = before.levels[d], b = after.levels[d]; if (a || b) items.push({ l: `⏱️ ${l} (coach)`, a: fT(a) + (a ? ` · ${formatSpeed(Math.round(d / (a / 3600) * 10) / 10).replace('.', ',')} km/h` : ''), b: fT(b) + (b ? ` · ${formatSpeed(Math.round(d / (b / 3600) * 10) / 10).replace('.', ',')} km/h` : ''), d: a && b ? (b < a ? 1 : b > a ? -1 : 0) : 0 }); });
       num('🎯 Chances jour J (app)', before.pApp, after.pApp, ' %', 1);
