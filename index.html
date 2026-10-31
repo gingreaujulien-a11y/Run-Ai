@@ -102,7 +102,7 @@
     body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-circle #circleZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
     .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: wrap; gap: 3px; padding: 4px; margin: 6px 0 2px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 -8px 0 #050a14; scrollbar-width: none; }
     .pm-subtabs::-webkit-scrollbar { display: none; }
-    .pm-subtabs button { flex: 1 1 auto; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; font-weight: 800; background: transparent; color: #94a3b8; border: 0; white-space: nowrap; }
+    .pm-subtabs button { flex: 0 1 auto; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; font-weight: 800; background: transparent; color: #94a3b8; border: 0; white-space: nowrap; }
     .pm-subtabs button.on { background: var(--acc, #fbbf24); color: #111827; border-color: var(--acc, #fbbf24); }
     .pm-card { padding: 14px; border-radius: 20px; background: #0c1424; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 10px; }
     .pm-cap { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase; }
@@ -5926,7 +5926,7 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
       } catch (e) { showToast('Calcul impossible : ' + (e.message || e)); }
       renderTapisHr();
     }
-    function weakText() { try { const L = runnerLikes(), k = (L.faiblesK || []).map(x => (CAPA.find(c => c[0] === x) || [x, x])[1].toLowerCase()); const t = [k.join(', '), L.faibles].filter(Boolean).join(' ; '); return t ? `- Points faibles connus du coureur (à prendre en compte dans tes conseils) : ${t}` : ''; } catch (e) { return ''; } }
+    function weakText() { try { const L = runnerLikes(), k = (L.faiblesK || []).map(x => (CAPA.find(c => c[0] === x) || [x, x])[1].toLowerCase()).concat((L.capCustom || []).filter(c => c.st === 'w').map(c => c.l)); const t = [k.join(', '), L.faibles].filter(Boolean).join(' ; '); return t ? `- Points faibles connus du coureur (à prendre en compte dans tes conseils) : ${t}` : ''; } catch (e) { return ''; } }
     function tapisHrText() {
       const o0 = tapisHrOffset(), o = o0.src === 'fixed' ? Object.assign({}, o0, { off: null }) : o0;
       return `- TAPIS : le cardio y est souvent plus bas qu'en extérieur à vitesse affichée égale (pas de vent ni de relief, sol qui défile, vitesse du tapis parfois mal étalonnée). ${o.off != null ? `Chez ce coureur, à effort égal (même VAP), son cardio sur tapis est ${Math.abs(o.off)} bpm ${o.off >= 0 ? 'plus bas' : 'plus haut'} qu'en extérieur (${{ app: `mesuré par l'app à VAP égale sur ${o.nT} portions tapis et ${o.nE} dehors`, ia: 'estimé par le coach', manual: 'valeur donnée par le coureur' }[o.src] || ''}).` : `L'écart propre à ce coureur n'est pas encore mesuré : compte environ ${TAPIS_HR_DEFAULT} bpm de moins sur tapis.`} Ne t'enflamme donc pas sur un cardio bas sur tapis : ne conclus pas à un gros progrès de forme ou de VMA, et compare le cardio entre séances du même type (tapis avec tapis, extérieur avec extérieur).`;
@@ -6040,7 +6040,8 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
     function runnerLikesText() {
       const L = runnerLikes(), n = k => (SESS_TYPES_PREF.find(x => x[0] === k) || [k, k])[1].toLowerCase();
       const cn = k => (CAPA.find(x => x[0] === k) || [k, k])[1].toLowerCase();
-      const parts = [L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}${L.noteAime ? ` (${L.noteAime})` : ''}` : (L.noteAime ? `aime : ${L.noteAime}` : ''),
+      const cu = st => (L.capCustom || []).filter(c => c.st === st).map(c => c.l);
+      const parts = [cu('f').length ? `autres forces déclarées : ${cu('f').join(' ; ')}` : '', cu('w').length ? `autres faiblesses ou fragilités déclarées : ${cu('w').join(' ; ')}` : '',L.aime.length ? `aime / à l'aise sur : ${L.aime.map(n).join(', ')}${L.noteAime ? ` (${L.noteAime})` : ''}` : (L.noteAime ? `aime : ${L.noteAime}` : ''),
         (L.forts || []).length || L.fortsNote ? `points forts déclarés : ${(L.forts || []).map(cn).join(', ')}${L.fortsNote ? ` (${L.fortsNote})` : ''}` : '',
         (L.faiblesK || []).length ? `points faibles déclarés : ${L.faiblesK.map(cn).join(', ')}` : '', L.deteste.length ? `n'aime pas / moins à l'aise sur (à doser, sans forcer) : ${L.deteste.map(n).join(', ')}` : '', L.note ? `précisions : ${L.note}` : '', L.faibles ? `points faibles connus du coureur (à prendre en compte dans les conseils et le plan) : ${L.faibles}` : ''].filter(Boolean);
       return parts.length ? `Ressenti du coureur sur les types de séances : ${parts.join(' ; ')}. Le but est de progresser en prenant du plaisir : ne jamais imposer souvent une séance qu'il déteste, préférer une variante qu'il tolère mieux.` : '';
@@ -6049,20 +6050,47 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
     function renderLikes() { const b = document.getElementById('likesBox'); if (b) { b.innerHTML = likesCardHtml(); try { applySubTabs(b.closest('.pm-panel')); } catch (e) { } } }
     const CAPA = [['endurance', 'Endurance'], ['vitesse', 'Vitesse'], ['vma', 'VMA / fractionné'], ['seuil', 'Seuil / tempo'], ['montee', 'Montées'], ['descente', 'Descentes'], ['recup', 'Récupération'], ['allure', 'Régularité d\'allure'], ['gestion', 'Gestion de l\'effort'], ['force', 'Force musculaire'], ['mental', 'Mental'], ['technique', 'Foulée / technique'], ['chaleur', 'Chaleur'], ['blessure', 'Fragilité / blessures']];
     function capaToggle(cat, k) { const L = runnerLikes(); if (!Array.isArray(L.forts)) L.forts = []; if (!Array.isArray(L.faiblesK)) L.faiblesK = []; const o = cat === 'forts' ? 'faiblesK' : 'forts'; L[cat] = L[cat].includes(k) ? L[cat].filter(x => x !== k) : L[cat].concat(k); L[o] = L[o].filter(x => x !== k); saveAppData(); renderLikes(); }
+    // Critères (types de séance + capacités) : force / neutre / faiblesse
+    function capItems() {
+      const L = runnerLikes(); const base = SESS_TYPES_PREF.map(([k, l]) => ({ k, l, kind: 's' })).concat(CAPA.filter(([k]) => !['vitesse', 'seuil', 'endurance'].includes(k)).map(([k, l]) => ({ k, l, kind: 'c' })));
+      const hid = L.capHidden || [];
+      return base.filter(x => !hid.includes(x.k)).concat((L.capCustom || []).map(c => ({ k: c.id, l: c.l, kind: 'u' })));
+    }
+    function capMigrate() {
+      const L = runnerLikes();
+      if (L.capV) return L;
+      L.capV = 1; if (!Array.isArray(L.capCustom)) L.capCustom = [];
+      [['noteAime', 'f'], ['note', 'w'], ['fortsNote', 'f'], ['faibles', 'w']].forEach(([fld, st]) => { const t = String(L[fld] || '').trim(); if (t) { L.capCustom.push({ id: 'u' + Date.now() + fld, l: t.slice(0, 120), st }); L[fld] = ''; } });
+      return L;
+    }
+    function capState(L, it) {
+      if (it.kind === 'u') return ((L.capCustom || []).find(c => c.id === it.k) || {}).st || 'n';
+      if (it.kind === 's') return L.aime.includes(it.k) ? 'f' : L.deteste.includes(it.k) ? 'w' : 'n';
+      return (L.forts || []).includes(it.k) ? 'f' : (L.faiblesK || []).includes(it.k) ? 'w' : 'n';
+    }
+    function capSet(k, st) {
+      const L = capMigrate(); const it = capItems().find(x => x.k === k); if (!it) return;
+      if (it.kind === 'u') { const c = L.capCustom.find(x => x.id === k); if (c) c.st = st; }
+      else if (it.kind === 's') { L.aime = L.aime.filter(x => x !== k); L.deteste = L.deteste.filter(x => x !== k); if (st === 'f') L.aime.push(k); if (st === 'w') L.deteste.push(k); }
+      else { if (!Array.isArray(L.forts)) L.forts = []; if (!Array.isArray(L.faiblesK)) L.faiblesK = []; L.forts = L.forts.filter(x => x !== k); L.faiblesK = L.faiblesK.filter(x => x !== k); if (st === 'f') L.forts.push(k); if (st === 'w') L.faiblesK.push(k); }
+      saveAppData(); renderLikes();
+    }
+    function capAdd() { const el = document.getElementById('capNew'); const t = el ? el.value.trim() : ''; if (!t) { showToast('Écris le critère à ajouter'); return; } const L = capMigrate(); L.capCustom.push({ id: 'u' + Date.now(), l: t.slice(0, 120), st: 'n' }); saveAppData(); renderLikes(); }
+    function capDel(k) { const L = capMigrate(); const it = capItems().find(x => x.k === k); if (!it) return; if (it.kind === 'u') L.capCustom = L.capCustom.filter(c => c.id !== k); else { capSet(k, 'n'); L.capHidden = (L.capHidden || []).concat(k); } saveAppData(); renderLikes(); }
+    function capRestore() { const L = capMigrate(); L.capHidden = []; saveAppData(); renderLikes(); }
     function likesCardHtml() {
-      const L = runnerLikes(); if (!Array.isArray(L.forts)) L.forts = []; if (!Array.isArray(L.faiblesK)) L.faiblesK = [];
-      const esc = x => plEsc(String(x || ''));
-      const chip = (on, js, l, col) => `<button type="button" onclick="${js}" style="min-height:32px;padding:0 10px;border-radius:16px;font-size:12px;font-weight:800;${on ? `background:${col};color:#04121f;border:1px solid ${col}` : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
-      const chips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${SESS_TYPES_PREF.map(([k, l]) => chip(L[cat].includes(k), `likesToggle('${cat}','${k}')`, l, '#38bdf8')).join('')}</div>`;
-      const cchips = cat => `<div style="display:flex;flex-wrap:wrap;gap:6px">${CAPA.map(([k, l]) => chip(L[cat].includes(k), `capaToggle('${cat}','${k}')`, l, cat === 'forts' ? '#34d399' : '#fb923c')).join('')}</div>`;
-      const ttl = t => `<span style="font-size:13px;font-weight:800;color:#e2e8f0;margin-top:4px">${t}</span>`;
-      const ta = (id, field, ph) => `<textarea id="${id}" rows="2" placeholder="${ph}" onchange="runnerLikes().${field}=this.value.trim();saveAppData()" class="pm-in" style="font-size:13px;min-height:52px">${esc(L[field])}</textarea>`;
-      return `<div class="pm-card" data-sub="Préférence">
-        ${ttl("👍 J'aime / je suis à l'aise")}${chips('aime')}${ta('likesNoteAime', 'noteAime', 'Précisions (ex. j\'adore les côtes dehors)')}
-        ${ttl("👎 Je n'aime pas / je suis moins à l'aise")}${chips('deteste')}${ta('likesNote', 'note', 'Précisions (ex. je déteste le tapis en pente)')}</div>
-        <div class="pm-card" data-sub="Capacités">
-        ${ttl('💪 Mes points forts')}${cchips('forts')}${ta('likesStrong', 'fortsNote', 'Précisions (ex. je tiens bien l\'allure sur la durée)')}
-        ${ttl('🎯 Mes points faibles')}${cchips('faiblesK')}${ta('likesWeak', 'faibles', 'Précisions (ex. je crampe après 1 h, genou fragile en descente…)')}</div>`;
+      const L = capMigrate();
+      const cols = [['f', '💪 Force', '#34d399'], ['n', 'Neutre', '#64748b'], ['w', '🎯 Faiblesse', '#fb923c']];
+      const rows = capItems().map(it => { const st = capState(L, it);
+        return `<div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(3,38px) 26px;gap:6px;align-items:center;padding:6px 0;border-top:1px solid #1e293b">
+          <span style="font-size:13.5px;font-weight:800;color:${st === 'f' ? '#6ee7b7' : st === 'w' ? '#fdba74' : '#e2e8f0'};line-height:1.25">${plEsc(it.l)}</span>
+          ${cols.map(([v, , c]) => `<button type="button" aria-label="${v}" onclick="capSet('${it.k}','${v}')" style="height:34px;border-radius:10px;border:2px solid ${st === v ? c : '#334155'};background:${st === v ? c : 'transparent'};display:flex;align-items:center;justify-content:center"><span style="width:12px;height:12px;border-radius:6px;background:${st === v ? '#0b1020' : c};opacity:${st === v ? 1 : .6}"></span></button>`).join('')}
+          <button type="button" aria-label="Supprimer" onclick="capDel('${it.k}')" style="height:30px;border-radius:8px;border:none;background:transparent;color:#64748b;font-size:16px">✕</button></div>`; }).join('');
+      return `<div class="pm-card" data-sub="Forces / faiblesses" style="gap:4px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(3,38px) 26px;gap:6px;align-items:end;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;padding-bottom:4px"><span></span>${cols.map(([, l, c]) => `<span style="color:${c};text-align:center;line-height:1.1">${l.replace(' ', '<br>')}</span>`).join('')}<span></span></div>
+        ${rows}
+        <div style="display:flex;gap:6px;margin-top:8px"><input id="capNew" class="pm-in" placeholder="Ajouter (ex. genou fragile en descente)" style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')capAdd()"><button type="button" onclick="capAdd()" style="flex:none;padding:0 14px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:14px">+ Ajouter</button></div>
+        ${(L.capHidden || []).length ? `<button type="button" onclick="capRestore()" style="align-self:flex-start;margin-top:6px;font-size:12px;font-weight:800;color:#94a3b8;background:none;border:none;text-decoration:underline">↺ Réafficher les ${L.capHidden.length} critère${L.capHidden.length > 1 ? 's' : ''} supprimé${L.capHidden.length > 1 ? 's' : ''}</button>` : ''}</div>`;
     }
     function strengthsCardHtml() {
       const L = runnerLikes(), A = appData.coachSW;
@@ -15275,7 +15303,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       c[i] = n; for (let k = i + 1; k < 4; k++) if (c[k] <= c[k - 1]) c[k] = c[k - 1] + 1; for (let k = i - 1; k >= 0; k--) if (c[k] >= c[k + 1]) c[k] = c[k + 1] - 1;
       runnerProfile().hrZoneB = c; saveAppData(); renderRunnerBody();
     }
-    function resetZones() { delete runnerProfile().hrZoneB; saveAppData(); renderRunnerBody(); showToast('Zones recalculées depuis la FC max'); }
+    function resetZones() { try { document.activeElement && document.activeElement.blur(); } catch (e) { } delete runnerProfile().hrZoneB; saveAppData(); renderRunnerBody(); showToast('Zones recalculées depuis la FC max'); }
     const ZONE_COLORS = { Z1: '#64748b', Z2: '#38bdf8', Z3: '#34d399', Z4: '#fb923c', Z5: '#f43f5e' }; // mêmes couleurs que la barre et les graphiques
     function zoneColor(hr) { return ZONE_COLORS[zoneOf(hr)] || '#fda4af'; }
     function zoneOf(hr) {
@@ -15434,7 +15462,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           if (s.avgHr && fc) {
             const hrC = s.avgHr + (h.type === 'tapis' ? tapisHrEff() : 0); // tapis : cardio plus bas qu'en extérieur
             const rest = +runnerProfile().fcRest || 60, hrr = (hrC - rest) / (fc - rest);
-            if (hrr >= 0.55 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr);
+            if (hrr >= 0.72 && hrr <= 1.02) hrEst.push(s.avgKmh / hrr); // trop facile : l'extrapolation jusqu'à la VMA serait trop optimiste
           }
         });
       });
@@ -15446,11 +15474,23 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const lbMax = Math.max(...lb);
       let vma;
       if (hrEst.length >= 2) {
-        const top = hrEst.sort((a, b) => b - a).slice(0, 5);
-        vma = Math.max(top[Math.floor(top.length / 2)], lbMax);
+        const srt = hrEst.slice().sort((a, b) => a - b), med = srt[Math.floor(srt.length / 2)];
+        vma = Math.min(Math.max(med, lbMax), lbMax * 1.12); // jamais très au-dessus de ce que tu as réellement couru
       } else vma = lbMax * 1.05; // séances d'entraînement : effort pas maximal
       if (vL) { vma = (vma + vL) / 2; n += 2; }
       return { vma, n, withHr: hrEst.length };
+    }
+    // Meilleures vitesses réellement tenues (portion glissante de la trace), par durée
+    const _tbCache = new Map();
+    function trackBestC(h, win) { const k = h.id + '|' + win + '|' + ((h.track || []).length); if (!_tbCache.has(k)) _tbCache.set(k, trackBest(h, win)); return _tbCache.get(k); }
+    function bestSustained(win, beforeISO, days = 90) {
+      const lim = new Date(beforeISO ? beforeISO + 'T23:59:00' : Date.now()); const from = new Date(lim); from.setDate(from.getDate() - days); const fromISO = toISODateLocal(from), toISO = toISODateLocal(lim);
+      let b = null; runHistory().forEach(h => { if (!h._iso || h._iso < fromISO || h._iso > toISO) return; const v = trackBestC(h, win); if (v && (!b || v > b.v)) b = { v, iso: h._iso, tap: h.type === 'tapis' }; }); return b;
+    }
+    function bestEffortsText() {
+      const W = [[60, '1 min'], [180, '3 min'], [360, '6 min'], [600, '10 min'], [1200, '20 min'], [2400, '40 min']];
+      const L = W.map(([w, l]) => { const b = bestSustained(w, null, 120); return b ? `${l} : ${formatSpeed(b.v).replace('.', ',')} km/h (${fmtDateShort(b.iso)}${b.tap ? ', tapis' : ''})` : ''; }).filter(Boolean);
+      return L.length ? `Meilleures vitesses réellement tenues ces 4 derniers mois (mesurées par l'app sur les traces) : ${L.join(' ; ')}.` : "Pas de vitesse tenue mesurée sur traces : base-toi sur les séances.";
     }
     function goalKey() { const g = appData.goal || {}; return `${parseFloat(g.distanceKm) || 0}|${parseFloat(g.durationMin) || 0}|${g.date || ''}`; }
     function computeGoalProbability(asOf) {
@@ -15461,7 +15501,9 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       if (!est) return { noData: true };
       const vGoal = D / (T / 60);
       const f = Math.max(0.75, Math.min(0.97, 0.95 - 0.0722 * Math.log(D / 5)));
-      const vNow = est.vma * f;
+      let vNow = est.vma * f;
+      // Plafond réaliste : pas plus de 5 % au-dessus de la meilleure vitesse déjà tenue sur une durée comparable
+      { const tSec = D / vNow * 3600, win = Math.max(180, Math.min(2400, Math.round(tSec * 0.6 / 60) * 60)); const b = bestSustained(win, asOf, 120); if (b && b.v > 5) { const cap = b.v * 1.05; if (vNow > cap) vNow = cap; } }
       const gd = parseGoalDate(g.date);
       const ref = asOf ? new Date(asOf + 'T23:59:00') : new Date();
       const weeks = gd ? Math.max(0, (gd - ref) / (7 * 864e5)) : 0;
@@ -15629,7 +15671,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const hist = (appData.history || []).slice(0, 10).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${h.feeling}${h.seg && h.seg.length ? ` ; ${segStatsText(h.seg).replace(/\n/g, ' | ')}` : ''}`).join('\n') || '- aucune';
       const prompt = `Tu es un entraîneur de course à pied. ${coachToneText()}
 Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${g.date}.
-Calcul de l'app : ${p && !p.noData ? `VMA estimée ${p.vma.toFixed(1)} km/h, temps prédit aujourd'hui ${formatMinSec(p.tNow)}, le jour J ${formatMinSec(p.tDay)}, probabilité ${p.pDay} % (aujourd'hui ${p.pNow} %), fiabilité ${p.conf}` : 'pas assez de données'}.
+${bestEffortsText()}
+Fais ta PROPRE estimation, de façon indépendante (aucun calcul de l'app ne t'est donné) : pars uniquement des vitesses réellement tenues et de leur durée. Un chrono « aujourd'hui » ne peut pas supposer une vitesse nettement supérieure (plus de 5 %) à ce que le coureur a déjà tenu sur une durée comparable ; s'il n'a jamais couru aussi longtemps à cette vitesse, sois prudent.
 Profil : ${runnerProfile().sex === 'F' ? 'femme' : 'homme'}, ${runnerProfile().age || '?'} ans, ${runnerProfile().weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}. Niveau actuel : ${runnerLevelsText()}.
 Séances récentes :
 ${hist}
