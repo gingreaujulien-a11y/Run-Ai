@@ -76,6 +76,7 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    .pm-tabs6 .pm-tab { font-size: 12.5px !important; padding-left: 0 !important; padding-right: 0 !important; }
     .pm-autosave { flex: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); text-align: center; font-size: 12px; font-weight: 700; color: #64748b; transition: color .3s; }
     .pm-autosave.on { color: #34d399; }
     .val-t2 { display: none; }
@@ -292,6 +293,7 @@
     <button type="button" id="homeChatBig" onclick="openCoachChat()" class="w-full rounded-2xl font-extrabold text-[15px] active:scale-95 flex items-center justify-center gap-2" style="min-height:50px;background:rgba(139,92,246,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Discuter avec le coach</button>
     <div id="homeRecovery" class="hidden"></div>
     <div id="homeLastRun" class="hidden"></div>
+    <button type="button" id="homeProfUpd" onclick="openProfUpdModal()" class="hidden" style="min-height:46px;border-radius:16px;border:1px solid rgba(34,211,238,.5);background:rgba(34,211,238,.1);color:#a5f3fc;font-weight:900;font-size:14px"></button>
     <div id="homeFeelHost"></div>
 
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
@@ -781,12 +783,13 @@
         <h2 class="pm-title">Mon profil</h2>
         <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <div class="pm-tabs" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+      <div class="pm-tabs pm-tabs6" style="grid-template-columns:repeat(6,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
         <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
+        <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')">Séance</button>
+        <button type="button" class="pm-tab" data-t="stats" onclick="setPmTab('goalModal','stats')">Stats</button>
         <button type="button" class="pm-tab" data-t="progres" onclick="setPmTab('goalModal','progres')">Progrès</button>
         <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')">Plan</button>
-        <button type="button" class="pm-tab" data-t="pref" onclick="setPmTab('goalModal','pref')">Préf.</button>
       </div>
       <div class="pm-body custom-scroll">
 
@@ -794,7 +797,6 @@
         <div class="pm-panel" data-p="moi">
           <div class="pm-card">
             <span class="pm-cap">Identité</span>
-            <div class="pm-lbl">Mon niveau de coureur<div id="runnerTierChips" class="grid grid-cols-2 gap-1.5"></div></div>
             <div class="grid grid-cols-2 gap-2">
               <label class="pm-lbl">Prénom<input id="firstNameInput" type="text" autocomplete="given-name" maxlength="20" placeholder="ex. Julien" class="pm-in"></label>
               <div class="pm-lbl">Sexe<div id="sexChips" class="flex gap-1"><button type="button" data-s="H" onclick="setRunnerSex('H')">Homme</button><button type="button" data-s="F" onclick="setRunnerSex('F')">Femme</button></div></div>
@@ -804,6 +806,7 @@
               <label class="pm-lbl">Taille (cm)<input id="heightInput" type="number" min="120" max="230" class="pm-in c"></label>
               <label class="pm-lbl">Poids (kg)<input id="weightInput" type="number" min="30" max="200" step="0.5" class="pm-in c"></label>
             </div>
+            <div class="pm-lbl">Mon niveau de coureur<div id="runnerTierChips" class="grid grid-cols-1 gap-1.5"></div></div>
           </div>
 
           <div class="pm-card">
@@ -819,20 +822,16 @@
           </div>
 
 
-          <div class="pm-card">
-            <span class="pm-cap">Allures et routine</span>
-            <div class="flex items-center justify-between gap-3">
-              <div class="pm-rt">Endurance fondamentale (km/h)<small>Vitesse de l'échauffement et du retour au calme</small></div>
-              <input type="number" id="efInput" step="0.5" min="4" max="18" class="pm-in c" style="width:96px">
-            </div>
+          <input type="hidden" id="efInput">
+          <div id="likesBox" style="display:contents"></div>
+          <div class="pm-card" data-sub="Matériel">
+            <span class="pm-cap">🏃 Mon matériel</span>
+            <span class="text-[12px] text-slate-400 -mt-1">Le coach en tient compte pour créer ton plan et tes séances (jamais au-delà de ce que ton tapis permet).</span>
             <div class="grid grid-cols-2 gap-2">
-              <label class="pm-lbl">Échauffement (min)<input id="warmInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
-              <label class="pm-lbl">Retour au calme (min)<input id="coolInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
+              <label class="pm-lbl">Pente max du tapis (%)<input id="ppPente" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 15"></label>
+              <label class="pm-lbl">Vitesse max du tapis (km/h)<input id="ppVit" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 18"></label>
+              <label class="pm-lbl">Côtes dehors ?<select id="ppCotes" onchange="readPlanPrefs()" class="pm-in"><option value="">—</option><option value="oui">Oui</option><option value="non">Non</option></select></label>
             </div>
-            <span class="text-[11px] text-slate-500 -mt-1">Appliqués à toutes tes séances à venir (sauf celles adaptées par le coach).</span>
-            <div class="pm-row"><div class="pm-rt">Mise à jour par le coach<small>Endurance et niveau, après chaque séance</small></div><input type="checkbox" id="efAuto" class="sw"></div>
-            <div id="efNote" class="text-[12px] text-slate-400"></div>
-            <button type="button" onclick="computeEfWithAI(true)" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour avec le coach</button>
           </div>
         </div>
 
@@ -868,22 +867,32 @@
           </div>
         </div>
 
+        <!-- ===== SÉANCE ===== -->
+        <div class="pm-panel pm-off" data-p="seance">
+          <div class="pm-card" data-sub="Échauffement">
+            <span class="pm-cap">⏱️ Échauffement et retour au calme</span>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="pm-lbl">Échauffement (min)<input id="warmInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
+              <label class="pm-lbl">Retour au calme (min)<input id="coolInput" type="number" min="0" max="40" step="1" class="pm-in c"></label>
+            </div>
+            <span class="text-[12px] text-slate-400 leading-snug">Appliqués à tes séances à venir et utilisés par le coach quand il crée ton plan ou une séance. Tu peux toujours les changer dans une séance avant de la lancer. Le coach choisit la vitesse selon la séance.</span>
+          </div>
+          <div class="pm-card" data-sub="Après la séance">
+            <span class="pm-cap">🧠 Après chaque séance</span>
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">Le coach met à jour mon profil<small>Chronos estimés, chances, points forts et faibles, écart tapis (si mode coach)</small></div><input type="checkbox" id="efAuto" class="sw"></div>
+            <div id="efNote" class="text-[12px] text-slate-400"></div>
+            <button type="button" onclick="runProfileUpdates(null, { manual: true })" class="pm-btn" style="border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1);color:#a5f3fc">🧠 Mettre à jour maintenant</button>
+          </div>
+          <div class="pm-card" data-sub="Comparer" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span>
+            <span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span>
+            <button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer</button></div>
+        </div>
+
+        <!-- ===== STATS ===== -->
+        <div class="pm-panel pm-off" data-p="stats" id="statsPanel"></div>
+
         <!-- ===== PROGRÈS ===== -->
         <div class="pm-panel pm-off" data-p="progres" id="progressPanel"></div>
-
-        <!-- ===== PRÉFÉRENCES ===== -->
-        <div class="pm-panel pm-off" data-p="pref">
-          <div id="likesBox" style="display:contents"></div>
-          <div class="pm-card" data-sub="Matériel">
-            <span class="pm-cap">🏃 Mon matériel</span>
-            <span class="text-[12px] text-slate-400 -mt-1">Le coach en tient compte pour créer ton plan et tes séances (jamais au-delà de ce que ton tapis permet).</span>
-            <div class="grid grid-cols-2 gap-2">
-              <label class="pm-lbl">Pente max du tapis (%)<input id="ppPente" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 15"></label>
-              <label class="pm-lbl">Vitesse max du tapis (km/h)<input id="ppVit" type="number" inputmode="decimal" onchange="readPlanPrefs()" class="pm-in c" placeholder="ex. 18"></label>
-              <label class="pm-lbl">Côtes dehors ?<select id="ppCotes" onchange="readPlanPrefs()" class="pm-in"><option value="">—</option><option value="oui">Oui</option><option value="non">Non</option></select></label>
-            </div>
-          </div>
-        </div>
 
         <!-- ===== PLAN ===== -->
         <div class="pm-panel pm-off" data-p="plan">
@@ -5621,6 +5630,7 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       };
 
       if (newEntry.vmaTest) { runnerProfile().vmaTest = { v: newEntry.vmaTest, at: todayISO(), proto: (sess.test || {}).proto }; showToast(`🧪 VMA mesurée : ${formatSpeed(newEntry.vmaTest).replace('.', ',')} km/h`); }
+      let profBefore = null; try { profBefore = profileSnapshot(); } catch (e) { }
       appData.history.unshift(newEntry);
       appData.audioSettings.youtube = null; // la vidéo ne repart pas sur la séance suivante
       appData.audioSettings.readText = null;
@@ -5632,11 +5642,10 @@ Réponds uniquement en JSON : {"avis":"ta réponse, 2 à 6 phrases courtes en tu
       if (timerState.finished && getGeminiKey() && !lastAnalysis) { try { analyzeSessionWithAI({ auto: true, saveTo: newEntry.id }); } catch (e) { } }
       closeValidationModal();
       showToast(timerState.finished && getGeminiKey() && !lastAnalysis ? "Séance validée ✓ · le coach analyse ta séance, il te la commente dans un instant" : "Séance validée avec succès ! ✓");
-      if (runnerProfile().efAuto !== false) setTimeout(() => computeEfWithAI(false), 1500);
+      if (timerState.finished || newEntry.km > 0) setTimeout(() => { try { runProfileUpdates(profBefore); } catch (e) { } }, 2500);
       { const s0 = getActiveSession(); delete s0.extensionOffer; }
       recordGoalProbability();
       renderGoalProbability();
-      autoGoalCoachAfterRun();
       clearLiveRun();
       if (timerState.finished) { freeSession = null; reloadChrono(); showHome(); }
     }
@@ -6053,8 +6062,8 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
         <button type="button" id="swBtn" onclick="runStrengthsAnalysis()" style="margin-top:6px;min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:14px">🧠 ${A ? "Refaire l'analyse du coach" : 'Analyse du coach : mes points forts et faibles'}</button>
         <div id="swOut">${res}</div></div>`;
     }
-    async function runStrengthsAnalysis() {
-      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
+    async function runStrengthsAnalysis(o = {}) {
+      if (!getGeminiKey()) { if (!o.silent) showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
       const b = document.getElementById('swBtn'); if (b) { b.disabled = true; b.textContent = '⏳ Le coach étudie tes séances…'; }
       const H = (appData.history || []).filter(h => !h.cross).slice(0, 40);
       const M = H.map(h => sessMetrics(h)).filter(Boolean);
@@ -6080,7 +6089,7 @@ Donne 2 ou 3 axes de travail.`;
         if (!j || !Array.isArray(j.forts)) throw new Error('réponse illisible');
         appData.coachSW = { at: todayISO(), j }; saveAppData();
         rememberChat('profil', 'points forts et faibles', 'coach', `Points forts : ${(j.forts || []).join(' ; ')}. À travailler : ${(j.faibles || []).join(' ; ')}.`);
-      } catch (e) { showToast('Analyse impossible : ' + (e.message || e)); }
+      } catch (e) { if (!o.silent) showToast('Analyse impossible : ' + (e.message || e)); }
       renderProgress();
     }
     function addSwToPlan(i) {
@@ -6098,9 +6107,9 @@ Donne 2 ou 3 axes de travail.`;
     }
     function renderProgress() {
       renderProgressInner();
-      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', strengthsCardHtml() + `<div class="pm-card" data-sub="Comparer" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span>
-        <span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span>
-        <button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer</button></div>`);
+      const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', strengthsCardHtml());
+      // Records et km / semaine → onglet Stats
+      { const st = document.getElementById('statsPanel'); if (st && box) { st.innerHTML = ''; box.querySelectorAll(':scope > [data-sub="Records"], :scope > [data-sub="Km / semaine"]').forEach(el => st.appendChild(el)); applySubTabs(st); } }
       applySubTabs(box);
     }
     function renderProgressInner() {
@@ -7119,7 +7128,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function pmBlockLabel(b) {
       if (b.dataset && b.dataset.sub) return b.dataset.sub;
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
-      const t = c.textContent.trim(); return PM_SUB_LBL[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
+      const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
     function applySubTabs(panel) {
       if (!panel) return;
@@ -7146,8 +7155,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       m.querySelectorAll('.pm-panel').forEach(p => p.classList.toggle('pm-off', p.dataset.p !== tab));
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
       if (tab === 'objectif') { renderGoalProbability(); renderGoalSummary(); }
-      if (tab === 'progres') renderProgress();
-      if (tab === 'pref') { renderLikes(); try { fillPlanPrefs(); } catch (e) { } }
+      if (tab === 'progres' || tab === 'stats') renderProgress();
+      if (tab === 'moi') { renderLikes(); try { fillPlanPrefs(); } catch (e) { } }
       if (tab === 'plan') renderPlanSummary();
       if (modalId === 'goalModal') applyAllSubTabs();
     }
@@ -7339,6 +7348,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const P = planPrefs(), J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
       const out = [];
       if (P.nbSeances) out.push(`${P.nbSeances} séances de course par semaine souhaitées`);
+      { const r0 = runnerProfile(); if (typeof r0.warmMin === 'number') out.push(`échauffement de ${r0.warmMin} min`); if (typeof r0.coolMin === 'number') out.push(`retour au calme de ${r0.coolMin} min`); }
       if (P.durSem) out.push(`séance de ${P.durSem} min maximum en semaine`);
       if (P.durWe) out.push(`jusqu'à ${P.durWe} min le week-end`);
       if (P.jourLongue !== undefined && P.jourLongue !== '') out.push(`sortie longue le ${J[+P.jourLongue]}`);
@@ -11170,6 +11180,15 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!ar.start && runData && runData.gps && runData.gps.lat) ar.start = { lat: runData.gps.lat, lon: runData.gps.lon, label: 'ma position' };
       document.getElementById('autoRouteModal').classList.remove('hidden');
       const sp = document.getElementById('arSpeed'); if (!sp.value) sp.value = String(Math.round(runnerEF() * 2) / 2);
+      ar.lockMin = 0;
+      try {
+        const cm = document.getElementById('configModal');
+        if (cm && !cm.classList.contains('hidden') && typeof readModalSessionValues === 'function') {
+          const tmp = Object.assign({}, cfgSess(), readModalSessionValues(), { type: 'exterieur', route: null, kind: cfgKind, free: false });
+          const tot = Math.round(computeSessionTotalMin(tmp));
+          if (tot >= 10 && cfgKind !== 'libre') { ar.lockMin = tot; ar.goal = 'time'; document.getElementById('arMin').value = String(tot); }
+        }
+      } catch (e) { }
       routeModeSync(); arRender();
       if (!ar.start) arUsePos(true);
     }
@@ -11210,11 +11229,12 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       else if (!fromMap && mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     function closeAutoRoute() { arCmpClear(); arBigClose(); document.getElementById('autoRouteModal').classList.add('hidden'); }
-    function arStep(id, d) { const i = document.getElementById(id), lim = { arKm: [1, 60], arMin: [10, 360], arSpeed: [4, 25] }[id]; i.value = Math.max(lim[0], Math.min(lim[1], (parseFloat(String(i.value).replace(',', '.')) || 0) + d)); }
+    function arStep(id, d) { if (ar && ar.lockMin && (id === 'arMin' || id === 'arKm')) return; const i = document.getElementById(id), lim = { arKm: [1, 60], arMin: [10, 360], arSpeed: [4, 25] }[id]; i.value = Math.max(lim[0], Math.min(lim[1], (parseFloat(String(i.value).replace(',', '.')) || 0) + d)); }
     function arRender() {
       if (!ar) return;
       const segBtn = (on, js, html) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:rgba(167,139,250,.2);border:2px solid #a78bfa;color:#fff' : 'background:#0f172a;border:1px solid #1e293b;color:#94a3b8'}">${html}</button>`;
-      document.getElementById('arGoal').innerHTML = segBtn(ar.goal === 'km', "ar.goal='km';arRender()", '📏 Une distance') + segBtn(ar.goal === 'time', "ar.goal='time';arRender()", '⏱ Une durée max');
+      document.getElementById('arGoal').innerHTML = ar.lockMin ? `<div style="grid-column:1/-1;padding:10px 12px;border-radius:12px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd;font-size:13px;font-weight:800">⏱ Durée de la séance prévue : ${ar.lockMin} min (calculée d'après la séance, non modifiable ici)</div>` : segBtn(ar.goal === 'km', "ar.goal='km';arRender()", '📏 Une distance') + segBtn(ar.goal === 'time', "ar.goal='time';arRender()", '⏱ Une durée max');
+      { const mi = document.getElementById('arMin'); if (mi) { mi.disabled = !!ar.lockMin; mi.style.opacity = ar.lockMin ? .6 : 1; if (ar.lockMin) mi.value = String(ar.lockMin); } }
       document.getElementById('arKmRow').classList.toggle('hidden', ar.goal !== 'km'); document.getElementById('arMinRow').classList.toggle('hidden', ar.goal !== 'time');
       const rng = ['< 1 %', '1 à 2,5 %', '2,5 à 4 %', '> 4 %'];
       document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe', '']].concat(DIFF_LV.map((d, i) => [i, d[0], capFirst(DIFF_TERRAIN[i]), rng[i]])).map(([v, ic, t, r]) => segBtn(ar.diff === v, `ar.diff=${v};arRender()`, `${ic}<br><span style="font-size:11px">${t}</span>${r ? `<br><span style="font-size:10px;opacity:.75">${r}</span>` : ''}`)).join('');
@@ -11353,8 +11373,12 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       return out;
     }
     async function runPool(tasks, n) { const res = []; let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < tasks.length) { const k = i++; try { res[k] = await tasks[k](); } catch (e) { res[k] = null; } } })); return res; }
+    // Attend au plus « ms » : renvoie la valeur de repli si c'est trop long (le calcul continue en fond, ignoré)
+    function withDeadline(pr, ms, fb) { return Promise.race([Promise.resolve(pr).catch(() => fb), sleep(Math.max(0, ms)).then(() => fb)]); }
+    async function runPoolUntil(tasks, n, until) { const res = []; let i = 0; await withDeadline(Promise.all(Array.from({ length: n }, async () => { while (i < tasks.length && Date.now() < until) { const k = i++; try { res[k] = await tasks[k](); } catch (e) { res[k] = null; } } })), until - Date.now(), null); return res; }
     async function arGenerate() {
       if (!ar) return;
+      const T0 = Date.now(), left = ms => Math.max(800, Math.min(ms, 9800 - (Date.now() - T0)));
       if (!ar.start) { reStatusAr('Choisis d\'abord un départ', true); return; }
       const num = id => parseFloat(String(document.getElementById(id).value).replace(',', '.'));
       const v = Math.max(4, num('arSpeed') || runnerEF()), timeMode = ar.goal === 'time';
@@ -11376,7 +11400,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           reStatusAr('Étape 1/3 · relief autour du départ…');
           const R = km / 2, dirs = Array.from({ length: 16 }, (_, i) => i * Math.PI / 8);
           const pts = []; dirs.forEach(th => [0.17, 0.33, 0.5, 0.67, 0.83, 1].forEach(f => pts.push(geoOffset(S, R * 1000 * 0.8 * f, th))));
-          const ez = await meteoEles([S].concat(pts), { maxWait: 30000 });
+          const ez = await withDeadline(meteoEles([S].concat(pts), { maxWait: 2500 }), left(2500), null);
           const relief = dirs.map((th, i) => { if (!ez) return null; let up = 0, prev = ez[0]; for (let k = 0; k < 6; k++) { const e = ez[1 + i * 6 + k]; up += Math.abs(e - prev); prev = e; } return up / 2 / (R * 0.8 * 10); }); // ≈ pente moyenne du D+ d'un aller-retour (%)
           const order = dirs.map((th, i) => ({ th, i, r: relief[i] })).sort((a, b) => (terrainGap(a.r) - terrainGap(b.r)) || (Math.random() - 0.5));
           const pick = order.slice(0, 8);
@@ -11397,7 +11421,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
             const c = mk(co, w, null, 'loop'); c.th = o.th; c.reuse = routeReuse(co, true); return c;
           }));
           let done = 0;
-          const res = await runPool(tasks.map(t => async () => { const x = await t(); done++; reStatusAr(`Étape 2/3 · calcul des tracés ${done}/${tasks.length}…`); return x; }), 3);
+          const res = await runPoolUntil(tasks.map(t => async () => { const x = await t(); done++; reStatusAr(`Étape 2/3 · calcul des tracés ${done}/${tasks.length}…`); return x; }), 5, T0 + 6000);
           res.filter(Boolean).forEach(c => cands0.push(c));
         } else {
           // A → B : itinéraire direct + détours de chaque côté
@@ -11415,29 +11439,31 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         // 3) Profil de chaque tracé (regroupé), classement, puis profil précis des meilleurs
         reStatusAr('Étape 3/3 · relief des tracés…');
         const S2 = cands0.map(c => reSamples(c.coords, 30)), allP = [].concat(...S2);
-        const ez2 = await meteoEles(allP, { maxWait: 30000 }); let k = 0;
+        const ez2 = await withDeadline(meteoEles(allP, { maxWait: 2500 }), left(2500), null); let k = 0;
         cands0.forEach((c, i) => { const n = S2[i].length; if (ez2) { const pr = S2[i].map((q, j) => [q.d, ez2[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } k += n; });
         const preScore = c => Math.abs(c.km - km) / km * 40 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : 0) + terrainGap(c.cAvg) * 15;
         cands0.sort((x, y) => preScore(x) - preScore(y));
         const short = []; for (const c of cands0) { if (short.length >= N + 2) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.7)) short.push(c); }
-        await runPool(short.map((c, i) => async () => {
+        await runPoolUntil(short.map((c, i) => async () => {
           reStatusAr(`Étape 3/3 · profil précis ${i + 1}/${short.length}…`);
-          c.eles = await elesFor(c.coords, 80, { maxWait: 30000 });
+          c.eles = await withDeadline(elesFor(c.coords, 80, { maxWait: 2000 }), left(2000), null);
           c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles);
           c.diff = routeDifficulty(c.km, c.gain, c.maxG, null); c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
           // durée max : un aller-retour se recoupe à la bonne longueur sans nouvelle requête
           if (timeMode && c.shape === 'ab' && c.full && c.time > 0) {
             const half = cutAtKm(c.full, Math.min(reLenKm(c.full), c.km / 2 * goalMin * 0.97 / c.time));
             const back = half.slice().reverse(); c.coords = half.concat(back.slice(1)); c.segs = [half, back]; const turn = half[half.length - 1]; c.wps[1] = { lat: turn[0], lon: turn[1] }; c.km = reLenKm(c.coords);
-            c.eles = await elesFor(c.coords, 80, { maxWait: 20000 }); c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles); c.diff = routeDifficulty(c.km, c.gain, c.maxG, null); c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
+            c.eles = await withDeadline(elesFor(c.coords, 80, { maxWait: 1500 }), left(1500), c.eles); c.gain = c.eles ? Math.round(reGain(c.eles)) : null; c.maxG = eleMaxGrade(c.eles); c.diff = routeDifficulty(c.km, c.gain, c.maxG, null); c.time = routeTimeAt({ km: c.km, eles: c.eles }, v);
           }
-        }), 2);
+        }), 4, T0 + 8300);
+        short.forEach(c => { if (c.gain === undefined) { c.gain = null; c.diff = routeDifficulty(c.km, (c.cAvg || 0) * c.km * 10, null, null); c.time = c.km / v * 60; } });
         // voies refusées : part de chaque type vérifiée sur OpenStreetMap (une seule requête pour tous les tracés)
         const banned = { petite: !W.road, pieton: !W.road && !W.track && !W.path, departementale: !W.dep, nationale: !W.big, rapide: !W.big, autoroute: true, piste: !W.track, sentier: !W.path };
         if (Object.keys(banned).some(k => banned[k] && k !== 'autoroute') || true) {
           reStatusAr('Vérification des types de voies…');
-          const mx = await surfaceMixMulti(short.map(c => c.coords));
-          short.forEach((c, i) => { c.surf = mx[i] || null; c.roads = mx[i] ? mx[i].__roads : null; });
+          const mx = await withDeadline(surfaceMixMulti(short.map(c => c.coords)), left(1500), null);
+          ar.waysUnchecked = !mx;
+          short.forEach((c, i) => { c.surf = mx && mx[i] || null; c.roads = mx && mx[i] ? mx[i].__roads : null; });
         }
         short.forEach(c => {
           const avg = c.gain != null ? c.gain / (c.km * 10) : c.cAvg;
@@ -11449,10 +11475,17 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           c.ok = fitOk && terrainGap(avg) <= 0.15 && (c.shape !== 'loop' || (c.reuse || 0) < 0.1) && badWay < 15;
         });
         short.sort((x, y) => x.cost - y.cost);
-        ar.cands = short.slice(0, N);
+        if (!band) {
+          // « Peu importe » : un parcours de chaque difficulté (le meilleur de chacune), puis les meilleurs restants
+          const pick = [];
+          [0, 1, 2, 3].forEach(lv => { const c = short.find(x => x.diff && x.diff.lv === lv && !pick.includes(x)); if (c) pick.push(c); });
+          short.forEach(c => { if (pick.length < N && !pick.includes(c)) pick.push(c); });
+          ar.cands = pick.slice(0, Math.max(N, pick.length)).sort((x, y) => ((x.diff || {}).lv ?? 9) - ((y.diff || {}).lv ?? 9));
+        } else ar.cands = short.slice(0, N);
       } finally { btn.disabled = false; btn.style.opacity = 1; }
       const cands = ar.cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
+      if (ar.waysUnchecked) setTimeout(() => reStatusAr((document.getElementById('arStatus') || {}).textContent + ' · types de voies non vérifiés (service lent)'), 0);
       reStatusAr(`${cands.filter(c => c.ok).length ? `✓ ${cands.filter(c => c.ok).length} sur ${cands.length} respectent tous tes critères` : '⚠ aucun ne respecte tout à fait tes critères'}${band && !cands.some(c => c.ok) ? ` (le relief ${DIFF_TERRAIN[ar.diff]} est rare autour de ce départ : voici les plus proches)` : ''}. Classés du plus proche de ta demande au moins proche :`);
       const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
@@ -12056,7 +12089,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
           if (h) { h.analysis = lastAnalysis; try { const hs = hrShotFrom(lastAnalysis); if (hs) h.hrShot = hs; } catch (e) { } saveAppData(); try { updateHistoryTable(); } catch (e) { } }
           speakAnalysis(lastAnalysis);
           showToast('🧠 Analyse du coach prête : Planning › ta séance');
-          try { renderHomeLastRun(); } catch (e) { }
+          try { renderHomeLastRun(); renderHomeProfUpd(); } catch (e) { }
           return;
         }
         out.innerHTML = analysisHtml(lastAnalysis) + `<button type="button" onclick="openValChat()" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>`;
@@ -12504,8 +12537,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const chips = CHR_D.map(([d, l]) => `<button type="button" onclick="chrSel=${d};renderProgress()" style="flex:1;min-height:36px;border-radius:10px;font-size:13px;font-weight:800;${d === dist ? 'background:#38bdf8;color:#04121f;border:1px solid #38bdf8' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`).join('');
       // tableau : toutes les distances
       const lastApp = A[A.length - 1], lastC = LH.filter(x => x.src === 'coach').pop();
+      const spd = (d, sec) => sec ? `<br><span style="font-size:10.5px;font-weight:700;color:#94a3b8">${formatSpeed(Math.round(d / (sec / 3600) * 10) / 10).replace('.', ',')} km/h</span>` : '';
       const rows = CHR_D.map(([d, l]) => { const a = lastApp ? d / (lastApp.vma * chrFrac(d)) * 3600 : null, c = lastC && lastC.L[d] ? lastC.L[d] : null;
-        return `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;font-weight:800;color:#e2e8f0">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${tm(a)}</td><td style="text-align:center;font-weight:800;color:#c084fc">${tm(c)}</td><td style="text-align:center;font-weight:900;color:#34d399">${a && c ? tm((a + c) / 2) : '–'}</td></tr>`; }).join('');
+        return `<tr style="border-top:1px solid #1e293b"><td style="padding:7px 0;font-weight:800;color:#e2e8f0">${l}</td><td style="text-align:center;font-weight:800;color:#fbbf24">${tm(a)}${spd(d, a)}</td><td style="text-align:center;font-weight:800;color:#c084fc">${tm(c)}${spd(d, c)}</td><td style="text-align:center;font-weight:900;color:#34d399">${a && c ? tm((a + c) / 2) + spd(d, (a + c) / 2) : '–'}</td></tr>`; }).join('');
       // graphique (plus haut = plus rapide)
       const all = app.concat(coach, decl, avg);
       let svg = '<span class="text-[12px] text-slate-400">Pas encore assez de données pour cette distance.</span>';
@@ -12518,10 +12552,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const line = (pts, col, dash) => pts.length > 1 ? `<path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p.s).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2"${dash ? ' stroke-dasharray="5 4"' : ''}></path>` : '';
         const lab = (p, col, dy) => `<text x="${Math.max(30, Math.min(W - 18, x(p.d)))}" y="${Math.max(10, Math.min(Hh - pad, y(p.s) + dy))}" text-anchor="middle" font-size="10" font-weight="800" fill="${col}">${fmtTime(Math.round(p.s))}</text>`;
         const cap = t => `onclick="document.getElementById('chrCap').textContent='${t}'"`;
-        const dotsA = app.map((p, i) => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (app)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="8" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="${i === app.length - 1 ? 4 : 1.8}" fill="#fbbf24"></circle></g>`).join('');
+        const kmhS = sec => formatSpeed(Math.round(dist / (sec / 3600) * 10) / 10).replace('.', ',') + ' km/h';
+        const dotsA = app.map((p, i) => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} · ${kmhS(p.s)} (app)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="8" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="${i === app.length - 1 ? 4 : 1.8}" fill="#fbbf24"></circle></g>`).join('');
         const labA = app.filter((p, i) => i === 0 || i === app.length - 1).map(p => lab(p, '#fde68a', -8)).join('');
-        const dotsC = coach.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (coach IA)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="11" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.s) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.s)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>${lab(p, '#d8b4fe', (avg.find(q => q.d === p.d) || { s: 1e9 }).s < p.s ? 16 : -9)}`).join('');
-        const dotsM = avg.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (moyenne)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="4" fill="#34d399" stroke="#0b1324" stroke-width="1.5"></circle></g>${lab(p, '#6ee7b7', (coach.find(q => q.d === p.d) || { s: -1 }).s < p.s ? 16 : -9)}`).join('');
+        const dotsC = coach.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} · ${kmhS(p.s)} (coach IA)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="11" fill="transparent"></circle><rect x="${x(p.d) - 5}" y="${y(p.s) - 5}" width="10" height="10" transform="rotate(45 ${x(p.d)} ${y(p.s)})" fill="#c084fc" stroke="#0b1324" stroke-width="1.5"></rect></g>${lab(p, '#d8b4fe', (avg.find(q => q.d === p.d) || { s: 1e9 }).s < p.s ? 16 : -9)}`).join('');
+        const dotsM = avg.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} · ${kmhS(p.s)} (moyenne)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="4" fill="#34d399" stroke="#0b1324" stroke-width="1.5"></circle></g>${lab(p, '#6ee7b7', (coach.find(q => q.d === p.d) || { s: -1 }).s < p.s ? 16 : -9)}`).join('');
         const dotsD = decl.map(p => `<g ${cap(`${fmtDateShort(p.d)} : ${tm(p.s)} (saisi par toi)`)}><circle cx="${x(p.d)}" cy="${y(p.s)}" r="9" fill="transparent"></circle><circle cx="${x(p.d)}" cy="${y(p.s)}" r="4" fill="none" stroke="#94a3b8" stroke-width="2"></circle></g>`).join('');
         svg = `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution des chronos estimés">${ticks}${line(app, '#fbbf24')}${line(coach, '#c084fc', true)}${line(avg, '#34d399', true)}${dotsA}${labA}${dotsD}${dotsM}${dotsC}
           <text x="44" y="${Hh - 4}" font-size="10" fill="#64748b">${fmtDateShort(ds[0])}</text><text x="${W - 6}" y="${Hh - 4}" text-anchor="end" font-size="10" fill="#64748b">${fmtDateShort(ds[ds.length - 1])}</text></svg>
@@ -14796,8 +14831,8 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         if (ln) ln.textContent = r.levelsSrc === 'coach' && r.levelsAt ? `🧠 Mis à jour par le coach le ${parseISODateLocal(r.levelsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}${r.levelsNote ? ` : ${r.levelsNote}` : ''}` : ''; }
       { const a = getActiveSession() || {}; const w = document.getElementById('warmInput'), c = document.getElementById('coolInput');
         if (w) w.value = r.warmMin ?? (a.chauffe ?? 10); if (c) c.value = r.coolMin ?? (a.recup ?? 5); }
-      document.getElementById('efAuto').checked = r.efAuto !== false;
-      document.getElementById('efNote').textContent = r.efNote
+      { const ea = document.getElementById('efAuto'); if (ea) ea.checked = r.efAuto !== false; }
+      if (document.getElementById('efNote')) document.getElementById('efNote').textContent = r.efNote
         ? `🧠 ${r.efNote}${r.efAt ? ` (${r.efAt})` : ''}`
         : (r.efKmh ? '' : 'Estimation de départ d\'après votre objectif : le coach l\'affinera après vos séances.');
     }
@@ -14805,7 +14840,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const r = runnerProfile();
       readRunnerBody();
       const v = parseFloat(String(document.getElementById('efInput').value).replace(',', '.'));
-      const auto = document.getElementById('efAuto').checked;
+      const auto = (document.getElementById('efAuto') || { checked: r.efAuto !== false }).checked;
       if (!isNaN(v) && v > 3 && v < 20 && Math.abs(v - runnerEF()) > 0.01) { r.efKmh = v; r.efNote = 'Réglée manuellement'; r.efAt = toISODateLocal(new Date()); }
       r.efAuto = auto;
       const wv = parseFloat(String((document.getElementById('warmInput') || {}).value || '').replace(',', '.'));
@@ -14845,10 +14880,11 @@ Réponds uniquement en JSON : {"ef_kmh": nombre au 0,5 près, "explication": "un
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
         const v = parseFloat(String(j.ef_kmh).replace(',', '.'));
-        if (isNaN(v) || v < 4 || v > 18) throw new Error('valeur incohérente');
-        r.efKmh = Math.round(v * 2) / 2;
-        r.efNote = String(j.explication || '').slice(0, 200);
-        r.efAt = toISODateLocal(new Date());
+        if (!(isNaN(v) || v < 4 || v > 18)) {
+          r.efKmh = Math.round(v * 2) / 2;
+          r.efNote = String(j.explication || '').slice(0, 200);
+          r.efAt = toISODateLocal(new Date());
+        }
         if (j.niveaux && typeof j.niveaux === 'object') {
           const L = {};
           [[5, '5'], [10, '10'], [21.1, '21'], [42.2, '42']].forEach(([d, k]) => {
@@ -15878,10 +15914,11 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
           foot.innerHTML = act.when === 'later' ? `<span class="text-[13px] text-amber-300 font-semibold">Une séance libre se lance au moment voulu : reviens en arrière et choisis un type de séance pour la planifier.</span>` : `<button onclick="launchActivity()" class="pm-save">▶ Lancer l'activité</button>`;
           return;
         }
-        body.innerHTML = actRouteHtml() + (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
+        body.innerHTML = (act.hillsData && act.route && act.route.hillInfo ? actHillMapHtml() : actRouteHtml()) + (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
           + actFormHtml()
           + `<div id="actAdvice">${act.advice || ''}</div>`;
         if (act.type === 'muscu') setTimeout(loadExerciseImages, 50);
+        if (act.route && act.route.hillInfo) setTimeout(drawActHillMap, 60);
         foot.innerHTML = `<div class="grid grid-cols-1 gap-2">
             <button onclick="askCoachOnActivity()" class="pm-btn" style="height:46px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd">🧠 Avis du coach sur ${act.mode === 'coach' ? 'ma version modifiée' : 'ma séance'}</button>
             <button onclick="launchActivity()" class="pm-save">${act.when === 'later' ? '📅 Ajouter au planning' : "▶ Lancer l'activité"}</button>
@@ -16065,7 +16102,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       const when = act.when === 'later' && act.date ? `le ${parseISODateLocal(act.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : `maintenant (${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})`;
       return `Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h. Niveau actuel : ${runnerLevelsText()}.
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
-${materielText()}${(() => { try { const l = runnerLikesText(); return l ? '\n' + l : ''; } catch (e) { return ''; } })()}
+${materielText()}${(() => { const r0 = runnerProfile(); return typeof r0.warmMin === 'number' || typeof r0.coolMin === 'number' ? `\nÉchauffement voulu par le coureur : ${r0.warmMin ?? 10} min ; retour au calme : ${r0.coolMin ?? 5} min (utilise ces durées).` : ''; })()}${(() => { try { const l = runnerLikesText(); return l ? '\n' + l : ''; } catch (e) { return ''; } })()}
 Activité prévue ${when}.${feel ? ` Sensations du jour : ${feel}.` : ''}
 Séances récentes :
 ${past}
@@ -16113,20 +16150,53 @@ ${zonesText ? (() => { try { return zonesText(); } catch (e) { return ''; } })()
           const len = (b - a) * 50, g = (e[b] - e[a]) / len * 100; if (!(g >= 3)) continue;
           const sc = g * Math.sqrt(len); if (!best || sc > best.sc) best = { a, b, g, len, sc };
         }
-        if (best) hills.push({ dir: DIRN[r.i], dist: best.a * 50, len: best.len, grade: Math.round(best.g * 10) / 10, gain: Math.round(e[best.b] - e[best.a]), sc: best.sc, foot: r.pts[best.a] });
+        if (best) hills.push({ dir: DIRN[r.i], dist: best.a * 50, len: best.len, grade: Math.round(best.g * 10) / 10, gain: Math.round(e[best.b] - e[best.a]), sc: best.sc, foot: r.pts[best.a], pts: r.pts, e, a: best.a, b: best.b });
       });
       hills.sort((x, y) => y.sc - x.sc);
       const uniq = []; hills.forEach(h => { if (!uniq.some(u => haversineM({ lat: u.foot[0], lon: u.foot[1] }, { lat: h.foot[0], lon: h.foot[1] }) < 150)) uniq.push(h); });
       return { pos, hills: uniq.slice(0, 4) };
     }
+    function buildHillRoute(h) {
+      const out = h.pts.slice(0, h.b + 1), coords = out.concat(out.slice(0, -1).reverse());
+      const el = h.e.slice(0, h.b + 1), all = el.concat(el.slice(0, -1).reverse()), eles = all.map((v, i) => [+(i * 0.05).toFixed(3), Math.round(v)]);
+      const name = `Côte ${h.dir} · ${h.len} m à ${String(h.grade).replace('.', ',')} %`;
+      const r = parseGpx(reGpx(name, reDensify(coords), eles), name); r.hillInfo = { dir: h.dir, len: h.len, grade: h.grade, dist: h.dist }; return r;
+    }
+    function setHillRoute(i) {
+      const H = act && act.hillsData; if (!H || !H.hills || !H.hills[i]) return;
+      try { act.route = buildHillRoute(H.hills[i]); act.hillIdx = i; } catch (e) { console.warn('hill route', e); }
+    }
+    function actHillMapHtml() {
+      const H = act.hillsData, h = H && H.hills && H.hills[act.hillIdx || 0];
+      if (!h || !act.route) return '';
+      return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🗺️ Parcours tracé par le coach</span>
+        <span class="text-[14px] font-extrabold text-white">⛰️ Côte ${h.dir}, à ${h.dist < 1000 ? h.dist + ' m' : (h.dist / 1000).toFixed(1).replace('.', ',') + ' km'} : ${h.len} m à ${String(h.grade).replace('.', ',')} % (+${h.gain} m)</span>
+        <div id="actHillMap" style="height:260px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
+        <span class="text-[12px] text-slate-400">Vert : le trajet aller-retour · rouge : la montée à répéter. Le guidage te mènera jusqu'à la côte.</span>
+        ${H.hills.length > 1 ? `<button type="button" onclick="setHillRoute(((act.hillIdx||0)+1)%act.hillsData.hills.length);renderAct()" class="pm-btn" style="height:42px">🔄 Une autre côte (${H.hills.length} trouvées)</button>` : ''}</div>`;
+    }
+    function drawActHillMap() {
+      const box = document.getElementById('actHillMap'), h = act && act.hillsData && act.hillsData.hills[act.hillIdx || 0];
+      if (!box || !h) return;
+      loadLeaflet().then(() => {
+        try {
+          const m = L.map(box, { zoomControl: true, attributionControl: true }); baseTiles(m);
+          const path = h.pts.slice(0, h.b + 1), climb = h.pts.slice(h.a, h.b + 1);
+          L.polyline(path, { color: '#34d399', weight: 5, opacity: 0.9 }).addTo(m);
+          L.polyline(climb, { color: '#f43f5e', weight: 7, opacity: 0.95 }).addTo(m);
+          L.marker(path[0], { icon: L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9], html: '<div style="width:18px;height:18px;border-radius:9px;background:#38bdf8;border:3px solid #fff"></div>' }) }).addTo(m);
+          m.fitBounds(path, { padding: [20, 20] });
+        } catch (e) { box.innerHTML = '<div style="padding:12px;color:#94a3b8;font-size:13px">Carte indisponible</div>'; }
+      }).catch(() => { });
+    }
     function hillsText(H) {
       if (!H || H.err) return `Côtes autour du coureur : impossible de les repérer (${H ? H.err : '?'}) : propose une séance de côtes générique (montée de 30 s à 2 min selon le terrain disponible).`;
       if (!H.hills.length) return "Côtes autour du coureur : aucune vraie montée (≥ 3 %) trouvée dans un rayon d'environ 2 km. Propose une alternative (escaliers, pont, faux plat répété, ou fractionné court à plat) et dis-le dans l'avis.";
       return `Côtes repérées autour du coureur (sur les chemins, depuis sa position) :\n${H.hills.map((h, i) => `${i + 1}) ${h.dir}, à ${h.dist < 1000 ? h.dist + ' m' : (h.dist / 1000).toFixed(1).replace('.', ',') + ' km'} : ${h.len} m à ${String(h.grade).replace('.', ',')} % (+${h.gain} m)`).join('\n')}
-Choisis LA côte la plus adaptée, construis la séance avec : l'échauffement sert à y aller (distance ci-dessus), répétitions = la montée (ou une partie si elle est longue), récupération = redescente en trottinant. Dans l'avis, indique la côte choisie (direction et distance) et la durée d'une montée.`;
+Choisis LA côte la plus adaptée (donne son numéro dans "cote"), construis la séance avec : l'échauffement sert à y aller (distance ci-dessus), répétitions = la montée (ou une partie si elle est longue), récupération = redescente en trottinant. Dans l'avis, indique la côte choisie (direction et distance) et la durée d'une montée.`;
     }
     async function proposeActivityWithCoach() {
-      act.hills = '';
+      act.hills = ''; act.hillsData = null; if (act.route && act.route.hillInfo) act.route = null;
       if (act.type === 'exterieur' && /côte/i.test(act.wish || '')) {
         act.step = 5; act.loading = true; act.loadMsg = '⛰️ Le coach cherche les côtes autour de toi…'; renderAct();
         try { const H = await findHillsAround(); act.hillsData = H; act.hills = hillsText(H); } catch (e) { act.hills = hillsText({ err: 'erreur' }); }
@@ -16136,7 +16206,7 @@ Choisis LA côte la plus adaptée, construis la séance avec : l'échauffement s
       act.step = 5; act.loading = true; renderAct();
       const kind = { tapis: 'une séance de course sur tapis', exterieur: 'une séance de course en extérieur', velo: 'une séance de vélo', muscu: 'une séance de musculation / renforcement utile au coureur, sans matériel ou avec peu' }[act.type];
       const fmt = actIsRun()
-        ? `{"avis":"2 phrases en tutoyant","titre":"titre court","seance":{"pente":1,"chauffe":10,"recup":5,"repet":1,"segments":[{"vitesse":12,"duree_min":3}]}}`
+        ? `{"avis":"2 phrases en tutoyant","titre":"titre court",${act.hillsData && act.hillsData.hills && act.hillsData.hills.length ? '"cote":1,' : ''}"seance":{"pente":1,"chauffe":10,"recup":5,"repet":1,"segments":[{"vitesse":12,"duree_min":3}]}}`
         : act.type === 'velo'
           ? `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":45,"intensite":"facile|moderee|soutenue","detail":"déroulé, une ligne par étape"}`
           : `{"avis":"2 phrases en tutoyant","titre":"titre court","duree_min":30,"detail":"consignes (échauffement, récupérations)","exercices":[{"nom":"Pont fessier","nom_en":"glute bridge","dosage":"3 × 15"}]}`;
@@ -16150,6 +16220,7 @@ Réponds uniquement en JSON : ${fmt}`;
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' }));
         act.prop = j;
         const f = act.form;
+        if (act.hillsData && act.hillsData.hills && act.hillsData.hills.length) { const ci = Math.max(0, Math.min(act.hillsData.hills.length - 1, (parseInt(j.cote) || 1) - 1)); setHillRoute(ci); }
         if (actIsRun() && j.seance) {
           const se = j.seance, num = (x, d) => { const y = parseFloat(String(x).replace(',', '.')); return isNaN(y) ? d : y; };
           f.libre = false;
@@ -17725,6 +17796,56 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     function openTodayResults() { const h = todayDoneHist(); if (!h) return; openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + h.id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start' }); } }, 60); }
     let homeMoreOpen = false;
     function toggleHomeMore() { homeMoreOpen = !homeMoreOpen; renderHome(); }
+    // ---------- Profil mis à jour par le coach après une séance : avant / après
+    function profileSnapshot() {
+      const est = estimateVma(), p = computeGoalProbability(), cp = appData.goalCoachProb, A = appData.coachSW;
+      return { vma: est && est.vma ? Math.round(est.vma * 10) / 10 : null, levels: Object.assign({}, runnerLevels()), pApp: p && !p.noData ? p.pDay : null, pCoach: cp ? cp.pDay : null, pCoachAt: cp ? cp.at : '', tapis: (() => { try { return tapisHrEff(); } catch (e) { return null; } })(), swAt: A ? A.at : '', forts: A && A.j ? A.j.forts || [] : [], faibles: A && A.j ? A.j.faibles || [] : [] };
+    }
+    let profUpdRunning = false;
+    async function runProfileUpdates(before, o = {}) {
+      if (profUpdRunning) return;
+      if (!getGeminiKey()) { if (o.manual) showToast('Clé Gemini nécessaire'); return; }
+      if (!o.manual && runnerProfile().efAuto === false) return;
+      profUpdRunning = true; before = before || profileSnapshot();
+      appData.profileUpdate = Object.assign({}, appData.profileUpdate || {}, { running: true }); try { renderHomeProfUpd(); } catch (e) { }
+      if (o.manual) showToast('🧠 Le coach met ton profil à jour…');
+      const g = appData.goal || {}, done = [];
+      const steps = [['chronos', () => computeEfWithAI(false)], ['chances', () => (autoGoalCoachOn() || o.manual) && parseFloat(g.distanceKm) && parseFloat(g.durationMin) ? coachGoalOpinion({ silent: true }) : null], ['forces', () => runStrengthsAnalysis({ silent: true })]];
+      if (tapisHrCfg().mode === 'ia') steps.push(['tapis', () => tapisHrWithAI()]);
+      for (const [k, fn] of steps) { try { await fn(); done.push(k); } catch (e) { console.warn('profil', k, e); } }
+      const after = profileSnapshot();
+      const fT = sec => sec ? fmtTime(Math.round(sec)) : '–', items = [];
+      const num = (l, a, b, u, better) => items.push({ l, a: a != null ? `${String(a).replace('.', ',')}${u}` : '–', b: b != null ? `${String(b).replace('.', ',')}${u}` : '–', d: a != null && b != null ? (b > a ? 1 : b < a ? -1 : 0) * (better || 1) : 0 });
+      num('🫁 VMA estimée (app)', before.vma, after.vma, ' km/h', 1);
+      CHR_D.forEach(([d, l]) => { const a = before.levels[d], b = after.levels[d]; if (a || b) items.push({ l: `⏱️ ${l} (coach)`, a: fT(a) + (a ? ` · ${formatSpeed(Math.round(d / (a / 3600) * 10) / 10).replace('.', ',')} km/h` : ''), b: fT(b) + (b ? ` · ${formatSpeed(Math.round(d / (b / 3600) * 10) / 10).replace('.', ',')} km/h` : ''), d: a && b ? (b < a ? 1 : b > a ? -1 : 0) : 0 }); });
+      num('🎯 Chances jour J (app)', before.pApp, after.pApp, ' %', 1);
+      num('🧠 Chances jour J (coach)', before.pCoach, after.pCoach, ' %', 1);
+      if (before.tapis !== after.tapis) num('🏃 Écart cardio tapis', before.tapis, after.tapis, ' bpm', 0);
+      appData.profileUpdate = { at: Date.now(), d: todayISO(), items, forts: after.swAt !== before.swAt ? after.forts : [], faibles: after.swAt !== before.swAt ? after.faibles : [], seen: false };
+      saveAppData(); profUpdRunning = false;
+      try { renderHomeProfUpd(); renderProgress(); } catch (e) { }
+      if (!(timerState.sessionStarted && !timerState.finished)) openProfUpdModal();
+    }
+    function renderHomeProfUpd() {
+      const b = document.getElementById('homeProfUpd'); if (!b) return;
+      const u = appData.profileUpdate;
+      const on = !!(u && (u.running || (u.at && Date.now() - u.at < 3 * 864e5)));
+      b.classList.toggle('hidden', !on); if (!on) return;
+      b.innerHTML = u.running ? '⏳ Le coach met ton profil à jour…' : `📈 Évolutions de ton profil${u.seen ? '' : ' <span style="background:#f43f5e;color:#fff;border-radius:9px;padding:1px 7px;font-size:11px;margin-left:4px">nouveau</span>'}`;
+    }
+    function openProfUpdModal() {
+      const u = appData.profileUpdate; if (!u || u.running || !u.items) return;
+      u.seen = true; saveAppData(); renderHomeProfUpd();
+      let m = document.getElementById('profUpdModal');
+      if (!m) { m = document.createElement('div'); m.id = 'profUpdModal'; m.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(2,6,23,.88);display:flex;align-items:center;justify-content:center;padding:14px'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+      const col = d => d > 0 ? '#34d399' : d < 0 ? '#fb923c' : '#94a3b8', ar = d => d > 0 ? '▲' : d < 0 ? '▼' : '=';
+      m.innerHTML = `<div style="width:100%;max-width:440px;max-height:88vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:22px;padding:18px 16px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
+        <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:19px;font-weight:900">📈 Ton profil après la séance</span><button type="button" onclick="document.getElementById('profUpdModal').remove()" style="width:40px;height:40px;border-radius:20px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:18px">✕</button></div>
+        <span style="font-size:12px;color:#94a3b8">Mis à jour par le coach le ${fmtDateShort(u.d)} · avant → maintenant</span>
+        <div style="display:flex;flex-direction:column">${u.items.map(it => `<div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid #1e293b;align-items:center"><span style="font-size:13.5px;font-weight:800">${it.l}</span><span style="font-size:15px;font-weight:900;color:${col(it.d)}">${ar(it.d)}</span><span style="grid-column:1/-1;font-size:13px;color:#cbd5e1">${it.a} → <b style="color:${col(it.d)}">${it.b}</b></span></div>`).join('')}</div>
+        ${u.forts.length || u.faibles.length ? `<div style="display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b">${u.forts.length ? `<b style="color:#34d399">💪 Points forts</b><span style="font-size:13px;color:#cbd5e1">${u.forts.map(plEsc).join(' · ')}</span>` : ''}${u.faibles.length ? `<b style="color:#fb923c">🎯 À travailler</b><span style="font-size:13px;color:#cbd5e1">${u.faibles.map(plEsc).join(' · ')}</span>` : ''}</div>` : ''}
+        <button type="button" onclick="document.getElementById('profUpdModal').remove()" style="min-height:48px;border-radius:14px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:15px">OK</button></div>`;
+    }
     function renderHomeLastRun() {
       const box = document.getElementById('homeLastRun'); if (!box) return;
       const h = (appData.history || []).find(x => x && !x.cross && x.endAt);
