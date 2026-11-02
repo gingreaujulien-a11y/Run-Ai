@@ -76,6 +76,9 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    .hd-btn { width: 44px; height: 44px; border: none; background: none; display: flex; align-items: center; justify-content: center; border-radius: 14px; transition: transform .1s; }
+    .hd-btn:active { transform: scale(.9); background: rgba(148,163,184,.12); }
+    .hd-btn svg.icon { width: 24px; height: 24px; }
     body.pocket #runMapBox { display: none !important; }
     #runMap.rot { transition: transform .8s ease; }
     .rm-btn { position: absolute; right: 8px; z-index: 800; width: 46px; height: 46px; border-radius: 23px; border: 1px solid #334155; background: rgba(2,6,23,.88); color: #fff; font-size: 22px; font-weight: 900; }
@@ -289,12 +292,12 @@
   <!-- ==================== ÉCRAN D'ACCUEIL ==================== -->
   <section id="homeScreen" class="flex-1 flex-col w-full max-w-md mx-auto px-4 py-6 gap-4">
     <div class="flex items-center gap-2.5">
-      <button onclick="showHome()" title="Accueil" class="active:scale-95 transition"><img class="runai-logo" style="width:48px;height:48px" alt="Accueil"></button>
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
-      <div class="ml-auto flex items-center gap-2">
-        <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" aria-label="Planning & suivi" class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="calendar"></span></button>
-        <button id="homeProfileBtn" onclick="openGoalModal()" title="Profil, objectif & coach IA" class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="user"></span></button>
-        <button id="homeSettingsBtn" onclick="openAudioModal()" title="Réglages (voix, cardio, GPS)" class="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-600 text-slate-200 flex items-center justify-center active:scale-95 transition"><span class="icon-slot" data-icon="settings"></span></button>
+      <div class="ml-auto flex items-center gap-0.5">
+        <button id="homeChatTop" onclick="openCoachChat()" title="Discuter avec le coach" aria-label="Discuter avec le coach" class="hd-btn" style="color:#c4b5fd"><span class="icon-slot" data-icon="chat"></span></button>
+        <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" aria-label="Planning & suivi" class="hd-btn" style="color:#6ee7b7"><span class="icon-slot" data-icon="calendar"></span></button>
+        <button id="homeProfileBtn" onclick="openGoalModal()" title="Profil, objectif & coach IA" class="hd-btn" style="color:#fcd34d"><span class="icon-slot" data-icon="user"></span></button>
+        <button id="homeSettingsBtn" onclick="openAudioModal()" title="Réglages (voix, cardio, GPS)" class="hd-btn" style="color:#e2e8f0"><span class="icon-slot" data-icon="settings"></span></button>
       </div>
     </div>
 
@@ -1044,7 +1047,7 @@
           <div style="font-size:12px;color:#94a3b8;margin-top:4px">Le temps de chaque parcours est calculé avec son profil (ta vitesse ralentit en montée, comme la VAP).</div></div>
         <div><div class="pm-lab">Relief (pente moyenne du D+)</div><div id="arDiff" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px"></div></div>
         <div><div class="pm-lab">Forme du parcours</div><div id="arShapes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div></div>
-        <div class="hidden"><div id="arWays"></div></div>
+        <div><div class="pm-lab">Types de voies <span style="font-size:11px;color:#a78bfa;font-weight:800">· test · vérifié avec l'IGN en France</span></div><div id="arWays" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div></div>
         <div class="hidden"><div id="arCount"></div></div>
         <div id="arCrit" style="font-size:12.5px;color:#94a3b8;line-height:1.5;padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"></div>
         <div><div class="pm-lab">Départ</div>
@@ -1599,6 +1602,7 @@
   <!-- ==================== SCRIPT JAVASCRIPT COMPLET & AUTONOME ==================== -->
   <script>
     const SVG_ICONS = {
+      'chat': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
       'calendar': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
       'user': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
       'sliders': `<svg class="w-5 h-5 icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
@@ -11122,7 +11126,48 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (h === 'path' || h === 'bridleway') return 'sentier';
       return 'inconnu';
     }
+    // Voies de la BD TOPO (IGN, France) converties au format OpenStreetMap utilisé par l'app
+    async function ignWays(samples) {
+      if (!samples.length) return null;
+      const cells = new Map(), C = 0.012; // ≈ 1,3 km
+      samples.forEach(p => { const k = Math.floor(p.lat / C) + ':' + Math.floor(p.lon / C); if (!cells.has(k)) cells.set(k, [Math.floor(p.lat / C) * C, Math.floor(p.lon / C) * C]); });
+      if (cells.size > 40) return null;
+      const one = async ([la, lo]) => {
+        const bb = `${(la - 0.0004).toFixed(5)},${(lo - 0.0004).toFixed(5)},${(la + C + 0.0004).toFixed(5)},${(lo + C + 0.0004).toFixed(5)},urn:ogc:def:crs:EPSG::4326`;
+        const url = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=BDTOPO_V3:troncon_de_route&outputFormat=application/json&srsName=urn:ogc:def:crs:EPSG::4326&count=4000&BBOX=${bb}`;
+        const r = await fetch(url); if (!r.ok) throw new Error('IGN ' + r.status); return (await r.json()).features || [];
+      };
+      const res = await Promise.all([...cells.values()].map(c => one(c).catch(() => null)));
+      if (res.some(x => x == null)) return null;
+      const seen = new Set(), out = [];
+      [].concat(...res).forEach(f => {
+        const id = f.id || (f.properties || {}).cleabs; if (id && seen.has(id)) return; if (id) seen.add(id);
+        const g = f.geometry; if (!g) return;
+        const lines = g.type === 'MultiLineString' ? g.coordinates : g.type === 'LineString' ? [g.coordinates] : [];
+        const tags = ignTags(f.properties || {});
+        lines.forEach(L => { if (L.length < 2) return; const latFirst = Math.abs(L[0][0]) > 38 && Math.abs(L[0][1]) < 12; out.push({ geometry: L.map(c => latFirst ? { lat: c[0], lon: c[1] } : { lat: c[1], lon: c[0] }), tags }); });
+      });
+      return out;
+    }
+    function ignTags(pr) {
+      const nat = String(pr.nature || ''), cls = String(pr.cpx_classement_administratif || pr.classement_administratif || ''), num = String(pr.cpx_numero || pr.numero || '').toUpperCase(), imp = parseInt(pr.importance) || 6;
+      const paved = { surface: 'asphalt' };
+      if (/autorout/i.test(nat) || /autoroute/i.test(cls)) return { highway: 'motorway', ref: num };
+      if (/bretelle/i.test(nat) || (/2 chauss/i.test(nat) && imp <= 2)) return Object.assign({ highway: 'trunk', ref: num }, paved);
+      if (/nationale/i.test(cls)) return Object.assign({ highway: 'primary', ref: num || 'N' }, paved);
+      if (/départementale|departementale/i.test(cls)) return Object.assign({ highway: 'secondary', ref: num || 'D' }, paved);
+      if (/piste cyclable|escalier/i.test(nat)) return Object.assign({ highway: /escalier/i.test(nat) ? 'steps' : 'cycleway' }, paved);
+      if (/sentier/i.test(nat)) return { highway: 'path' };
+      if (/chemin/i.test(nat)) return { highway: 'track' };
+      if (/empierr/i.test(nat)) return { highway: 'track', tracktype: 'grade2', surface: 'gravel' };
+      if (/route|rond-point|place/i.test(nat)) return Object.assign({ highway: imp <= 3 ? 'tertiary' : 'residential', ref: num }, paved);
+      return { highway: 'road' };
+    }
     async function overpassWays(samples) {
+      if (samples.length && routeBaseKey(samples[0].lat, samples[0].lon) === 'ign') {
+        try { const w = await withDeadline(ignWays(samples), 6000, null); if (w && w.length) { overpassWays.src = 'IGN'; return w; } } catch (e) { }
+      }
+      overpassWays.src = 'OpenStreetMap';
       const q = `[out:json][timeout:40];way(around:18,${samples.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(',')})[highway];out tags geom;`;
       for (const srv of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']) {
         try {
@@ -11511,7 +11556,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const v = Math.max(4, num('arSpeed') || runnerEF()), timeMode = ar.goal === 'time';
       const goalMin = timeMode ? (ar.lockMin || Math.max(10, num('arMin') || 60)) : null, lock = !!ar.lockMin;
       let km = timeMode ? goalMin * v / 60 * (lock ? 1 : 0.95) : Math.max(1, num('arKm') || 8);
-      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null, N = band ? 5 : 8; ar.ways = { road: true, dep: true, big: false, track: true, path: true };
+      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null, N = band ? 5 : 8; ar.ways = ar.ways || { road: true, dep: true, big: false, track: true, path: true };
       const W = ar.ways, prof = !W.path && !W.track ? (W.big ? 'car' : 'bike') : !W.path ? 'bike' : 'foot';
       const terrainGap = avg => { if (avg == null || !band) return 0; return avg < band[0] ? band[0] - avg : avg > band[1] ? avg - band[1] : 0; };
       const end = document.getElementById('arEndOn').checked ? ar.end : null;
@@ -11588,7 +11633,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         const banned = { petite: !W.road, pieton: !W.road && !W.track && !W.path, departementale: !W.dep, nationale: !W.big, rapide: !W.big, autoroute: true, piste: !W.track, sentier: !W.path };
         if (Object.keys(banned).some(k => banned[k] && k !== 'autoroute') || true) {
           reStatusAr('Vérification des types de voies…');
-          const mx = await withDeadline(surfaceMixMulti(short.map(c => c.coords)), left(1500), null);
+          const mx = await withDeadline(surfaceMixMulti(short.map(c => c.coords)), left(2500), null);
+          ar.waysSrc = mx ? overpassWays.src : null;
           ar.waysUnchecked = !mx;
           short.forEach((c, i) => { c.surf = mx && mx[i] || null; c.roads = mx && mx[i] ? mx[i].__roads : null; });
         }
@@ -11612,7 +11658,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       } finally { btn.disabled = false; btn.style.opacity = 1; }
       const cands = ar.cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
-      if (ar.waysUnchecked) setTimeout(() => reStatusAr((document.getElementById('arStatus') || {}).textContent + ' · types de voies non vérifiés (service lent)'), 0);
+      setTimeout(() => reStatusAr((document.getElementById('arStatus') || {}).textContent + (ar.waysUnchecked ? ' · types de voies non vérifiés (service lent)' : ar.waysSrc ? ` · voies vérifiées (${ar.waysSrc})` : '')), 0);
       reStatusAr(`${cands.filter(c => c.ok).length ? `✓ ${cands.filter(c => c.ok).length} sur ${cands.length} respectent tous tes critères` : '⚠ aucun ne respecte tout à fait tes critères'}${band && !cands.some(c => c.ok) ? ` (le relief ${DIFF_TERRAIN[ar.diff]} est rare autour de ce départ : voici les plus proches)` : ''}. Classés du plus proche de ta demande au moins proche :`);
       const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
@@ -15733,6 +15779,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
         <span style="font-size:12px;color:#94a3b8">Chrono estimé le jour J (dans ${p.weeks} sem., avec la progression attendue)${cp ? ' · moyenne app + coach' : ''}</span>
         <div style="display:flex;gap:6px;margin-top:4px">${cell('📱 App', p.tDay, '#fbbf24')}${cell(`🧠 Coach${cp ? ' ' + fmtDateShort(cp.at) : ''}`, cDay, '#c084fc')}${cell('⚖️ Moyenne', mT, '#34d399')}</div>
         ${cp ? '' : '<span class="text-[11px] text-slate-500">Lance l\'avis du coach pour remplir la colonne Coach.</span>'}
+        ${goalTodayHtml(p, cp)}${nextTestHtml()}
         ${goalTimeChartHtml()}`;
       goalCoachOutFill();
       return;
@@ -15764,6 +15811,33 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       }
       _gpsCache = { key, v: out };
       return out;
+    }
+    function goalTodayHtml(p, cp) {
+      const a = p && p.tNow > 0 ? p.tNow : null, c = cp && cp.tNow > 0 ? cp.tNow : null; if (!a && !c) return '';
+      const m = a && c ? (a + c) / 2 : null;
+      return `<div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:12px;font-weight:800;color:#94a3b8">Si la course était aujourd'hui</span>
+        <span style="font-size:14px;font-weight:800;color:#e2e8f0">${a ? `📱 ${fmtClock(a)}` : ''}${c ? ` · 🧠 ${fmtClock(c)}` : ''}${m ? ` · ⚖️ <b style="color:#6ee7b7">${fmtClock(m)}</b>` : ''}</span></div>`;
+    }
+    // Prochain test du planning : chrono (ou VMA) estimé
+    function nextTest() {
+      const t = todayISO();
+      return (appData.sessions || []).filter(s => s && !s.free && s.dateISO && s.dateISO >= t && !isSessionDone(s) && sessionKind(s).label === 'TEST').sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0] || null;
+    }
+    function nextTestHtml() {
+      const s = nextTest(); if (!s) return '';
+      let vma = null; try { const e = estimateVma(); vma = e && e.vma > 5 ? e.vma : null; } catch (e) { } if (!vma) { const A = chrAppSeries(); vma = A.length ? A[A.length - 1].vma : null; } if (!vma) return '';
+      const when = s.dateISO === todayISO() ? "aujourd'hui" : `le ${fmtDateShort(s.dateISO)}`;
+      let body = '';
+      const km = s.test && parseFloat(s.test.km) > 0 ? parseFloat(s.test.km) : null, min = s.test && parseFloat(s.test.min) > 0 ? parseFloat(s.test.min) : null;
+      if (km) {
+        const sec = km / (vma * chrFrac(km)) * 3600;
+        const LH = levelsHist().filter(x => x.src === 'coach' && x.L && x.L[km]).pop(), cs = LH ? LH.L[km] : null;
+        body = `Test ${String(km).replace('.', ',')} km : 📱 <b>${fmtTime(Math.round(sec))}</b> (${formatSpeed(Math.round(km / (sec / 3600) * 10) / 10).replace('.', ',')} km/h)${cs ? ` · 🧠 ${fmtTime(Math.round(cs))}` : ''}`;
+      } else if (min) {
+        const f = chrFrac(Math.max(1, vma * min / 60)), d = vma * f * min / 60;
+        body = `Test ${Math.round(min)} min : distance estimée <b>${d.toFixed(2).replace('.', ',')} km</b> (${formatSpeed(Math.round(vma * f * 10) / 10).replace('.', ',')} km/h)`;
+      } else body = `Test VMA : VMA estimée <b>${formatSpeed(Math.round(vma * 10) / 10).replace('.', ',')} km/h</b>`;
+      return `<div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;border-radius:12px;background:rgba(232,121,249,.08);border:1px solid rgba(232,121,249,.4)"><span style="font-size:12px;font-weight:800;color:#f0abfc">🎯 Prochain test ${when}</span><span style="font-size:14px;font-weight:700;color:#e2e8f0">${body}</span></div>`;
     }
     function goalTimeChartHtml() {
       const app = goalProbSeries(30).filter(x => x.t > 0).map(x => ({ d: x.d, s: x.t * 60 }));
@@ -15844,6 +15918,13 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
     function autoGoalCoachAfterRun() {
       try { const g = appData.goal || {}; if (!autoGoalCoachOn() || !getGeminiKey() || !parseFloat(g.distanceKm) || !parseFloat(g.durationMin)) return; setTimeout(() => coachGoalOpinion({ silent: true }), 6000); } catch (e) { }
     }
+    function coachPrevEsts() { const gk = goalKey(); return (appData.goalProbHist || []).filter(x => x.src === 'coach' && x.g === gk && x.tMin > 0).slice(-4); }
+    function coachPrevEstText() {
+      const P = coachPrevEsts(); if (!P.length) return '';
+      const last = (appData.history || [])[0], isTest = last && (sessionKind(last).label === 'TEST' || sessionKind(last).label === 'COURSE');
+      return `Tes estimations précédentes du chrono le jour J : ${P.map(x => `${fmtDateShort(x.d)} → ${fmtClock(x.tMin)}`).join(' ; ')}.
+STABILITÉ : une estimation ne doit pas bouger au gré d'une seule séance. Pars de ta dernière estimation (${fmtClock(P[P.length - 1].tMin)}) et ne la modifie que si les séances depuis le justifient clairement (${isTest ? "la dernière séance est un test ou une course : tu peux ajuster franchement d'après son résultat" : "au plus ±1 % après une séance normale"}). Dans « avis », dis en une phrase pourquoi le chrono change ou pas.`;
+    }
     async function coachGoalOpinion(opt = {}) {
       const out = document.getElementById('goalCoachOut') || document.createElement('div');
       const p = computeGoalProbability();
@@ -15861,6 +15942,7 @@ Séances récentes :
 ${hist}
 ${backgroundText()}
 ${tapisHrText()}
+${coachPrevEstText()}
 Sois cohérent : la probabilité doit correspondre à ton chrono estimé. Si ton chrono estimé le jour J est plus lent que l'objectif, la probabilité doit être inférieure à 50 % ; s'il est nettement plus rapide, supérieure à 50 %. Tiens compte des vitesses atteintes en fractionné, de la progression possible d'ici la date et du niveau du coureur.
 Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la course était aujourd'hui, "chrono_estime_min" = chrono probable le jour J avec la progression) : {"proba_jour_j":55,"proba_aujourdhui":35,"chrono_aujourdhui_min":54.5,"chrono_estime_min":52.5,"vitesse_estimee_kmh":11.4,"avis":"en tutoyant, 80 mots maximum : ce qui soutient ou limite tes chances","leviers":["levier concret 1","levier concret 2"]}`;
       try {
@@ -15873,7 +15955,12 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
           if (!(cm > 0) && kv > 0 && D) cm = D / kv * 60;
           if (!(kv > 0) && cm > 0 && D) kv = D / (cm / 60);
           const avis = String(j.avis || '').slice(0, 1200), leviers = (j.leviers || []).slice(0, 3).map(x => String(x).slice(0, 200));
-          const cn = parseFloat(String(j.chrono_aujourdhui_min).replace(',', '.'));
+          let cn = parseFloat(String(j.chrono_aujourdhui_min).replace(',', '.'));
+          { // garde-fou : ±1,5 % max par mise à jour, sauf après un test ou une course
+            const P = coachPrevEsts(), prev = P.length && (parseISODateLocal(todayISO()) - parseISODateLocal(P[P.length - 1].d)) / 864e5 <= 21 ? P[P.length - 1].tMin : null;
+            const last = (appData.history || [])[0], free = last && ['TEST', 'COURSE'].includes(sessionKind(last).label);
+            if (prev && cm > 0 && !free) { const c2 = Math.max(prev * 0.985, Math.min(prev * 1.015, cm)); if (c2 !== cm) { const r = c2 / cm; cm = c2; if (cn > 0) cn *= r; if (D) kv = D / (cm / 60); } }
+          }
           appData.goalCoachProb = { at: todayISO(), pDay: pj, pNow: pa || null, tNow: cn > 0 ? Math.round(cn * 10) / 10 : null, tMin: cm > 0 ? Math.round(cm * 10) / 10 : null, kmh: kv > 0 ? Math.round(kv * 10) / 10 : null, avis, leviers, auto: !!opt.silent };
           if (!Array.isArray(appData.goalProbHist)) appData.goalProbHist = [];
           migrateGoalProbHist();
