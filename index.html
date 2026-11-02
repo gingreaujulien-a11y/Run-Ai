@@ -76,7 +76,13 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
-    .hd-btn { width: 44px; height: 44px; border: none; background: none; display: flex; align-items: center; justify-content: center; border-radius: 14px; transition: transform .1s; }
+    .sp-b { width: 46px; height: 46px; border-radius: 12px; border: 1px solid rgba(30,215,96,.45); background: rgba(2,6,23,.6); color: #fff; font-size: 20px; font-weight: 900; flex-shrink: 0; }
+    .sp-b:active { transform: scale(.92); }
+    body.pocket #spBar { display: none !important; }
+    #arCmp.ar-full { position: fixed; inset: 0; z-index: 98; background: #050a16; padding: 8px; }
+    #arCmp.ar-full #arCmpMap { height: calc(100vh - 16px) !important; }
+    .map-fs { position: absolute; top: 8px; right: 8px; z-index: 800; width: 44px; height: 44px; border-radius: 22px; border: 1px solid #334155; background: rgba(2,6,23,.88); color: #fff; font-size: 20px; font-weight: 900; }
+    .hd-btn { width: 40px; height: 44px; border: none; background: none; display: flex; align-items: center; justify-content: center; border-radius: 14px; transition: transform .1s; }
     .hd-btn:active { transform: scale(.9); background: rgba(148,163,184,.12); }
     .hd-btn svg.icon { width: 24px; height: 24px; }
     body.pocket #runMapBox { display: none !important; }
@@ -293,7 +299,7 @@
   <section id="homeScreen" class="flex-1 flex-col w-full max-w-md mx-auto px-4 py-6 gap-4">
     <div class="flex items-center gap-2.5">
       <div class="runai-wordmark text-2xl">Run <span>Ai</span></div>
-      <div class="ml-auto flex items-center gap-0.5">
+      <div class="ml-auto flex items-center" style="gap:0;margin-right:-6px">
         <button id="homeChatTop" onclick="openCoachChat()" title="Discuter avec le coach" aria-label="Discuter avec le coach" class="hd-btn" style="color:#c4b5fd"><span class="icon-slot" data-icon="chat"></span></button>
         <button id="homePlanBtn" onclick="openHistoryModal()" title="Planning & suivi" aria-label="Planning & suivi" class="hd-btn" style="color:#6ee7b7"><span class="icon-slot" data-icon="calendar"></span></button>
         <button id="homeProfileBtn" onclick="openGoalModal()" title="Profil, objectif & coach IA" class="hd-btn" style="color:#fcd34d"><span class="icon-slot" data-icon="user"></span></button>
@@ -302,9 +308,9 @@
     </div>
 
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
-    <div id="homeGreeting" class="text-xl font-black text-white leading-snug px-1"></div>
+    <div id="homeGreeting" class="hidden"></div>
     <button type="button" id="homeResultsBtn" onclick="openTodayResults()" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95" style="min-height:52px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.55);color:#a7f3d0">📊 Voir les résultats de ta séance du jour</button>
-    <button type="button" id="homeChatBig" onclick="openCoachChat()" class="w-full rounded-2xl font-extrabold text-[15px] active:scale-95 flex items-center justify-center gap-2" style="min-height:50px;background:rgba(139,92,246,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Discuter avec le coach</button>
+    <button type="button" id="homeChatBig" onclick="openCoachChat()" style="display:none" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95 flex items-center justify-center gap-2" style="min-height:50px;background:rgba(139,92,246,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Discuter avec le coach</button>
     <div id="homeRecovery" class="hidden"></div>
     <div id="homeLastRun" class="hidden"></div>
     <button type="button" id="homeProfUpd" onclick="openProfUpdModal()" class="hidden" style="min-height:46px;border-radius:16px;border:1px solid rgba(34,211,238,.5);background:rgba(34,211,238,.1);color:#a5f3fc;font-weight:900;font-size:14px"></button>
@@ -457,6 +463,14 @@
           <button id="spBtn" onclick="openSpotifyModal()" class="rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:rgba(30,215,96,.1);border:1px solid rgba(30,215,96,.5);color:#bbf7d0">🎵 Spotify</button>
         </div>
         <button id="ytBtn" onclick="openYtModal()" class="hidden rounded-2xl font-bold text-[14px] active:scale-95" style="grid-column:1 / -1;min-height:46px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);color:#fecaca">▶️ Vidéo YouTube : aucune</button>
+      </div>
+      <div id="spBar" class="hidden" style="display:none;align-items:center;gap:6px;padding:6px 8px;border-radius:16px;background:rgba(30,215,96,.08);border:1px solid rgba(30,215,96,.35)">
+        <span id="spTrack" style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#bbf7d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎵 Spotify</span>
+        <button type="button" class="sp-b" onclick="spCmd('voldown')" aria-label="Volume moins" style="width:44px">🔉</button>
+        <button type="button" class="sp-b" onclick="spCmd('volup')" aria-label="Volume plus" style="width:44px">🔊</button>
+        <button type="button" class="sp-b" onclick="spCmd('previous')" aria-label="Morceau précédent">⏮</button>
+        <button type="button" class="sp-b" id="spPlayBtn" onclick="spCmd('toggle')" aria-label="Pause ou lecture">⏯</button>
+        <button type="button" class="sp-b" onclick="spCmd('next')" aria-label="Morceau suivant" style="width:64px;background:#1ed760;color:#04140a">⏭</button>
       </div>
       <div id="ctlRow" class="grid grid-cols-3 gap-3">
         <button id="btnMainToggle" onclick="mainCtlLeft()" aria-label="Pause" class="col-span-3 py-4 bg-sky-500 active:scale-95 transition rounded-2xl font-black text-slate-950 text-lg shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2">
@@ -744,11 +758,14 @@
       </div>
       <div id="feelSessTitle" class="text-[10px] text-slate-400"></div>
       <div id="feelChips" class="space-y-2"></div>
-      <div id="feelPainWhereBox" class="hidden">
-        <input id="feelPainWhere" placeholder="Où ? (mollet, genou…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white">
+      <div id="feelSoreWhereBox" class="hidden">
+        <input id="feelSoreWhere" oninput="feelAutoSaveSoon()" placeholder="Courbatures où ? (cuisses, mollets…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white">
       </div>
-      <textarea id="feelNote" rows="2" placeholder="Autre chose ? (journée chargée, chaleur…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white"></textarea>
-      <div class="grid grid-cols-2 gap-2">
+      <div id="feelPainWhereBox" class="hidden">
+        <input id="feelPainWhere" oninput="feelAutoSaveSoon()" placeholder="Douleur où ? (mollet, genou…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white">
+      </div>
+      <textarea id="feelNote" oninput="feelAutoSaveSoon()" rows="2" placeholder="Autre chose ? (journée chargée, chaleur…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white"></textarea>
+      <div id="feelBtnRow" class="grid grid-cols-2 gap-2">
         <button id="feelSaveBtn" onclick="saveFeelOnly()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Enregistrer</button>
         <button id="feelAskBtn" onclick="feelAsk()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-[11px] col-span-1">🧠 Avis du coach</button>
       </div>
@@ -834,6 +851,7 @@
             <div class="pm-hrrow"><span>FC de repos<small>au réveil</small></span><input type="number" id="fcRestProfile" min="30" max="110" inputmode="numeric" placeholder="60" onchange="runnerProfile().fcRest = parseInt(this.value) || undefined; saveAppData()" class="pm-in c pm-hrin"></div>
             <div id="fcMaxNote" class="hidden"></div>
             <div id="tapisHrBox" class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid rgba(251,113,133,.35)"></div>
+            <div id="hillVapBox" class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid rgba(163,230,53,.35)"></div>
             <span class="pm-cap" style="margin-top:4px">Zones cardio</span><div id="hrZonesBox" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-[12px]"></div>
           </div>
 
@@ -1064,7 +1082,7 @@
         <button type="button" onclick="arGenerate()" id="arGo" style="min-height:54px;border-radius:16px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:16px">🪄 Proposer des parcours</button>
         <div id="arStatus" style="font-size:13px;color:#94a3b8;font-weight:600"></div>
         <div id="arCmp" class="hidden" style="display:flex;flex-direction:column;gap:4px">
-          <div id="arCmpMap" style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
+          <div style="position:relative"><div id="arCmpMap" style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324"></div><button type="button" class="map-fs" onclick="arCmpFull()" aria-label="Plein écran">⛶</button></div>
           <div style="font-size:12px;color:#94a3b8;text-align:center">Touche un tracé (ou une carte ci-dessous) pour le mettre en évidence</div>
         </div>
         <div id="arList" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -5940,6 +5958,7 @@ Réponds uniquement en JSON : {"resume":"1 phrase","besoins":{"kcal":2400,"gluci
     }
     function tapisHrEff() { const o = tapisHrOffset(); return Math.max(0, o.off ?? TAPIS_HR_DEFAULT); }
     function renderTapisHr() {
+      try { renderHillVap(); } catch (e) { }
       const box = document.getElementById('tapisHrBox'); if (!box) return;
       const c = tapisHrCfg(), o = tapisHrOffset(), m = tapisHrMeasure();
       const btn = (k, l) => `<button type="button" onclick="setTapisHrMode('${k}')" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;${(c.mode || 'auto') === k ? 'background:#fb7185;color:#1f0a10;border:1px solid #fb7185' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
@@ -6207,7 +6226,7 @@ Donne 2 ou 3 axes de travail.`;
       renderProgressInner();
       const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', strengthsCardHtml());
       // Records et km / semaine → onglet Stats
-      { const st = document.getElementById('statsPanel'); if (st && box) { st.innerHTML = monthRecapHtml(); box.querySelectorAll(':scope > [data-sub="Records"], :scope > [data-sub="Km / semaine"]').forEach(el => st.appendChild(el)); applySubTabs(st); } }
+      { const st = document.getElementById('statsPanel'); if (st && box) { st.innerHTML = monthRecapHtml() + feelLogCardHtml(); box.querySelectorAll(':scope > [data-sub="Records"], :scope > [data-sub="Km / semaine"]').forEach(el => st.appendChild(el)); applySubTabs(st); } }
       applySubTabs(box);
     }
     function renderProgressInner() {
@@ -9307,7 +9326,9 @@ Réponds uniquement avec le JSON.`;
     }
 
     // Vitesse ajustée à la pente (coût énergétique de Minetti)
-    function minettiCost(g) {
+    // Coût en côte personnalisé : la part « montée » de la formule est multipliée par le coefficient du coureur
+    function minettiCost(g) { const r = minettiCostRaw(g); if (!(g > 0)) return r; const K = hillK(); return K === 1 ? r : 3.6 * Math.max(0.6, 1 + K * (r / 3.6 - 1)); }
+    function minettiCostRaw(g) {
       g = Math.max(-0.45, Math.min(0.45, g));
       // En descente, le coureur ne profite pas de toute l'économie théorique (freinage, impacts) :
       // ~7 % plus facile à −5 %, ~11 % au mieux vers −12 %, puis de nouveau plus dur au-delà de −20 %
@@ -9316,6 +9337,67 @@ Réponds uniquement avec le JSON.`;
     }
     // Sur tapis, 1 % de pente compense l'absence de résistance de l'air : 1 % tapis ≈ plat en extérieur
     function treadmillGrade(p) { return Math.max(0, (parseFloat(p) || 0) - 1); }
+    function hillCfg() { const r = runnerProfile(); if (!r.hillVap || typeof r.hillVap !== 'object') r.hillVap = { mode: 'auto' }; return r.hillVap; }
+    let _hk = null;
+    function hillK() {
+      const n = (appData.history || []).length, now = Date.now();
+      if (_hk && _hk.n === n && now - _hk.t < 4000) return _hk.k;
+      const k = hillK0(); _hk = { n, t: now, k }; return k;
+    }
+    function hillK0() {
+      try {
+        const c = hillCfg();
+        if (c.mode === 'std') return 1;
+        if (c.mode === 'manual' && c.ex && c.ex.v > 0 && c.ex.flat > 0 && c.ex.g > 0) { const raw = c.ex.v * minettiCostRaw(c.ex.g / 100) / 3.6; return raw - c.ex.v > 0.2 ? Math.max(0.4, Math.min(2.5, (c.ex.flat - c.ex.v) / (raw - c.ex.v))) : 1; }
+        if (c.mode === 'manual' && c.k > 0) return Math.max(0.4, Math.min(2.5, c.k));
+        const m = hillMeasure(); return m.k || 1;
+      } catch (e) { return 1; }
+    }
+    // Mesure : à cardio égal, quelle vitesse sur le plat correspond à une vitesse en montée ?
+    let _hillCache = null;
+    function hillMeasure() {
+      const H = (appData.history || []).filter(h => h && !h.cross && !h.hrFix && h.type === 'exterieur' && Array.isArray(h.track) && h.track.length > 60);
+      const key = H.length + '|' + (H[0] && H[0].id) + '|' + runnerFcMax(); if (_hillCache && _hillCache.key === key) return _hillCache.v;
+      const flat = [], hill = [];
+      H.forEach(h => {
+        const T = h.track.filter(r => r && r[0] != null && r[4] != null && r[5] != null); if (T.length < 40) return;
+        let i = 0;
+        while (i < T.length) {
+          if (T[i][0] < 420) { i++; continue; }
+          let j = i; while (j < T.length && T[j][0] - T[i][0] < 150) j++;
+          if (j >= T.length) break;
+          const W = T.slice(i, j + 1), km = W[W.length - 1][5] - W[0][5], sec = W[W.length - 1][0] - W[0][0];
+          const vs = W.map(r => r[2]).filter(x => x > 0), last = W.slice(Math.floor(W.length / 3)).map(r => r[1]).filter(x => x > 0);
+          if (km > 0.15 && sec > 100 && vs.length >= W.length * 0.6 && last.length >= W.length * 0.5 && Math.max(...vs) - Math.min(...vs) <= 2) {
+            const v = km / (sec / 3600), g = (W[W.length - 1][4] - W[0][4]) / (km * 1000) * 100, hr = last.reduce((a, b) => a + b, 0) / last.length;
+            if (Math.abs(g) < 1) flat.push([v, hr]); else if (g >= 3 && g <= 20) hill.push([v, g, hr]);
+          }
+          i = j;
+        }
+      });
+      let v = { k: null, n: hill.length, nF: flat.length };
+      if (flat.length >= 8 && hill.length >= 3) {
+        const n = flat.length, mv = flat.reduce((a, q) => a + q[0], 0) / n, mh = flat.reduce((a, q) => a + q[1], 0) / n; let sxy = 0, sxx = 0; flat.forEach(q => { sxy += (q[0] - mv) * (q[1] - mh); sxx += (q[0] - mv) ** 2; });
+        const b = sxx > n * 0.2 ? sxy / sxx : 7, bb = Math.max(3, Math.min(15, b)), a = mh - bb * mv;
+        const R = hill.map(([vh, g, hr]) => { const vEq = (hr - a) / bb, raw = vh * minettiCostRaw(g / 100) / 3.6; return raw - vh > 0.4 ? (vEq - vh) / (raw - vh) : null; }).filter(x => x != null && isFinite(x)).sort((x, y) => x - y);
+        if (R.length >= 3) { const med = R[Math.floor(R.length / 2)], w = R.length / (R.length + 4); v = { k: Math.round(Math.max(0.5, Math.min(2.2, 1 + (med - 1) * w)) * 100) / 100, n: R.length, nF: n, med }; }
+      }
+      _hillCache = { key, v }; return v;
+    }
+    function hillVapText() { const K = hillK(); return Math.abs(K - 1) >= 0.05 ? `VAP personnalisée en côte : coefficient ${K.toFixed(2).replace('.', ',')} (${K > 1 ? 'le coureur monte mieux que la formule standard ne le prévoit : ses montées valent plus sur le plat' : 'les montées lui coûtent plus que la formule standard'}).` : ''; }
+    function renderHillVap() {
+      const box = document.getElementById('hillVapBox'); if (!box) return;
+      const c = hillCfg(), m = hillMeasure(), K = hillK(), md = c.mode || 'auto';
+      const btn = (k, l) => `<button type="button" onclick="hillCfg().mode='${k}';_hillCache=null;_hk=null;saveAppData();renderHillVap()" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;${md === k ? 'background:#a3e635;color:#0f1a04;border:1px solid #a3e635' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
+      const ex = (v, g) => { const raw = v * minettiCostRaw(g / 100) / 3.6, me = v * minettiCost(g / 100) / 3.6; return `${String(v).replace('.', ',')} km/h à ${String(g).replace('.', ',')} % ≈ <b style="color:#d9f99d">${me.toFixed(1).replace('.', ',')} km/h</b> sur le plat${Math.abs(me - raw) > 0.05 ? ` <span style="color:#64748b">(formule : ${raw.toFixed(1).replace('.', ',')})</span>` : ''}`; };
+      const ce = c.ex || {};
+      box.innerHTML = `<div class="flex items-baseline justify-between gap-2"><span class="text-[14px] font-extrabold text-white">VAP en côte</span><span class="text-[20px] font-black" style="color:#d9f99d">× ${K.toFixed(2).replace('.', ',')}</span></div>
+        <div class="grid grid-cols-3 gap-1.5">${btn('auto', '📱 Auto')}${btn('std', 'Formule')}${btn('manual', '✋ Manuel')}</div>
+        ${md === 'auto' ? `<span class="text-[12px] text-slate-400">${m.k ? `Calculé sur ${m.n} montées et ${m.nF} portions plates, à cardio égal.` : `Pas encore assez de données (montées de 2-3 min avec cardio dehors) : formule standard en attendant.`}</span>` : ''}
+        ${md === 'manual' ? `<div class="flex items-center gap-1.5 flex-wrap text-[13px] font-bold text-slate-200">En côte à <input type="number" step="0.5" min="3" max="20" value="${ce.v || ''}" placeholder="6" class="pm-in c" style="width:58px;height:38px" onchange="hillSetEx('v',this.value)"> km/h sur <input type="number" step="0.5" min="2" max="25" value="${ce.g || ''}" placeholder="7,5" class="pm-in c" style="width:58px;height:38px" onchange="hillSetEx('g',this.value)"> %, je cours comme à <input type="number" step="0.5" min="4" max="25" value="${ce.flat || ''}" placeholder="9,5" class="pm-in c" style="width:58px;height:38px" onchange="hillSetEx('flat',this.value)"> km/h sur le plat</div>` : ''}
+        <span class="text-[12px] text-slate-300">Exemple : ${ex(6, 7.5)}</span>`;
+    }
+    function hillSetEx(k, v) { const c = hillCfg(); c.ex = c.ex || {}; c.ex[k] = parseFloat(String(v).replace(',', '.')) || null; _hk = null; saveAppData(); renderHillVap(); }
     function vapKmh(speed, gradePct) {
       return speed * minettiCost((gradePct || 0) / 100) / 3.6;
     }
@@ -11112,14 +11194,14 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     const ROAD_CLS = {
       autoroute: ['🚫', 'Autoroute', '#dc2626'], rapide: ['⚠️', 'Voie rapide', '#f97316'], nationale: ['🛣️', 'Nationale', '#f59e0b'],
-      departementale: ['🛣️', 'Départementale', '#eab308'], petite: ['🏘️', 'Petite route, rue', '#94a3b8'], pieton: ['🚶', 'Voie piétonne, piste cyclable', '#22d3ee'],
+      depgrande: ['🛣️', 'Grande départementale', '#f59e0b'], departementale: ['🛣️', 'Petite départementale', '#eab308'], petite: ['🏘️', 'Petite route, rue', '#94a3b8'], pieton: ['🚶', 'Voie piétonne, piste cyclable', '#22d3ee'],
       piste: ['🚜', 'Chemin, piste', '#a16207'], sentier: ['🥾', 'Sentier', '#84cc16'], inconnu: ['❔', 'Non renseigné', '#475569']
     };
     function roadClass(t) {
       const h = String(t.highway || ''), ref = String(t.ref || '').toUpperCase().trim();
       if (/^motorway/.test(h)) return 'autoroute';
       if (/^trunk/.test(h)) return /^A\s?\d/.test(ref) ? 'autoroute' : 'rapide';
-      if (/^(primary|secondary|tertiary)/.test(h)) { if (/^N\s?\d/.test(ref)) return 'nationale'; if (/^(D|M|RD)\s?\d/.test(ref)) return 'departementale'; return /^primary/.test(h) ? 'nationale' : 'departementale'; }
+      if (/^(primary|secondary|tertiary)/.test(h)) { if (/^N\s?\d/.test(ref)) return 'nationale'; if (/^tertiary/.test(h)) return 'departementale'; if (/^(D|M|RD)\s?\d/.test(ref) || /^secondary/.test(h)) return 'depgrande'; return 'nationale'; }
       if (/^(unclassified|residential|living_street|service|road)/.test(h)) return 'petite';
       if (/^(pedestrian|footway|steps|cycleway|corridor)/.test(h)) return 'pieton';
       if (h === 'track') return 'piste';
@@ -11155,12 +11237,12 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (/autorout/i.test(nat) || /autoroute/i.test(cls)) return { highway: 'motorway', ref: num };
       if (/bretelle/i.test(nat) || (/2 chauss/i.test(nat) && imp <= 2)) return Object.assign({ highway: 'trunk', ref: num }, paved);
       if (/nationale/i.test(cls)) return Object.assign({ highway: 'primary', ref: num || 'N' }, paved);
-      if (/départementale|departementale/i.test(cls)) return Object.assign({ highway: 'secondary', ref: num || 'D' }, paved);
+      if (/départementale|departementale/i.test(cls)) return Object.assign({ highway: imp <= 3 || /2 chauss/i.test(nat) ? 'secondary' : 'tertiary', ref: num || 'D' }, paved);
       if (/piste cyclable|escalier/i.test(nat)) return Object.assign({ highway: /escalier/i.test(nat) ? 'steps' : 'cycleway' }, paved);
       if (/sentier/i.test(nat)) return { highway: 'path' };
       if (/chemin/i.test(nat)) return { highway: 'track' };
       if (/empierr/i.test(nat)) return { highway: 'track', tracktype: 'grade2', surface: 'gravel' };
-      if (/route|rond-point|place/i.test(nat)) return Object.assign({ highway: imp <= 3 ? 'tertiary' : 'residential', ref: num }, paved);
+      if (/route|rond-point|place/i.test(nat)) return Object.assign({ highway: imp <= 2 ? 'secondary' : imp <= 3 ? 'tertiary' : 'residential', ref: num }, paved);
       return { highway: 'road' };
     }
     async function overpassWays(samples) {
@@ -11184,17 +11266,18 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!ways || s.length < 2) return null;
       const kx = Math.cos(s[0].lat * Math.PI / 180) * 111320, ky = 111320;
       const segD = (p, a, b) => { const ax = a.lon * kx, ay = a.lat * ky, bx = b.lon * kx, by = b.lat * ky, px = p.lon * kx, py = p.lat * ky, dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
-      const accS = {}, accR = {}; let tot = 0;
+      const accS = {}, accR = {}, runs = []; let tot = 0;
       s.forEach((p, i) => {
         const len = i < s.length - 1 ? s[i + 1].d - p.d : 0; if (len <= 0) return;
         let best = null, bd = 30;
         ways.forEach(w => { for (let k = 1; k < w.geometry.length; k++) { const d = segD(p, w.geometry[k - 1], w.geometry[k]); if (d < bd) { bd = d; best = w; } } });
         const cs = best ? surfClass(best.tags) : 'inconnu', cr = best ? roadClass(best.tags) : 'inconnu';
         accS[cs] = (accS[cs] || 0) + len; accR[cr] = (accR[cr] || 0) + len; tot += len;
+        const lr = runs[runs.length - 1]; if (lr && lr.c === cr) lr.m += len * 1000; else runs.push({ c: cr, m: len * 1000 });
       });
       if (!tot) return null;
       const pc = acc => { const o = {}; Object.keys(acc).forEach(k => o[k] = Math.round(acc[k] / tot * 100)); return o; };
-      const surf = pc(accS); Object.defineProperty(surf, '__roads', { value: pc(accR), enumerable: false, writable: true });
+      const surf = pc(accS); Object.defineProperty(surf, '__roads', { value: pc(accR), enumerable: false, writable: true }); Object.defineProperty(surf, '__runs', { value: runs, enumerable: false, writable: true });
       return surf;
     }
     async function surfaceMix(coords) {
@@ -11228,9 +11311,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (!(km > 0)) return null;
       const avg = (gain || 0) / (km * 10);
       let lv = diffLevelFromAvg(avg), bump = [];
-      if (maxGrade >= 12 && lv < 3) { lv++; bump.push('rampe raide'); }
-      if (maxGrade >= 20 && lv < 3) { lv++; }
-      if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40 && lv < 3) { lv++; bump.push('sentier'); }
+      if (maxGrade >= 15) bump.push('⚠ passage raide'); else if (surf && (surf.terre || 0) + (surf.gravier || 0) * 0.5 >= 40) bump.push('sentier');
+      // le niveau suit la pente moyenne du D+ (comme le filtre « relief ») : rampes raides et sentiers sont signalés à part
       const dpk = avg * 10;
       const why = [`${DIFF_TERRAIN[diffLevelFromAvg(avg)]} · pente moy. D+ ${avg.toFixed(1).replace('.', ',')} %`]; if (maxGrade != null) why.push(`pente max ${String(maxGrade).replace('.', ',')} %`); if (surf && surf.terre >= 20) why.push(`${surf.terre} % de sentier`);
       if (bump.length) why.push(bump.join(', '));
@@ -11366,6 +11448,18 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     const AR_COLS = ['#a78bfa', '#38bdf8', '#f472b6', '#34d399', '#fbbf24', '#fb923c'];
     function arCmpClear() { if (ar && ar.cmpMap) { try { ar.cmpMap.remove(); } catch (e) { } ar.cmpMap = null; } const w = document.getElementById('arCmp'); if (w) w.classList.add('hidden'); }
+    async function arCmpFull() {
+      const w = document.getElementById('arCmp'); if (!w) return; const on = !w.classList.contains('ar-full');
+      w.classList.toggle('ar-full', on);
+      try { if (on && !document.fullscreenElement) await w.requestFullscreen(); else if (!on && document.fullscreenElement) await document.exitFullscreen(); } catch (e) { }
+      setTimeout(() => { try { ar && ar.cmpMap && ar.cmpMap.invalidateSize(); } catch (e) { } }, 300);
+    }
+    document.addEventListener('fullscreenchange', () => { const w = document.getElementById('arCmp'); if (!document.fullscreenElement && w && w.classList.contains('ar-full')) { w.classList.remove('ar-full'); setTimeout(() => { try { ar && ar.cmpMap && ar.cmpMap.invalidateSize(); } catch (e) { } }, 300); } });
+    async function arBigFull() {
+      const o = document.getElementById('arBig'); if (!o) return;
+      try { if (!document.fullscreenElement) { await o.requestFullscreen(); try { await screen.orientation.lock('landscape'); } catch (e) { } } else { try { screen.orientation.unlock(); } catch (e) { } await document.exitFullscreen(); } } catch (e) { }
+      setTimeout(() => { try { arBig && arBig.map && arBig.map.invalidateSize(); } catch (e) { } }, 350);
+    }
     function arCmpRender() {
       const w = document.getElementById('arCmp'); if (!ar || !ar.cands.length) return;
       arCmpClear(); w.classList.remove('hidden'); ar.sel = -1;
@@ -11412,7 +11506,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       document.getElementById('arDiff').innerHTML = [[-1, '🤷', 'Peu importe', '']].concat(DIFF_LV.map((d, i) => [i, d[0], capFirst(DIFF_TERRAIN[i]), rng[i]])).map(([v, ic, t, r]) => segBtn(ar.diff === v, `ar.diff=${v};arRender()`, `${ic}<br><span style="font-size:11px">${t}</span>${r ? `<br><span style="font-size:10px;opacity:.75">${r}</span>` : ''}`)).join('');
       const chk = (on, js, html) => segBtn(on, js, `${on ? '✓' : '✕'} ${html}`);
       document.getElementById('arShapes').innerHTML = chk(ar.shapes.loop, "ar.shapes.loop=!ar.shapes.loop;if(!ar.shapes.loop&&!ar.shapes.ab)ar.shapes.ab=true;arRender()", '🔁 Boucle') + chk(ar.shapes.ab, "ar.shapes.ab=!ar.shapes.ab;if(!ar.shapes.loop&&!ar.shapes.ab)ar.shapes.loop=true;arRender()", '↔️ Aller-retour');
-      document.getElementById('arWays').innerHTML = [['road', '🏘️ Petites routes, rues'], ['dep', '🛣️ Départe­mentales'], ['big', '⚠️ Nationales, voies rapides'], ['track', '🚜 Chemins, pistes'], ['path', '🥾 Sentiers']].map(([k, t]) => chk(ar.ways[k], `ar.ways.${k}=!ar.ways.${k};if(!ar.ways.road&&!ar.ways.dep&&!ar.ways.big&&!ar.ways.track&&!ar.ways.path)ar.ways.road=true;arRender()`, t)).join('');
+      document.getElementById('arWays').innerHTML = [['road', '🏘️ Petites routes, rues'], ['dep', '🛣️ Petites départe­mentales'], ['depg', '🛣️ Grandes départe­mentales'], ['track', '🚜 Chemins, pistes'], ['path', '🥾 Sentiers']].map(([k, t]) => chk(ar.ways[k], `ar.ways.${k}=!ar.ways.${k};if(!ar.ways.road&&!ar.ways.dep&&!ar.ways.depg&&!ar.ways.track&&!ar.ways.path)ar.ways.road=true;arRender()`, t)).join('');
       document.getElementById('arCount').innerHTML = [3, 5, 6].map(n => segBtn(ar.n === n, `ar.n=${n};arRender()`, `${n}`)).join('');
       document.getElementById('arCrit').innerHTML = `<b style="color:#e2e8f0">Critères du classement</b>, du plus important au moins important :<br>1. ${ar.goal === 'time' ? 'durée la plus proche de ta durée max, sans la dépasser (calculée avec le relief)' : 'distance la plus proche de celle demandée'}<br>2. relief : ${ar.diff >= 0 ? `${DIFF_TERRAIN[ar.diff]} (pente moyenne du D+ ${['< 1 %', '1 à 2,5 %', '2,5 à 4 %', '> 4 %'][ar.diff]})` : 'peu importe'}<br>3. ${ar.shapes.loop ? 'boucles : peu de portions empruntées deux fois' : ''}${ar.shapes.loop && ar.shapes.ab ? ' · ' : ''}${ar.shapes.ab ? 'allers-retours : même chemin à l\'aller et au retour' : ''}<br>4. voies : ${[ar.ways.road && 'petites routes', ar.ways.dep && 'départementales', ar.ways.big && 'nationales et voies rapides', ar.ways.track && 'chemins et pistes', ar.ways.path && 'sentiers'].filter(Boolean).join(', ')}${['road', 'dep', 'big', 'track', 'path'].some(k => !ar.ways[k]) ? ' ; part de chaque type vérifiée sur la carte OpenStreetMap (autoroutes toujours exclues)' : ''}<br>5. propositions différentes les unes des autres`;
       const on = document.getElementById('arEndOn').checked; document.getElementById('arEndBox').classList.toggle('hidden', !on);
@@ -11440,7 +11534,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       } catch (e) { reStatusAr('Recherche d\'adresse indisponible (réseau ?)', true); }
     }
     // Grande carte plein écran : choisir le départ / l'arrivée, ou voir un parcours proposé
-    function arBigClose() { if (arBig && arBig.map) { try { arBig.map.remove(); } catch (e) { } } const o = document.getElementById('arBig'); if (o) o.remove(); arBig = null; }
+    function arBigClose() { if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { } } if (arBig && arBig.map) { try { arBig.map.remove(); } catch (e) { } } const o = document.getElementById('arBig'); if (o) o.remove(); arBig = null; }
     function arBigOpen(mode, i) {
       if (!ar) return;
       arBigClose();
@@ -11450,7 +11544,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       o.innerHTML = `<div style="padding:12px 14px 8px;display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:17px;font-weight:900;line-height:1.25">${mode === 'view' ? `${c.km.toFixed(1).replace('.', ',')} km · D+ ${c.gain != null ? c.gain + ' m' : '?'} · ⏱ ${fmtHM(c.time || 0)}` : mode === 'start' ? '📍 Touche la carte pour placer le départ' : '🏁 Touche la carte pour placer l\'arrivée'}</span>
         <button type="button" onclick="arBigClose()" aria-label="Fermer" style="width:40px;height:40px;border-radius:20px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900;flex-shrink:0">✕</button></div>
         ${mode === 'view' ? `<div style="padding:0 14px 8px">${diffChipHtml(c.diff, true)}</div>` : ''}
-        <div id="arBigMap" style="flex:1;min-height:200px;background:#0b1324"></div>
+        <div style="flex:1;min-height:200px;position:relative;display:flex"><div id="arBigMap" style="flex:1;background:#0b1324"></div><button type="button" class="map-fs" onclick="arBigFull()" aria-label="Plein écran">⛶</button></div>
         <div style="padding:10px 14px 18px;display:flex;flex-direction:column;gap:8px">
           ${mode === 'view' ? `<div id="arBigProf"></div>
             <button type="button" onclick="arChoose(${i})" style="min-height:52px;border-radius:14px;border:none;background:#a78bfa;color:#13092b;font-weight:900;font-size:16px">✓ Choisir et ajuster</button>`
@@ -11556,8 +11650,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const v = Math.max(4, num('arSpeed') || runnerEF()), timeMode = ar.goal === 'time';
       const goalMin = timeMode ? (ar.lockMin || Math.max(10, num('arMin') || 60)) : null, lock = !!ar.lockMin;
       let km = timeMode ? goalMin * v / 60 * (lock ? 1 : 0.95) : Math.max(1, num('arKm') || 8);
-      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null, N = band ? 5 : 8; ar.ways = ar.ways || { road: true, dep: true, big: false, track: true, path: true };
-      const W = ar.ways, prof = !W.path && !W.track ? (W.big ? 'car' : 'bike') : !W.path ? 'bike' : 'foot';
+      const band = ar.diff >= 0 ? DIFF_BANDS[ar.diff] : null, N = band ? 5 : 8; ar.ways = ar.ways && 'depg' in ar.ways ? ar.ways : { road: true, dep: true, depg: false, track: true, path: true };
+      const W = ar.ways, prof = !W.path && !W.track ? 'bike' : !W.path ? 'bike' : 'foot';
       const terrainGap = avg => { if (avg == null || !band) return 0; return avg < band[0] ? band[0] - avg : avg > band[1] ? avg - band[1] : 0; };
       const end = document.getElementById('arEndOn').checked ? ar.end : null;
       if (document.getElementById('arEndOn').checked && !end) { reStatusAr('Choisis l\'arrivée (adresse ou carte), ou décoche l\'option', true); return; }
@@ -11613,9 +11707,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         const S2 = cands0.map(c => reSamples(c.coords, 30)), allP = [].concat(...S2);
         const ez2 = await withDeadline(meteoEles(allP, { maxWait: 2500 }), left(2500), null); let k = 0;
         cands0.forEach((c, i) => { const n = S2[i].length; if (ez2) { const pr = S2[i].map((q, j) => [q.d, ez2[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } k += n; });
-        const preScore = c => Math.abs(c.km - km) / km * 40 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : 0) + terrainGap(c.cAvg) * 15;
+        const preScore = c => Math.abs(c.km - km) / km * 40 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : c.shape === 'ab' ? 8 : 0) + terrainGap(c.cAvg) * 15;
         cands0.sort((x, y) => preScore(x) - preScore(y));
-        const short = []; for (const c of cands0) { if (short.length >= (band ? N + 2 : 10)) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.7)) short.push(c); }
+        const short = []; for (const c of cands0) { if (short.length >= (band ? N + 2 : 14)) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.7)) short.push(c); }
         await runPoolUntil(short.map((c, i) => async () => {
           reStatusAr(`Étape 3/3 · profil précis ${i + 1}/${short.length}…`);
           c.eles = await withDeadline(elesFor(c.coords, 80, { maxWait: 2000 }), left(2000), null);
@@ -11630,31 +11724,35 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         }), 4, T0 + 8300);
         short.forEach(c => { if (c.gain === undefined) { c.gain = null; c.diff = routeDifficulty(c.km, (c.cAvg || 0) * c.km * 10, null, null); c.time = c.km / v * 60; } });
         // voies refusées : part de chaque type vérifiée sur OpenStreetMap (une seule requête pour tous les tracés)
-        const banned = { petite: !W.road, pieton: !W.road && !W.track && !W.path, departementale: !W.dep, nationale: !W.big, rapide: !W.big, autoroute: true, piste: !W.track, sentier: !W.path };
+        const banned = { petite: !W.road, pieton: !W.road && !W.track && !W.path, departementale: !W.dep, depgrande: !W.depg, nationale: true, rapide: true, autoroute: true, piste: !W.track, sentier: !W.path };
+        // une voie non choisie est tolérée sur un court passage (ex. traverser ou longer une départementale)
+        const TOL = { petite: 400, pieton: 400, piste: 400, sentier: 400, departementale: 300, depgrande: 150, nationale: 60, rapide: 40, autoroute: 0 };
         if (Object.keys(banned).some(k => banned[k] && k !== 'autoroute') || true) {
           reStatusAr('Vérification des types de voies…');
           const mx = await withDeadline(surfaceMixMulti(short.map(c => c.coords)), left(2500), null);
           ar.waysSrc = mx ? overpassWays.src : null;
           ar.waysUnchecked = !mx;
-          short.forEach((c, i) => { c.surf = mx && mx[i] || null; c.roads = mx && mx[i] ? mx[i].__roads : null; });
+          short.forEach((c, i) => { c.surf = mx && mx[i] || null; c.roads = mx && mx[i] ? mx[i].__roads : null; c.runs = mx && mx[i] ? mx[i].__runs : null; });
         }
         short.forEach(c => {
           const avg = c.gain != null ? c.gain / (c.km * 10) : c.cAvg;
           let cost = lock ? Math.abs(c.time - goalMin) / goalMin * 80 : timeMode ? (c.time > goalMin ? (c.time - goalMin) / goalMin * 80 : (goalMin - c.time) / goalMin * 25) : Math.abs(c.km - km) / km * 40;
-          cost += terrainGap(avg) * 20 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : 0) + (c.eles ? 0 : 30);
-          let badWay = 0; if (c.roads) Object.keys(banned).forEach(k2 => { if (banned[k2]) badWay += (c.roads[k2] || 0) * (k2 === 'autoroute' ? 5 : 1); }); cost += badWay * 0.5; c.badWay = badWay;
+          cost += terrainGap(avg) * 20 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : c.shape === 'ab' ? 10 : 0) + (c.eles ? 0 : 30); // les boucles sont préférées aux allers-retours
+          let badWay = 0, badM = 0, badLong = {}; if (c.runs) c.runs.forEach(r => { if (banned[r.c] && r.m > TOL[r.c]) { const ex = r.m - TOL[r.c]; badM += ex * (r.c === 'autoroute' || r.c === 'nationale' || r.c === 'rapide' ? 5 : 1); badLong[r.c] = Math.max(badLong[r.c] || 0, r.m); } });
+          badWay = c.km > 0 ? badM / (c.km * 10) : 0; cost += badWay * 0.8; c.badWay = badWay; c.badLong = badLong;
           c.cost = cost;
           const fitOk = lock ? Math.abs(c.time - goalMin) <= 5 : timeMode ? c.time <= goalMin * 1.02 && c.time >= goalMin * 0.88 : Math.abs(c.km - km) / km <= 0.06;
-          c.ok = fitOk && terrainGap(avg) <= 0.15 && (c.shape !== 'loop' || (c.reuse || 0) < 0.1) && badWay < 15;
+          c.ok = fitOk && terrainGap(avg) <= 0.15 && (c.shape !== 'loop' || (c.reuse || 0) < 0.1) && badWay < 3;
         });
         short.sort((x, y) => x.cost - y.cost);
         if (!band) {
           // « Peu importe » : un parcours de chaque difficulté (le meilleur de chacune), puis les meilleurs restants
           const pick = [];
           [0, 1, 2, 3].forEach(lv => short.filter(x => x.diff && x.diff.lv === lv).slice(0, 2).forEach(c => pick.push(c)));
-          short.forEach(c => { if (pick.length < 4 && !pick.includes(c)) pick.push(c); });
-          ar.cands = pick.slice(0, Math.max(N, pick.length)).sort((x, y) => ((x.diff || {}).lv ?? 9) - ((y.diff || {}).lv ?? 9));
+          short.forEach(c => { if (pick.length < N && !pick.includes(c)) pick.push(c); });
+          ar.cands = pick.slice(0, N);
         } else ar.cands = short.slice(0, N);
+        { const av = c => c.gain != null && c.km ? c.gain / (c.km * 10) : (c.cAvg || 0); ar.cands.sort((x, y) => (((x.diff || {}).lv ?? 9) - ((y.diff || {}).lv ?? 9)) || ((x.shape === 'ab') - (y.shape === 'ab')) || (av(x) - av(y))); }
       } finally { btn.disabled = false; btn.style.opacity = 1; }
       const cands = ar.cands;
       if (!cands.length) { reStatusAr('Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
@@ -11663,7 +11761,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:12px;color:#94a3b8;font-weight:800">${shapeLbl(c)}</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}${c.gain != null ? ` · ${(c.gain / (c.km * 10)).toFixed(1).replace('.', ',')} %` : ''}</span></div>
-        ${diffChipHtml(c.diff)}${c.shape === 'loop' && c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${c.roads ? roadBarHtml(c.roads) : ''}${c.badWay >= 10 ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ${Math.round(c.badWay)} % sur des voies que tu as exclues</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
+        ${diffChipHtml(c.diff)}${c.shape === 'loop' && c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${c.roads ? roadBarHtml(c.roads) : ''}${c.badLong && Object.keys(c.badLong).length ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ${Object.entries(c.badLong).map(([k, m]) => `${Math.round(m / 50) * 50} m d'affilée sur ${(ROAD_CLS[k] || ['', k])[1].toLowerCase()}`).join(' · ')}</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
         ${c.eles ? reProfileSvg(c.eles, 40) : '<span style="font-size:12px;color:#64748b">Profil indisponible (service d\'altitude saturé)</span>'}
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arBigOpen('view',${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
         <button type="button" onclick="arChoose(${i})" style="min-height:42px;border-radius:10px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ Choisir et ajuster</button></div></div>`).join('');
@@ -11675,8 +11773,17 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       closeAutoRoute();
       await openRouteEditor();
       if (!re) return;
-      re.wps = c.wps.map(p => ({ lat: p.lat, lon: p.lon }));
-      if (c.segs && c.segs.length === re.wps.length - 1) re.segs = c.segs.map(sg => sg.map(q => [q[0], q[1]])); else await reRebuildAll();
+      if (c.shape === 'loop' && c.coords && c.coords.length > 4) {
+        // points répartis le long de la boucle : le tracé reste identique, mais on peut l'ajuster partout
+        const co = c.coords, n = Math.max(5, Math.min(14, Math.round(c.km / 0.8))), step = c.km / n, idx = [0]; let acc = 0, next = step;
+        for (let k = 1; k < co.length - 1; k++) { acc += haversineM({ lat: co[k - 1][0], lon: co[k - 1][1] }, { lat: co[k][0], lon: co[k][1] }) / 1000; if (acc >= next) { idx.push(k); next += step; } }
+        idx.push(co.length - 1);
+        re.wps = idx.map(k => ({ lat: co[k][0], lon: co[k][1] }));
+        re.segs = idx.slice(1).map((k, j) => co.slice(idx[j], k + 1).map(q => [q[0], q[1]]));
+      } else {
+        re.wps = c.wps.map(p => ({ lat: p.lat, lon: p.lon }));
+        if (c.segs && c.segs.length === re.wps.length - 1) re.segs = c.segs.map(sg => sg.map(q => [q[0], q[1]])); else await reRebuildAll();
+      }
       reRedraw(true);
       document.getElementById('reName').value = `${ar.end ? 'Parcours' : c.shape === 'ab' ? 'Aller-retour' : 'Boucle'} ${km} km`;
       if (sp) { document.getElementById('reSpeed').value = sp; reRenderBar(); }
@@ -12248,6 +12355,7 @@ Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date 
 Records et progrès du jour (calculés par l'app) : ${recordsText({ summary: sum, durationMin: actualMin, seg: timerState.runSeg, track: timerState.runTrack, type: sess.type }, (appData.history || []).filter(h => h.id !== opts.saveTo))}.
 Séances précédentes :
 ${hist}
+${feelLogText(14)}
 ${planAheadText(sess.id)}
 ${coachMemoryText('')}
 ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
@@ -14214,7 +14322,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const before = runHistory().filter(h => (h._iso || '') < start || !h._iso);
       return before.length < 3 && !(appData.runBackground && appData.runBackground.at);
     }
-    function backgroundText() {
+    function backgroundText() { return [backgroundText0(), feelLogText(), hillVapText()].filter(Boolean).join('\n'); }
+    function backgroundText0() {
       const b = appData.runBackground;
       if (!b || !b.at) return '';
       const rep = { jamais: "court sans interruption", m1: "a repris il y a moins d'un mois", m3: 'a repris il y a 1 à 3 mois', m6: 'a repris il y a 3 à 6 mois', m12: 'a repris il y a 6 à 12 mois', plus: 'a repris il y a plus d\'un an', debut: 'débute la course à pied' }[b.reprise] || '';
@@ -14520,7 +14629,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       }
       if (f.sleep) p.push(`sommeil ${f.sleep}`);
       if (f.legs) p.push(`jambes ${f.legs === 'legeres' ? 'légères' : f.legs}`);
-      if (f.soreness) p.push(f.soreness === 'aucune' ? 'pas de courbatures' : `courbatures ${f.soreness === 'legeres' ? 'légères' : 'importantes'}`);
+      if (f.soreness) p.push(f.soreness === 'aucune' ? 'pas de courbatures' : `courbatures ${f.soreness === 'legeres' ? 'légères' : 'importantes'}${f.soreWhere ? ` (${f.soreWhere})` : ''}`);
       if (f.pain && f.pain !== 'aucune') p.push(`douleur ${f.pain === 'genante' ? 'gênante' : 'légère'}${f.painWhere ? ` (${f.painWhere})` : ''}`);
       if (f.stress) p.push(`stress ${f.stress === 'eleve' ? 'élevé' : f.stress}`);
       if (f.note) p.push(`« ${f.note} »`);
@@ -14536,6 +14645,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         ? "Pas de séance prévue aujourd'hui : indique tes sensations, le coach te dira si c'est judicieux d'en ajouter une."
         : "Indique tes sensations : le coach peut adapter, prolonger ou décaler la séance si besoin.";
       document.getElementById('feelPainWhere').value = feelDraft.painWhere || '';
+      document.getElementById('feelSoreWhere').value = feelDraft.soreWhere || '';
+      { const st = document.getElementById('feelSessTitle'); if (st) st.classList.add('hidden'); const br = document.getElementById('feelBtnRow'); if (br) br.classList.add('hidden'); }
       document.getElementById('feelNote').value = feelDraft.note || '';
       if (!fromSync || feelExpanded) document.getElementById('feelAdvice').classList.add('hidden');
       document.getElementById('feelRestore').classList.toggle('hidden', feelMode === 'add' || !sess.planOriginal);
@@ -14600,11 +14711,57 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           </div>
         </div>`).join('');
       document.getElementById('feelPainWhereBox').classList.toggle('hidden', !feelDraft.pain || feelDraft.pain === 'aucune');
+      document.getElementById('feelSoreWhereBox').classList.toggle('hidden', !feelDraft.soreness || feelDraft.soreness === 'aucune');
     }
-    function setFeel(k, v) { feelDraft[k] = feelDraft[k] === v ? undefined : v; renderFeelChips(); }
+    function setFeel(k, v) { feelDraft[k] = feelDraft[k] === v ? undefined : v; renderFeelChips(); feelAutoSave(); }
+    // Enregistrement automatique des sensations + journal (suivi dans le profil, utilisé par le coach)
+    let _feelT = null, _feelTip = null;
+    function feelAutoSaveSoon() { clearTimeout(_feelT); _feelT = setTimeout(feelAutoSave, 700); }
+    function feelAutoSave() {
+      clearTimeout(_feelT);
+      const f = Object.assign({}, readFeelForm());
+      if (feelMode === 'add') appData.dayFeelAdd = f; else { const s0 = getActiveSession(); if (s0) s0.dayFeel = f; }
+      feelLogPut(f); saveAppData();
+      const t = document.getElementById('feelTitle');
+      if (t) t.innerHTML = '🙂 Mes sensations du jour <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black align-middle">✓</span>';
+      clearTimeout(_feelTip); _feelTip = setTimeout(() => { try { prefetchCoachTip(); } catch (e) { } }, 4000);
+    }
+    function feelLogPut(f) {
+      if (!f) return; const d = f.at || todayISO();
+      if (!appData.feelLog || typeof appData.feelLog !== 'object') appData.feelLog = {};
+      const o = {}; ['energy', 'soreness', 'soreWhere', 'pain', 'painWhere', 'note', 'sleep', 'legs', 'stress'].forEach(k => { if (f[k]) o[k] = f[k]; });
+      if (Object.keys(o).length) appData.feelLog[d] = o; else delete appData.feelLog[d];
+      const ks = Object.keys(appData.feelLog).sort(); while (ks.length > 180) delete appData.feelLog[ks.shift()];
+    }
+    function feelLogMigrate() {
+      if (appData.feelLog) return; appData.feelLog = {};
+      (appData.history || []).forEach(h => { if (h.dayFeel && h.dayFeel.at) feelLogPut(h.dayFeel); });
+      (appData.sessions || []).forEach(s => { if (s && s.dayFeel && s.dayFeel.at) feelLogPut(s.dayFeel); });
+      if (appData.dayFeelAdd && appData.dayFeelAdd.at) feelLogPut(appData.dayFeelAdd);
+    }
+    function feelLogText(days = 21) {
+      try { feelLogMigrate(); } catch (e) { }
+      const lim = toISODateLocal(new Date(Date.now() - days * 864e5)), L = Object.entries(appData.feelLog || {}).filter(([d]) => d >= lim).sort();
+      if (!L.length) return '';
+      return `Sensations du jour déclarées par le coureur (${days} derniers jours, à croiser avec les séances pour juger comment il récupère : courbatures, énergie, douleurs) :\n${L.map(([d, f]) => `- ${d} : ${feelSummary(f)}`).join('\n')}`;
+    }
+    function feelLogCardHtml() {
+      try { feelLogMigrate(); } catch (e) { }
+      const L = Object.entries(appData.feelLog || {}).sort().reverse().slice(0, 30);
+      const E = { basse: ['😫', '#fb7185'], moyenne: ['😐', '#fbbf24'], bonne: ['🤩', '#34d399'] }, S = { grosses: ['Grosses', '#fb7185'], legeres: ['Légères', '#fbbf24'], aucune: ['Aucune', '#34d399'] }, P = { genante: ['Gênante', '#fb7185'], legere: ['Légère', '#fbbf24'], aucune: ['Aucune', '#34d399'] };
+      const runOn = new Set((appData.history || []).filter(h => h && !h.cross).map(h => h.dateISO || histISO(h)));
+      const cell = (m, v, extra) => v && m[v] ? `<span style="color:${m[v][1]};font-weight:800">${m[v][0]}</span>${extra ? `<br><span style="font-size:10.5px;color:#94a3b8">${plEsc(extra)}</span>` : ''}` : '<span style="color:#475569">–</span>';
+      return `<div class="pm-card" data-sub="Sensations">
+        <span class="pm-cap">Mes sensations du jour</span>
+        ${L.length ? `<div style="display:grid;grid-template-columns:1.1fr .8fr 1fr 1fr;gap:6px 8px;font-size:13px;align-items:start">
+          <span style="font-size:11px;font-weight:800;color:#64748b">Jour</span><span style="font-size:11px;font-weight:800;color:#64748b">Énergie</span><span style="font-size:11px;font-weight:800;color:#64748b">Courbatures</span><span style="font-size:11px;font-weight:800;color:#64748b">Douleur</span>
+          ${L.map(([d, f]) => `<span style="font-weight:800;color:#e2e8f0">${fmtDateShort(d)}${runOn.has(d) ? ' 🏃' : ''}</span><span>${cell(E, /^\d$/.test(String(f.energy)) ? (+f.energy <= 2 ? 'basse' : +f.energy === 3 ? 'moyenne' : 'bonne') : f.energy)}</span><span>${cell(S, f.soreness, f.soreWhere)}</span><span>${cell(P, f.pain, f.painWhere)}</span>`).join('')}
+        </div><span style="font-size:11px;color:#64748b">🏃 = jour avec une séance. Le coach s'en sert pour juger ta récupération.</span>` : '<span class="text-[13px] text-slate-400">Renseigne tes sensations du jour sur l\'accueil : elles apparaîtront ici.</span>'}</div>`;
+    }
 
     function readFeelForm() {
       feelDraft.painWhere = document.getElementById('feelPainWhere').value.trim();
+      feelDraft.soreWhere = (document.getElementById('feelSoreWhere') || { value: '' }).value.trim();
       feelDraft.note = document.getElementById('feelNote').value.trim();
       feelDraft.at = toISODateLocal(new Date());
       return feelDraft;
@@ -14612,7 +14769,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
 
     function saveFeelOnly() {
       const sess = getActiveSession();
-      sess.dayFeel = Object.assign({}, readFeelForm());
+      sess.dayFeel = Object.assign({}, readFeelForm()); feelLogPut(sess.dayFeel);
       saveAppData();
       renderHome();
       prefetchCoachTip(); // le conseil d'avant-séance en tiendra compte
@@ -16146,12 +16303,13 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
     function syncFeelPanel(force = false) {
       if (!document.getElementById('feelPanel')) return;
       const mode = homeFeelMode();
-      const key = `${todayISO()}|${mode}|${appData.activeSessionIndex}|${feelRecordedToday()}`;
+      const key = `${todayISO()}|${mode}|${appData.activeSessionIndex}`;
       if (!force && key === feelPanelKey) return;
       feelPanelKey = key;
       feelMode = mode;
-      feelExpanded = false; // replié par défaut
+      feelExpanded = true; // toujours affiché en entier
       openFeelModal(true);
+      { const hdr = document.getElementById('feelPanel').firstElementChild, xb = hdr && hdr.querySelector('button'); if (xb) xb.style.display = 'none'; }
     }
 
 
@@ -16226,8 +16384,8 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       } else if (act.step === 3) {
         title.textContent = 'Qui prépare la séance ?';
         body.innerHTML = `<div class="grid grid-cols-1 gap-3">
-            ${actTile(`actChooseMode('coach')`, '🧠', 'Le coach', 'Selon ton profil, ton objectif et tes sensations', act.mode === 'coach')}
             ${actTile(`actChooseMode('manual')`, '✍️', 'Moi', actIsRun() ? 'Séance libre ou type de séance' : 'Durée et contenu', act.mode === 'manual')}
+            ${actTile(`actChooseMode('coach')`, '🧠', 'Le coach', 'Selon ton profil, ton objectif et tes sensations', act.mode === 'coach')}
           </div>`;
       } else if (act.step === 4 && act.mode === 'coach') {
         title.textContent = 'Ce que tu veux';
@@ -17362,7 +17520,30 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     // État de la musique : relevé régulièrement pendant la séance, et juste avant chaque annonce
     const sp = { playing: false, at: 0, device: '', busy: false, pausedByUs: false };
-    async function spPoll() { if (!spConnected()) return; const j = await spApi('GET', '/me/player'); if (j) { sp.playing = !!j.is_playing; sp.device = (j.device && j.device.id) || sp.device; sp.at = Date.now(); } }
+    async function spPoll() { if (!spConnected()) return; const j = await spApi('GET', '/me/player'); if (j) { sp.playing = !!j.is_playing; sp.device = (j.device && j.device.id) || sp.device; sp.at = Date.now(); if (j.device && j.device.volume_percent != null) sp.vol = j.device.volume_percent; sp.track = j.item ? `${j.item.name}${j.item.artists && j.item.artists.length ? ' · ' + j.item.artists.map(a => a.name).join(', ') : ''}` : ''; spBarRender(); } }
+    function spBarOn() { return spConnected() && timerState.sessionStarted && !timerState.finished; }
+    function spBarRender() {
+      const b = document.getElementById('spBar'); if (!b) return; const on = spBarOn();
+      b.classList.toggle('hidden', !on); b.style.display = on ? 'flex' : 'none'; if (!on) return;
+      const t = document.getElementById('spTrack'); if (t) t.textContent = '🎵 ' + (sp.track || 'Spotify') + (sp.vol != null ? ` · ${sp.vol} %` : '');
+      const pb = document.getElementById('spPlayBtn'); if (pb) pb.textContent = sp.playing ? '⏸' : '▶️';
+    }
+    async function spCmd(c) {
+      if (!spConnected()) { showToast('Spotify non connecté'); return; }
+      if ('vibrate' in navigator) navigator.vibrate(30);
+      const dev = sp.device ? `?device_id=${sp.device}` : '';
+      let ok;
+      if (c === 'next') ok = await spApi('POST', '/me/player/next' + dev);
+      else if (c === 'previous') ok = await spApi('POST', '/me/player/previous' + dev);
+      else if (c === 'volup' || c === 'voldown') {
+        const v0 = sp.vol != null ? sp.vol : 60, v = Math.max(0, Math.min(100, v0 + (c === 'volup' ? 10 : -10)));
+        ok = await spApi('PUT', `/me/player/volume?volume_percent=${v}${sp.device ? `&device_id=${sp.device}` : ''}`); if (ok != null) { sp.vol = v; showToast(`🔊 Volume ${v} %`); }
+      }
+      else { ok = await spApi('PUT', `/me/player/${sp.playing ? 'pause' : 'play'}` + dev); if (ok != null) { sp.playing = !sp.playing; sp.pausedByUs = false; } }
+      if (ok == null) showToast("Spotify n'a pas répondu (lecture active sur un appareil ? compte Premium ?)");
+      spBarRender(); setTimeout(() => spPoll(), 900);
+    }
+    setInterval(() => { try { spBarRender(); if (spBarOn() && !isSpeaking() && Date.now() - sp.at > 20000) spPoll(); } catch (e) { } }, 3000);
     setInterval(() => { try { if (timerState.isRunning && spConnected() && spCfg().resume && !isSpeaking()) spPoll(); } catch (e) { } }, 15000);
     function spBeforeAnnounce(longOne) {
       if (!spConnected() || !timerState.sessionStarted) return;
