@@ -421,7 +421,7 @@
       <div id="runMapNav" style="position:absolute;left:8px;right:60px;bottom:8px;z-index:800;pointer-events:none;padding:4px 10px;border-radius:12px;background:rgba(124,45,18,.9);color:#fed7aa;font-weight:800;font-size:13px;display:none"></div>
       <button type="button" class="rm-btn" style="top:8px" aria-label="Zoom avant" onclick="runMap && runMap.zoomIn()">+</button>
       <button type="button" class="rm-btn" style="top:60px" aria-label="Zoom arrière" onclick="runMap && runMap.zoomOut()">−</button>
-      <button type="button" id="rmRotBtn" class="rm-btn" style="top:112px;font-size:20px" aria-label="Orientation" onclick="runMapRot=!runMapRot;runMapRefresh(true);showToast(runMapRot ? '🧭 Carte dans le sens de la course' : '🧭 Nord en haut')">🧭</button>
+      <button type="button" id="rmRotBtn" class="rm-btn" style="top:112px;font-size:20px" aria-label="Orientation" onclick="runMapRot=false;runMapBearing=0;runMapApplyRot();showToast('🧭 Nord en haut')">🧭</button>
       <button type="button" onclick="runMapFollow=true;runMapRefresh(true)" aria-label="Recentrer" style="position:absolute;right:8px;bottom:8px;z-index:800;width:46px;height:46px;border-radius:23px;border:1px solid #334155;background:rgba(2,6,23,.88);color:#fff;font-size:22px">◎</button>
     </div>
     <div id="runRouteRow" class="hidden" style="width:100%;gap:.4rem;margin-bottom:6px"></div>
@@ -764,7 +764,7 @@
       <div id="feelPainWhereBox" class="hidden">
         <input id="feelPainWhere" oninput="feelAutoSaveSoon()" placeholder="Douleur où ? (mollet, genou…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white">
       </div>
-      <textarea id="feelNote" oninput="feelAutoSaveSoon()" rows="2" placeholder="Autre chose ? (journée chargée, chaleur…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white"></textarea>
+      <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Commentaire</div><textarea id="feelNote" oninput="feelAutoSaveSoon()" rows="2" placeholder="Autre chose ? (journée chargée, chaleur…)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white"></textarea>
       <div id="feelBtnRow" class="grid grid-cols-2 gap-2">
         <button id="feelSaveBtn" onclick="saveFeelOnly()" class="py-2.5 bg-slate-800 border border-slate-700 text-slate-200 font-bold rounded-xl text-[11px]">Enregistrer</button>
         <button id="feelAskBtn" onclick="feelAsk()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-[11px] col-span-1">🧠 Avis du coach</button>
@@ -4227,7 +4227,22 @@
       setTimeout(() => { try { runMap && runMap.invalidateSize(); } catch (e) { } }, 200);
       runMapRefresh(true);
     }
-    let runMapRot = false;
+    let runMapRot = false, runMapBearing = 0;
+    function runMapApplyRot() {
+      const box = document.getElementById('runMap'); if (!box) return;
+      const hd = runMapRot ? runMapHeading() : null, ang = runMapRot ? (hd != null ? -hd : 0) : runMapBearing;
+      box.classList.toggle('rot', !runMapRot ? false : true);
+      box.style.transform = Math.abs(ang) > 0.5 ? `rotate(${ang}deg) scale(1.45)` : '';
+      const rb = document.getElementById('rmRotBtn'); if (rb) { rb.innerHTML = `<span style="display:inline-block;transform:rotate(${ang}deg);font-size:18px">⬆</span><span style="position:absolute;top:2px;left:0;right:0;font-size:9px;font-weight:900">N</span>`; rb.style.background = Math.abs(ang) > 0.5 ? '#38bdf8' : 'rgba(2,6,23,.88)'; }
+    }
+    // rotation à deux doigts
+    (function () {
+      let a0 = null, b0 = 0;
+      const ang = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
+      document.addEventListener('touchstart', e => { const bx = document.getElementById('runMapBox'); if (!bx || !bx.contains(e.target) || e.touches.length !== 2) return; a0 = ang(e.touches); b0 = runMapBearing; runMapRot = false; }, { passive: true });
+      document.addEventListener('touchmove', e => { if (a0 == null || e.touches.length !== 2) return; let d = ang(e.touches) - a0; if (Math.abs(d) < 8 && Math.abs(runMapBearing - b0) < 1) return; runMapBearing = ((b0 + d) % 360 + 360) % 360; if (runMapBearing > 180) runMapBearing -= 360; runMapApplyRot(); }, { passive: true });
+      document.addEventListener('touchend', e => { if (e.touches.length < 2) a0 = null; }, { passive: true });
+    })();
     function runMapHeading() { const gp = runData.gpsPath || []; if (gp.length < 2) return null; const b = gp[gp.length - 1]; for (let k = gp.length - 2; k >= 0; k--) { const a = gp[k]; if (haversineM({ lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] }) >= 25) return bearingDeg([a[0], a[1]], [b[0], b[1]]); } return null; }
     function runMapDestroy() { if (runMap) { try { runMap.remove(); } catch (e) { } } runMap = null; runMapL = {}; runMapFollow = true; }
     function runMapRefresh(force) {
@@ -4243,7 +4258,7 @@
           else runMapL.me.setLatLng([here.lat, here.lon]);
           if (!runMapFollow && now - runMapFollowAt > 20000) runMapFollow = true;
           if (runMapFollow) runMap.setView([here.lat, here.lon], runMap.getZoom ? runMap.getZoom() : 16);
-          { const box = document.getElementById('runMap'), hd = runMapRot ? runMapHeading() : null; if (box) { box.classList.add('rot'); box.style.transform = hd != null ? `rotate(${-hd}deg) scale(1.45)` : ''; } const rb = document.getElementById('rmRotBtn'); if (rb) rb.style.background = runMapRot ? '#38bdf8' : 'rgba(2,6,23,.88)'; }
+          runMapApplyRot();
         }
       } catch (e) { }
       const sp = document.getElementById('runMapSpeed'), big = document.getElementById('stageSpeedBig');
@@ -10894,14 +10909,35 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     async function reRouteSeg(a, b, force) {
       if (!re.follow && !force) return [[a.lat, a.lon], [b.lat, b.lon]];
-      try {
-        const url = `${osrmUrl()}${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
-        const r = await Promise.race([fetch(url), sleep(9000).then(() => { throw new Error('délai'); })]);
-        const j = await r.json();
-        const c = j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates;
-        if (c && c.length >= 2) return c.map(p => [p[1], p[0]]);
-      } catch (e) { reStatus('Calcul d\'itinéraire indisponible : tracé en ligne droite', true); }
+      const c = await routeVia([a, b]);
+      if (c) return c;
+      reStatus('Calcul d\'itinéraire indisponible (services saturés ou hors ligne) : tracé en ligne droite', true);
       return [[a.lat, a.lon], [b.lat, b.lon]];
+    }
+    // Calcul d'itinéraire : OpenStreetMap (OSRM), puis IGN (France), puis BRouter ; un service en panne est évité 3 min
+    const ROUTER_FAIL = {};
+    const ROUTE_CACHE = new Map();
+    async function routeVia(pts, prof, maxMs) {
+      prof = prof || routeProf(); if (prof === 'line') prof = 'foot';
+      const key = prof + '|' + pts.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(';');
+      if (ROUTE_CACHE.has(key)) return ROUTE_CACHE.get(key);
+      const T0 = Date.now(), budget = maxMs || 14000;
+      const tm = (pr, ms) => Promise.race([pr, sleep(ms).then(() => { throw new Error('délai'); })]);
+      const R = [
+        ['osrm', async ms => { const r = await tm(fetch(`${osrmUrl(prof)}${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join(';')}?overview=full&geometries=geojson`), ms); const j = await r.json(), c = j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates; return c && c.length >= 2 ? c.map(q => [q[1], q[0]]) : null; }],
+        ['ign', async ms => { if (!inFrance(pts[0].lat, pts[0].lon)) return null; const mid = pts.slice(1, -1).map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join('|');
+          const u = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=${prof === 'car' ? 'car' : 'pedestrian'}&optimization=shortest&start=${pts[0].lon.toFixed(6)},${pts[0].lat.toFixed(6)}&end=${pts[pts.length - 1].lon.toFixed(6)},${pts[pts.length - 1].lat.toFixed(6)}${mid ? `&intermediates=${mid}` : ''}&geometryFormat=geojson&getSteps=false&getBbox=false`;
+          const r = await tm(fetch(u), ms); if (!r.ok) throw new Error('IGN ' + r.status); const j = await r.json(), c = j.geometry && j.geometry.coordinates; return c && c.length >= 2 ? c.map(q => [q[1], q[0]]) : null; }],
+        ['brouter', async ms => { const u = `https://brouter.de/brouter?lonlats=${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join('|')}&profile=${prof === 'foot' ? 'hiking-mountain' : prof === 'car' ? 'car-fast' : 'trekking'}&alternativeidx=0&format=geojson`;
+          const r = await tm(fetch(u), ms); if (!r.ok) throw new Error('BRouter ' + r.status); const j = await r.json(), f = j.features && j.features[0], c = f && f.geometry && f.geometry.coordinates; return c && c.length >= 2 ? c.map(q => [q[1], q[0]]) : null; }]
+      ];
+      const order = R.slice().sort((x, y) => ((ROUTER_FAIL[x[0]] || 0) > Date.now() - 180000) - ((ROUTER_FAIL[y[0]] || 0) > Date.now() - 180000));
+      for (const [id, fn] of order) {
+        const left = budget - (Date.now() - T0); if (left < 1500) break;
+        try { const c = await fn(Math.min(id === 'osrm' ? 7000 : 8000, left)); if (c) { ROUTE_CACHE.set(key, c); if (ROUTE_CACHE.size > 400) ROUTE_CACHE.delete(ROUTE_CACHE.keys().next().value); routeVia.last = id; return c; } }
+        catch (e) { ROUTER_FAIL[id] = Date.now(); }
+      }
+      return null;
     }
     async function reAddPoint(lat, lon, silent, force) {
       if (!re) return;
@@ -11090,7 +11126,10 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     // ===== Outils parcours : itinéraire multi-points, altitudes, pente max, revêtement, difficulté
     function geoOffset(c, distM, brg) { const dLat = distM / 111320, dLon = distM / (111320 * Math.cos(c.lat * Math.PI / 180)); return { lat: c.lat + dLat * Math.cos(brg), lon: c.lon + dLon * Math.sin(brg) }; }
     function bearingDeg(a, b) { const y = Math.sin((b[1] - a[1]) * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180), x = Math.cos(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) - Math.sin(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
-    async function osrmMulti(pts, prof) {
+    async function osrmMulti(pts, prof, maxMs) {
+      return routeVia(pts, prof, maxMs);
+    }
+    async function osrmMultiOld(pts, prof) {
       try {
         const url = `${osrmUrl(prof)}${pts.map(p => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join(';')}?overview=full&geometries=geojson`;
         const r = await Promise.race([fetch(url), sleep(12000).then(() => { throw new Error('délai'); })]);
@@ -11487,6 +11526,27 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const t = document.getElementById('arFltN'); if (t) t.textContent = `${n} parcours affiché${n > 1 ? 's' : ''} sur ${ar.cands.length}`;
       try { const pts = []; ar.cands.forEach(c => { if (arVisible(c)) c.coords.forEach(p => pts.push(p)); }); if (pts.length && ar.cmpMap) ar.cmpMap.fitBounds(L.latLngBounds(pts), { padding: [16, 16] }); } catch (e) { }
     }
+    // Parcours déjà enregistrés ou déjà courus (GPS) qui partent d'ici et ont la bonne longueur
+    function arKnownCands(S, km, goalMin, v) {
+      const out = [], near = p => haversineM(S, { lat: p[0], lon: p[1] }) < 400, okLen = (k, co, eles) => { if (goalMin) { const t = routeTimeAt({ km: k, eles }, v); return t > 0 && Math.abs(t - goalMin) <= Math.max(5, goalMin * 0.1); } return Math.abs(k - km) / km <= 0.12; };
+      const thin = co => { const st = Math.max(1, Math.ceil(co.length / 600)); return co.filter((_, i) => i % st === 0 || i === co.length - 1); };
+      (appData.myRoutes || []).forEach(it => {
+        const co = []; (it.segs || []).forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; co.push([p[0], p[1]]); })); if (co.length < 2 || !near(co[0])) return;
+        const k = reLenKm(co); if (!okLen(k, co, it.eles)) return;
+        const loop = haversineM({ lat: co[0][0], lon: co[0][1] }, { lat: co[co.length - 1][0], lon: co[co.length - 1][1] }) < 300, reuse = loop ? routeReuse(co, true) : 0;
+        const c = { coords: thin(co), wps: [{ lat: co[0][0], lon: co[0][1] }, { lat: co[co.length - 1][0], lon: co[co.length - 1][1] }], segs: null, shape: !loop ? 'ab2' : reuse > 0.6 ? 'ab' : 'loop', km: k, reuse: reuse > 0.6 ? 0 : reuse, known: `📂 Mes parcours : ${it.name}` };
+        out.push(c);
+      });
+      (appData.history || []).filter(h => h && h.type === 'exterieur' && Array.isArray(h.gps) && h.gps.length > 20).slice(0, 60).forEach(h => {
+        const co = h.gps.map(p => [p[0], p[1]]); if (!near(co[0])) return;
+        const k = reLenKm(co); if (!okLen(k, co, null)) return;
+        if (out.some(o => routeSimilar(o.coords, co) > 0.7)) return;
+        const loop = haversineM({ lat: co[0][0], lon: co[0][1] }, { lat: co[co.length - 1][0], lon: co[co.length - 1][1] }) < 300; if (!loop) return;
+        const reuse = routeReuse(co, true);
+        out.push({ coords: thin(co), wps: [{ lat: co[0][0], lon: co[0][1] }, { lat: co[0][0], lon: co[0][1] }], segs: null, shape: reuse > 0.6 ? 'ab' : 'loop', km: k, reuse: reuse > 0.6 ? 0 : reuse, known: `📂 Déjà couru le ${fmtDateShort(h.dateISO || histISO(h))}` });
+      });
+      return out.slice(0, 10);
+    }
     function arCmpRender() {
       const w = document.getElementById('arCmp'); if (!ar || !ar.cands.length) return;
       arCmpClear(); w.classList.remove('hidden'); ar.sel = -1;
@@ -11671,6 +11731,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     function withDeadline(pr, ms, fb) { return Promise.race([Promise.resolve(pr).catch(() => fb), sleep(Math.max(0, ms)).then(() => fb)]); }
     async function runPoolUntil(tasks, n, until) { const res = []; let i = 0; await withDeadline(Promise.all(Array.from({ length: n }, async () => { while (i < tasks.length && Date.now() < until) { const k = i++; try { res[k] = await tasks[k](); } catch (e) { res[k] = null; } } })), until - Date.now(), null); return res; }
     async function arGenerate() {
+      try { return await arGenerate0(); } catch (e) { console.warn(e); reStatusAr('⚠ Erreur pendant le calcul : ' + (e.message || e) + ' — réessaie', true); const b = document.getElementById('arGo'); if (b) { b.disabled = false; b.style.opacity = 1; } }
+    }
+    async function arGenerate0() {
       if (!ar) return;
       const T0 = Date.now(), left = ms => Math.max(800, Math.min(ms, 9800 - (Date.now() - T0)));
       if (!ar.start) { reStatusAr('Choisis d\'abord un départ', true); return; }
@@ -11686,7 +11749,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const btn = document.getElementById('arGo'); btn.disabled = true; btn.style.opacity = .6;
       const list = document.getElementById('arList'); list.innerHTML = ''; arCmpClear();
       const S = ar.start, cands0 = [];
-      const route = pts => osrmMulti(pts, prof);
+      const route = pts => osrmMulti(pts, prof, Math.max(2000, T0 + 7500 - Date.now()));
       const mk = (coords, wps, segs, shape) => ({ coords, wps, segs, shape, km: reLenKm(coords) });
       try {
         if (!end) {
@@ -11714,9 +11777,14 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
             if (Math.abs(km / L - 1) > 0.05) { r *= Math.max(0.5, Math.min(1.8, km / L)); const w2 = loopWps(r), co2 = await route(w2); if (co2 && Math.abs(km / reLenKm(co2) - 1) < Math.abs(km / L - 1)) { w = w2; co = co2; } }
             const c = mk(co, w, null, 'loop'); c.th = o.th; c.reuse = routeReuse(co, true); return c;
           }));
+          if (ar.shapes.loop) pick.slice(0, 5).forEach(o => tasks.push(async () => { // boucle en triangle, décalée : autre forme
+            const r = km * 1000 / (3 * 1.15), w = [S, geoOffset(S, r, o.th - 0.5), geoOffset(S, r, o.th + 0.5), { lat: S.lat, lon: S.lon }];
+            const co = await route(w); if (!co) return null; const c = mk(co, w, null, 'loop'); c.th = o.th; c.reuse = routeReuse(co, true); return c;
+          }));
           let done = 0;
-          const res = await runPoolUntil(tasks.map(t => async () => { const x = await t(); done++; reStatusAr(`Étape 2/3 · calcul des tracés ${done}/${tasks.length}…`); return x; }), 5, T0 + 6000);
+          const res = await runPoolUntil(tasks.map(t => async () => { const x = await t(); done++; reStatusAr(`Étape 2/3 · calcul des tracés ${done}/${tasks.length}…`); return x; }), 6, T0 + 7500);
           res.filter(Boolean).forEach(c => cands0.push(c));
+          arKnownCands(S, km, timeMode ? goalMin : null, v).forEach(c => cands0.push(c));
         } else {
           // A → B : itinéraire direct + détours de chaque côté
           reStatusAr('Calcul des parcours…');
@@ -11729,7 +11797,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           }), 3);
           res.filter(Boolean).forEach(c => { c.reuse = routeReuse(c.coords, false); cands0.push(c); });
         }
-        if (!cands0.length) { reStatusAr('Aucun tracé trouvé : vérifie la connexion, ou autorise plus de types de chemins', true); return; }
+        if (!cands0.length) { reStatusAr(`Aucun tracé trouvé : les services d'itinéraire ne répondent pas (${Object.keys(ROUTER_FAIL).length ? 'en panne ou saturés' : 'réseau ?'}). Réessaie dans un moment.`, true); return; }
         // 3) Profil de chaque tracé (regroupé), classement, puis profil précis des meilleurs
         reStatusAr('Étape 3/3 · relief des tracés…');
         const S2 = cands0.map(c => reSamples(c.coords, 30)), allP = [].concat(...S2);
@@ -11799,7 +11867,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = arFilterBarHtml() + cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:900;color:#f1f5f9"><span style="width:24px;height:24px;border-radius:12px;background:${AR_COLS[i % AR_COLS.length]};color:#0b1020;font-size:13px;display:inline-flex;align-items:center;justify-content:center">${i + 1}</span>${c.km.toFixed(1).replace('.', ',')} km</span><span style="font-size:12px;color:#94a3b8;font-weight:800">${shapeLbl(c)}</span><span style="font-size:13px;color:#c4b5fd;font-weight:800">⏱ ${fmtHM(c.time || 0)}</span><span style="font-size:13px;color:#fb923c;font-weight:800">D+ ${c.gain != null ? c.gain + ' m' : '?'}${c.gain != null ? ` · ${(c.gain / (c.km * 10)).toFixed(1).replace('.', ',')} %` : ''}</span></div>
-        ${diffChipHtml(c.diff)}${c.shape === 'loop' && c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${c.roads ? roadBarHtml(c.roads) : ''}${c.badLong && Object.keys(c.badLong).length ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ${Object.entries(c.badLong).map(([k, m]) => `${Math.round(m / 50) * 50} m d'affilée sur ${(ROAD_CLS[k] || ['', k])[1].toLowerCase()}`).join(' · ')}</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
+        ${c.known ? `<span style="font-size:12px;font-weight:800;color:#6ee7b7">${plEsc(c.known)}</span>` : ''}${diffChipHtml(c.diff)}${c.shape === 'loop' && c.reuse >= 0.05 ? `<span style="font-size:12px;color:#94a3b8;font-weight:700">↩ ${Math.round(c.reuse * 100)} % du tracé emprunté deux fois</span>` : ''}${c.roads ? roadBarHtml(c.roads) : ''}${c.badLong && Object.keys(c.badLong).length ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ${Object.entries(c.badLong).map(([k, m]) => `${Math.round(m / 50) * 50} m d'affilée sur ${(ROAD_CLS[k] || ['', k])[1].toLowerCase()}`).join(' · ')}</span>` : ''}${!c.ok ? `<span style="font-size:12px;color:#fbbf24;font-weight:700">⚠ ne respecte pas tous tes critères</span>` : ''}
         ${c.eles ? reProfileSvg(c.eles, 40) : '<span style="font-size:12px;color:#64748b">Profil indisponible (service d\'altitude saturé)</span>'}
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px"><button type="button" onclick="arBigOpen('view',${i})" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">👁 Voir</button>
         <button type="button" onclick="arChoose(${i})" style="min-height:42px;border-radius:10px;border:none;background:#a78bfa;color:#13092b;font-weight:900">✓ Choisir et ajuster</button></div></div>`).join('');
@@ -11811,7 +11879,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       closeAutoRoute();
       await openRouteEditor();
       if (!re) return;
-      if (c.shape === 'loop' && c.coords && c.coords.length > 4) {
+      if ((c.shape === 'loop' || c.known) && c.coords && c.coords.length > 4) {
         // points répartis le long de la boucle : le tracé reste identique, mais on peut l'ajuster partout
         const co = c.coords, n = Math.max(5, Math.min(14, Math.round(c.km / 0.8))), step = c.km / n, idx = [0]; let acc = 0, next = step;
         for (let k = 1; k < co.length - 1; k++) { acc += haversineM({ lat: co[k - 1][0], lon: co[k - 1][1] }, { lat: co[k][0], lon: co[k][1] }) / 1000; if (acc >= next) { idx.push(k); next += step; } }
@@ -14650,6 +14718,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
 
     // ==================== SENSATIONS DU JOUR + ADAPTATION PAR LE COACH ====================
     const FEEL_FIELDS = {
+      sleep: { label: 'Sommeil', opts: [['mauvais', '😴 Mauvais'], ['moyen', '😐 Moyen'], ['bon', '😊 Bon']] },
       energy: { label: 'Énergie', opts: [['basse', '😫 Basse'], ['moyenne', '😐 Moyenne'], ['bonne', '🤩 En forme']] },
       soreness: { label: 'Courbatures', opts: [['grosses', 'Grosses'], ['legeres', 'Légères'], ['aucune', 'Aucune']] },
       pain: { label: 'Douleur', opts: [['genante', 'Gênante'], ['legere', 'Légère'], ['aucune', 'Aucune']] }
@@ -14743,8 +14812,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
 
     function renderFeelChips() {
       const box = document.getElementById('feelChips');
+      ['feelSoreWhereBox', 'feelPainWhereBox'].forEach(id => { const e = document.getElementById(id); if (e && box.contains(e)) box.parentNode.insertBefore(e, box); });
       box.innerHTML = Object.entries(FEEL_FIELDS).filter(([k]) => !(k === 'when' && feelMode === 'add')).map(([k, f]) => `
-        <div>
+        <div data-ff="${k}">
           <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">${f.label}</div>
           <div class="grid gap-1" style="grid-template-columns: repeat(${f.opts.length}, minmax(0, 1fr))">
             ${f.opts.map(([v, l]) => `<button type="button" onclick="setFeel('${k}','${v}')"
@@ -14753,6 +14823,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         </div>`).join('');
       document.getElementById('feelPainWhereBox').classList.toggle('hidden', !feelDraft.pain || feelDraft.pain === 'aucune');
       document.getElementById('feelSoreWhereBox').classList.toggle('hidden', !feelDraft.soreness || feelDraft.soreness === 'aucune');
+      // chaque précision « où ? » juste sous son choix
+      [['soreness', 'feelSoreWhereBox'], ['pain', 'feelPainWhereBox']].forEach(([k, id]) => { const blk = box.querySelector(`[data-ff="${k}"]`), e = document.getElementById(id); if (blk && e) { e.style.marginTop = '6px'; blk.appendChild(e); } });
     }
     function setFeel(k, v) { feelDraft[k] = feelDraft[k] === v ? undefined : v; renderFeelChips(); feelAutoSave(); }
     // Enregistrement automatique des sensations + journal (suivi dans le profil, utilisé par le coach)
@@ -14789,14 +14861,14 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     function feelLogCardHtml() {
       try { feelLogMigrate(); } catch (e) { }
       const L = Object.entries(appData.feelLog || {}).sort().reverse().slice(0, 30);
-      const E = { basse: ['😫', '#fb7185'], moyenne: ['😐', '#fbbf24'], bonne: ['🤩', '#34d399'] }, S = { grosses: ['Grosses', '#fb7185'], legeres: ['Légères', '#fbbf24'], aucune: ['Aucune', '#34d399'] }, P = { genante: ['Gênante', '#fb7185'], legere: ['Légère', '#fbbf24'], aucune: ['Aucune', '#34d399'] };
+      const SL = { mauvais: ['😴', '#fb7185'], moyen: ['😐', '#fbbf24'], bon: ['😊', '#34d399'] }, E = { basse: ['😫', '#fb7185'], moyenne: ['😐', '#fbbf24'], bonne: ['🤩', '#34d399'] }, S = { grosses: ['Grosses', '#fb7185'], legeres: ['Légères', '#fbbf24'], aucune: ['Aucune', '#34d399'] }, P = { genante: ['Gênante', '#fb7185'], legere: ['Légère', '#fbbf24'], aucune: ['Aucune', '#34d399'] };
       const runOn = new Set((appData.history || []).filter(h => h && !h.cross).map(h => h.dateISO || histISO(h)));
       const cell = (m, v, extra) => v && m[v] ? `<span style="color:${m[v][1]};font-weight:800">${m[v][0]}</span>${extra ? `<br><span style="font-size:10.5px;color:#94a3b8">${plEsc(extra)}</span>` : ''}` : '<span style="color:#475569">–</span>';
       return `<div class="pm-card" data-sub="Sensations">
         <span class="pm-cap">Mes sensations du jour</span>
-        ${L.length ? `<div style="display:grid;grid-template-columns:1.1fr .8fr 1fr 1fr;gap:6px 8px;font-size:13px;align-items:start">
-          <span style="font-size:11px;font-weight:800;color:#64748b">Jour</span><span style="font-size:11px;font-weight:800;color:#64748b">Énergie</span><span style="font-size:11px;font-weight:800;color:#64748b">Courbatures</span><span style="font-size:11px;font-weight:800;color:#64748b">Douleur</span>
-          ${L.map(([d, f]) => `<span style="font-weight:800;color:#e2e8f0">${fmtDateShort(d)}${runOn.has(d) ? ' 🏃' : ''}</span><span>${cell(E, /^\d$/.test(String(f.energy)) ? (+f.energy <= 2 ? 'basse' : +f.energy === 3 ? 'moyenne' : 'bonne') : f.energy)}</span><span>${cell(S, f.soreness, f.soreWhere)}</span><span>${cell(P, f.pain, f.painWhere)}</span>`).join('')}
+        ${L.length ? `<div style="display:grid;grid-template-columns:1.1fr .7fr .7fr 1fr 1fr;gap:6px 8px;font-size:13px;align-items:start">
+          <span style="font-size:11px;font-weight:800;color:#64748b">Jour</span><span style="font-size:11px;font-weight:800;color:#64748b">Sommeil</span><span style="font-size:11px;font-weight:800;color:#64748b">Énergie</span><span style="font-size:11px;font-weight:800;color:#64748b">Courbatures</span><span style="font-size:11px;font-weight:800;color:#64748b">Douleur</span>
+          ${L.map(([d, f]) => `<span style="font-weight:800;color:#e2e8f0">${fmtDateShort(d)}${runOn.has(d) ? ' 🏃' : ''}</span><span>${cell(SL, f.sleep)}</span><span>${cell(E, /^\d$/.test(String(f.energy)) ? (+f.energy <= 2 ? 'basse' : +f.energy === 3 ? 'moyenne' : 'bonne') : f.energy)}</span><span>${cell(S, f.soreness, f.soreWhere)}</span><span>${cell(P, f.pain, f.painWhere)}</span>`).join('')}
         </div><span style="font-size:11px;color:#64748b">🏃 = jour avec une séance. Le coach s'en sert pour juger ta récupération.</span>` : '<span class="text-[13px] text-slate-400">Renseigne tes sensations du jour sur l\'accueil : elles apparaîtront ici.</span>'}</div>`;
     }
 
@@ -16365,17 +16437,15 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
     function actEsc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
     function openActivityWizard(preType, fixedDate) {
       if (timerState.sessionStarted && !timerState.finished && !fixedDate) { showToast("Une séance est déjà en cours"); return; }
-      act = { step: preType ? 2 : 1, type: preType || '', when: fixedDate ? 'later' : 'now', date: fixedDate || '', fixedDate: fixedDate || '', mode: '', dur: 45, wish: '', prop: null, form: null, advice: '' };
+      act = { step: preType ? (fixedDate ? 3 : 2) : fixedDate ? 1.4 : 1, stack: [], type: preType || '', when: fixedDate ? 'later' : 'now', date: fixedDate || '', fixedDate: fixedDate || '', mode: '', dur: 45, wish: '', prop: null, form: null, advice: '', tab: '' };
       document.getElementById('actModal').classList.remove('hidden');
       renderAct();
     }
     function closeActivityWizard() { document.getElementById('actModal').classList.add('hidden'); act = null; }
     function actBack() {
       if (!act) return;
-      if (act.step <= 1) { closeActivityWizard(); return; }
-      act.step--;
-      if (act.step === 4 && act.mode === 'manual' && !actIsRun()) act.step = 3;
-      if (act.step === 2 && act.fixedDate) act.step = 1;
+      if (!act.stack || !act.stack.length) { closeActivityWizard(); return; }
+      act._back = true; act.step = act.stack.pop();
       act.advice = ''; act.loading = false;
       renderAct();
     }
@@ -16405,12 +16475,38 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       const title = document.getElementById('actTitle');
       const foot = document.getElementById('actFoot');
       const T = ACT_TYPES[act.type] || {};
-      const total = act.mode === 'manual' && !actIsRun() ? 4 : 5;
-      document.getElementById('actStepLbl').textContent = `Étape ${Math.min(act.step, total)} sur ${total}${act.type ? ` · ${T.icon} ${T.label}` : ''}${act.fixedDate ? ` · ${parseISODateLocal(act.fixedDate).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}` : ''}`;
+      if (!act.stack) act.stack = [];
+      if (act._last != null && act._last !== act.step && !act._back) act.stack.push(act._last);
+      act._back = false; act._last = act.step;
+      document.getElementById('actStepLbl').textContent = `Étape ${act.stack.length + 1}${act.type ? ` · ${T.icon} ${act.type === 'velo' && act.indoor ? 'Home trainer' : T.label}` : ''}${act.fixedDate ? ` · ${parseISODateLocal(act.fixedDate).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}` : ''}`;
       foot.innerHTML = '';
       const back = document.getElementById('actBackBtn');
-      if (back) back.style.visibility = act.step > 1 ? 'visible' : 'hidden';
+      if (back) back.style.visibility = act.stack.length ? 'visible' : 'hidden';
+      const nextWhen = () => act.fixedDate ? 3 : 2;
       if (act.step === 1) {
+        title.textContent = 'Que veux-tu créer ?';
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
+            ${actTile(`act.step=1.4;renderAct()`, '🏃', 'Créer une activité', 'Course, vélo ou renforcement', false)}
+            ${actTile(`act.step=1.2;renderAct()`, '🗺️', 'Créer un parcours', 'Le tracer, le générer ou gérer mes parcours', false)}</div>`;
+      } else if (act.step === 1.2) {
+        title.textContent = 'Parcours';
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
+            ${actTile(`closeActivityWizard();openRouteEditor()`, '✏️', 'Parcours manuel', 'Je trace mon parcours sur la carte', false)}
+            ${actTile(`closeActivityWizard();openAutoRoute()`, '🪄', 'Parcours auto', "L'app propose des parcours selon la distance et le relief", false)}
+            ${actTile(`closeActivityWizard();openRtPicker('manage')`, '📂', 'Gérer mes parcours', 'Voir, modifier ou supprimer', false)}</div>`;
+      } else if (act.step === 1.4) {
+        title.textContent = 'Quelle activité ?';
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
+            ${actTile(`act.sport='run';act.step=1.6;renderAct()`, '🏃', 'Course à pied', 'Sur tapis ou dehors', act.sport === 'run')}
+            ${actTile(`act.sport='velo';act.step=1.6;renderAct()`, '🚴', 'Vélo', 'Home trainer ou dehors', act.sport === 'velo')}
+            ${actTile(`act.sport='muscu';act.type='muscu';act.step=${act.fixedDate ? 3 : 2};renderAct()`, '🏋️', 'Renforcement', 'Musculation, gainage, mobilité', act.sport === 'muscu')}</div>`;
+      } else if (act.step === 1.6) {
+        title.textContent = 'Où ?';
+        const run = act.sport !== 'velo';
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
+            ${actTile(`act.type='${run ? 'tapis' : 'velo'}';act.indoor=true;act.step=${act.fixedDate ? 3 : 2};renderAct()`, run ? '🏃' : '🚲', run ? 'Intérieur · tapis' : 'Intérieur · home trainer', run ? 'Course sur tapis' : 'Vélo sur home trainer', act.indoor === true)}
+            ${actTile(`act.type='${run ? 'exterieur' : 'velo'}';act.indoor=false;act.step=${act.fixedDate ? 3 : 2};renderAct()`, '🌳', 'Extérieur', run ? 'Course dehors, avec ou sans parcours' : 'Route ou VTT', act.indoor === false)}</div>`;
+      } else if (act.step === 0) {
         title.textContent = 'Quelle activité ?';
         body.innerHTML = `<div class="grid grid-cols-2 gap-3">${Object.entries(ACT_TYPES).map(([k, t]) => actTile(`act.type='${k}';act.step=act.fixedDate?3:2;renderAct()`, t.icon, t.label, { tapis: 'Course sur tapis', exterieur: 'Course dehors', velo: 'Route, VTT ou home-trainer', muscu: 'Renforcement' }[k], act.type === k)).join('')}</div>`;
       } else if (act.step === 2) {
@@ -16449,8 +16545,14 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         if (act.loading) { body.innerHTML = `<div class="flex items-center gap-3 text-purple-300 font-bold p-4"><div class="w-5 h-5 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> ${act.loadMsg || 'Le coach prépare ta séance…'}</div>`; return; }
         const f = act.form;
         if (actIsRun() && f.libre) {
-          body.innerHTML = actRouteHtml() + `<div class="pm-card"><span style="font-size:20px;font-weight:800">🏃 Séance libre</span><span class="text-[14px] text-slate-300 leading-snug">${act.type === 'tapis' ? 'Pas de durée ni d\'allure imposées. Pendant la course, règle la vitesse et la pente avec les boutons − / + sous le cercle.' : 'Pas de durée ni d\'allure imposées. Le chrono compte le temps et les km (GPS), avec bilans et conseils.'}</span></div>`;
+          body.innerHTML = actRouteHtml2() + `<div class="pm-card"><span style="font-size:20px;font-weight:800">🏃 Séance libre</span><span class="text-[14px] text-slate-300 leading-snug">${act.type === 'tapis' ? 'Pas de durée ni d\'allure imposées. Pendant la course, règle la vitesse et la pente avec les boutons − / + sous le cercle.' : 'Pas de durée ni d\'allure imposées. Le chrono compte le temps et les km (GPS), avec bilans et conseils.'}</span></div>`;
           foot.innerHTML = act.when === 'later' ? `<span class="text-[13px] text-amber-300 font-semibold">Une séance libre se lance au moment voulu : reviens en arrière et choisis un type de séance pour la planifier.</span>` : `<button onclick="launchActivity()" class="pm-save">▶ Lancer l'activité</button>`;
+          return;
+        }
+        if (actIsRun()) {
+          body.innerHTML = actRunTabsHtml();
+          if (act.route && act.route.hillInfo) setTimeout(drawActHillMap, 60);
+          foot.innerHTML = `<button onclick="launchActivity()" class="pm-save">${act.when === 'later' ? '📅 Ajouter au planning' : "▶ Lancer l'activité"}</button>`;
           return;
         }
         body.innerHTML = (act.hillsData && act.route && act.route.hillInfo ? actHillMapHtml() : actRouteHtml()) + (act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${actEsc(act.prop.avis)}</span></div>` : '')
@@ -16464,6 +16566,94 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
           </div>`;
       }
     }
+    // ---------- Détail d'une séance de course : onglets ----------
+    function actRunTabsHtml() {
+      const out = act.type === 'exterieur', tabs = [].concat(out ? [['route', '🗺️<br>Parcours']] : [], [['warm', '🔥<br>Échauf. + calme'], ['main', '⚡<br>Cœur de séance'], ['coach', '🧠<br>Analyse coach']]);
+      if (!tabs.some(t => t[0] === act.tab)) act.tab = tabs[0][0];
+      const f = act.form, sess = actFormToSession();
+      const pane = (k, html) => `<div data-actpane="${k}" style="display:${act.tab === k ? 'flex' : 'none'};flex-direction:column;gap:10px">${html}</div>`;
+      const warm = `<div class="pm-card"><span class="pm-cap">Échauffement et retour au calme</span>
+          <div class="grid grid-cols-2 gap-2"><label class="pm-lbl">Échauffement (min)<input id="af_chauffe" type="number" class="pm-in c" value="${f.chauffe}" oninput="actLive()"></label>
+          <label class="pm-lbl">Retour au calme (min)<input id="af_recup" type="number" class="pm-in c" value="${f.recup}" oninput="actLive()"></label></div>
+          <span class="text-[12.5px] text-slate-400">Allure facile, au ressenti${(() => { try { const t = easyHrTxt(); return t ? ' ' + t : ''; } catch (e) { return ''; } })()}.</span></div>`;
+      const main = `<div class="pm-card">
+          <div class="grid grid-cols-${act.type === 'tapis' ? 2 : 1} gap-2"><label class="pm-lbl">Séries<input id="af_repet" type="number" min="1" class="pm-in c" value="${f.repet}" oninput="actLive()"></label>
+          ${act.type === 'tapis' ? `<label class="pm-lbl">Pente %<input id="af_pente" type="number" step="0.5" class="pm-in c" value="${f.pente}" oninput="actLive()"></label>` : ''}</div>
+          <span class="pm-cap" style="margin-top:4px">Segments (une série)</span>
+          ${f.segs.map((sg, i) => `<div class="grid gap-2 items-center" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px">
+              <label class="pm-lbl">Vitesse km/h<input id="af_v${i}" type="number" step="0.5" class="pm-in c" value="${sg.v}" oninput="actLive()"></label>
+              <label class="pm-lbl">Durée min<input id="af_d${i}" type="number" step="0.5" class="pm-in c" value="${sg.d}" oninput="actLive()"></label>
+              <button onclick="actReadForm();act.form.segs.splice(${i},1);if(!act.form.segs.length)act.form.segs.push({v:runnerEF(),d:10});renderAct()" aria-label="Retirer" class="pm-btn" style="margin-top:18px;padding:0;color:#fda4af">✕</button>
+            </div>`).join('')}
+          <button onclick="actReadForm();act.form.segs.push({v:act.form.segs[act.form.segs.length-1].v,d:1});renderAct()" class="pm-btn">+ Ajouter un segment</button></div>`;
+      const coach = `${act.prop && act.prop.avis ? `<div class="pm-card" style="border-color:#3b2a63"><span class="pm-cap" style="color:#a78bfa">${act.prop.titre ? actEsc(act.prop.titre) : 'Le mot du coach'}</span><span class="text-[14px] text-slate-200 leading-snug">${mdLite(String(act.prop.avis))}</span></div>` : ''}
+          <button onclick="actReadForm();askCoachOnActivity()" class="pm-btn" style="height:46px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd">🧠 Avis du coach sur ${act.mode === 'coach' ? 'ma version modifiée' : 'ma séance'}</button>
+          <div id="actAdvice">${act.advice || ''}</div>`;
+      return `<div class="pm-tabs" style="display:flex;gap:4px;overflow-x:auto;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${tabs.map(([k, l]) => `<button type="button" data-acttab="${k}" onclick="actTab('${k}')" style="flex:1 1 0;min-width:0;min-height:48px;padding:4px 2px;border-radius:10px;border:none;font-size:11.5px;font-weight:800;line-height:1.2;${act.tab === k ? 'background:#fbbf24;color:#1a1204' : 'background:none;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        <div id="actSummary" class="text-[13px] font-bold text-sky-200 px-1">${actEsc(capFirst(describeSessionHuman(sess)))} · ${Math.round(computeSessionTotalMin(sess))} min · ≈ ${computeSessionDistanceKm(sess).toFixed(1).replace('.', ',')} km</div>
+        ${out ? pane('route', act.hillsData && act.route && act.route.hillInfo ? actHillMapHtml() : actRouteHtml2()) : ''}${pane('warm', warm)}${pane('main', main)}${pane('coach', coach)}`;
+    }
+    function actTab(k) {
+      if (!act) return; act.tab = k;
+      document.querySelectorAll('[data-actpane]').forEach(e => e.style.display = e.dataset.actpane === k ? 'flex' : 'none');
+      document.querySelectorAll('[data-acttab]').forEach(b => { const on = b.dataset.acttab === k; b.style.background = on ? '#fbbf24' : 'none'; b.style.color = on ? '#1a1204' : '#94a3b8'; });
+    }
+    function actRouteHtml2() {
+      if (!act || act.type !== 'exterieur') return '';
+      const it = act.route && act.route.myId ? (appData.myRoutes || []).find(r => r.id === act.route.myId) : null;
+      const cur = act.route ? `<div style="display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.12);border:2px solid #34d399"><span style="font-size:15px;font-weight:900;color:#fff">✓ ${actEsc(act.route.name || (it && it.name) || 'Parcours')}</span><span style="font-size:13px;color:#a7f3d0;font-weight:700">${(act.route.totalKm || 0).toFixed(1).replace('.', ',')} km · D+ ${Math.round(act.route.gainM || 0)} m</span></div>`
+        : `<div style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.12);border:2px solid #34d399;font-size:14px;font-weight:900;color:#fff">✓ Parcours libre <span style="font-weight:600;color:#a7f3d0">· tu cours où tu veux</span></div>`;
+      const b = (js, ic, t, st) => `<button type="button" onclick="${js}" style="min-height:52px;border-radius:12px;font-weight:900;font-size:14px;${st}">${ic} ${t}</button>`;
+      return `<div class="pm-card" style="border-color:rgba(52,211,153,.45)"><span class="pm-cap" style="color:#6ee7b7">🗺️ Parcours</span>${cur}
+        <div class="grid grid-cols-2 gap-2">
+          ${b('act.route=null;renderAct()', '🏃', 'Parcours libre', 'background:#0f172a;border:1px solid #334155;color:#e2e8f0')}
+          ${b("actReadForm();openRtPicker('pick')", '📂', 'Mes parcours', 'background:#0f172a;border:1px solid #334155;color:#e2e8f0')}
+          ${b('actReadForm();actDrawRoute()', '✏️', 'Tracer un parcours', 'background:#34d399;border:none;color:#03140d')}
+          ${b('actReadForm();window.__actRouteDraw=true;openAutoRoute()', '🪄', 'Parcours auto', 'background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.6);color:#ddd6fe')}</div></div>`;
+    }
+    // ---------- Choisir / gérer mes parcours (filtres forme, difficulté, compatibilité) ----------
+    let rtp = null;
+    function rtShape(it) {
+      if (it._sh) return it._sh;
+      const co = []; (it.segs || []).forEach((sg, i) => sg.forEach((p, k) => { if (i && !k) return; co.push([p[0], p[1]]); }));
+      if (co.length < 2) return 'ab2';
+      const loop = haversineM({ lat: co[0][0], lon: co[0][1] }, { lat: co[co.length - 1][0], lon: co[co.length - 1][1] }) < 300;
+      let sh = 'ab2'; if (loop) { let ru = 0; try { ru = routeReuse(co, true); } catch (e) { } sh = ru > 0.6 ? 'ab' : 'loop'; }
+      Object.defineProperty(it, '_sh', { value: sh, enumerable: false, writable: true, configurable: true }); return sh;
+    }
+    function openRtPicker(mode) {
+      rtp = { mode, lv: -1, sh: '', all: false };
+      if (mode === 'pick' && act && act.form) { try { const ss = actFormToSession(); rtp.km = computeSessionDistanceKm(ss); rtp.min = computeSessionTotalMin(ss); } catch (e) { } }
+      let m = document.getElementById('rtPickModal');
+      if (!m) { m = document.createElement('div'); m.id = 'rtPickModal'; m.style.cssText = 'position:fixed;inset:0;z-index:96;background:#050a16;display:flex;flex-direction:column;color:#f1f5f9'; document.body.appendChild(m); }
+      renderRtPicker();
+    }
+    function closeRtPicker() { const m = document.getElementById('rtPickModal'); if (m) m.remove(); rtp = null; }
+    function renderRtPicker() {
+      const m = document.getElementById('rtPickModal'); if (!m || !rtp) return;
+      const all = (appData.myRoutes || []).map(it => { const sp = rtp.km && rtp.min ? rtp.km / (rtp.min / 60) : (it.speed || runnerEF()); const t = routeTimeAt({ km: it.km, eles: it.eles }, sp); const d = routeDifficulty(it.km, it.gain, it.maxGrade, null); return { it, t, d, sh: rtShape(it), comp: !rtp.km || (Math.abs(it.km - rtp.km) <= 1 && Math.abs(t - rtp.min) <= 10) }; });
+      const vis = all.filter(x => (rtp.lv < 0 || (x.d && x.d.lv === rtp.lv)) && (!rtp.sh || x.sh === rtp.sh) && (rtp.mode !== 'pick' || rtp.all || x.comp));
+      const chip = (on, js, html) => `<button type="button" onclick="${js}" style="min-height:36px;padding:0 10px;border-radius:10px;font-size:12.5px;font-weight:800;white-space:nowrap;${on ? 'background:#34d399;color:#03140d;border:1px solid #34d399' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${html}</button>`;
+      const shL = { loop: '🔁 Boucles', ab: '↔️ Allers-retours', ab2: '➡️ A → B' };
+      const nComp = all.filter(x => x.comp).length;
+      m.innerHTML = `<div style="padding:16px 16px 8px;display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:22px;font-weight:900">${rtp.mode === 'pick' ? '📂 Choisir un parcours' : '📂 Mes parcours'}</span><button type="button" onclick="closeRtPicker()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">✕</button></div>
+        <div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:6px">
+          ${rtp.mode === 'pick' && rtp.km ? `<span style="font-size:13px;color:#a7f3d0;font-weight:700">Séance : ${rtp.km.toFixed(1).replace('.', ',')} km · ${Math.round(rtp.min)} min → parcours à ± 1 km et ± 10 min (${nComp} compatible${nComp > 1 ? 's' : ''})</span>` : ''}
+          <div style="display:flex;gap:5px;overflow-x:auto">${chip(rtp.lv < 0, 'rtp.lv=-1;renderRtPicker()', 'Toutes')}${DIFF_LV.map((L0, l) => chip(rtp.lv === l, `rtp.lv=${l};renderRtPicker()`, `${L0[0]} ${L0[1]}`)).join('')}</div>
+          <div style="display:flex;gap:5px;overflow-x:auto">${chip(!rtp.sh, "rtp.sh='';renderRtPicker()", 'Toutes formes')}${Object.keys(shL).map(k => chip(rtp.sh === k, `rtp.sh='${k}';renderRtPicker()`, shL[k])).join('')}</div>
+          ${rtp.mode === 'pick' && rtp.km ? `<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#cbd5e1"><input type="checkbox" ${rtp.all ? 'checked' : ''} onchange="rtp.all=this.checked;renderRtPicker()" style="width:20px;height:20px"> Afficher aussi les parcours non compatibles</label>` : ''}
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:4px 16px 24px;display:flex;flex-direction:column;gap:8px">
+          ${vis.length ? vis.map(x => `<div style="border:1px solid ${x.comp ? '#1e3a2f' : '#334155'};border-radius:14px;padding:10px 12px;background:#0f172a;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:16px;font-weight:900">${plEsc(x.it.name || 'Parcours')}</span><span style="font-size:12px;font-weight:800;color:#94a3b8;white-space:nowrap">${shL[x.sh].split(' ')[0]} ${{ loop: 'boucle', ab: 'aller-retour', ab2: 'A → B' }[x.sh]}</span></div>
+            <span style="font-size:14px;font-weight:800;color:#cbd5e1">${(+x.it.km || 0).toFixed(1).replace('.', ',')} km · D+ ${Math.round(x.it.gain || 0)} m · ⏱ ${fmtClock(x.t)}${rtp.mode === 'pick' && rtp.km && !x.comp ? ' <span style="color:#fbbf24">· hors durée</span>' : ''}</span>
+            ${diffChipHtml(x.d)}
+            ${rtp.mode === 'pick' ? `<button type="button" onclick="actPickRoute('${x.it.id}');closeRtPicker();act.tab='route';renderAct()" style="min-height:44px;border-radius:10px;border:none;background:#34d399;color:#03140d;font-weight:900">✓ Choisir ce parcours</button>`
+              : `<div class="grid grid-cols-2 gap-2"><button type="button" onclick="closeRtPicker();openRouteEditor('${x.it.id}')" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">✏️ Modifier</button><button type="button" onclick="rtDelete('${x.it.id}')" style="min-height:42px;border-radius:10px;border:1px solid rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-weight:800">🗑 Supprimer</button></div>`}
+          </div>`).join('') : `<span style="font-size:14px;color:#94a3b8;padding:12px 0">${(appData.myRoutes || []).length ? 'Aucun parcours ne correspond à ces filtres.' : 'Aucun parcours enregistré pour l\'instant.'}</span>`}
+        </div>`;
+    }
+    function rtDelete(id) { if (!confirm('Supprimer ce parcours ?')) return; appData.myRoutes = (appData.myRoutes || []).filter(r => r.id !== id); saveAppData(); try { renderMyRoutes(); } catch (e) { } renderRtPicker(); }
     // Parcours de l'activité (dehors) : choisir un parcours enregistré ou en dessiner un
     let actRtAll = false;
     function actRouteHtml() {
@@ -16743,7 +16933,7 @@ Choisis LA côte la plus adaptée (donne son numéro dans "cote"), construis la 
       }
       if (!getGeminiKey()) { showToast("Clé Gemini nécessaire (Réglages › Données) : réglage manuel"); act.mode = 'manual'; act.step = actIsRun() ? 4 : 5; renderAct(); return; }
       act.step = 5; act.loading = true; renderAct();
-      const kind = { tapis: 'une séance de course sur tapis', exterieur: 'une séance de course en extérieur', velo: 'une séance de vélo', muscu: 'une séance de musculation / renforcement utile au coureur, sans matériel ou avec peu' }[act.type];
+      const kind = { tapis: 'une séance de course sur tapis', exterieur: 'une séance de course en extérieur', velo: act.indoor ? 'une séance de vélo sur home trainer' : act.indoor === false ? 'une séance de vélo en extérieur' : 'une séance de vélo', muscu: 'une séance de musculation / renforcement utile au coureur, sans matériel ou avec peu' }[act.type];
       const fmt = actIsRun()
         ? `{"avis":"2 phrases en tutoyant","titre":"titre court",${act.hillsData && act.hillsData.hills && act.hillsData.hills.length ? '"cote":1,' : ''}"seance":{"pente":1,"chauffe":10,"recup":5,"repet":1,"segments":[{"vitesse":12,"duree_min":3}]}}`
         : act.type === 'velo'
