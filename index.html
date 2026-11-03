@@ -76,6 +76,15 @@
     .pm-panel { display: flex; flex-direction: column; gap: 12px; }
     .pm-panel.pm-off { display: none !important; }
     .pm-subhide { display: none !important; }
+    .hm-ic { width: 34px; height: 34px !important; min-height: 0 !important; padding: 0 !important; flex-shrink: 0; border-radius: 10px; border: none !important; background: none !important; color: #bae6fd; display: flex; align-items: center; justify-content: center; }
+    .hm-ic svg, .hm-ic .icon { width: 17px !important; height: 17px !important; }
+    .hm-ic.hm-del { color: #fda4af; }
+    .hm-ic svg, .hm-ic .icon { width: 20px !important; height: 20px !important; }
+    .hm-ic:active { transform: scale(.92); }
+    .home-play { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); width: 72px; height: 72px; border-radius: 36px; border: none; background: #0ea5e9; color: #04121f; box-shadow: 0 8px 24px rgba(14,165,233,.5); display: flex; align-items: center; justify-content: center; z-index: 30; }
+    .home-play:active { transform: translateX(-50%) scale(.94); }
+    .home-play svg { margin-left: 4px; }
+    #homeScreen { padding-bottom: 110px !important; }
     .htab-off { display: none !important; }
     body.ctl-run .pocket-btn { display: none !important; }
     body.ctl-run #ctlRow > button { min-height: 54px !important; padding-top: .45rem !important; padding-bottom: .45rem !important; }
@@ -341,6 +350,8 @@
           <div id="homeAdapted" class="text-[11px] font-bold text-amber-300 mt-0.5 hidden"></div>
         </div>
         <div class="shrink-0 flex gap-2">
+      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="hm-ic" style="min-height:58px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+      <button id="homeDelBtn" onclick="homeDeleteSession()" title="Supprimer la séance" aria-label="Supprimer la séance" class="hm-ic hm-del" style="min-height:58px;font-size:22px">🗑</button>
         </div>
       </div>
       <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
@@ -358,16 +369,14 @@
       <div id="homeExtOffer" class="text-[10px] font-bold text-sky-300 hidden"></div>
       <button onclick="feelMode='adapt'; openFeelModal()" id="homeFeelBtn" class="hidden w-full py-2 rounded-xl text-[11px] font-bold border bg-amber-500/10 border-amber-500/40 text-amber-200">🙂 Mes sensations du jour</button>
       </div>
-      <div id="homeBtnRow" class="mt-2" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.5rem">
-      <button onclick="launchFromHome()" aria-label="C'est parti" title="C'est parti" class="bg-sky-500 hover:bg-sky-400 active:scale-95 transition rounded-2xl text-slate-950 shadow-lg shadow-sky-500/30 flex items-center justify-center" style="min-height:58px"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg><span id="homeLaunchText" class="hidden"></span></button>
-      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="rounded-2xl bg-sky-500/15 border border-sky-500/50 text-sky-100 flex items-center justify-center active:scale-95" style="min-height:58px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
-      <button id="homeMoveBtn" onclick="homeMoveSession()" title="Déplacer la séance" aria-label="Déplacer la séance" class="rounded-2xl bg-amber-500/15 border border-amber-500/50 text-amber-100 flex items-center justify-center active:scale-95" style="min-height:58px;font-size:22px">📅</button>
-      <button id="homeDelBtn" onclick="homeDeleteSession()" title="Supprimer la séance" aria-label="Supprimer la séance" class="rounded-2xl bg-rose-500/15 border border-rose-500/50 text-rose-200 flex items-center justify-center active:scale-95" style="min-height:58px;font-size:22px">🗑</button>
+      <div id="homeBtnRow" class="hidden" style="display:none">
+      <button id="homeMoveBtn" class="hidden" style="display:none"></button>
       </div>
     </div>
 
     <div id="homeActBar" class="flex items-center justify-end gap-2" style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:auto;padding-top:.5rem">
       <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" class="hidden" style="display:none">🍽️</button>
+<button id="homeLaunchBtn" onclick="launchFromHome()" aria-label="C'est parti" title="C'est parti" class="home-play" ><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg><span id="homeLaunchText" class="hidden"></span></button>
       <button id="homeFreeBtn" onclick="openActivityWizard()" aria-label="Créer une activité" title="Créer une activité" class="rounded-full flex items-center justify-center active:scale-95 transition" style="width:62px;height:62px;background:linear-gradient(135deg,#34d399,#10b981);color:#03140d;box-shadow:0 8px 22px rgba(16,185,129,.45);border:none"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       <button id="homeChatBtn" onclick="openCoachChat()" aria-label="Discuter avec le coach" class="hidden" style="display:none">💬</button>
     </div>
@@ -11037,7 +11046,12 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       if (re && eles) re.eles = s.map((p, i) => [p.d, eles[i]]);
       reRenderBar();
     }
-    function reGain(eles) { let g = 0; for (let i = 1; i < (eles || []).length; i++) { const d = eles[i][1] - eles[i - 1][1]; if (d > 0) g += d; } return g; }
+    function reGain(eles) {
+      const e = eles || []; if (e.length < 2) return 0;
+      const v = e.map(x => x[1]), m = v.map((x, i) => i === 0 || i === v.length - 1 ? x : [v[i - 1], x, v[i + 1]].sort((a, b) => a - b)[1]);
+      let g = 0, ref = m[0]; for (let i = 1; i < m.length; i++) { const d = m[i] - ref; if (d >= 2) { g += d; ref = m[i]; } else if (d <= -2) ref = m[i]; }
+      return g;
+    }
     // Profil interactif : glisser le doigt dessus montre le point sur la carte, l'altitude et la pente
     function eleAt(e, km) { if (km <= e[0][0]) return e[0][1]; for (let i = 1; i < e.length; i++) if (e[i][0] >= km) { const f = (km - e[i - 1][0]) / Math.max(1e-9, e[i][0] - e[i - 1][0]); return e[i - 1][1] + (e[i][1] - e[i - 1][1]) * f; } return e[e.length - 1][1]; }
     function coordAtKm(c, km) { let cum = 0; for (let i = 1; i < c.length; i++) { const d = haversineM({ lat: c[i - 1][0], lon: c[i - 1][1] }, { lat: c[i][0], lon: c[i][1] }) / 1000; if (cum + d >= km) { const f = d ? (km - cum) / d : 0; return [c[i - 1][0] + (c[i][0] - c[i - 1][0]) * f, c[i - 1][1] + (c[i][1] - c[i - 1][1]) * f]; } cum += d; } return c[c.length - 1]; }
@@ -11501,6 +11515,19 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
     }
     const AR_COLS = ['#a78bfa', '#38bdf8', '#f472b6', '#34d399', '#fbbf24', '#fb923c'];
     function arCmpClear() { if (ar && ar.cmpMap) { try { ar.cmpMap.remove(); } catch (e) { } ar.cmpMap = null; } const w = document.getElementById('arCmp'); if (w) w.classList.add('hidden'); }
+    // Rotation d'une carte à deux doigts (élément carte dans un conteneur), bouton « N » pour revenir au nord
+    function mapRotAttach(wrap, mapId) {
+      if (!wrap || wrap.__rot) return; wrap.__rot = true; wrap.style.overflow = 'hidden'; if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+      const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'map-fs'; nb.style.cssText = 'top:auto;bottom:10px;right:10px;z-index:1001;display:none'; nb.setAttribute('aria-label', 'Nord en haut');
+      nb.innerHTML = '<span style="display:inline-block;font-size:17px">⬆</span><span style="position:absolute;top:2px;left:0;right:0;font-size:9px;font-weight:900">N</span>'; wrap.appendChild(nb);
+      let a0 = null, b0 = 0, bear = 0;
+      const apply = () => { const m = document.getElementById(mapId); if (m) { m.style.transformOrigin = '50% 50%'; m.style.transform = Math.abs(bear) > 0.5 ? `rotate(${bear}deg) scale(1.45)` : ''; } nb.style.display = Math.abs(bear) > 0.5 ? 'block' : 'none'; nb.firstChild.style.transform = `rotate(${bear}deg)`; };
+      nb.onclick = () => { bear = 0; apply(); };
+      const ang = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
+      wrap.addEventListener('touchstart', e => { if (e.touches.length === 2) { a0 = ang(e.touches); b0 = bear; } }, { passive: true });
+      wrap.addEventListener('touchmove', e => { if (a0 == null || e.touches.length !== 2) return; const d = ang(e.touches) - a0; if (Math.abs(d) < 8 && Math.abs(bear - b0) < 1) return; bear = ((b0 + d) % 360 + 360) % 360; if (bear > 180) bear -= 360; apply(); }, { passive: true });
+      wrap.addEventListener('touchend', e => { if (e.touches.length < 2) a0 = null; }, { passive: true });
+    }
     async function arCmpFull() {
       const w = document.getElementById('arCmp'); if (!w) return; const on = !w.classList.contains('ar-full');
       w.classList.toggle('ar-full', on); { const b = document.getElementById('arCmpFsBtn'); if (b) b.textContent = on ? '✕ Quitter le plein écran' : '⛶ Carte en plein écran'; }
@@ -11586,6 +11613,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
         box.innerHTML = '';
         const m = L.map(box, { zoomControl: true, attributionControl: true }).setView([ar.start.lat, ar.start.lon], 14);
         ar.cmpMap = m; ar.cmpLines = []; ar.cmpLayers = [];
+        try { mapRotAttach(box.parentNode, 'arCmpMap'); } catch (e) { }
         baseTiles(m, routeBaseKey(ar.start.lat, ar.start.lon));
         const all = [];
         ar.cands.forEach((c, i) => {
@@ -11679,6 +11707,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
         const ref = mode === 'end' ? (ar.end || ar.start) : ar.start;
         me.map = L.map(box, { zoomControl: true, attributionControl: true }).setView(ref ? [ref.lat, ref.lon] : [46.6, 2.4], ref ? 15 : 6);
         baseTiles(me.map, ref ? routeBaseKey(ref.lat, ref.lon) : null);
+        if (mode === 'view') { try { mapRotAttach(box.parentNode, 'arBigMap'); } catch (e) { } }
         const dot = col => L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 12], html: `<div style="width:24px;height:24px;border-radius:12px;border:3px solid #fff;background:${col};box-shadow:0 1px 5px rgba(0,0,0,.6)"></div>` });
         if (mode === 'view') {
           ar.cands.forEach((o, k) => { if (k !== i) L.polyline(o.coords, { color: '#64748b', weight: 3, opacity: 0.45 }).on('click', () => arBigOpen('view', k)).addTo(me.map); });
@@ -11794,6 +11823,37 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
           const pick = order.slice(0, 14);
           // 2) Tracés : allers-retours coupés pile à la bonne distance (1 requête chacun) et boucles (2 requêtes max)
           const tasks = [];
+          if (!band || band[0] === 0) {
+            reStatusAr('Étape 1/3 · recherche des zones plates autour du départ…');
+            const ring = [], A = 24;
+            [0.2, 0.28, 0.36].forEach(f => { for (let a = 0; a < A; a++) { const th = a * 2 * Math.PI / A; ring.push({ f, th, p: geoOffset(S, km * 1000 * f, th), m: geoOffset(S, km * 1000 * f / 2, th) }); } });
+            const ez3 = await withDeadline(meteoEles([S].concat(ring.map(r => r.p), ring.map(r => r.m)), { maxWait: 4000 }), left(6000), null);
+            if (ez3) {
+              const e0 = ez3[0], n = ring.length;
+              ring.forEach((r, i) => { r.dz = Math.max(Math.abs(ez3[1 + i] - e0), Math.abs(ez3[1 + n + i] - e0)); });
+              const flat = ring.filter(r => r.dz <= Math.max(8, km * 1000 * r.f * 0.005)).sort((a, b) => a.dz - b.dz);
+              ar.flatPts = flat.length;
+              if (ar.shapes.ab) flat.filter(r => r.f >= 0.28).slice(0, 8).forEach(r => tasks.push(async () => {
+                let far = await route([S, r.p]); if (!far) return null;
+                if (reLenKm(far) < R * 0.97) { const f2 = await route([S, geoOffset(S, km * 1000 * r.f * Math.min(2, R / Math.max(0.2, reLenKm(far)) * 1.05), r.th)]); if (f2 && reLenKm(f2) > reLenKm(far)) far = f2; }
+                const L = reLenKm(far), half = L >= R * 0.97 ? cutAtKm(far, R) : far;
+                const back = half.slice().reverse(), all = half.concat(back.slice(1)), turn = half[half.length - 1];
+                const c = mk(all, [S, { lat: turn[0], lon: turn[1] }, { lat: S.lat, lon: S.lon }], [half, back], 'ab'); c.full = far; c.th = r.th; c.flatSeek = true; return c;
+              }));
+              if (ar.shapes.loop) {
+                const P = flat.filter(r => r.f <= 0.28), L = [];
+                P.forEach(a => P.forEach(b => { if (a === b) return; const d = ((b.th - a.th) + 2 * Math.PI) % (2 * Math.PI); if (d > 0.6 && d < 2.0) L.push([a, b, a.dz + b.dz]); }));
+                L.sort((x, y) => x[2] - y[2]);
+                const seen = new Set();
+                L.filter(([a, b]) => { const k = Math.round(a.th * 4) + '|' + Math.round(b.th * 4); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8).forEach(([a, b]) => tasks.push(async () => {
+                  let w = [S, a.p, b.p, { lat: S.lat, lon: S.lon }], co = await route(w); if (!co) return null;
+                  const L0 = reLenKm(co);
+                  if (Math.abs(km / L0 - 1) > 0.08) { const k2 = Math.max(0.5, Math.min(1.8, km / L0)); const w2 = [S, geoOffset(S, km * 1000 * a.f * k2, a.th), geoOffset(S, km * 1000 * b.f * k2, b.th), { lat: S.lat, lon: S.lon }], co2 = await route(w2); if (co2 && Math.abs(km / reLenKm(co2) - 1) < Math.abs(km / L0 - 1)) { w = w2; co = co2; } }
+                  const c = mk(co, w, null, 'loop'); c.th = a.th; c.reuse = routeReuse(co, true); c.flatSeek = true; return c;
+                }));
+              }
+            }
+          }
           if (ar.shapes.ab) pick.slice(0, 12).forEach(o => tasks.push(async () => {
             let far = await route([S, geoOffset(S, R * 1000 * 0.9, o.th)]); if (!far) return null;
             if (reLenKm(far) < R * 0.97) { const f2 = await route([S, geoOffset(S, R * 1000 * 0.9 * Math.min(2, R / Math.max(0.2, reLenKm(far)) * 1.05), o.th)]); if (f2 && reLenKm(f2) > reLenKm(far)) far = f2; }
@@ -11836,6 +11896,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
         cands0.forEach((c, i) => { const n = S2[i].length; if (ez2) { const pr = S2[i].map((q, j) => [q.d, ez2[k + j]]); c.cAvg = reGain(pr) / (c.km * 10); } k += n; });
         const preScore = c => Math.abs(c.km - km) / km * 40 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : c.shape === 'ab' ? 8 : 0) + terrainGap(c.cAvg) * 15;
         cands0.sort((x, y) => preScore(x) - preScore(y));
+        if (!band || band[0] === 0) { const fl = cands0.filter(c => c.flatSeek && c.cAvg != null).sort((x, y) => x.cAvg - y.cAvg).slice(0, 4); fl.forEach(c => { cands0.splice(cands0.indexOf(c), 1); cands0.unshift(c); }); }
         const short = []; for (const c of cands0) { if (short.length >= (band ? 16 : 24)) break; if (!short.some(o => routeSimilar(o.coords, c.coords) > 0.7)) short.push(c); }
         await runPoolUntil(short.map((c, i) => async () => {
           reStatusAr(`Étape 3/3 · profil précis ${i + 1}/${short.length}…`);
@@ -11866,7 +11927,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
         short.forEach(c => {
           const avg = c.gain != null ? c.gain / (c.km * 10) : c.cAvg;
           let cost = lock ? Math.abs(c.time - goalMin) / goalMin * 80 : timeMode ? (c.time > goalMin ? (c.time - goalMin) / goalMin * 80 : (goalMin - c.time) / goalMin * 25) : Math.abs(c.km - km) / km * 40;
-          cost += terrainGap(avg) * 20 + (c.shape === 'loop' ? (c.reuse || 0) * 45 : c.shape === 'ab' ? 10 : 0) + (c.eles ? 0 : 30); // les boucles sont préférées aux allers-retours
+          cost += terrainGap(avg) * 30 + (band && band[0] === 0 && avg != null ? avg * 4 : 0) + (c.shape === 'loop' ? (c.reuse || 0) * 45 : c.shape === 'ab' ? 5 : 0) + (c.eles ? 0 : 30); // relief d'abord, puis boucles préférées aux allers-retours
           let badWay = 0, badM = 0, badLong = {}; if (c.runs) c.runs.forEach(r => { if (banned[r.c] && r.m > TOL[r.c]) { const ex = r.m - TOL[r.c]; badM += ex * (r.c === 'autoroute' || r.c === 'nationale' || r.c === 'rapide' ? 5 : 1); badLong[r.c] = Math.max(badLong[r.c] || 0, r.m); } });
           badWay = c.km > 0 ? badM / (c.km * 10) : 0; cost += badWay * 0.8; c.badWay = badWay; c.badLong = badLong;
           c.cost = cost;
@@ -11898,7 +11959,8 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       const cands = ar.cands;
       if (!cands.length) { reStatusAr(ar.hardDropped ? `Aucun parcours sans ${ar.ways.depg ? 'voie rapide ni nationale' : 'grande départementale ni voie rapide'} : essaie un autre départ${ar.ways.depg ? '' : ' ou coche les grandes départementales'}` : 'Aucun parcours trouvé (réseau ou zone sans chemins ?)', true); return; }
       ar.flt = { lv: -1, sh: '' };
-      setTimeout(() => reStatusAr((document.getElementById('arStatus') || {}).textContent + (ar.waysUnchecked ? ' · types de voies non vérifiés (service lent)' : ar.waysSrc ? ` · voies vérifiées (${ar.waysSrc})` : '')), 0);
+      { const avs = ar.cands.map(c => c.gain != null && c.km ? c.gain / (c.km * 10) : c.cAvg).filter(x => x != null); if (avs.length) ar.minAvg = Math.min(...avs); }
+      setTimeout(() => reStatusAr((document.getElementById('arStatus') || {}).textContent + (ar.minAvg != null ? ` · le plus plat : ${ar.minAvg.toFixed(1).replace('.', ',')} % de pente moy.` : '') + (ar.flatPts != null ? ` · ${ar.flatPts} zones plates repérées` : '') + (ar.waysUnchecked ? ' · types de voies non vérifiés (service lent)' : ar.waysSrc ? ` · voies vérifiées (${ar.waysSrc})` : '')), 0);
       reStatusAr(`${cands.filter(c => c.ok).length ? `✓ ${cands.filter(c => c.ok).length} sur ${cands.length} respectent tous tes critères` : '⚠ aucun ne respecte tout à fait tes critères'}${band && !cands.some(c => c.ok) ? ` (le relief ${DIFF_TERRAIN[ar.diff]} est rare autour de ce départ : voici les plus proches)` : ''}. Classés du plus facile au plus difficile, boucles en premier :`);
       const shapeLbl = c => c.shape === 'ab' ? '↔️ aller-retour' : c.shape === 'loop' ? '🔁 boucle' : '➡️ A → B';
       list.innerHTML = arFilterBarHtml() + cands.map((c, i) => `<div data-arcard="${i}" onclick="if(!event.target.closest('button'))arSelect(${i})" style="border:1px solid ${c.ok ? '#4c1d95' : '#334155'};border-radius:14px;padding:10px;background:#0f172a;display:flex;flex-direction:column;gap:6px;transition:opacity .2s">
@@ -12840,7 +12902,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const linked = h.kind || h.cross ? null : histLinkedSession(h);
       return { left, hours: Math.round(R.hours), kind: R.load.kind, why: R.why, label: h.cross ? (h.sessionTitle || '').split(' •')[0] : sessionKind(linked || h).label.toLowerCase() };
     }
-    let recTipsOpen = false;
+    let recTipsOpen = true;
     // Conseils de récupération : ceux du coach (analyse de la séance) + repères selon le type de séance et le temps restant
     function recoveryTipsHtml(r) {
       const H = (appData.history || []).filter(h => h && h.isVal !== false), h = H[0] || {};
@@ -12896,7 +12958,6 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
             <div style="height:6px;border-radius:3px;background:#1e293b;overflow:hidden"><div style="width:${pct}%;height:6px;background:${col}"></div></div>
             <span class="text-[11px] text-slate-400">Après ta séance (${plEsc(r.label)})${runToday && r.left > 12 ? " · séance prévue aujourd'hui : écoute tes sensations" : ''}</span>
           </div></div>
-        <button type="button" onclick="recTipsOpen=!recTipsOpen;renderRecovery()" class="w-full mt-1.5 rounded-xl text-[13px] font-bold" style="min-height:38px;background:${col}10;border:1px solid ${col}44;color:#e2e8f0">${recTipsOpen ? '▴ Masquer les conseils' : '💡 Voir les conseils récup'}</button>
         ${recTipsOpen ? `<div class="mt-1.5 px-3 py-2.5 rounded-xl text-[13px] leading-relaxed text-slate-200" style="background:#0f172a;border:1px solid #1e293b">${recoveryTipsHtml(r)}</div>` : ''}`;
     }
     // ==================== ÉVOLUTION VMA / VO2max ====================
@@ -16547,7 +16608,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       } else if (act.step === 2) {
         title.textContent = 'Quand ?';
         const tmr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })();
-        body.innerHTML = `<div class="grid grid-cols-2 gap-3">
+        body.innerHTML = `<div class="grid grid-cols-1 gap-3">
             ${actTile(`act.when='now';act.step=3;renderAct()`, '⚡', 'Maintenant', "C'est parti tout de suite", act.when === 'now')}
             ${actTile(`act.when='later';renderAct()`, '📅', 'Plus tard', 'Ajouter au planning', act.when === 'later')}
           </div>
@@ -18645,7 +18706,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     function todayDoneHist() { const t = todayISO(); return (appData.history || []).filter(h => h && !h.cross && histISO(h) === t)[0] || null; }
     function openTodayResults() { const h = todayDoneHist(); if (!h) return; openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + h.id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start' }); } }, 60); }
     let homeMoreOpen = false;
-    function toggleHomeMore() { homeMoreOpen = !homeMoreOpen; renderHome(); }
+    function toggleHomeMore() { homeMoreOpen = true; renderHome(); }
     // ---------- Profil mis à jour par le coach après une séance : avant / après
     function profileSnapshot() {
       const est = estimateVma(), p = computeGoalProbability(), cp = appData.goalCoachProb, A = appData.coachSW;
@@ -18707,6 +18768,14 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       h.homeHidden = true; saveAppData(); renderHomeLastRun(); try { renderHome(); } catch (e) { }
       showToast('Masquée de l\'accueil · toujours visible dans le planning');
     }
+    function homeLastRecap(h) {
+      try {
+        const idx = appData.history.indexOf(h); if (idx < 0) return '';
+        const item = { type: 'validated', rawIdx: idx, id: h.id, title: h.sessionTitle, date: h.date, iso: histISO(h), pente: h.pente, duration: h.durationMin, feeling: h.feeling, note: h.note, details: h.details, summary: h.summary, track: h.track, seg: h.seg, analysis: h.analysis, cross: h.cross, sessionTitle: h.sessionTitle, kind: h.kind, notes: h.notes, km: histKm(h), linked: h.kind || h.cross ? null : histLinkedSession(h) };
+        let recs = null; try { recs = (recordHistIds() || {})[h.id]; } catch (e) { }
+        return `<div class="home-recap" style="margin:0 -4px">${histRecapHtml(item, sessionKind(item.linked || item), recs)}</div>`;
+      } catch (e) { console.warn('recap accueil', e); return ''; }
+    }
     function renderHomeLastRun() {
       const box = document.getElementById('homeLastRun'); if (!box) return;
       const h = (appData.history || []).find(x => x && !x.cross && x.endAt);
@@ -18717,12 +18786,15 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const feelAsk = !h.feeling ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:800;color:#fde68a">Ton ressenti ?</span>${[['green', '😌 Facile'], ['yellow', '😊 Bien'], ['red', '😫 Trop dur']].map(([k, l]) => `<button type="button" onclick="setLateFeeling('${h.id}','${k}')" style="min-height:38px;padding:0 12px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-weight:800;font-size:14px">${l}</button>`).join('')}</div>` : '';
       const stats = [`${Math.round(+h.durationMin || 0)} min`, histKm(h) > 0 ? `${histKm(h).toFixed(1).replace('.', ',')} km` : '', sm.avgKmh ? `${String(sm.avgKmh).replace('.', ',')} km/h` : '', sm.hrAvg ? `❤️ ${sm.hrAvg}` : ''].filter(Boolean).join(' · ');
       let ana = ''; try { ana = h.analysis ? analysisPlain(h.analysis).replace(/\s+/g, ' ').slice(0, 160) : ''; } catch (e) { }
+      { const key = [h.id, h.feeling, (h.analysis || '').length, h.hrFix || '', (h.track || []).length].join('|'), w = document.getElementById('hlrWhen');
+        if (box.dataset.k === key && w) { w.textContent = `✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}`; return; }
+        box.dataset.k = key; }
       box.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:22px;background:linear-gradient(180deg,#0d2a22 0%,#0b1a17 100%);border:1px solid rgba(52,211,153,.45)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-size:11px;font-weight:800;letter-spacing:.6px;color:#6ee7b7;text-transform:uppercase">✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="hlrWhen" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:#6ee7b7;text-transform:uppercase">✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
           <span style="font-size:17px;font-weight:900;color:#f8fafc;line-height:1.25"><span style="color:${k.color}">${plEsc(k.label)}</span>${h.human ? ` · ${plEsc(h.human)}` : ''}</span>
           <span style="font-size:14px;font-weight:700;color:#cbd5e1">${stats}</span>${feelAsk}
           <span style="font-size:13px;color:${ana ? '#e9d5ff' : '#94a3b8'};line-height:1.4">${ana ? '🧠 ' + plEsc(ana) + (ana.length >= 160 ? '…' : '') : getGeminiKey() ? '🧠 Le coach analyse ta séance…' : ''}</span>
-          <button type="button" onclick="openHistoryModal(); plDayClick('${h.dateISO || histISO(h)}')" style="min-height:44px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:14px">📊 Voir les résultats</button></div>`;
+          ${homeLastRecap(h)}</div>`;
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
@@ -18735,6 +18807,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       if (!av.some(t => t[0] === homeTab)) homeTab = av.length ? av[0][0] : 'sess';
       HOME_TABS.forEach(([k, , ids]) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.classList.toggle('htab-off', k !== homeTab); }));
       bar.style.display = av.length > 1 ? 'flex' : 'none';
+      { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = homeTab === 'sess' && !card.classList.contains('hidden') ? 'flex' : 'none'; }
       const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:48px;padding:4px 2px;border-radius:10px;border:none;font-size:12px;font-weight:800;line-height:1.25;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}">${l.replace(' ', '<br>')}</button>`).join('');
       if (bar.innerHTML !== html) bar.innerHTML = html;
     }
@@ -18803,16 +18876,16 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       { const hg = document.getElementById('homeGuide'), hb = document.getElementById('homeGuideBody');
         const showG = !!sess && !sess.free && !(timerState.sessionStarted && !timerState.finished);
         if (hg) hg.classList.toggle('hidden', !showG);
-        if (hb && showG) hb.innerHTML = guideHtml(sess, appData.activeSessionIndex); }
+        if (hb && showG) { hb.innerHTML = guideHtml(sess, appData.activeSessionIndex); hb.classList.remove('hidden'); const ar = document.getElementById('homeGuideArrow'); if (ar) ar.style.display = 'none'; const hd = hb.previousElementSibling; if (hd) hd.style.display = 'none'; } }
       { const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
         document.getElementById('homeSessStats').textContent = `⏱️ Durée totale ${total} min`;
         const s2 = document.getElementById('homeSessStats2'); if (s2) s2.textContent = `📏 ≈ ${String(dist).replace('.', ',')} km${!sess.free && (c || r) ? ` · dont échauffement ${c}' et retour au calme ${r}'` : ''}`; }
-      { const mb = document.getElementById('homeMoreBtn'), mo = document.getElementById('homeMore'); if (mb && mo) { mo.classList.toggle('hidden', !homeMoreOpen); mb.textContent = homeMoreOpen ? '▴ Voir moins' : '▾ Voir plus'; } }
+      { const mb = document.getElementById('homeMoreBtn'), mo = document.getElementById('homeMore'); if (mb && mo) { homeMoreOpen = true; mo.classList.remove('hidden'); mb.style.display = 'none'; mb.textContent = homeMoreOpen ? '▴ Voir moins' : '▾ Voir plus'; } }
       { const he = document.getElementById('homeHr'); if (he) { const tx = sess.free ? '' : hrTargetShort(sess); he.textContent = tx ? `❤️ ${tx}` : ''; he.classList.toggle('hidden', !tx); } }
       const fuelEl = document.getElementById('homeFuel');
       if (fuelEl) { const ft = fuelRemindersOn() ? fuelPlanText(sess) : ''; fuelEl.textContent = ft; fuelEl.classList.toggle('hidden', !ft); }
       document.getElementById('homeLaunchText').textContent = inProgress ? 'REPRENDRE' : "C'EST PARTI !";
-      { ['homeCfgBtn', 'homeMoveBtn', 'homeDelBtn'].forEach(id => { const b = document.getElementById(id); if (b) b.classList.toggle('hidden', !!inProgress || (id !== 'homeCfgBtn' && !!sess.free)); }); const br = document.getElementById('homeBtnRow'); if (br) br.style.gridTemplateColumns = inProgress ? '1fr' : sess.free ? '2fr 1fr' : '2fr 1fr 1fr 1fr'; }
+      { ['homeCfgBtn', 'homeMoveBtn', 'homeDelBtn'].forEach(id => { const b = document.getElementById(id); if (b) b.classList.toggle('hidden', !!inProgress || (id !== 'homeCfgBtn' && !!sess.free)); }); const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = card.classList.contains('hidden') ? 'none' : 'flex'; }
       const goal = appData.goal || {};
       const g = document.getElementById('homeGoal');
       if (g) g.textContent = goal.distanceKm ? `🎯 Objectif : ${goal.distanceKm} km en ${goal.durationMin} min le ${goal.date}` : '';
