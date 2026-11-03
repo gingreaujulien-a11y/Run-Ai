@@ -79,10 +79,13 @@
     .hm-ic { width: 34px; height: 34px !important; min-height: 0 !important; padding: 0 !important; flex-shrink: 0; border-radius: 10px; border: none !important; background: none !important; color: #bae6fd; display: flex; align-items: center; justify-content: center; }
     .hm-ic svg, .hm-ic .icon { width: 17px !important; height: 17px !important; }
     .hm-ic.hm-del { color: #fda4af; }
-    .hm-ic svg, .hm-ic .icon { width: 20px !important; height: 20px !important; }
+    .hm-ic svg, .hm-ic .icon { width: 24px !important; height: 24px !important; }
     .hm-ic:active { transform: scale(.92); }
-    .home-play { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); width: 72px; height: 72px; border-radius: 36px; border: none; background: #0ea5e9; color: #04121f; box-shadow: 0 8px 24px rgba(14,165,233,.5); display: flex; align-items: center; justify-content: center; z-index: 30; }
-    .home-play:active { transform: translateX(-50%) scale(.94); }
+    .home-play { width: 64px; height: 64px; border-radius: 32px; flex-shrink: 0; border: none; background: #0ea5e9; color: #04121f; box-shadow: 0 8px 24px rgba(14,165,233,.5); display: flex; align-items: center; justify-content: center; z-index: 30; }
+    .home-play:active { transform: scale(.94); }
+    #homeActBar { position: fixed !important; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0 !important; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)) !important; background: #020617; border-top: 1px solid #0f172a; display: flex !important; justify-content: center !important; align-items: center; gap: 28px !important; }
+    #homeActBar.hab-off { display: none !important; }
+    #homeFreeBtn { width: 64px !important; height: 64px !important; }
     .home-play svg { margin-left: 4px; }
     #homeScreen { padding-bottom: 110px !important; }
     .htab-off { display: none !important; }
@@ -14831,6 +14834,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         p.push(`énergie ${e}`);
       }
       if (f.sleep) p.push(`sommeil ${f.sleep}`);
+      if (f.sleepShot) p.push(`données de la montre sur la nuit : ${sleepShotText(f.sleepShot)}`);
       if (f.legs) p.push(`jambes ${f.legs === 'legeres' ? 'légères' : f.legs}`);
       if (f.soreness) p.push(f.soreness === 'aucune' ? 'pas de courbatures' : `courbatures ${f.soreness === 'legeres' ? 'légères' : 'importantes'}${f.soreWhere ? ` (${f.soreWhere})` : ''}`);
       if (f.pain && f.pain !== 'aucune') p.push(`douleur ${f.pain === 'genante' ? 'gênante' : 'légère'}${f.painWhere ? ` (${f.painWhere})` : ''}`);
@@ -14919,6 +14923,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         </div>`).join('');
       document.getElementById('feelPainWhereBox').classList.toggle('hidden', !feelDraft.pain || feelDraft.pain === 'aucune');
       document.getElementById('feelSoreWhereBox').classList.toggle('hidden', !feelDraft.soreness || feelDraft.soreness === 'aucune');
+      { const blk = box.querySelector('[data-ff="sleep"]'); if (blk) { const sh = feelDraft.sleepShot;
+          blk.insertAdjacentHTML('beforeend', `<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px"><button type="button" onclick="sleepShotPick()" class="w-full py-1.5 rounded-lg border text-[11px] font-bold bg-slate-900 border-slate-700 text-slate-300">📷 ${sh ? 'Changer la capture' : 'Ajouter une capture de mon sommeil (Garmin, Polar…)'}</button>${sh ? `<span class="text-[11.5px] font-semibold text-sky-200 leading-snug">⌚ ${plEsc(sleepShotText(sh))}</span>` : ''}<span id="sleepShotMsg" class="text-[11px] text-purple-300"></span></div>`); } }
       // chaque précision « où ? » juste sous son choix
       [['soreness', 'feelSoreWhereBox'], ['pain', 'feelPainWhereBox']].forEach(([k, id]) => { const blk = box.querySelector(`[data-ff="${k}"]`), e = document.getElementById(id); if (blk && e) { e.style.marginTop = '6px'; blk.appendChild(e); } });
     }
@@ -14935,10 +14941,32 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (t) t.innerHTML = '🙂 Mes sensations du jour <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black align-middle">✓</span>';
       clearTimeout(_feelTip); _feelTip = setTimeout(() => { try { prefetchCoachTip(); } catch (e) { } }, 4000);
     }
+    function sleepShotText(sh) {
+      if (!sh) return ''; const hm = h => h ? `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}` : '';
+      return [sh.score ? `score ${sh.score}` : '', sh.duree_h ? hm(+sh.duree_h) : '', sh.profond_min ? `profond ${sh.profond_min} min` : '', sh.paradoxal_min ? `paradoxal ${sh.paradoxal_min} min` : '', sh.eveils ? `${sh.eveils} réveils` : '', sh.vfc_ms ? `VFC ${sh.vfc_ms} ms` : '', sh.fc_repos ? `FC repos ${sh.fc_repos}` : '', sh.body_battery ? `Body Battery ${sh.body_battery}` : '', sh.resume || ''].filter(Boolean).join(' · ');
+    }
+    function sleepShotPick() {
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire pour lire la capture'); return; }
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        const f = inp.files && inp.files[0]; if (!f) return; const msg = document.getElementById('sleepShotMsg'); if (msg) msg.textContent = '⏳ Le coach lit ta capture…';
+        try {
+          const d = await resizeImageFile(f, 1400);
+          const prompt = `Capture d'écran du sommeil d'une montre ou appli (Garmin, Polar, Coros, Apple, Fitbit…). Extrais les données visibles, sans rien inventer (null si absent). Réponds uniquement en JSON : {"score":78,"duree_h":7.2,"profond_min":80,"leger_min":250,"paradoxal_min":95,"eveil_min":20,"eveils":3,"vfc_ms":45,"fc_repos":52,"body_battery":70,"qualite":"bon|moyen|mauvais","resume":"une phrase courte en tutoyant sur ce que ça dit de ta récupération"}`;
+          const j = parseJsonLoose(await geminiText([{ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }, { text: prompt }], { json: true })) || {};
+          const sh = {}; ['score', 'duree_h', 'profond_min', 'leger_min', 'paradoxal_min', 'eveil_min', 'eveils', 'vfc_ms', 'fc_repos', 'body_battery'].forEach(k => { const v = parseFloat(j[k]); if (v > 0) sh[k] = Math.round(v * 10) / 10; }); if (j.resume) sh.resume = String(j.resume).slice(0, 160);
+          if (!Object.keys(sh).length) throw new Error('aucune donnée de sommeil trouvée');
+          feelDraft.sleepShot = sh;
+          if (!feelDraft.sleep) feelDraft.sleep = ['bon', 'moyen', 'mauvais'].includes(j.qualite) ? j.qualite : sh.score ? (sh.score >= 80 ? 'bon' : sh.score >= 60 ? 'moyen' : 'mauvais') : undefined;
+          renderFeelChips(); feelAutoSave(); showToast('⌚ Sommeil ajouté');
+        } catch (e) { if (msg) msg.textContent = '⚠ Lecture impossible : ' + (e.message || e); }
+      };
+      inp.click();
+    }
     function feelLogPut(f) {
       if (!f) return; const d = f.at || todayISO();
       if (!appData.feelLog || typeof appData.feelLog !== 'object') appData.feelLog = {};
-      const o = {}; ['energy', 'soreness', 'soreWhere', 'pain', 'painWhere', 'note', 'sleep', 'legs', 'stress'].forEach(k => { if (f[k]) o[k] = f[k]; });
+      const o = {}; ['energy', 'soreness', 'soreWhere', 'pain', 'painWhere', 'note', 'sleep', 'sleepShot', 'legs', 'stress'].forEach(k => { if (f[k]) o[k] = f[k]; });
       if (Object.keys(o).length) appData.feelLog[d] = o; else delete appData.feelLog[d];
       const ks = Object.keys(appData.feelLog).sort(); while (ks.length > 180) delete appData.feelLog[ks.shift()];
     }
@@ -14970,6 +14998,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
 
     function readFeelForm() {
       feelDraft.painWhere = document.getElementById('feelPainWhere').value.trim();
+      if (feelDraft.sleepShot === undefined) delete feelDraft.sleepShot;
       feelDraft.soreWhere = (document.getElementById('feelSoreWhere') || { value: '' }).value.trim();
       feelDraft.note = document.getElementById('feelNote').value.trim();
       feelDraft.at = toISODateLocal(new Date());
@@ -15248,6 +15277,22 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         default:
           objectif = 'Courir selon tes sensations.'; essentiel = 'Rester à l\'écoute de ton corps.';
       }
+      // Phrases courtes : à quoi sert la séance dans ta progression, et le minimum à réussir
+      { const P = {
+          fractionne: ['Développer ta VMA : plus de vitesse sur 5 et 10 km', `${Rmin} × ${fast ? fmtQ(fast) : ''} à ${fmtV(G.vmax)} km/h, même vitesse jusqu'au bout`],
+          pyramide: ["VMA et changements d'allure : relancer sans t'épuiser", `Palier à ${fmtV(G.vmax)} km/h tenu en entier${G.reps > 1 ? ` sur ${Rmin} pyramide${Rmin > 1 ? 's' : ''}` : ''}`],
+          seuil: ['Repousser ton seuil : tenir plus vite, plus longtemps', `${Rmin} bloc${Rmin > 1 ? 's' : ''} à ${fmtV(G.vmax)} km/h, réguliers`],
+          cotes: ['Force et puissance des jambes : foulée plus efficace', `${Rmin} montées propres, souffle revenu entre chaque`],
+          endu: ['Base aérobie : le moteur de toutes tes progressions', `${T} min faciles${fcm ? `, cardio < ${pctToBpm(0.75)}` : ', en pouvant parler'}`],
+          longue: ["Endurance et économie de course : préparer la distance", `${Math.round(T * 0.8)} min faciles · boire toutes les 20 min`],
+          recup: ['Assimiler les séances dures sans ajouter de fatigue', 'Très facile du début à la fin'],
+          test: ['Mesurer ta forme : tes allures seront recalculées', "Allure régulière, tout donner au dernier quart"],
+          course: ['Le jour J', '1er km prudent, accélérer au dernier quart']
+        }[k];
+        if (P) { objectif = P[0]; essentiel = P[1]; }
+        try { const gl = appData.goal || {}, gd = gl.date ? parseISODateLocal(gl.date) : null, wk = gd ? Math.round((gd - parseISODateLocal(s.dateISO || todayISO())) / (7 * 864e5)) : null;
+          var ctx = gl.distanceKm && wk != null && wk >= 0 ? `🏁 ${String(gl.distanceKm).replace('.', ',')} km dans ${wk} sem.${wk <= 2 ? ' · affûtage : la fraîcheur compte plus que le volume' : wk <= 6 ? ' · phase spécifique' : ' · phase de construction'}` : ''; } catch (e) { var ctx = ''; }
+      }
       const adapts = [];
       const A = GUIDE_ADAPT[k];
       const lbl = { fatigue: ['😫 Fatigué', '#fb7185'], moyen: ['😐 Moyen', '#fbbf24'], forme: ['💪 En forme', '#34d399'] };
@@ -15266,7 +15311,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         adapts.push({ key: 'moyen', label: lbl.moyen[0], color: lbl.moyen[1], changes: ['Le faire en test indicatif, sans viser le record'], session: null });
         adapts.push({ key: 'forme', label: lbl.forme[0], color: lbl.forme[1], changes: ['Tel quel, et viser un peu mieux sur le dernier quart'], session: null });
       }
-      return { kind: k, objectif, essentiel, coachNote: s0.notes || '', adapts };
+      return { kind: k, objectif, essentiel, ctx: typeof ctx !== 'undefined' ? ctx : '', coachNote: s0.notes || '', adapts };
     }
     function guideText(s) {
       const g = sessionGuide(s);
@@ -15365,14 +15410,11 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       return `<div class="flex flex-col gap-2 text-left">
         <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35)">
           <span class="text-[11px] font-black uppercase tracking-wide text-sky-300">🎯 Objectif</span>
-          <span class="text-[14px] font-bold text-white leading-snug">${esc(g.objectif)}</span>
+          <span class="text-[14px] font-bold text-white leading-snug">${esc(g.objectif)}</span>${g.ctx ? `<span class="text-[12px] font-semibold text-sky-200">${esc(g.ctx)}</span>` : ''}
         </div>
-        ${guideHrText(s) ? `<div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.4)">
-          <span class="text-[11px] font-black uppercase tracking-wide text-rose-300">❤️ Cardio cible</span>
-          <span class="text-[13px] text-slate-100 leading-snug">${esc(guideHrText(s))}</span>
-        </div>` : ''}
+
         <div class="flex flex-col gap-1 p-3 rounded-xl" style="background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)">
-          <span class="text-[11px] font-black uppercase tracking-wide text-emerald-300">✅ L'essentiel à réussir</span>
+          <span class="text-[11px] font-black uppercase tracking-wide text-emerald-300">✅ Minimum à faire</span>
           <span class="text-[13px] text-slate-100 leading-snug">${esc(g.essentiel)}</span>
         </div>
         ${g.adapts.length ? `<span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mt-1">⚖️ Adapter selon ma forme</span>
@@ -18790,7 +18832,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         if (box.dataset.k === key && w) { w.textContent = `✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}`; return; }
         box.dataset.k = key; }
       box.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:22px;background:linear-gradient(180deg,#0d2a22 0%,#0b1a17 100%);border:1px solid rgba(52,211,153,.45)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="hlrWhen" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:#6ee7b7;text-transform:uppercase">✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="hlrWhen" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:#6ee7b7;text-transform:uppercase">✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" style="display:none" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
           <span style="font-size:17px;font-weight:900;color:#f8fafc;line-height:1.25"><span style="color:${k.color}">${plEsc(k.label)}</span>${h.human ? ` · ${plEsc(h.human)}` : ''}</span>
           <span style="font-size:14px;font-weight:700;color:#cbd5e1">${stats}</span>${feelAsk}
           <span style="font-size:13px;color:${ana ? '#e9d5ff' : '#94a3b8'};line-height:1.4">${ana ? '🧠 ' + plEsc(ana) + (ana.length >= 160 ? '…' : '') : getGeminiKey() ? '🧠 Le coach analyse ta séance…' : ''}</span>
@@ -18798,24 +18840,64 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
-    const HOME_TABS = [['sess', '📅 Séance', ['homeSessCard', 'homeRest']], ['last', '✅ Dernière', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '🫧 Récup', ['homeRecovery']]];
+    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Dernière séance', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '🫧 Récup', ['homeRecovery']]];
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
+    let _autoSugg = '';
+    function homeAutoSugg() {
+      if (!getGeminiKey() || homeFeelMode() !== 'add' || feelMode !== 'add') return;
+      const f = curDayFeel(); if (!f) return;
+      const o = {}; ['sleep', 'energy', 'soreness', 'pain', 'note'].forEach(k => { if (f[k]) o[k] = f[k]; }); if (!Object.keys(o).length) return;
+      const sig = todayISO() + JSON.stringify(o); if (_autoSugg === sig || homeAutoSugg.pending === sig) return;
+      homeAutoSugg.pending = sig; clearTimeout(homeAutoSugg.t);
+      homeAutoSugg.t = setTimeout(() => {
+        homeAutoSugg.pending = ''; if (_autoSugg === sig) return; _autoSugg = sig;
+        const fa = document.getElementById('feelAdvice'), host = document.getElementById('homeRest');
+        if (fa && host && fa.parentNode !== host) { const hd = document.createElement('div'); hd.className = 'text-[11px] font-black uppercase tracking-wide text-purple-300 mt-2'; hd.textContent = '🧠 Suggestion du coach selon tes sensations'; host.appendChild(hd); host.appendChild(fa); fa.style.fontSize = '13px'; }
+        try { askCoachAddSession(); } catch (e) { }
+      }, 3500);
+    }
     function homeTabsSync() {
+      try { homeAutoSugg(); } catch (e) { }
       const bar = document.getElementById('homeTabs'); if (!bar) return;
       const av = HOME_TABS.filter(t => homeTabAvail(t[2]));
       if (!av.some(t => t[0] === homeTab)) homeTab = av.length ? av[0][0] : 'sess';
       HOME_TABS.forEach(([k, , ids]) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.classList.toggle('htab-off', k !== homeTab); }));
       bar.style.display = av.length > 1 ? 'flex' : 'none';
-      { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = homeTab === 'sess' && !card.classList.contains('hidden') ? 'flex' : 'none'; }
-      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:48px;padding:4px 2px;border-radius:10px;border:none;font-size:12px;font-weight:800;line-height:1.25;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}">${l.replace(' ', '<br>')}</button>`).join('');
+      { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = !card.classList.contains('hidden') ? 'flex' : 'none';
+        const bar2 = document.getElementById('homeActBar'); if (bar2) bar2.classList.toggle('hab-off', homeTab !== 'sess'); }
+      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:50px;padding:2px 2px 6px;border-radius:10px;border:none;font-size:12px;font-weight:800;line-height:1.15;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:2px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
       if (bar.innerHTML !== html) bar.innerHTML = html;
     }
     setInterval(() => { try { if (document.body.classList.contains('home')) homeTabsSync(); } catch (e) { } }, 1500);
     function renderHome() {
-      try { renderHome0(); } finally { try { homeTabsSync(); } catch (e) { } }
+      try { renderHome0(); } finally { try { homeSessTilesApply(); } catch (e) { console.warn(e); } try { homeTabsSync(); } catch (e) { } }
+    }
+    function homeSessTilesHtml(sess) {
+      if (!sess || sess.free) return '';
+      const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess);
+      const t = (ic, v, l) => `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:8px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.25);text-align:center;min-width:0"><span style="font-size:20px;line-height:1.1">${ic}</span><span style="font-size:15.5px;font-weight:900;color:#fff;line-height:1.15;word-break:break-word">${v}</span><span style="font-size:10.5px;font-weight:700;color:#93c5fd;line-height:1.1">${l}</span></div>`;
+      const L = [t('⏱️', `${T} min`, 'durée'), t('📏', `${D.toFixed(1).replace('.', ',')} km`, 'distance')];
+      const main = G.segs[0];
+      if (k === 'pyramide') { L.push(t('🔺', `${fmtV(G.vmin)} → ${fmtV(G.vmax)}`, `km/h · ${G.reps} pyramide${G.reps > 1 ? 's' : ''}`)); if (main) L.push(t('⏲️', fmtQ(main), 'par palier')); }
+      else if (G.fast.length) { L.push(t('🔁', `${G.reps} × ${fmtQ(G.fast[0])}`, 'répétitions')); L.push(t('⚡', `${fmtV(G.vmax)} km/h`, 'effort')); if (G.slow.length) L.push(t('🫧', `${fmtQ(G.slow[0])}`, `récup à ${fmtV(G.vmin)}`)); else if (G.recB) L.push(t('🫧', fmtQ(G.recB), 'récup')); }
+      else if (main) L.push(t('🏃', `${fmtV(main.speed)} km/h`, 'allure'));
+      if (sess.type === 'tapis') L.push(t('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`, 'pente'));
+      else { const ri = routeRunInfo(sess); if (ri) L.push(t('🗺️', `D+ ${Math.round((sess.route && sess.route.gainM) || 0)} m`, 'parcours')); else L.push(t('🌳', 'Dehors', 'lieu')); }
+      const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
+      if (c) L.push(t('🔥', `${c}'`, 'échauffement')); if (r) L.push(t('🧊', `${r}'`, 'retour calme'));
+      try { const h = hrTargetShort(sess); if (h) { const m = String(h).match(/(\d{2,3})\s*[-–à]\s*(\d{2,3})/), m1 = String(h).match(/[<≤]\s*(\d{2,3})/); L.push(t('❤️', m ? `${m[1]}-${m[2]}` : m1 ? `< ${m1[1]}` : plEsc(String(h).slice(0, 14)), 'bpm cible')); } } catch (e) { }
+      try { if (fuelRemindersOn()) { const w = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (w) L.push(t('💧', `${w[1]} ml`, 'à boire')); } } catch (e) { }
+      return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${L.join('')}</div>`;
+    }
+    function homeSessTilesApply() {
+      const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
+      const h = homeSessTilesHtml(sess); if (!h) return;
+      d.innerHTML = h;
+      ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
     }
     function renderHome0() {
+      { const e1 = document.getElementById('homeCfgBtn'), e2 = document.getElementById('homeDelBtn'); if (e1 && !e1.dataset.pl) { e1.innerHTML = PL_ICON_EDIT; e1.dataset.pl = 1; } if (e2 && !e2.dataset.pl) { e2.innerHTML = PL_ICON_DEL; e2.dataset.pl = 1; } }
       renderHrChip();
       try { renderHomeLastRun(); } catch (e) { }
       {
