@@ -2021,10 +2021,8 @@
     // Fraction courte (< 2 min) : le cardio n'a pas le temps de se stabiliser → cible = FC max à ne pas dépasser
     function fixShortCardio(x) {
       try {
-        if (!x || !x.cardio || x.cardio.max || !x.cardio.moy || x.free) return;
-        const G = gSegs(x), f = G.fast[0], k = guideKind(x); if (!f || !['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k)) return;
-        const sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60; if (sec >= 120) return;
-        x.cardio = { moy: null, max: x.cardio.moy[1] };
+        if (!x || !x.cardio || x.free || !isMaxHrKind(x) || !gSegs(x).fast.length) return;
+        if (x.cardio.moy) x.cardio = { moy: null, max: x.cardio.max || x.cardio.moy[1] };
       } catch (e) { }
     }
     function saveAppData() {
@@ -5272,7 +5270,7 @@ ${tapisHrText()}
 ${weakText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
-Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}`;
+Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
         if (!askSess) return;
@@ -5328,7 +5326,7 @@ MÉTHODE OBLIGATOIRE quand le plan change : 1) dans "analyse", décris semaine p
 Toute séance marquée ⚠ dans les semaines concernées doit être corrigée (durée réaliste pour le niveau du coureur) et tu dois le signaler dans "avis". Si l'objectif te paraît incohérent (distance, chrono ou date), dis-le dans "avis" sans le modifier.
 Mets dans "dates_indisponibles" les jours où le coureur dit ne pas pouvoir courir.
 "avis" doit annoncer UNIQUEMENT ce qui est dans "changements" (pas d'action promise sans changement correspondant) et le présenter comme une PROPOSITION à valider, jamais comme déjà fait.
-Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (avant / après), vide si le plan ne change pas","dates_indisponibles":["AAAA-MM-JJ"],"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","changements":[{"action":"deplacer|modifier|supprimer|ajouter|objectif","id":"S3","date":"AAAA-MM-JJ (nouvelle date pour deplacer / date pour ajouter)","raison":"une phrase courte","type_seance":"fractionne|seuil|endurance|longue|cotes|recup|test|course","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"},"objectif":{"distance_km":10,"duree_min":50,"date":"AAAA-MM-JJ"}}]}`;
+Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (avant / après), vide si le plan ne change pas","dates_indisponibles":["AAAA-MM-JJ"],"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","changements":[{"action":"deplacer|modifier|supprimer|ajouter|objectif","id":"S3","date":"AAAA-MM-JJ (nouvelle date pour deplacer / date pour ajouter)","raison":"une phrase courte","type_seance":"fractionne|seuil|endurance|longue|cotes|recup|test|course","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"},"objectif":{"distance_km":10,"duree_min":50,"date":"AAAA-MM-JJ"}}]}`;
       try {
         let j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full', expert: true }));
         if (!askSess) return;
@@ -12771,7 +12769,7 @@ Réponds uniquement en JSON :
 {"titre":"Objectif","texte":"ce que la séance dit de l'objectif, seulement si ça change quelque chose, 1 à 2 phrases"},
 {"titre":"Récupération","texte":"quoi faire dans les 24 à 48 h (sommeil, hydratation, alimentation, activité), 1 à 2 phrases"},
 {"titre":"Plan","texte":"ton avis sur la prochaine séance, sur les prochaines séances du même type que celle-ci et sur le plan dans son ensemble (charge, progression, objectif) : faut-il les adapter et pourquoi, 2 à 4 phrases"}],
-"modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}]}
+"modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}]}
 PRIORITÉ À LA NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y explicitement dans le bilan, donne ton avis argumenté avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
 Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à venir doivent être adaptées (en particulier celles du même type que la séance analysée), mets-y la NOUVELLE version complète de chacune (même format que le détail JSON fourni). Le coureur pourra accepter ou refuser. Ne dis jamais « je vais adapter » sans mettre la modification ici. Si rien ne doit changer, laisse un tableau vide.`;
     }
@@ -15704,6 +15702,8 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
     }
     // Cardio cible d'une séance : FC MAX à ne pas dépasser (fractions courtes < 2 min) ou FC MOYENNE visée (fractions longues, seuil, endurance)
     // Sur tapis, les cibles calculées par l'app tiennent compte du cardio plus bas qu'en extérieur
+    // Fractionné (toutes durées), pyramide et côtes : cible = FC max ; seuil : FC moyenne
+    function isMaxHrKind(s) { try { return ['fractionne', 'pyramide', 'cotes'].includes(guideKind(s)); } catch (e) { return false; } }
     function sessHrGoal(s, o = {}) {
       s = s || {};
       const tap = s.type === 'tapis';
@@ -15714,13 +15714,13 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const src = s.cardioSrc === 'app' ? 'app' : 'coach';
       if (s.cardio) {
         const c = tapCardio(s.cardio, s);
-        if (frac && fsec < 120) { const mx = c.max || (c.moy && c.moy[1]); if (mx) return { kind: 'max', max: mx, src, tap }; }
+        if (frac && isMaxHrKind(s)) { const mx = c.max || (c.moy && c.moy[1]); if (mx) return { kind: 'max', max: mx, src, tap }; }
         if (c.moy && c.moy[0]) return { kind: 'moy', lo: c.moy[0], hi: c.moy[1], max: c.max || null, src, tap };
         if (c.max) return { kind: 'max', max: c.max, src, tap };
       }
       if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return null;
       const off = tap ? tapisHrEff() : 0;
-      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - off); return fsec < 120 ? { kind: 'max', max: hi, src: 'app', tap } : { kind: 'moy', lo, hi, src: 'app', tap }; }
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - off); void fsec; return isMaxHrKind(s) ? { kind: 'max', max: hi, src: 'app', tap } : { kind: 'moy', lo, hi, src: 'app', tap }; }
       const [lo, hi] = (k === 'recup' ? [0.62, 0.74] : [0.68, 0.79]).map(pctToBpm);
       return { kind: 'moy', lo: lo - off, hi: hi - off, src: 'app', tap };
     }
@@ -15734,9 +15734,9 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const k = guideKind(s), G = gSegs(s);
       const fsec = G.fast[0] ? (G.fast[0].unit === 'km' ? G.fast[0].distance / G.vmax * 3600 : G.fast[0].duration * 60) : 9999;
       const frac = G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k);
-      if (s.cardio) { const c = s.cardio; if (frac && fsec < 120 && c.max) return `Cardio cible : max ${c.max} en fin de répétition`; return `Cardio cible${frac ? ' sur les fractions' : ''} : ${c.moy ? `${c.moy[0]}–${c.moy[1]}` : ''}${c.max ? `${c.moy ? ', ' : ''}max ${c.max}` : ''}`; }
+      if (s.cardio) { const c = s.cardio; if (frac && isMaxHrKind(s) && (c.max || c.moy)) return `Cardio cible : max ${c.max || c.moy[1]} en fin de répétition`; return `Cardio cible${frac ? ' sur les fractions' : ''} : ${c.moy ? `${c.moy[0]}–${c.moy[1]}` : ''}${c.max ? `${c.moy ? ', ' : ''}max ${c.max}` : ''}`; }
       if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return '';
-      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - hrOff(s)); return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - hrOff(s)); return isMaxHrKind(s) ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
       const [lo, hi] = k === 'recup' ? [pctToBpm(0.62), pctToBpm(0.74)] : [pctToBpm(0.68), pctToBpm(0.79)];
       return `Cardio cible : ${lo}–${hi}`;
     }
@@ -15746,7 +15746,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (s.cardio) {
         const c = s.cardio, f = G.fast[0], sec = f ? (f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60) : 9999;
         const part = G.fast.length ? 'sur chaque fraction' : 'sur la séance';
-        if (sec < 120 && c.max) return `Fractions courtes : cardio max à ne pas dépasser ${c.max} en fin de répétition (${s.cardioSrc === 'app' ? "cible calculée par l'app" : 'cible fixée par le coach'}).`;
+        void sec; if (isMaxHrKind(s) && (c.max || c.moy)) return `Cardio max à ne pas dépasser ${c.max || c.moy[1]} en fin de répétition (${s.cardioSrc === 'app' ? "cible calculée par l'app" : 'cible fixée par le coach'}).`;
         return [c.moy ? `Cardio moyen ${part} entre ${c.moy[0]} et ${c.moy[1]}` : '', c.max ? `sans dépasser ${c.max}` : ''].filter(Boolean).join(', ') + (s.cardioSrc === 'app' ? " (cible calculée par l'app)." : ' (cible fixée par le coach).');
       }
       const fc = runnerFcMax(); if (!fc) return '';
@@ -15755,8 +15755,8 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
         const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60;
         const [lo, hi] = pc(...fastHrRange(k, s)).map(v => v - hrOff(s));
-        return sec < 120
-          ? `Fractions courtes : cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
+        return isMaxHrKind(s)
+          ? `Cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
           : `Cardio moyen sur chaque fraction entre ${lo} et ${hi}. S'il dépasse ${hi} dès les premières, la vitesse est trop haute pour aujourd'hui.`;
       }
       { const g = sessHrGoal(s); if (g && g.kind === 'moy') return `Cardio moyen entre ${g.lo} et ${g.hi}${g.tap ? ' (cible abaissée sur tapis, où ton cardio est plus bas)' : ''} : tu dois pouvoir parler en courant.`; }
@@ -19368,7 +19368,7 @@ Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${ru
 ${planPrefsText()}
 ${backgroundText()}
 Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
-Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}
+Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}
 "seance" seulement si decision n'est pas "garder".`;
       try {
         // 30 s maximum : modèle rapide, réponse courte, puis abandon (la séance prévue s'affiche)
