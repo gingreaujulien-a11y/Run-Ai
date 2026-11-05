@@ -95,6 +95,10 @@
     .home-play svg { margin-left: 4px; }
     #homeScreen { padding-bottom: 110px !important; }
     .htab-off { display: none !important; }
+    #homeTabs { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -12px 0 12px #020617; }
+    .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
+    .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
+    .hsub button.on { background: #38bdf8; color: #04121f; }
     body.ctl-run .pocket-btn { display: none !important; }
     body.ctl-run #ctlRow > button { min-height: 54px !important; padding-top: .45rem !important; padding-bottom: .45rem !important; }
     body.ctl-run #ctlRow svg { width: 24px !important; height: 24px !important; }
@@ -338,6 +342,7 @@
     <div id="homeLastRun" class="hidden"></div>
     <button type="button" id="homeProfUpd" onclick="openProfUpdModal()" class="hidden" style="min-height:46px;border-radius:16px;border:1px solid rgba(34,211,238,.5);background:rgba(34,211,238,.1);color:#a5f3fc;font-weight:900;font-size:14px"></button>
     <div id="homeFeelHost"></div>
+    <div id="homeSleepHost"></div>
 
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div class="flex items-start justify-between gap-2">
@@ -2177,6 +2182,61 @@
         speakOpt(`Fin d'échauffement : fais 2 ou 3 accélérations de 15 secondes${v ? ` vers ${formatSpeed(v).replace('.', ',')}` : ''}, avec 30 secondes tranquilles entre chaque.`);
       } catch (e) { }
     }, 1000);
+    const recA = { first: -1, done: false, prop: null, shown: false };
+    setInterval(() => {
+      try {
+        if (!timerState.sessionStarted) { recA.first = -1; recA.done = false; recA.prop = null; recA.shown = false; return; }
+        if (!timerState.isRunning || timerState.finished) return;
+        const i = timerState.currentStageIndex, st = timerState.stages[i], ss = getActiveSession() || {};
+        if (ss.free || !['fractionne', 'cotes', 'seuil'].includes(guideKind(ss))) return;
+        if (recA.first < 0 && isRecoveryStage(st)) recA.first = i;
+        if (!recA.done && recA.first >= 0 && i > recA.first) { recA.done = true; recA.prop = recAnalyze(recA.first, ss); }
+        if (recA.prop && !recA.shown && isRecoveryStage(st) && i > recA.first) { recA.shown = true; recPropose(recA.prop); }
+      } catch (e) { }
+    }, 1000);
+    function recAnalyze(ri, ss) {
+      const T = runData.track || [], rec = T.filter(r => r[3] === ri), rep = T.filter(r => r[3] === ri - 1), st = timerState.stages[ri];
+      if (!st || rec.length < 6 || rep.length < 3) return null;
+      const hrs = rec.map(r => r[1]).filter(x => x > 0); if (hrs.length < rec.length * 0.6) return null;
+      const peak = Math.max(...rep.slice(-4).concat(rec.slice(0, 3)).map(r => r[1] || 0)), end = Math.round((rec.slice(-2).map(r => r[1] || 0).reduce((a, b) => a + b, 0)) / 2);
+      if (!peak || !end) return null;
+      const d = st.durationSec, exp = Math.min(40, 12 + d / 5), drop = peak - end, fc = runnerFcMax(), low = fc ? pctToBpm(0.65) - hrOff(ss) : 0;
+      let dir = 0; if (drop < exp - 8) dir = -1; else if (drop > exp + 12 && (!low || end < low)) dir = 1;
+      if (!dir) return null;
+      const tap = ss.type === 'tapis', sp = parseFloat(st.speed) || 0;
+      if (tap && (dir > 0 || sp > 4)) return { dir, mode: 'speed', to: Math.max(3, Math.min(14, Math.round(sp + dir))), from: sp, drop, exp: Math.round(exp), type: st.type };
+      const delta = dir < 0 ? Math.max(15, Math.round(d * 0.25 / 15) * 15) : -Math.max(15, Math.round(d * 0.2 / 15) * 15);
+      if (dir > 0 && d + delta < 30) return null;
+      return { dir, mode: 'time', delta, drop, exp: Math.round(exp), type: st.type };
+    }
+    function recPropose(p) {
+      const sp = v => formatSpeed(v).replace('.', ',');
+      const what = p.mode === 'speed' ? `récup à ${sp(p.to)} kilomètres heure` : p.delta > 0 ? `${p.delta} secondes de récup en plus` : `${-p.delta} secondes de récup en moins`;
+      speakLive(`${p.dir < 0 ? 'Ton cardio redescend peu.' : 'Tu récupères vite.'} Je propose ${what}. Valide à l'écran.`);
+      let m = document.getElementById('recAdaptModal'); if (m) m.remove();
+      m = document.createElement('div'); m.id = 'recAdaptModal'; m.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:120;background:#0f172a;border:2px solid #fbbf24;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9;box-shadow:0 10px 40px rgba(0,0,0,.6)';
+      m.innerHTML = `<span style="font-size:15px;font-weight:900;color:#fde68a">🧠 Adapter la récup ?</span><span style="font-size:14px;line-height:1.4">${p.dir < 0 ? `Ton cardio n'a baissé que de ${p.drop} bpm (≈ ${p.exp} attendus).` : `Ton cardio a baissé de ${p.drop} bpm (≈ ${p.exp} attendus) : tu récupères vite.`}<br><b>${p.mode === 'speed' ? `Récup à ${sp(p.to)} km/h au lieu de ${sp(p.from)}` : p.delta > 0 ? `+${p.delta} s de récup` : `${p.delta} s de récup`}</b>, pour toutes les récups suivantes.</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button type="button" onclick="recApply(false)" aria-label="Refuser" style="min-height:64px;border-radius:16px;border:none;background:#e11d48;color:#fff;font-size:30px;font-weight:900">✕</button><button type="button" onclick="recApply(true)" aria-label="Accepter" style="min-height:64px;border-radius:16px;border:none;background:#10b981;color:#04140d;font-size:30px;font-weight:900">✓</button></div>`;
+      document.body.appendChild(m);
+      recA.timer = setTimeout(() => { const x = document.getElementById('recAdaptModal'); if (x) x.remove(); }, 30000);
+    }
+    function recApply(ok) {
+      clearTimeout(recA.timer); const m = document.getElementById('recAdaptModal'); if (m) m.remove();
+      const p = recA.prop; if (!ok || !p) { if (!ok) showToast('Récup inchangée'); return; }
+      const i = timerState.currentStageIndex; let tot = 0, n = 0;
+      timerState.stages.forEach((x, k) => {
+        if (k < i || !isRecoveryStage(x) || x.type !== p.type) return;
+        if (p.mode === 'speed') { if (x.plannedSpeed === undefined) x.plannedSpeed = parseFloat(x.speed) || 0; x.speed = p.to; }
+        else { const nd = Math.max(20, x.durationSec + p.delta), dd = nd - x.durationSec; x.durationSec = nd; tot += dd; if (k === i) timerState.stageRemainingMs = Math.max(5000, timerState.stageRemainingMs + dd * 1000); }
+        n++;
+      });
+      if (tot) { timerState.totalSessionMs += tot * 1000; recomputeTotalRemaining(); }
+      if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
+      runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i, name: 'Récup adaptée par le coach', extra: true });
+      updateUIHeaderAndCircle(); saveLiveRun();
+      speakLive(p.mode === 'speed' ? `OK, récup à ${formatSpeed(p.to).replace('.', ',')}.` : `OK, récup ${p.delta > 0 ? 'allongée' : 'raccourcie'}.`);
+      showToast(`✓ ${n} récup${n > 1 ? 's' : ''} adaptée${n > 1 ? 's' : ''}`);
+    }
     function stagePente(st, sess) { sess = sess || getActiveSession() || {}; return st && st.pente != null ? +st.pente : (parseFloat(sess.pente) || 0); }
     function buildCurrentSessionStages() {
       if (!window.__buildOverride && !timerState.sessionStarted) try { const a = getActiveSession(); if (a && isLongRunSess(a) && (!a.wcIn || (+a.chauffe || 0) + (+a.recup || 0) > 0)) { longRunIncludeWarmCool(a); longRunNoWarm(a); saveAppData(); } } catch (e) { }
@@ -5968,7 +6028,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
       if (s.kind === 'course') return { label: 'COURSE', color: '#facc15' };
       if (s.kind === 'test' || (!s.kind && (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
-      if (s.kind === 'endu') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
+      if (s.kind === 'endu') return { label: 'ENDURANCE', color: '#60a5fa' };
       if (s.kind === 'longue') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
       if (s.kind === 'fractionne') return { label: 'FRACTIONNÉ', color: '#fb923c' };
       if (s.kind === 'seuil') return { label: 'SEUIL', color: '#fbbf24' };
@@ -14227,7 +14287,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const tot = zz.reduce((a, z) => a + z.s, 0) || 1, fx = z => `flex:${Math.max(z.s / tot, 0.0001)} 1 0;min-width:40px`;
           zonesB = `<div style="display:flex;flex-direction:column;gap:6px;padding:12px;${card}"><span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">Temps par zone cardio${hrRows.length <= 10 && hs && hs.zones_min ? ' · capture montre' : ''}</span>
             <div style="display:flex;gap:2px;height:16px">${zz.map((z, i) => `<div style="${fx(z)};background:${z.c};border-radius:${i === 0 ? '8px 0 0 8px' : i === zz.length - 1 ? '0 8px 8px 0' : '0'}"></div>`).join('')}</div>
-            <div style="display:flex;gap:2px">${zz.map(z => `<div style="${fx(z)};text-align:center;font-size:11px;font-weight:800;color:${z.c};line-height:1.25">${z.n}<br><span style="color:#e2e8f0">${Math.round(z.s / 60)}'</span> <span style="color:#94a3b8;font-weight:700">(${Math.round(z.s / tot * 100)} %)</span></div>`).join('')}</div></div>`; }
+            <div style="display:flex;gap:2px">${zz.map(z => `<div style="${fx(z)};text-align:center;font-size:11px;font-weight:800;color:${z.c};line-height:1.25">${z.n}<br><span style="color:#e2e8f0">${Math.round(z.s / 60)}'</span><br><span style="color:#94a3b8;font-weight:700">${Math.round(z.s / tot * 100)} %</span></div>`).join('')}</div></div>`; }
         // Onglet segments : tableau avec filtres, tri et moyenne
         const showG = P.hasEle;
         const canEdit = !item.live && hh.type !== 'exterieur' && (appData.history || []).some(x => x.id === item.id);
@@ -14284,15 +14344,15 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const fmtS = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
       const spokenTab = !item.live ? (spk.length ? `<button type="button" onclick="openSpokenLog('${item.id}')" style="min-height:42px;border-radius:12px;border:1px solid rgba(192,132,252,.5);background:rgba(168,85,247,.12);color:#e9d5ff;font-weight:800;font-size:13px">📜 Ce que le coach a dit pendant la séance (plein écran)</button><div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
         : `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas d'annonces enregistrées pour cette séance (faite avant la mise à jour qui les garde, ou sans le chrono de l'app).</div>`) : '';
-      void top; void spokenTab;
-      const tabs = [['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graphique'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
-      if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
-      function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
-      const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach';
-      const tid = 'ht' + Math.random().toString(36).slice(2, 8);
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
-      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">${noData}${stats}${recLine}
+      void top; void spokenTab;
+      const tabs = [['recap', '📊', `${noData}${stats}${recLine}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graphique'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
+      if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
+      function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
+      const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : 'recap';
+      const tid = 'ht' + Math.random().toString(36).slice(2, 8);
+      return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">
         <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l, , al]) => `<button type="button" role="tab" aria-label="${al}" title="${al}" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:46px;border:none;border-radius:10px;font-size:24px;line-height:1;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
@@ -15142,7 +15202,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     function renderFeelChips() {
       const box = document.getElementById('feelChips');
       ['feelSoreWhereBox', 'feelPainWhereBox'].forEach(id => { const e = document.getElementById(id); if (e && box.contains(e)) box.parentNode.insertBefore(e, box); });
-      box.innerHTML = Object.entries(FEEL_FIELDS).filter(([k]) => !(k === 'when' && feelMode === 'add')).map(([k, f]) => `
+      box.innerHTML = Object.entries(FEEL_FIELDS).filter(([k]) => !(k === 'when' && feelMode === 'add') && k !== 'sleep').map(([k, f]) => `
         <div data-ff="${k}">
           <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">${f.label}</div>
           <div class="grid gap-1" style="grid-template-columns: repeat(${f.opts.length}, minmax(0, 1fr))">
@@ -15182,6 +15242,36 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (!sh) return ''; const hm = h => h ? `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}` : '';
       return [sh.score ? `score ${sh.score}` : '', sh.duree_h ? hm(+sh.duree_h) : '', sh.profond_min ? `profond ${sh.profond_min} min` : '', sh.paradoxal_min ? `paradoxal ${sh.paradoxal_min} min` : '', sh.eveils ? `${sh.eveils} réveils` : '', sh.vfc_ms ? `VFC ${sh.vfc_ms} ms` : '', sh.fc_repos ? `FC repos ${sh.fc_repos}` : '', sh.body_battery ? `Body Battery ${sh.body_battery}` : '', sh.resume || ''].filter(Boolean).join(' · ');
     }
+    // ---------- Panneau Sommeil (onglet de l'accueil) : phases saisies en h / min, qualité calculée
+    const SLEEP_PH = [['profond_min', 'Profond', '#6366f1'], ['leger_min', 'Léger', '#38bdf8'], ['paradoxal_min', 'Paradoxal', '#a855f7'], ['eveil_min', 'Éveillé', '#f472b6']];
+    function sleepTotalMin(sh) { if (!sh) return 0; const t = (sh.profond_min || 0) + (sh.leger_min || 0) + (sh.paradoxal_min || 0); return t || (sh.duree_h ? sh.duree_h * 60 : 0); }
+    function sleepQuality(min) { return !min ? '' : min >= 420 ? 'bon' : min >= 360 ? 'moyen' : 'mauvais'; }
+    function sleepHeadHtml() {
+      const sh = feelDraft.sleepShot || {}, t = sleepTotalMin(sh), q = sleepQuality(t) || feelDraft.sleep, Q = { bon: ['😊 Bon', '#34d399'], moyen: ['😐 Moyen', '#fbbf24'], mauvais: ['😴 Mauvais', '#fb7185'] }[q];
+      return `<span style="font-size:24px;font-weight:900;color:#fff">${t ? `${Math.floor(t / 60)} h ${String(Math.round(t % 60)).padStart(2, '0')}` : '– h –'}</span><span style="font-size:14px;font-weight:900;color:${Q ? Q[1] : '#64748b'}">${Q ? Q[0] : 'qualité calculée selon la durée'}</span>`;
+    }
+    function sleepPanelRender() {
+      const host = document.getElementById('homeSleepHost'); if (!host) return;
+      if (host.contains(document.activeElement)) return;
+      const sh = feelDraft.sleepShot || {};
+      const box = (k, l, c) => { const v = sh[k] || 0, h = v ? Math.floor(v / 60) : '', m = v ? Math.round(v % 60) : ''; return `<div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:800;color:${c};text-transform:uppercase">● ${l}</span><div style="display:grid;grid-template-columns:1fr auto 1fr auto;gap:4px;align-items:center"><input type="number" inputmode="numeric" min="0" max="12" value="${h}" oninput="sleepPhase('${k}','h',this.value)" class="pm-in c" style="height:42px;font-size:17px;padding:0 4px"><span style="font-size:12px;color:#94a3b8;font-weight:800">h</span><input type="number" inputmode="numeric" min="0" max="59" value="${m}" oninput="sleepPhase('${k}','m',this.value)" class="pm-in c" style="height:42px;font-size:17px;padding:0 4px"><span style="font-size:12px;color:#94a3b8;font-weight:800">min</span></div></div>`; };
+      host.innerHTML = `<div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full p-4 flex flex-col gap-3 text-xs">
+        <span class="text-base font-bold text-white">😴 Mon sommeil de la nuit</span>
+        <div id="sleepHead" style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">${sleepHeadHtml()}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${SLEEP_PH.map(([k, l, c]) => box(k, l, c)).join('')}</div>
+        <button type="button" onclick="sleepShotPick()" class="w-full py-2.5 rounded-xl border text-[12px] font-bold bg-slate-900 border-slate-700 text-slate-200">📷 Remplir avec une capture de ma montre (Garmin, Polar…)</button>
+        ${sh.resume ? `<span class="text-[12px] font-semibold text-sky-200 leading-snug">⌚ ${plEsc(sh.resume)}</span>` : ''}<span id="sleepShotMsg" class="text-[11px] text-purple-300"></span></div>`;
+    }
+    function sleepPhase(k, part, v) {
+      const sh = Object.assign({}, feelDraft.sleepShot || {}), cur = sh[k] || 0, h0 = Math.floor(cur / 60), m0 = Math.round(cur % 60), n = Math.max(0, parseInt(v) || 0);
+      const tot = part === 'h' ? n * 60 + m0 : h0 * 60 + Math.min(59, n);
+      if (tot > 0) sh[k] = tot; else delete sh[k];
+      const t = (sh.profond_min || 0) + (sh.leger_min || 0) + (sh.paradoxal_min || 0); if (t) sh.duree_h = Math.round(t / 60 * 100) / 100;
+      feelDraft.sleepShot = Object.keys(sh).length ? sh : undefined;
+      const q = sleepQuality(sleepTotalMin(sh)); if (q) feelDraft.sleep = q;
+      const hd = document.getElementById('sleepHead'); if (hd) hd.innerHTML = sleepHeadHtml();
+      feelAutoSaveSoon();
+    }
     function sleepManual(k, v) {
       const sh = Object.assign({}, feelDraft.sleepShot || {}), n = parseFloat(String(v).replace(',', '.'));
       if (k === 'h' || k === 'm') { const h0 = sh.duree_h ? Math.floor(sh.duree_h) : 0, m0 = sh.duree_h ? Math.round((sh.duree_h % 1) * 60) : 0, h = k === 'h' ? (n || 0) : h0, m = k === 'm' ? (n || 0) : m0; sh.duree_h = h || m ? Math.round((h + m / 60) * 100) / 100 : undefined; }
@@ -15213,9 +15303,10 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const j = parseJsonLoose(await geminiText([{ inline_data: { mime_type: 'image/jpeg', data: d.split(',')[1] } }, { text: prompt }], { json: true })) || {};
           const sh = {}; ['score', 'duree_h', 'profond_min', 'leger_min', 'paradoxal_min', 'eveil_min', 'eveils', 'vfc_ms', 'fc_repos', 'body_battery'].forEach(k => { const v = parseFloat(j[k]); if (v > 0) sh[k] = Math.round(v * 10) / 10; }); if (j.resume) sh.resume = String(j.resume).slice(0, 160);
           if (!Object.keys(sh).length) throw new Error('aucune donnée de sommeil trouvée');
+          ['eveil_min'].forEach(k => { if (j.eveil_min > 0) sh[k] = Math.round(j.eveil_min); });
           feelDraft.sleepShot = sh;
-          if (!feelDraft.sleep) feelDraft.sleep = ['bon', 'moyen', 'mauvais'].includes(j.qualite) ? j.qualite : sh.score ? (sh.score >= 80 ? 'bon' : sh.score >= 60 ? 'moyen' : 'mauvais') : undefined;
-          renderFeelChips(); feelAutoSave(); showToast('⌚ Sommeil ajouté');
+          feelDraft.sleep = sleepQuality(sleepTotalMin(sh)) || (['bon', 'moyen', 'mauvais'].includes(j.qualite) ? j.qualite : feelDraft.sleep);
+          renderFeelChips(); feelAutoSave(); const host = document.getElementById('homeSleepHost'); if (host && host.contains(document.activeElement)) document.activeElement.blur(); sleepPanelRender(); showToast('⌚ Sommeil ajouté');
         } catch (e) { if (msg) msg.textContent = '⚠ Lecture impossible : ' + (e.message || e); }
       };
       inp.click();
@@ -15660,6 +15751,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       return `Cardio moyen entre ${lo} et ${hi} : tu dois pouvoir parler en courant.`;
     }
     function guideHtml(s, idx, opts = {}) {
+      if (opts.part) { const full = guideHtml(s, idx, Object.assign({}, opts, { part: '' })); if (!full) return ''; const d = document.createElement('div'); d.innerHTML = full; const root = d.firstElementChild; if (!root) return full; const kids = [...root.children]; const cut = kids.findIndex(e => /ADAPTER SELON MA FORME/i.test(e.textContent || '') && e.tagName === 'SPAN'); const objK = cut < 0 ? kids : kids.slice(0, cut), adK = cut < 0 ? [] : kids.slice(cut + 1); const wrap = L => `<div class="flex flex-col gap-2 text-left">${L.map(e => e.outerHTML).join('')}</div>`; return opts.part === 'obj' ? wrap(objK) : wrap(adK); }
       const g = sessionGuide(s);
       if (!g) return '';
       const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -16830,6 +16922,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       feelMode = mode;
       feelExpanded = true; // toujours affiché en entier
       openFeelModal(true);
+      try { sleepPanelRender(); } catch (e) { }
       { const hdr = document.getElementById('feelPanel').firstElementChild, xb = hdr && hdr.querySelector('button'); if (xb) xb.style.display = 'none'; }
     }
 
@@ -19140,7 +19233,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
-    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Dernière séance', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
+    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Dernière séance', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['sleep', '😴 Sommeil', ['homeSleepHost']], ['recup', '💤 Récup', ['homeRecovery']]];
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
     let _autoSugg = '';
@@ -19161,6 +19254,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     function homeTabsSync() {
       try { homeAutoSugg(); } catch (e) { }
+      try { const sh = document.getElementById('homeSleepHost'); if (sh && (!sh.children.length || sh.dataset.d !== todayISO())) { sh.dataset.d = todayISO(); sleepPanelRender(); } } catch (e) { }
+      try { homeDayCheck(); } catch (e) { }
       try { const host = document.getElementById('homeRest'); if (host) { let hi = document.getElementById('homeFeelHint'); const need = homeFeelMode() === 'add' && !curDayFeel() && !!getGeminiKey();
         if (need && !hi) { hi = document.createElement('button'); hi.id = 'homeFeelHint'; hi.type = 'button'; hi.onclick = () => { homeTab = 'feel'; homeTabsSync(); }; hi.style.cssText = 'width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(251,191,36,.55);background:rgba(251,191,36,.08);color:#fde68a;font-size:13.5px;font-weight:700;line-height:1.35'; hi.innerHTML = "🙂 Renseigne tes sensations du jour : le coach te fera sa suggestion pour aujourd'hui. <b>Remplir ›</b>"; host.appendChild(hi); }
         if (hi) hi.style.display = need ? 'block' : 'none'; } } catch (e) { }
@@ -19171,7 +19266,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       bar.style.display = av.length > 1 ? 'flex' : 'none';
       { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = !card.classList.contains('hidden') ? 'flex' : 'none';
         const bar2 = document.getElementById('homeActBar'); if (bar2) bar2.classList.toggle('hab-off', homeTab !== 'sess'); }
-      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:50px;padding:2px 2px 6px;border-radius:10px;border:none;font-size:12px;font-weight:800;line-height:1.15;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:6px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
+      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:50px;padding:2px 1px 6px;border-radius:10px;border:none;font-size:10.5px;font-weight:800;line-height:1.15;letter-spacing:-.2px;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:6px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
       if (bar.innerHTML !== html) bar.innerHTML = html;
     }
     setInterval(() => { try { if (document.body.classList.contains('home')) homeTabsSync(); } catch (e) { } }, 1500);
@@ -19185,14 +19280,14 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:9px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px"><span style="height:22px;display:flex;align-items:center;justify-content:center">${head}</span><span style="font-size:${String(v).replace(/<[^>]+>/g, '').length > 10 ? 12.5 : String(v).replace(/<[^>]+>/g, '').length > 8 ? 14 : 15.5}px;font-weight:900;color:${col || '#fff'};line-height:1.15;word-break:break-word">${v}</span></div>`;
     }
     function sTileWide(ic, txt, sub) {
-      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);min-width:0"><span style="font-size:24px;line-height:1">${ic}</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:900;color:#fff">${txt}</span>${sub ? `<span style="font-size:12px;font-weight:700;color:#93c5fd">${sub}</span>` : ''}</span></div>`;
+      return `<div data-wide="1" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 14px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);min-width:0"><span style="font-size:24px;line-height:1">${ic}</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:900;color:#fff">${txt}</span>${sub ? `<span style="font-size:12px;font-weight:700;color:#93c5fd">${sub}</span>` : ''}</span></div>`;
     }
     function whereTile(x, h) {
       const tap = (x || {}).type === 'tapis';
       const rt = !tap && x && x.route ? `parcours ${(+x.route.totalKm || 0).toFixed(1).replace('.', ',')} km` : '';
       return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
     }
-    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.wide || (r.length === 1 && r[0].startsWith('<div style="display:flex;align-items:center;gap:12px')) ? r[0] : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
+    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
     function homeSessTilesHtml(sess) {
       if (!sess || sess.free) return '';
       const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess), main = G.segs[0], kl = sessionKind(sess).label;
@@ -19226,10 +19321,84 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       try { if (fuelRemindersOn()) { const w = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (w) L.push(t('💧', `${w[1]} ml`, 'à boire')); } } catch (e) { }
       return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${L.join('')}</div>`;
     }
+    function dayCheckSig(sess) {
+      const t = todayISO(), lim = toISODateLocal(new Date(Date.now() - 21 * 864e5));
+      const H = runHistory().filter(h => (h._iso || '') >= lim).map(h => h.id + h.durationMin + (h.feeling || '') + (h.note || '').length).join(',');
+      const f = curDayFeel(), fs = f ? JSON.stringify([f.sleep, f.energy, f.soreness, f.pain, f.note]) : '';
+      return [t, sess.id, JSON.stringify([sess.kind, sess.type, sess.pente, sess.repet, sess.nbBlocs, sess.pyramide, sess.chauffe, sess.recup]), H, fs].join('|');
+    }
+    function homeDayCheck() {
+      if (!getGeminiKey() || homeFeelMode() !== 'adapt') return;
+      const sess = getActiveSession(); if (!sess || sess.free || sess.dateISO !== todayISO() || isSessionDone(sess) || (timerState.sessionStarted && !timerState.finished)) return;
+      const sig = dayCheckSig(sess), dc = appData.dayCheck;
+      if (dc && (dc.sig === sig || (dc.done && dc.sid === sess.id && dc.d === todayISO()))) return;
+      if (homeDayCheck.busy === sig) return; homeDayCheck.busy = sig;
+      clearTimeout(homeDayCheck.t); homeDayCheck.t = setTimeout(() => dayCheckRun(sess, sig).finally(() => { homeDayCheck.busy = ''; }), 2500);
+    }
+    async function dayCheckRun(sess, sig) {
+      const t = todayISO(), lim = toISODateLocal(new Date(Date.now() - 21 * 864e5)), r = runnerProfile(), g = appData.goal || {};
+      const hist = runHistory().filter(h => (h._iso || '') >= lim).map(h => `- ${h._iso} · ${sessionKind(h.kind ? h : (histLinkedSession(h) || h)).label} : ${h.human || h.details || ''} ; ${Math.round(+h.durationMin || 0)} min ; ${histKm(h).toFixed(1)} km ; ressenti ${feelTxt(h.feeling)}${h.note ? ` ; note « ${h.note} »` : ''}`).join('\n') || '- AUCUNE séance faite ces 3 dernières semaines';
+      const missed = (appData.sessions || []).filter(x => x.dateISO && x.dateISO >= lim && x.dateISO < t && !isSessionDone(x)).map(x => `- ${x.dateISO} · ${sessionKind(x).label} : ${describeSessionHuman(x)}`).join('\n') || '- aucune';
+      const next = (appData.sessions || []).filter(x => x.dateISO && x.dateISO > t && !isSessionDone(x)).slice(0, 4).map(x => `- ${x.dateISO} · ${sessionKind(x).label} : ${describeSessionHuman(x)} ; ${Math.round(computeSessionTotalMin(x))} min`).join('\n') || '- aucune';
+      let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Aujourd'hui (${t}), le plan prévoit : ${sessionKind(sess).label} — ${describeSessionHuman(sess)} ; ${Math.round(computeSessionTotalMin(sess))} min ; ${sess.type === 'exterieur' ? 'extérieur' : `tapis ${sess.pente} %`}.
+Séances FAITES ces 3 dernières semaines :
+${hist}
+Séances PRÉVUES mais NON FAITES ces 3 dernières semaines :
+${missed}
+Prochaines séances prévues :
+${next}
+${feel ? `Sensations du jour : ${feel}.` : ''}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${planPrefsText()}
+${backgroundText()}
+Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
+Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}
+"seance" seulement si decision n'est pas "garder".`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full' })) || {};
+        const dec = ['garder', 'adapter', 'remplacer'].includes(j.decision) ? j.decision : 'garder';
+        let prop = null;
+        if (dec !== 'garder' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) { prop = proposalToSession(sess, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'exterieur') prop.pente = 0; const cc = parseCardio(j.cardio); if (cc) prop.cardio = cc; else delete prop.cardio; const kk = String(j.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup'].includes(kk)) prop.kind = kk === 'endurance' ? 'endu' : kk; }
+        appData.dayCheck = { sig, sid: sess.id, d: t, res: { decision: prop ? dec : 'garder', avis: String(j.avis || '').slice(0, 600) }, prop, done: false };
+        saveAppData(); try { renderHome(); } catch (e) { }
+        if (prop) showToast("🧠 Le coach propose d'adapter ta séance du jour");
+      } catch (e) { console.warn('dayCheck', e); }
+    }
+    function dayCheckHtml(sess) {
+      const dc = appData.dayCheck; if (!dc || dc.sid !== sess.id || dc.d !== todayISO() || !dc.res) return getGeminiKey() && sess.dateISO === todayISO() ? '<div style="font-size:12.5px;color:#94a3b8;padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b">🧠 Le coach vérifie ta séance d\'après tes 3 dernières semaines…</div>' : '';
+      const R = dc.res, P = dc.prop;
+      if (dc.done) return `<div style="font-size:12.5px;color:#6ee7b7;font-weight:800;padding:8px 10px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)">${dc.done === 'ok' ? '✓ Séance remplacée selon le conseil du coach' : '✓ Séance d\'origine conservée'}</div>`;
+      if (R.decision === 'garder' || !P) return `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">🧠 Le coach valide la séance prévue</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span></div>`;
+      return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.45)"><span style="font-size:12px;font-weight:900;color:#fcd34d">🧠 Le coach propose ${R.decision === 'remplacer' ? 'de remplacer' : "d'adapter"} la séance</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span>
+        <span style="font-size:13px;font-weight:800;color:#fff">→ ${plEsc(sessionKind(P).label)} : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, P, { chauffe: 0, recup: 0 }))))} · ${Math.round(computeSessionTotalMin(P))} min</span>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px"><button type="button" onclick="dayCheckApply(true)" style="min-height:42px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:900">✅ Accepter</button><button type="button" onclick="dayCheckApply(false)" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Garder</button></div></div>`;
+    }
+    function dayCheckApply(ok) {
+      const dc = appData.dayCheck, s = dc && appData.sessions.find(x => x.id === dc.sid); if (!dc || !s) return;
+      if (ok && dc.prop) { if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; } ['type', 'chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio', 'kind'].forEach(k => { if (dc.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(dc.prop[k])); else if (k === 'cardio') delete s.cardio; }); s.adapted = { at: todayISO(), resume: 'Séance du jour changée par le coach' }; }
+      dc.done = ok ? 'ok' : 'no'; dc.sig = dayCheckSig(s); saveAppData(); try { reloadChrono(); updateHistoryTable(); } catch (e) { } renderHome();
+      showToast(ok ? '✓ Séance du jour mise à jour' : 'Séance d\'origine conservée');
+    }
+    let homeSessSub = 'recap';
     function homeSessTilesApply() {
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
       d.innerHTML = h;
+      try {
+        const inProg = timerState.sessionStarted && !timerState.finished;
+        let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
+        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = dc && dc.res && dc.res.decision && dc.res.decision !== 'garder' && !dc.done ? ' <span style="background:#f43f5e;color:#fff;border-radius:8px;padding:0 6px;font-size:10px">1</span>' : '';
+        bar.style.display = inProg ? 'none' : 'flex';
+        bar.innerHTML = [['recap', '📊 Récap'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()">${l}${k === 'adapt' ? badge : ''}</button>`).join('');
+        const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
+        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
+        const sub = inProg ? 'recap' : homeSessSub;
+        d.style.display = sub === 'recap' ? '' : 'none';
+        if (hg) { hg.classList.toggle('hidden', sub === 'recap' || sess.free); }
+        if (hb) hb.querySelectorAll('[data-hsp]').forEach(e => { e.style.display = e.dataset.hsp === sub ? 'flex' : 'none'; e.style.flexDirection = 'column'; });
+      } catch (e) { console.warn('subs', e); }
       ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel', 'homeSessTitle'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
     }
     function renderHome0() {
