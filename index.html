@@ -6441,7 +6441,7 @@ Donne 2 ou 3 axes de travail.`;
       renderProgressInner();
       const box = document.getElementById('progressPanel'); if (box) box.insertAdjacentHTML('beforeend', strengthsCardHtml());
       // Records et km / semaine → onglet Stats
-      { const st = document.getElementById('statsPanel'); if (st && box) { st.innerHTML = monthRecapHtml() + feelLogCardHtml(); box.querySelectorAll(':scope > [data-sub="Records"], :scope > [data-sub="Km / semaine"]').forEach(el => st.appendChild(el)); applySubTabs(st); } }
+      { const st = document.getElementById('statsPanel'); if (st && box) { st.innerHTML = monthRecapHtml() + feelLogCardHtml() + sleepCardHtml(); box.querySelectorAll(':scope > [data-sub="Records"], :scope > [data-sub="Km / semaine"]').forEach(el => st.appendChild(el)); applySubTabs(st); } }
       applySubTabs(box);
     }
     function renderProgressInner() {
@@ -12918,14 +12918,14 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     function speedOnGrade(target, gradePct) { return target * 3.6 / minettiCost((gradePct || 0) / 100); }
     // Zone cardio visée selon le segment
     // Cible cardio des fractions (en part de FC max) ; sur tapis le cardio monte moins haut : cible abaissée
-    function fastHrRange(k, sess) {
-      const tap = sess && sess.type === 'tapis';
-      return k === 'seuil' ? (tap ? [0.81, 0.87] : [0.84, 0.9]) : (tap ? [0.84, 0.91] : [0.88, 0.95]);
-    }
+    // Zones en % de FC max (référence extérieur) ; sur tapis, l'écart cardio tapis / extérieur est retiré en bpm
+    function fastHrRange(k, sess) { void sess; return k === 'seuil' ? [0.84, 0.9] : [0.88, 0.95]; }
+    function hrOff(s) { return s && s.type === 'tapis' ? tapisHrEff() : 0; }
+    function tapCardio(c, s) { const o = hrOff(s); if (!c || !o) return c; return Object.assign({}, c, { moy: c.moy ? [c.moy[0] - o, c.moy[1] - o] : c.moy, max: c.max ? c.max - o : c.max }); }
     function hrTargetFor(st) {
       const fc = runnerFcMax();
       if (!st) return null;
-      { const ss = getActiveSession(), c = ss && ss.cardio;
+      { const ss = getActiveSession(), c = ss && tapCardio(ss.cardio, ss);
         if (c && st.type === 'palier') {
           const G = gSegs(ss), isMain = G.fast.length ? +st.speed >= G.vmax - 0.05 : true;
           if (isMain) { const lo = c.moy ? c.moy[0] : Math.round(c.max * 0.93), hi = c.moy ? Math.min(c.moy[1], c.max || 999) : c.max; return { lo, hi: c.max && !c.moy ? c.max : hi, mid: Math.round((lo + hi) / 2), max: c.max || null }; }
@@ -12936,7 +12936,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       if (st.type === 'chauffe' || st.type === 'recup' || st.type === 'recupBloc' || st.intensity === 'easy') r = [0.62, 0.74];
       else if (st.intensity === 'fast') r = fastHrRange(k, getActiveSession());
       else r = k === 'seuil' ? [0.84, 0.9] : k === 'course' || k === 'test' ? [0.85, 0.93] : [0.68, 0.79];
-      const off0 = (getActiveSession() || {}).type === 'tapis' && st.intensity !== 'fast' && k !== 'seuil' ? tapisHrEff() : 0;
+      const off0 = hrOff(getActiveSession());
       return { lo: pctToBpm(r[0]) - off0, hi: pctToBpm(r[1]) - off0, mid: pctToBpm((r[0] + r[1]) / 2) - off0 };
     }
     const spF = v => formatSpeed(Math.round(v * 10) / 10).replace('.', appData.audioSettings.voiceLang === 'en' ? '.' : ',');
@@ -14118,7 +14118,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const reps = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
         const vOf = g => P.hasEle ? g.vap : g.kmh;
         const lkC = (item.linked && item.linked.cardio) || null;
-        const repHrMax = lkC && lkC.max ? lkC.max : lkC && lkC.moy ? lkC.moy[1] : pctToBpm(fastHrRange(guideKind(item.linked || { kind: hh.kind || 'fractionne' }), { type: hh.type })[1]);
+        const repHrMax = (lkC && lkC.max ? lkC.max : lkC && lkC.moy ? lkC.moy[1] : pctToBpm(fastHrRange(guideKind(item.linked || { kind: hh.kind || 'fractionne' }), { type: hh.type })[1])) - hrOff(hh);
         const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && (d <= 0.6 || (repHrMax && g.hr && g.hr <= repHrMax) || (!g.hr && d <= 1.5)); };
         let score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
         const recupK = guideKind(item.linked || { kind: hh.kind || '' }) === 'recup' || hh.kind === 'recup';
@@ -14196,11 +14196,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const kS = item.linked || { kind: hh.kind || '' }, kLab = capFirst(String((kind && kind.label) || sessionKind(kS).label || '').toLowerCase());
         const fe = feel ? feel[0].split(' ') : null, nOkR = reps.filter(okRep).length;
         const tilesR = sTiles([
+          whereTile(hh),
           [sTile(kindIcon(kS), kLab), sTile('⏱️', totTxt), sTile('📏', `${f1(km)} km`)],
-          [fracMode && reps.length ? sTile('🔁', `${nOkR}/${reps.length}`, '', nOkR === reps.length ? '#6ee7b7' : '#fcd34d') : '', sTile('', f1(bKmh), 'km/h', '#7dd3fc'), sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–')],
-          [hh.type === 'exterieur' ? sTile('', dpm.dp != null ? dpm.dp + ' m' : '–', 'D+', '#fdba74') : '', hh.type === 'exterieur' ? sTile('', dpm.dm != null ? dpm.dm + ' m' : '–', 'D−', '#86efac') : '', showVap ? sTile('', f1(bVap), 'VAP', '#c4b5fd') : ''],
-          [bHr ? sTile('❤️', `${bHr}`, '', '#fda4af') : '', hrMaxB ? sTile('', `${hrMaxB}`, 'FC max', '#fb7185') : '', !item.live ? sTile(fe ? fe[0] : '', fe ? fe.slice(1).join(' ') : 'non renseigné', 'Ressenti', feel ? feel[1] : '#94a3b8') : '']
+          [sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–'), sTile('', f1(bKmh), 'km/h', '#7dd3fc'), showVap ? sTile('', f1(bVap), 'VAP', '#c4b5fd') : ''],
+          [!item.live ? sTile(fe ? fe[0] : '', fe ? fe.slice(1).join(' ') : 'non renseigné', 'Ressenti', feel ? feel[1] : '#94a3b8') : '', bHr ? sTile('❤️', `${bHr}`, '', '#fda4af', { tag: 'Moy' }) : '', hrMaxB ? sTile('❤️', `${hrMaxB}`, '', '#fb7185', { tag: 'Max' }) : ''],
+          [hh.type === 'exterieur' ? sTile('', dpm.dp != null ? dpm.dp + ' m' : '–', 'D+', '#fdba74') : '', hh.type === 'exterieur' ? sTile('', dpm.dm != null ? dpm.dm + ' m' : '–', 'D−', '#86efac') : '']
         ]);
+        void nOkR;
         stats = `${ring2 && why ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;${card}">${ring2}<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.6px">RÉUSSITE</span><span style="font-size:14px;font-weight:800;color:${col2};line-height:1.3">${plEsc(why)}</span></div></div>` : ''}
           ${tilesR}${item.live ? '' : histNoteFeelHtml(hh, item)}
           ${synth ? `<span style="font-size:11px;color:#fda4af">📷 Séance reconstruite à partir des captures de ta montre.</span>` : fromShot || (hs && !R.some(r => r.hr)) ? `<span style="font-size:11px;color:#fda4af">❤️ Cardio lu sur la capture de ta montre.</span>` : ''}
@@ -14221,6 +14223,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
             <div style="display:flex;height:16px;border-radius:8px;overflow:hidden">${zones.map(z => z.s ? `<div style="width:${z.s / tot * 100}%;background:${z.c}"></div>` : '').join('')}</div>
             <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700;text-align:center">${zones.map(z => `<span style="color:${z.c}">${z.n}<br>${Math.round(z.s / 60)}'</span>`).join('')}</div></div>`;
         }
+        if (zonesB) { const zz = (() => { if (hrRows.length <= 10 && hs && hs.zones_min) return RC_HR_Z.map((z, i) => ({ n: z[2], c: z[1], s: hs.zones_min[i] * 60 })); const Z = RC_HR_Z.map(z => ({ n: z[2], c: z[1], s: 0 })); hrRows.forEach(r => { const k2 = RC_HR_Z.findIndex(z => bpmToPct(r.hr) < z[0]); Z[k2 < 0 ? 4 : k2].s += 5; }); return Z; })().filter(z => z.s > 0);
+          const tot = zz.reduce((a, z) => a + z.s, 0) || 1, fx = z => `flex:${Math.max(z.s / tot, 0.0001)} 1 0;min-width:40px`;
+          zonesB = `<div style="display:flex;flex-direction:column;gap:6px;padding:12px;${card}"><span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">Temps par zone cardio${hrRows.length <= 10 && hs && hs.zones_min ? ' · capture montre' : ''}</span>
+            <div style="display:flex;gap:2px;height:16px">${zz.map((z, i) => `<div style="${fx(z)};background:${z.c};border-radius:${i === 0 ? '8px 0 0 8px' : i === zz.length - 1 ? '0 8px 8px 0' : '0'}"></div>`).join('')}</div>
+            <div style="display:flex;gap:2px">${zz.map(z => `<div style="${fx(z)};text-align:center;font-size:11px;font-weight:800;color:${z.c};line-height:1.25">${z.n}<br><span style="color:#e2e8f0">${Math.round(z.s / 60)}'</span> <span style="color:#94a3b8;font-weight:700">(${Math.round(z.s / tot * 100)} %)</span></div>`).join('')}</div></div>`; }
         // Onglet segments : tableau avec filtres, tri et moyenne
         const showG = P.hasEle;
         const canEdit = !item.live && hh.type !== 'exterieur' && (appData.history || []).some(x => x.id === item.id);
@@ -14230,7 +14237,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           return `<tr data-hsf="${cls}"${sub ? ` data-sub="${sub}"` : ''} data-sec="${st.sec.toFixed(1)}" data-km="${st.km.toFixed(4)}" data-kmh="${(st.kmh || 0).toFixed(2)}" data-vap="${(st.vap || 0).toFixed(2)}" data-hr="${st.hr || 0}" data-g="${(st.g || 0).toFixed(2)}" data-k0="${k0.toFixed(3)}" style="border-top:1px solid #1e293b${cls === 'k' || cls === 'p' ? ';display:none' : ''}">
             <td style="padding:6px 3px 6px 0;color:#e2e8f0;font-weight:700;line-height:1.2">${canEdit && (cls === 'f' || cls === 'r' || cls === 'w') ? `<button type="button" onclick="histSpeedEdit('${item.id}',${R[g.a].seg},'${cls}',${(st.kmh || 0).toFixed(1)},'${fastIdx}')" aria-label="Corriger la vitesse" style="float:right;margin-left:4px;border:none;background:transparent;font-size:13px;padding:0 2px">✏️</button>` : ''}${plEsc(n)}<span style="display:block;font-size:10px;font-weight:600;color:#64748b">${f2(k0)} → ${f2(k1)} km</span></td>
             <td style="text-align:right;color:#cbd5e1">${f2(st.km)}</td><td style="text-align:right;color:#94a3b8">${mmss(st.sec)}</td>
-            <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:#fda4af">${st.hr || '–'}</td></tr>`; };
+            <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:#fda4af">${cls === 'f' && st.sec < 120 && st.hrMax ? `${st.hrMax}<span style="font-size:9px;color:#94a3b8"> max</span>` : st.hr || '–'}</td></tr>`; };
         let nF = 0, nR = 0;
         const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f'; const lab = c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, g, c, c === 'f' ? g.target : 0); }).join('');
         const kmRows = rcGroups(P, 'km').map(g => { const st = rcStats(P, g.a, g.b); return row(g.label, g, st, 'k', 0); }).join('');
@@ -15146,6 +15153,14 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       document.getElementById('feelPainWhereBox').classList.toggle('hidden', !feelDraft.pain || feelDraft.pain === 'aucune');
       document.getElementById('feelSoreWhereBox').classList.toggle('hidden', !feelDraft.soreness || feelDraft.soreness === 'aucune');
       { const blk = box.querySelector('[data-ff="sleep"]'); if (blk) { const sh = feelDraft.sleepShot;
+          const sv = sh || {}, ni = (k, ph, w) => `<label style="display:flex;flex-direction:column;gap:2px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase">${ph}<input type="number" inputmode="numeric" min="0" value="${sv[k] != null ? sv[k] : ''}" oninput="sleepManual('${k}',this.value)" class="pm-in c" style="height:38px;width:${w || 100}%;font-size:15px;padding:0 4px"></label>`;
+          const dh = sv.duree_h ? Math.floor(sv.duree_h) : '', dm = sv.duree_h ? Math.round((sv.duree_h % 1) * 60) : '';
+          blk.insertAdjacentHTML('beforeend', `<details style="margin-top:6px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;padding:6px 8px"${sh ? '' : ''}><summary style="font-size:11.5px;font-weight:800;color:#7dd3fc;cursor:pointer">⏱️ Saisir mes phases de sommeil</summary>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px">
+              <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase">Durée h<input type="number" inputmode="numeric" min="0" max="14" value="${dh}" oninput="sleepManual('h',this.value)" class="pm-in c" style="height:38px;font-size:15px;padding:0 4px"></label>
+              <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase">+ min<input type="number" inputmode="numeric" min="0" max="59" value="${dm}" oninput="sleepManual('m',this.value)" class="pm-in c" style="height:38px;font-size:15px;padding:0 4px"></label>
+              ${ni('score', 'Score')}${ni('profond_min', 'Profond min')}${ni('leger_min', 'Léger min')}${ni('paradoxal_min', 'Paradoxal min')}${ni('eveil_min', 'Éveillé min')}${ni('vfc_ms', 'VFC ms')}${ni('fc_repos', 'FC repos')}
+            </div></details>`);
           blk.insertAdjacentHTML('beforeend', `<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px"><button type="button" onclick="sleepShotPick()" class="w-full py-1.5 rounded-lg border text-[11px] font-bold bg-slate-900 border-slate-700 text-slate-300">📷 ${sh ? 'Changer la capture' : 'Ajouter une capture de mon sommeil (Garmin, Polar…)'}</button>${sh ? `<span class="text-[11.5px] font-semibold text-sky-200 leading-snug">⌚ ${plEsc(sleepShotText(sh))}</span>` : ''}<span id="sleepShotMsg" class="text-[11px] text-purple-300"></span></div>`); } }
       // chaque précision « où ? » juste sous son choix
       [['soreness', 'feelSoreWhereBox'], ['pain', 'feelPainWhereBox']].forEach(([k, id]) => { const blk = box.querySelector(`[data-ff="${k}"]`), e = document.getElementById(id); if (blk && e) { e.style.marginTop = '6px'; blk.appendChild(e); } });
@@ -15166,6 +15181,26 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
     function sleepShotText(sh) {
       if (!sh) return ''; const hm = h => h ? `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}` : '';
       return [sh.score ? `score ${sh.score}` : '', sh.duree_h ? hm(+sh.duree_h) : '', sh.profond_min ? `profond ${sh.profond_min} min` : '', sh.paradoxal_min ? `paradoxal ${sh.paradoxal_min} min` : '', sh.eveils ? `${sh.eveils} réveils` : '', sh.vfc_ms ? `VFC ${sh.vfc_ms} ms` : '', sh.fc_repos ? `FC repos ${sh.fc_repos}` : '', sh.body_battery ? `Body Battery ${sh.body_battery}` : '', sh.resume || ''].filter(Boolean).join(' · ');
+    }
+    function sleepManual(k, v) {
+      const sh = Object.assign({}, feelDraft.sleepShot || {}), n = parseFloat(String(v).replace(',', '.'));
+      if (k === 'h' || k === 'm') { const h0 = sh.duree_h ? Math.floor(sh.duree_h) : 0, m0 = sh.duree_h ? Math.round((sh.duree_h % 1) * 60) : 0, h = k === 'h' ? (n || 0) : h0, m = k === 'm' ? (n || 0) : m0; sh.duree_h = h || m ? Math.round((h + m / 60) * 100) / 100 : undefined; }
+      else sh[k] = n > 0 ? n : undefined;
+      Object.keys(sh).forEach(x => sh[x] === undefined && delete sh[x]);
+      feelDraft.sleepShot = Object.keys(sh).length ? sh : undefined;
+      if (!feelDraft.sleep && sh.score) feelDraft.sleep = sh.score >= 80 ? 'bon' : sh.score >= 60 ? 'moyen' : 'mauvais';
+      feelAutoSaveSoon();
+    }
+    function sleepCardHtml() {
+      try { feelLogMigrate(); } catch (e) { }
+      const L = Object.entries(appData.feelLog || {}).filter(([, f]) => f.sleep || f.sleepShot).sort().reverse().slice(0, 30);
+      const hm = h => h ? `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}` : '–';
+      const Q = { bon: ['😊', '#34d399'], moyen: ['😐', '#fbbf24'], mauvais: ['😴', '#fb7185'] };
+      const withD = L.filter(([, f]) => f.sleepShot && f.sleepShot.duree_h), avg = withD.length ? withD.reduce((a, [, f]) => a + f.sleepShot.duree_h, 0) / withD.length : 0;
+      const bar = sh => { const P = [['profond_min', '#6366f1'], ['paradoxal_min', '#a855f7'], ['leger_min', '#38bdf8'], ['eveil_min', '#f472b6']].filter(([k]) => sh[k] > 0), t = P.reduce((a, [k]) => a + sh[k], 0); return t ? `<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:4px">${P.map(([k, c]) => `<div style="flex:${sh[k]};background:${c}"></div>`).join('')}</div>` : ''; };
+      return `<div class="pm-card" data-sub="Sommeil"><span class="pm-cap">Mon sommeil</span>
+        ${withD.length ? `<span style="font-size:13px;font-weight:800;color:#e2e8f0">Moyenne : ${hm(avg)} par nuit (${withD.length} nuit${withD.length > 1 ? 's' : ''} renseignée${withD.length > 1 ? 's' : ''})</span>` : ''}
+        ${L.length ? L.map(([d, f]) => { const sh = f.sleepShot || {}, q = Q[f.sleep]; return `<div style="padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-weight:900;color:#e2e8f0">${fmtDateShort(d)}</span><span style="font-size:13px;font-weight:800;color:${q ? q[1] : '#94a3b8'}">${q ? q[0] : ''} ${sh.duree_h ? hm(sh.duree_h) : f.sleep || ''}${sh.score ? ` · score ${sh.score}` : ''}</span></div>${bar(sh)}<div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:#94a3b8;margin-top:4px">${sh.profond_min ? `<span><b style="color:#a5b4fc">●</b> profond ${sh.profond_min}'</span>` : ''}${sh.paradoxal_min ? `<span><b style="color:#c084fc">●</b> paradoxal ${sh.paradoxal_min}'</span>` : ''}${sh.leger_min ? `<span><b style="color:#7dd3fc">●</b> léger ${sh.leger_min}'</span>` : ''}${sh.eveil_min ? `<span><b style="color:#f9a8d4">●</b> éveillé ${sh.eveil_min}'</span>` : ''}${sh.vfc_ms ? `<span>VFC ${sh.vfc_ms} ms</span>` : ''}${sh.fc_repos ? `<span>FC repos ${sh.fc_repos}</span>` : ''}</div></div>`; }).join('') : '<span class="text-[13px] text-slate-400">Renseigne ton sommeil dans les sensations du jour (choix, phases ou capture de ta montre).</span>'}</div>`;
     }
     function sleepShotPick() {
       if (!getGeminiKey()) { showToast('Clé Gemini nécessaire pour lire la capture'); return; }
@@ -15574,14 +15609,14 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const frac = o.frac != null ? o.frac : !!(G && G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k));
       const src = s.cardioSrc === 'app' ? 'app' : 'coach';
       if (s.cardio) {
-        const c = s.cardio;
+        const c = tapCardio(s.cardio, s);
         if (frac && fsec < 120 && c.max) return { kind: 'max', max: c.max, src, tap };
         if (c.moy && c.moy[0]) return { kind: 'moy', lo: c.moy[0], hi: c.moy[1], max: c.max || null, src, tap };
         if (c.max) return { kind: 'max', max: c.max, src, tap };
       }
       if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return null;
       const off = tap ? tapisHrEff() : 0;
-      if (frac) { const [lo, hi] = fastHrRange(k, s).map(pctToBpm); return fsec < 120 ? { kind: 'max', max: hi, src: 'app', tap } : { kind: 'moy', lo, hi, src: 'app', tap }; }
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - off); return fsec < 120 ? { kind: 'max', max: hi, src: 'app', tap } : { kind: 'moy', lo, hi, src: 'app', tap }; }
       const [lo, hi] = (k === 'recup' ? [0.62, 0.74] : [0.68, 0.79]).map(pctToBpm);
       return { kind: 'moy', lo: lo - off, hi: hi - off, src: 'app', tap };
     }
@@ -15597,7 +15632,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const frac = G.fast.length && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k);
       if (s.cardio) { const c = s.cardio; if (frac && fsec < 120 && c.max) return `Cardio cible : max ${c.max} en fin de répétition`; return `Cardio cible${frac ? ' sur les fractions' : ''} : ${c.moy ? `${c.moy[0]}–${c.moy[1]}` : ''}${c.max ? `${c.moy ? ', ' : ''}max ${c.max}` : ''}`; }
       if (!runnerFcMax() || ['test', 'course', 'libre'].includes(k)) return '';
-      if (frac) { const [lo, hi] = fastHrRange(k, s).map(pctToBpm); return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
+      if (frac) { const [lo, hi] = fastHrRange(k, s).map(v => pctToBpm(v) - hrOff(s)); return fsec < 120 ? `Cardio cible : max ${hi} en fin de répétition` : `Cardio cible sur les fractions : ${lo}–${hi}`; }
       const [lo, hi] = k === 'recup' ? [pctToBpm(0.62), pctToBpm(0.74)] : [pctToBpm(0.68), pctToBpm(0.79)];
       return `Cardio cible : ${lo}–${hi}`;
     }
@@ -15615,7 +15650,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const pc = (a, b) => [pctToBpm(a), pctToBpm(b)];
       if (['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k) && G.fast.length) {
         const f = G.fast[0], sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60;
-        const [lo, hi] = pc(...fastHrRange(k, s));
+        const [lo, hi] = pc(...fastHrRange(k, s)).map(v => v - hrOff(s));
         return sec < 120
           ? `Fractions courtes : cardio max à ne pas dépasser ${hi} en fin de répétition. Le cardio monte avec du retard sur un effort court : règle-toi sur la vitesse, et vérifie juste qu'il reste sous ${hi}.`
           : `Cardio moyen sur chaque fraction entre ${lo} et ${hi}. S'il dépasse ${hi} dès les premières, la vitesse est trop haute pour aujourd'hui.`;
@@ -15964,6 +15999,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
           html += `<button onclick="createOwnSessionToday()" class="w-full mt-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-[11px]">Ajouter quand même une séance de course</button>`;
         }
         out.innerHTML = html;
+        try { const sg = homeSuggSig(); if (sg) { appData.addSugg = { sig: sg, j, html }; saveAppData(); } } catch (e) { }
       } catch (e) {
         out.innerHTML = `<span class="text-rose-400">Avis impossible : ${e.message || e}</span>`;
       }
@@ -19108,11 +19144,13 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
     let _autoSugg = '';
+    function homeSuggSig() { const f = curDayFeel(); if (!f) return ''; const o = {}; ['sleep', 'energy', 'soreness', 'soreWhere', 'pain', 'painWhere', 'note'].forEach(k => { if (f[k]) o[k] = f[k]; }); return Object.keys(o).length ? todayISO() + JSON.stringify(o) : ''; }
+    function homeSuggMount() { const fa = document.getElementById('feelAdvice'), host = document.getElementById('homeRest'); if (fa && host && fa.parentNode !== host) { const hd = document.createElement('div'); hd.className = 'text-[11px] font-black uppercase tracking-wide text-purple-300 mt-2'; hd.textContent = '🧠 Suggestion du coach selon tes sensations'; host.appendChild(hd); host.appendChild(fa); fa.style.fontSize = '13px'; } return fa; }
     function homeAutoSugg() {
       if (!getGeminiKey() || homeFeelMode() !== 'add' || feelMode !== 'add') return;
-      const f = curDayFeel(); if (!f) return;
-      const o = {}; ['sleep', 'energy', 'soreness', 'pain', 'note'].forEach(k => { if (f[k]) o[k] = f[k]; }); if (!Object.keys(o).length) return;
-      const sig = todayISO() + JSON.stringify(o); if (_autoSugg === sig || homeAutoSugg.pending === sig) return;
+      const sig = homeSuggSig(); if (!sig) return;
+      { const sv = appData.addSugg; if (sv && sv.sig === sig && sv.html && _autoSugg !== sig) { _autoSugg = sig; const fa = homeSuggMount(); if (fa) { addProposal = sv.j || null; fa.innerHTML = sv.html; fa.classList.remove('hidden'); } return; } }
+      if (_autoSugg === sig || homeAutoSugg.pending === sig) return;
       homeAutoSugg.pending = sig; clearTimeout(homeAutoSugg.t);
       homeAutoSugg.t = setTimeout(() => {
         homeAutoSugg.pending = ''; if (_autoSugg === sig) return; _autoSugg = sig;
@@ -19142,25 +19180,34 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     const KIND_IC = { fractionne: '⚡', pyramide: '🔺', seuil: '🎯', longue: '🛣️', cotes: '⛰️', recup: '💤', endu: '🏃', test: '🧪', course: '🏁', libre: '🏃' };
     function kindIcon(s) { const k = guideKind(s); if (k === 'fractionne') { const f = gSegs(s).fast[0]; if (f && f.unit !== 'km' && f.duration >= 3) return '🔥'; } return KIND_IC[k] || '🏃'; }
-    function sTile(ic, v, lab, col) {
-      return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px">${ic ? `<span style="font-size:19px;line-height:1">${ic}</span>` : `<span style="font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${lab}</span>`}<span style="font-size:${String(v).replace(/<[^>]+>/g, '').length > 10 ? 12.5 : String(v).replace(/<[^>]+>/g, '').length > 8 ? 14 : 15.5}px;font-weight:900;color:${col || '#fff'};line-height:1.15;word-break:break-word">${v}</span></div>`;
+    function sTile(ic, v, lab, col, o = {}) {
+      const head = ic ? `<span style="font-size:${o.small ? 15 : 19}px;line-height:1">${ic}</span>${o.tag ? `<span style="font-size:11px;font-weight:900;color:#93c5fd;margin-left:4px">${o.tag}</span>` : ''}` : `<span style="font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${lab}</span>`;
+      return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:9px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px"><span style="height:22px;display:flex;align-items:center;justify-content:center">${head}</span><span style="font-size:${String(v).replace(/<[^>]+>/g, '').length > 10 ? 12.5 : String(v).replace(/<[^>]+>/g, '').length > 8 ? 14 : 15.5}px;font-weight:900;color:${col || '#fff'};line-height:1.15;word-break:break-word">${v}</span></div>`;
     }
-    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => r.filter(Boolean)).filter(r => r.length).map(r => `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
+    function sTileWide(ic, txt, sub) {
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);min-width:0"><span style="font-size:24px;line-height:1">${ic}</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:900;color:#fff">${txt}</span>${sub ? `<span style="font-size:12px;font-weight:700;color:#93c5fd">${sub}</span>` : ''}</span></div>`;
+    }
+    function whereTile(x, h) {
+      const tap = (x || {}).type === 'tapis';
+      const rt = !tap && x && x.route ? `parcours ${(+x.route.totalKm || 0).toFixed(1).replace('.', ',')} km` : '';
+      return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
+    }
+    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.wide || (r.length === 1 && r[0].startsWith('<div style="display:flex;align-items:center;gap:12px')) ? r[0] : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
     function homeSessTilesHtml(sess) {
       if (!sess || sess.free) return '';
       const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess), main = G.segs[0], kl = sessionKind(sess).label;
       const r1 = [sTile(kindIcon(sess), capFirst(String(kl).toLowerCase())), sTile('⏱️', `${T} min`), sTile('📏', `${D.toFixed(1).replace('.', ',')} km`)];
       const spd = k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
-      const r2 = [G.reps > 1 || G.fast.length ? sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`) : '', spd ? sTile('', spd, 'km/h') : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
+      const r2 = [G.reps > 1 || G.fast.length ? sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true }) : '', spd ? sTile('', spd, 'km/h') : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
       const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
       const rs = G.slow.length ? `${fmtQ(G.slow[0])} à ${fmtV(G.vmin)}` : G.recB ? fmtQ(G.recB) : '';
       const r3 = [c ? sTile('', `${c}'`, 'Échauffement') : '', rs && k !== 'pyramide' ? sTile('', rs, 'Récup série') : '', r ? sTile('', `${r}'`, 'Retour calme') : ''];
-      let hr = ''; try { const g = sessHrGoal(sess); if (g) hr = g.kind === 'max' ? `≤ ${g.max}` : `${g.lo}-${g.hi}`; } catch (e) { }
+      let hr = '', hrTag = ''; try { const g = sessHrGoal(sess); if (g) { hr = g.kind === 'max' ? `≤ ${g.max}` : `${g.lo}-${g.hi}`; hrTag = g.kind === 'max' ? 'Max' : 'Moy'; } } catch (e) { }
       const vap = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
       let w = ''; try { if (fuelRemindersOn()) { const m = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (m) w = `${m[1]} ml`; } } catch (e) { }
-      const r4 = [hr ? sTile('❤️', hr) : '', vap ? sTile('', vap, 'VAP') : '', w ? sTile('💧', w) : ''];
-      return sTiles([r1, r2, r3, r4]);
+      const r4 = [hr ? sTile('❤️', hr, '', '', { tag: hrTag }) : '', vap ? sTile('', vap, 'VAP') : '', w ? sTile('💧', w) : ''];
+      return sTiles([whereTile(sess), r1, r2, r3, r4]);
     }
     function homeSessTilesHtmlOld(sess) {
       if (!sess || sess.free) return '';
@@ -19183,7 +19230,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
       d.innerHTML = h;
-      ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
+      ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel', 'homeSessTitle'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
     }
     function renderHome0() {
       { const e0 = document.getElementById('homeMoveBtn'); if (e0 && !e0.dataset.pl) { e0.innerHTML = PL_ICON_MOVE; e0.dataset.pl = 1; } }
