@@ -2018,7 +2018,17 @@
       }
     }
 
+    // Fraction courte (< 2 min) : le cardio n'a pas le temps de se stabiliser → cible = FC max à ne pas dépasser
+    function fixShortCardio(x) {
+      try {
+        if (!x || !x.cardio || x.cardio.max || !x.cardio.moy || x.free) return;
+        const G = gSegs(x), f = G.fast[0], k = guideKind(x); if (!f || !['fractionne', 'pyramide', 'cotes', 'seuil'].includes(k)) return;
+        const sec = f.unit === 'km' ? f.distance / G.vmax * 3600 : f.duration * 60; if (sec >= 120) return;
+        x.cardio = { moy: null, max: x.cardio.moy[1] };
+      } catch (e) { }
+    }
     function saveAppData() {
+      try { (appData.sessions || []).forEach(fixShortCardio); } catch (e) { }
       try { (appData.sessions || []).forEach(x => { if (!x.wcIn && isLongRunSess(x)) longRunIncludeWarmCool(x); if (isLongRunSess(x) && ((+x.chauffe || 0) + (+x.recup || 0)) > 0) longRunNoWarm(x); }); } catch (e) { }
       try { localStorage.setItem('tapis_coach_data_v3', JSON.stringify(appData)); }
       catch (e) {
@@ -4961,7 +4971,7 @@
     // Sauvegarde sans charger la séance
     function saveSessionConfig() {
       const ok = saveActiveSessionConfig({ keepOpen: true });
-      if (ok) showSavedBig('Séance enregistrée');
+      if (ok) { showSavedBig('Séance enregistrée'); closeConfigModal(); try { renderHome(); } catch (e) { } }
     }
     // ---------- Copier une séance : date puis avis du coach ----------
     let copyCheck = null;
@@ -5262,7 +5272,7 @@ ${tapisHrText()}
 ${weakText()}
 ${COACH_ADAPT}
 Tiens compte de toute la conversation (ne répète pas ce que tu as déjà dit). Réponds au nouveau message de façon concrète. Si une modification de la séance est utile, propose la séance complète.
-Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
+Réponds uniquement en JSON : {"verdict":"ok|modifier","avis":"ta réponse, 2 à 4 phrases courtes en tutoyant","resume":"si modifier : la modification en une phrase","nouvelle_date":"AAAA-MM-JJ seulement si tu conseilles de changer de jour, sinon vide","seance":{même format que le détail JSON, seulement si modifier},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}`;
       try {
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true }));
         if (!askSess) return;
@@ -5318,7 +5328,7 @@ MÉTHODE OBLIGATOIRE quand le plan change : 1) dans "analyse", décris semaine p
 Toute séance marquée ⚠ dans les semaines concernées doit être corrigée (durée réaliste pour le niveau du coureur) et tu dois le signaler dans "avis". Si l'objectif te paraît incohérent (distance, chrono ou date), dis-le dans "avis" sans le modifier.
 Mets dans "dates_indisponibles" les jours où le coureur dit ne pas pouvoir courir.
 "avis" doit annoncer UNIQUEMENT ce qui est dans "changements" (pas d'action promise sans changement correspondant) et le présenter comme une PROPOSITION à valider, jamais comme déjà fait.
-Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (avant / après), vide si le plan ne change pas","dates_indisponibles":["AAAA-MM-JJ"],"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","changements":[{"action":"deplacer|modifier|supprimer|ajouter|objectif","id":"S3","date":"AAAA-MM-JJ (nouvelle date pour deplacer / date pour ajouter)","raison":"une phrase courte","type_seance":"fractionne|seuil|endurance|longue|cotes|recup|test|course","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0},"objectif":{"distance_km":10,"duree_min":50,"date":"AAAA-MM-JJ"}}]}`;
+Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (avant / après), vide si le plan ne change pas","dates_indisponibles":["AAAA-MM-JJ"],"avis":"ta réponse, 2 à 6 phrases courtes en tutoyant","changements":[{"action":"deplacer|modifier|supprimer|ajouter|objectif","id":"S3","date":"AAAA-MM-JJ (nouvelle date pour deplacer / date pour ajouter)","raison":"une phrase courte","type_seance":"fractionne|seuil|endurance|longue|cotes|recup|test|course","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"},"objectif":{"distance_km":10,"duree_min":50,"date":"AAAA-MM-JJ"}}]}`;
       try {
         let j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full', expert: true }));
         if (!askSess) return;
@@ -12761,7 +12771,7 @@ Réponds uniquement en JSON :
 {"titre":"Objectif","texte":"ce que la séance dit de l'objectif, seulement si ça change quelque chose, 1 à 2 phrases"},
 {"titre":"Récupération","texte":"quoi faire dans les 24 à 48 h (sommeil, hydratation, alimentation, activité), 1 à 2 phrases"},
 {"titre":"Plan","texte":"ton avis sur la prochaine séance, sur les prochaines séances du même type que celle-ci et sur le plan dans son ensemble (charge, progression, objectif) : faut-il les adapter et pourquoi, 2 à 4 phrases"}],
-"modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}]}
+"modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}]}
 PRIORITÉ À LA NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y explicitement dans le bilan, donne ton avis argumenté avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
 Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à venir doivent être adaptées (en particulier celles du même type que la séance analysée), mets-y la NOUVELLE version complète de chacune (même format que le détail JSON fourni). Le coureur pourra accepter ou refuser. Ne dis jamais « je vais adapter » sans mettre la modification ici. Si rien ne doit changer, laisse un tableau vide.`;
     }
@@ -13849,7 +13859,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const chEl = box.querySelector(`[data-rcch="${uid}"]`);
       if (keepScroll && chEl) { chEl.innerHTML = charts + legend; return; }
       const hint = S.rangeA !== null ? '<span class="text-amber-300 font-bold">Début du tronçon fixé · maintiens le doigt sur la fin du tronçon</span>' : '<span class="text-slate-400">👆 Glisse : valeurs instantanées · touche : moyenne du segment · maintiens 0,5 s au début puis à la fin d\'un tronçon pour sa moyenne</span>';
-      box.innerHTML = `<div data-rcinfo="${uid}" class="sticky top-0 z-10 rounded-xl px-3 py-2 text-[12px]" style="background:#0b1220;border:1px solid #334155;min-height:44px">${S.sel ? rcSelHtml(uid) : hint}</div>
+      box.innerHTML = `<div data-rcinfo="${uid}" class="sticky top-0 z-10 rounded-xl px-3 py-2 text-[12px]" style="${S.only === 'hr' && !S.sel ? 'display:none;' : ''}background:#0b1220;border:1px solid #334155;min-height:44px">${S.sel ? rcSelHtml(uid) : hint}</div>
         <div class="flex items-center gap-1.5">${zb(2, '＋', 'Zoom avant')}${zb(0.5, '－', 'Zoom arrière')}${zoomed ? zb(0, '↺', 'Vue complète') : ''}${S.sel ? `<button type="button" onclick="rcZoomSel('${uid}')" class="rt-tab rounded-lg text-[11px] font-bold px-2" style="height:34px">Zoom sélection</button>` : ''}<span class="flex-1"></span>${S.h < 150 ? `<button type="button" onclick="rcFull('${uid}')" class="text-[11px] font-bold text-sky-300">⤢ Agrandir</button>` : ''}</div>
         ${zoomed ? `<input type="range" min="0" max="1000" value="${panVal}" oninput="rcPan('${uid}', +this.value)" aria-label="Déplacer la vue" style="width:100%;accent-color:#38bdf8">` : ''}
         <div data-rcch="${uid}" class="flex flex-col gap-2" style="touch-action:pan-y">${charts}${legend}</div>`;
@@ -13890,7 +13900,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       let down = null;
       const ptrs = new Map();
       const info = () => document.querySelector(`[data-rcinfo="${uid}"]`);
-      const showAt = x => { const { i, f, t } = rcIdxAt(uid, svgProxy, x); rcCursor(uid, f, t); const el = info(); if (el && !window.__rc[uid].sel) el.innerHTML = rcInstHtml(uid, i); else if (el) el.innerHTML = rcInstHtml(uid, i); return i; };
+      const showAt = x => { const { i, f, t } = rcIdxAt(uid, svgProxy, x); rcCursor(uid, f, t); const el = info(); if (el) el.style.display = ''; if (el && !window.__rc[uid].sel) el.innerHTML = rcInstHtml(uid, i); else if (el) el.innerHTML = rcInstHtml(uid, i); return i; };
       svg.addEventListener('contextmenu', e => e.preventDefault());
       svg.addEventListener('pointerdown', e => {
         if (!onSvg(e)) return;
@@ -14350,13 +14360,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
       void top; void spokenTab;
-      const tabs = [['recap', '📊', `${noData}${stats}${recLine}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graphique'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
+      const tabs = [['recap', '📊', `${noData}${stats}${recLine}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : 'recap';
       const tid = 'ht' + Math.random().toString(36).slice(2, 8);
       return `<div id="${tid}" data-htab style="display:flex;flex-direction:column;gap:12px;color:#f1f5f9;font-size:14px">
-        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l, , al]) => `<button type="button" role="tab" aria-label="${al}" title="${al}" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:46px;border:none;border-radius:10px;font-size:24px;line-height:1;${k2 === cur ? 'background:#a78bfa;color:#13092b' : 'background:transparent;color:#94a3b8'}">${l}</button>`).join('')}</div>
+        <div role="tablist" style="display:grid;grid-template-columns:repeat(${tabs.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:#0f172a">${tabs.map(([k2, l, , al]) => `<button type="button" role="tab" aria-label="${al}" title="${al}" data-httab="${k2}" onclick="setHistTab('${tid}','${k2}')" style="min-height:48px;border:none;border-radius:9px;padding:3px 1px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1;${k2 === cur ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:16px">${l}</span><span style="font-size:11.5px;font-weight:800;white-space:nowrap">${al}</span></button>`).join('')}</div>
         ${tabs.map(([k2, , h]) => `<div data-htp="${k2}" style="display:${k2 === cur ? 'flex' : 'none'};flex-direction:column;gap:10px">${h}</div>`).join('')}</div>`;
     }
     // ==================== ÉVOLUTION : séances du même type ====================
@@ -15704,7 +15714,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const src = s.cardioSrc === 'app' ? 'app' : 'coach';
       if (s.cardio) {
         const c = tapCardio(s.cardio, s);
-        if (frac && fsec < 120 && c.max) return { kind: 'max', max: c.max, src, tap };
+        if (frac && fsec < 120) { const mx = c.max || (c.moy && c.moy[1]); if (mx) return { kind: 'max', max: mx, src, tap }; }
         if (c.moy && c.moy[0]) return { kind: 'moy', lo: c.moy[0], hi: c.moy[1], max: c.max || null, src, tap };
         if (c.max) return { kind: 'max', max: c.max, src, tap };
       }
@@ -19225,10 +19235,10 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const stats = [`${Math.round(+h.durationMin || 0)} min`, histKm(h) > 0 ? `${histKm(h).toFixed(1).replace('.', ',')} km` : '', sm.avgKmh ? `${String(sm.avgKmh).replace('.', ',')} km/h` : '', sm.hrAvg ? `❤️ ${sm.hrAvg}` : ''].filter(Boolean).join(' · ');
       let ana = ''; try { ana = h.analysis ? analysisPlain(h.analysis).replace(/\s+/g, ' ').slice(0, 160) : ''; } catch (e) { }
       { const key = [h.id, h.feeling, (h.analysis || '').length, h.hrFix || '', (h.track || []).length, (h.note || '').length].join('|'), w = document.getElementById('hlrWhen');
-        if (box.dataset.k === key && w) { w.textContent = `✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}`; return; }
+        if (box.dataset.k === key && w) return;
         box.dataset.k = key; }
       box.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:22px;background:linear-gradient(180deg,#0d2a22 0%,#0b1a17 100%);border:1px solid rgba(52,211,153,.45)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="hlrWhen" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:#6ee7b7;text-transform:uppercase">✅ Dernière séance · ${min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min / 60) + ' h' : fmtDateShort(h.dateISO || histISO(h))}</span><span style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" style="display:none" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="hlrWhen" style="font-size:24px;font-weight:900;color:#fff;line-height:1.1">${capFirst(parseISODateLocal(h.dateISO || histISO(h)).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</span><span style="display:none;align-items:center;gap:8px"><span style="font-size:22px">${feel}</span><button type="button" style="display:none" onclick="hideHomeLastRun('${h.id}')" aria-label="Masquer de l'accueil" style="min-height:34px;padding:0 10px;border-radius:10px;border:1px solid rgba(110,231,183,.4);background:rgba(2,6,23,.35);color:#a7f3d0;font-weight:800;font-size:12px">Masquer</button></span></div>
 
           ${''}
           ${!ana && getGeminiKey() ? '<span style="font-size:13px;color:#94a3b8">🧠 Le coach analyse ta séance…</span>' : ''}
@@ -19269,7 +19279,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       bar.style.display = av.length > 1 ? 'flex' : 'none';
       { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = !card.classList.contains('hidden') ? 'flex' : 'none';
         const bar2 = document.getElementById('homeActBar'); if (bar2) bar2.classList.toggle('hab-off', homeTab !== 'sess'); }
-      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="flex:1 1 0;min-width:0;min-height:50px;padding:2px 1px 6px;border-radius:10px;border:none;font-size:10.5px;font-weight:800;line-height:1.15;letter-spacing:-.2px;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:6px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
+      const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="min-width:0;flex:1 1 auto;white-space:nowrap;min-height:50px;padding:2px 3px 6px;border-radius:10px;border:none;font-size:10.5px;font-weight:800;line-height:1.15;letter-spacing:-.2px;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:6px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
       if (bar.innerHTML !== html) bar.innerHTML = html;
     }
     setInterval(() => { try { if (document.body.classList.contains('home')) homeTabsSync(); } catch (e) { } }, 1500);
@@ -19358,7 +19368,7 @@ Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${ru
 ${planPrefsText()}
 ${backgroundText()}
 Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
-Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}
+Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractions de moins de 2 min : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0"}}
 "seance" seulement si decision n'est pas "garder".`;
       try {
         // 30 s maximum : modèle rapide, réponse courte, puis abandon (la séance prévue s'affiche)
@@ -19383,6 +19393,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
       if (dc.done) return '';
       if (R.failed) return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:#0b1324;border:1px solid #334155"><span style="font-size:12.5px;color:#94a3b8">🧠 Vérification du coach indisponible (${plEsc(R.failed)}) : séance prévue conservée.</span><button type="button" onclick="appData.dayCheck=null;saveAppData();homeDayCheck();renderHome()" style="min-height:38px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">↻ Relancer la vérification</button></div>`;
       if (R.decision !== 'garder' && P && !dc.done) return '';
+      if ((R.decision === 'garder' || !P) && !dc.read && R.avis) return '';
       if (R.decision === 'garder' || !P) return `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">🧠 Le coach valide la séance prévue</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span></div>`;
       return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.45)"><span style="font-size:12px;font-weight:900;color:#fcd34d">🧠 Le coach propose ${R.decision === 'remplacer' ? 'de remplacer' : "d'adapter"} la séance</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span>
         <span style="font-size:13px;font-weight:800;color:#fff">→ ${plEsc(sessionKind(P).label)} : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, P, { chauffe: 0, recup: 0 }))))} · ${Math.round(computeSessionTotalMin(P))} min</span>
@@ -19415,7 +19426,8 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
       { const dc = dcFor(sess);
-        d.innerHTML = dc && dc.prop && !dc.done ? dcPropCard(dc, `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="dayCheckApply(false)" style="min-height:46px;border-radius:12px;border:none;background:#e11d48;color:#fff;font-weight:900;font-size:14px">✕ Refuser</button><button type="button" onclick="dayCheckApply(true)" style="min-height:46px;border-radius:12px;border:none;background:#10b981;color:#04140d;font-weight:900;font-size:14px">✓ Accepter</button></div>`) + dcLabel('Séance prévue initialement', '#94a3b8') + h : h; }
+        const okCard = dc && !dc.prop && dc.res && !dc.res.failed && dc.res.avis && !dc.read ? `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.4)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">🧠 Le coach valide la séance prévue</span><span style="font-size:13.5px;color:#e2e8f0;line-height:1.4">${plEsc(dc.res.avis)}</span><button type="button" onclick="appData.dayCheck.read=true;saveAppData();homeSessTilesApply()" style="align-self:flex-end;min-height:38px;padding:0 18px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:900">✓ Lu</button></div>` : '';
+        d.innerHTML = dc && dc.prop && !dc.done ? dcPropCard(dc, `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="dayCheckApply(false)" style="min-height:46px;border-radius:12px;border:none;background:#e11d48;color:#fff;font-weight:900;font-size:14px">✕ Refuser</button><button type="button" onclick="dayCheckApply(true)" style="min-height:46px;border-radius:12px;border:none;background:#10b981;color:#04140d;font-weight:900;font-size:14px">✓ Accepter</button></div>`) + dcLabel('Séance prévue initialement', '#94a3b8') + h : okCard ? `<div style="display:flex;flex-direction:column;gap:8px">${okCard}${h}</div>` : h; }
       try {
         const inProg0 = timerState.sessionStarted && !timerState.finished;
         const waiting = !inProg0 && !!homeDayCheck.busy && sess.dateISO === todayISO();
