@@ -95,6 +95,9 @@
     .home-play svg { margin-left: 4px; }
     #homeScreen { padding-bottom: 110px !important; }
     .htab-off { display: none !important; }
+    body.home-wait #homeScreen > :not(#homeDayWaitFull) { display: none !important; }
+    #homeDayWaitFull { display: none; }
+    body.home-wait #homeDayWaitFull { display: flex !important; }
     #homeTabs { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -12px 0 12px #020617; }
     .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
     .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
@@ -19364,7 +19367,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         let prop = null;
         if (dec !== 'garder' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) { prop = proposalToSession(sess, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'exterieur') prop.pente = 0; const cc = parseCardio(j.cardio); if (cc) prop.cardio = cc; else delete prop.cardio; const kk = String(j.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup'].includes(kk)) prop.kind = kk === 'endurance' ? 'endu' : kk; }
         appData.dayCheck = { sig, sid: sess.id, d: t, res: { decision: prop ? dec : 'garder', avis: String(j.avis || '').slice(0, 600) }, prop, done: false };
-        if (prop) homeSessSub = 'adapt';
+        if (prop) homeSessSub = 'recap';
         saveAppData(); try { renderHome(); } catch (e) { }
         if (prop) showToast("🧠 Le coach propose d'adapter ta séance du jour");
       } catch (e) {
@@ -19375,8 +19378,11 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
     function dayCheckHtml(sess) {
       const dc = appData.dayCheck; if (!dc || dc.sid !== sess.id || dc.d !== todayISO() || !dc.res) return getGeminiKey() && sess.dateISO === todayISO() ? '<div style="font-size:12.5px;color:#94a3b8;padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b">🧠 Le coach vérifie ta séance d\'après tes 3 dernières semaines…</div>' : '';
       const R = dc.res, P = dc.prop;
-      if (dc.done) return `<div style="font-size:12.5px;color:#6ee7b7;font-weight:800;padding:8px 10px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)">${dc.done === 'ok' ? '✓ Séance remplacée selon le conseil du coach' : '✓ Séance d\'origine conservée'}</div>`;
+      if (dc.done === 'ok' && P) return `<div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.35)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">✓ Proposition du coach appliquée</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span>${dc.orig ? dcLabel('Séance prévue initialement', '#94a3b8') + homeSessTilesHtml(Object.assign({}, dc.orig, { free: false })) : ''}<button type="button" onclick="dayCheckRevert()" style="min-height:42px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">↩️ Revenir à la séance initiale</button></div>`;
+      if (dc.done === 'no' && P) return dcPropCard(dc, `<button type="button" onclick="dayCheckApply(true)" style="min-height:44px;border-radius:12px;border:none;background:#10b981;color:#04140d;font-weight:900">✓ Appliquer la proposition du coach</button>`);
+      if (dc.done) return '';
       if (R.failed) return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:#0b1324;border:1px solid #334155"><span style="font-size:12.5px;color:#94a3b8">🧠 Vérification du coach indisponible (${plEsc(R.failed)}) : séance prévue conservée.</span><button type="button" onclick="appData.dayCheck=null;saveAppData();homeDayCheck();renderHome()" style="min-height:38px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">↻ Relancer la vérification</button></div>`;
+      if (R.decision !== 'garder' && P && !dc.done) return '';
       if (R.decision === 'garder' || !P) return `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.35)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">🧠 Le coach valide la séance prévue</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span></div>`;
       return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.45)"><span style="font-size:12px;font-weight:900;color:#fcd34d">🧠 Le coach propose ${R.decision === 'remplacer' ? 'de remplacer' : "d'adapter"} la séance</span><span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span>
         <span style="font-size:13px;font-weight:800;color:#fff">→ ${plEsc(sessionKind(P).label)} : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, P, { chauffe: 0, recup: 0 }))))} · ${Math.round(computeSessionTotalMin(P))} min</span>
@@ -19384,29 +19390,52 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
     }
     function dayCheckApply(ok) {
       const dc = appData.dayCheck, s = dc && appData.sessions.find(x => x.id === dc.sid); if (!dc || !s) return;
+      if (!dc.orig) { const o = JSON.parse(JSON.stringify(s)); delete o.planOriginal; dc.orig = o; }
       if (ok && dc.prop) { if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; } ['type', 'chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio', 'kind'].forEach(k => { if (dc.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(dc.prop[k])); else if (k === 'cardio') delete s.cardio; }); s.adapted = { at: todayISO(), resume: 'Séance du jour changée par le coach' }; }
-      dc.done = ok ? 'ok' : 'no'; dc.sig = dayCheckSig(s); saveAppData(); try { reloadChrono(); updateHistoryTable(); } catch (e) { } renderHome();
+      dc.done = ok ? 'ok' : 'no'; dc.sig = dayCheckSig(s); homeSessSub = 'recap'; saveAppData(); try { reloadChrono(); updateHistoryTable(); } catch (e) { } renderHome();
       showToast(ok ? '✓ Séance du jour mise à jour' : 'Séance d\'origine conservée');
     }
+    function dayCheckRevert() {
+      const dc = appData.dayCheck, s = dc && appData.sessions.find(x => x.id === dc.sid); if (!dc || !s || !dc.orig) return;
+      ['type', 'chauffe', 'vitChauffe', 'recup', 'vitRecup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio', 'kind'].forEach(k => { if (dc.orig[k] !== undefined) s[k] = JSON.parse(JSON.stringify(dc.orig[k])); else delete s[k]; });
+      delete s.adapted; delete s.planOriginal; dc.done = 'no'; dc.sig = dayCheckSig(s); homeSessSub = 'recap';
+      saveAppData(); try { reloadChrono(); updateHistoryTable(); } catch (e) { } renderHome(); showToast('↩️ Séance initiale rétablie');
+    }
     let homeSessSub = 'recap';
+    function dcFor(sess) { const dc = appData.dayCheck; return dc && dc.sid === sess.id && dc.d === todayISO() ? dc : null; }
+    function dcPropCard(dc, btns) {
+      const P = dc.prop, R = dc.res;
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.45)">
+        <span style="font-size:12px;font-weight:900;color:#fcd34d">🧠 Le coach propose ${R.decision === 'remplacer' ? 'de remplacer' : "d'adapter"} la séance</span>
+        <span style="font-size:13.5px;color:#e2e8f0;line-height:1.4">${plEsc(R.avis)}</span>
+        ${homeSessTilesHtml(Object.assign({}, P, { free: false }))}${btns || ''}</div>`;
+    }
+    function dcLabel(t, c) { return `<span style="font-size:11.5px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:${c || '#93c5fd'};margin-top:4px">${t}</span>`; }
     function homeSessTilesApply() {
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
-      d.innerHTML = h;
+      { const dc = dcFor(sess);
+        d.innerHTML = dc && dc.prop && !dc.done ? dcPropCard(dc, `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="dayCheckApply(false)" style="min-height:46px;border-radius:12px;border:none;background:#e11d48;color:#fff;font-weight:900;font-size:14px">✕ Refuser</button><button type="button" onclick="dayCheckApply(true)" style="min-height:46px;border-radius:12px;border:none;background:#10b981;color:#04140d;font-weight:900;font-size:14px">✓ Accepter</button></div>`) + dcLabel('Séance prévue initialement', '#94a3b8') + h : h; }
       try {
         const inProg0 = timerState.sessionStarted && !timerState.finished;
         const waiting = !inProg0 && !!homeDayCheck.busy && sess.dateISO === todayISO();
         let wt = document.getElementById('homeDayWait');
         if (!wt) { wt = document.createElement('div'); wt.id = 'homeDayWait'; wt.style.cssText = 'display:none;align-items:center;gap:12px;padding:18px 12px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(167,139,250,.35)'; d.parentNode.insertBefore(wt, d); }
+        { let full = document.getElementById('homeDayWaitFull'); const hs = document.getElementById('homeScreen');
+          if (!full && hs) { full = document.createElement('div'); full.id = 'homeDayWaitFull'; full.style.cssText = 'flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:60vh;text-align:center;padding:24px'; hs.insertBefore(full, hs.firstChild); }
+          const first = waiting && !(appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO());
+          document.body.classList.toggle('home-wait', first);
+          if (first && full) { const el = Math.round((Date.now() - (homeDayCheck.t0 || Date.now())) / 1000); full.innerHTML = `<div class="animate-spin" style="width:54px;height:54px;border-radius:50%;border:5px solid #1e293b;border-top-color:#a78bfa"></div><span style="font-size:19px;font-weight:900;color:#e9d5ff">Le coach prépare ta séance du jour…</span><span style="font-size:14px;color:#94a3b8;line-height:1.4">Il regarde tes 3 dernières semaines pour vérifier<br>que la séance prévue est toujours la bonne.</span><span style="font-size:13px;color:#64748b">${el} s · 30 s maximum</span>`; } }
         if (waiting) { const el = Math.round((Date.now() - (homeDayCheck.t0 || Date.now())) / 1000); wt.innerHTML = `<div class="animate-spin" style="width:26px;height:26px;border-radius:50%;border:3px solid #334155;border-top-color:#a78bfa;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14.5px;font-weight:900;color:#e9d5ff">Le coach prépare ta séance du jour…</span><span style="font-size:12px;color:#94a3b8">Il vérifie tes 3 dernières semaines · ${el} s (30 s max)</span></div>`; }
         wt.style.display = waiting ? 'flex' : 'none';
         ['homeSessSubs', 'homeSessDesc', 'homeMore'].forEach(id => { const e = document.getElementById(id); if (e) e.style.visibility = waiting ? 'hidden' : ''; if (e && waiting) e.style.display = 'none'; });
         { const lb = document.getElementById('homeLaunchBtn'); if (lb && waiting) lb.style.display = 'none'; }
         if (waiting) { clearTimeout(homeSessTilesApply.tt); homeSessTilesApply.tt = setTimeout(() => { try { homeSessTilesApply(); } catch (e) { } }, 1000); return; }
         { const e = document.getElementById('homeMore'); if (e && e.style.display === 'none') e.style.display = 'flex'; }
+        document.body.classList.remove('home-wait');
         const inProg = timerState.sessionStarted && !timerState.finished;
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
-        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = dc && dc.res && dc.res.decision && dc.res.decision !== 'garder' && !dc.done ? ' <span style="background:#f43f5e;color:#fff;border-radius:8px;padding:0 6px;font-size:10px">1</span>' : '';
+        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
         bar.style.display = inProg ? 'none' : 'flex';
         bar.innerHTML = [['recap', '📊 Récap'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()">${l}${k === 'adapt' ? badge : ''}</button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
