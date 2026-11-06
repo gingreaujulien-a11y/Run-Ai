@@ -132,9 +132,11 @@
     #validationModal.val-min .val-x, #validationModal.val-min .val-t1 { display: none !important; }
     #validationModal.val-min .val-t2 { display: inline; }
     #validationModal.val-min .val-lbl { font-size: 15px; color: #e2e8f0; text-transform: none; margin: 8px 0 12px; }
-    #validationModal.val-min #feelGreen, #validationModal.val-min #feelYellow, #validationModal.val-min #feelRed { padding: 18px 6px; }
-    #validationModal.val-min #feelGreen .text-2xl, #validationModal.val-min #feelYellow .text-2xl, #validationModal.val-min #feelRed .text-2xl { font-size: 42px; line-height: 1.1; }
-    #validationModal.val-min #feelGreen span + span, #validationModal.val-min #feelYellow span + span, #validationModal.val-min #feelRed span + span { font-size: 14px; }
+    #validationModal.val-min .val-hd { justify-content: center; text-align: center; }
+    #validationModal.val-min .val-hd .val-t2 { display: block; }
+    #validationModal.val-min .val-feel > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px 2px; min-height: 104px; }
+    #validationModal.val-min .val-feel > button > span:first-child { font-size: 40px; line-height: 1; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+    #validationModal.val-min .val-feel > button > span + span { font-size: 13px; line-height: 1.1; white-space: nowrap; }
     #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
@@ -275,6 +277,15 @@
     body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
     body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
     .csc-btn { width: 4.6rem; height: 4.6rem; font-size: 2.6rem !important; border-radius: 999px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 1.7rem; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .lc-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .lc-b { flex: none; width: 80px; height: 62px; border-radius: 18px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 36px; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    .lc-b:active { transform: scale(.94); background: #334155; }
+    .lc-b.lc-t { font-size: 19px; }
+    .lc-l { flex: 1; min-width: 0; text-align: center; font-size: 12px; font-weight: 800; color: #94a3b8; line-height: 1.15; text-transform: uppercase; letter-spacing: .4px; }
+    .lc-l b { display: block; font-size: 22px; color: #fff; letter-spacing: 0; text-transform: none; }
+    .lc-l i { display: block; font-style: normal; font-size: 11px; color: #fcd34d; text-transform: none; letter-spacing: 0; }
+    .cn-b { width: 52px; height: 52px; border-radius: 999px; background: rgba(30,41,59,.9); border: 1px solid #475569; color: #e2e8f0; display: flex; align-items: center; justify-content: center; }
+    .cn-b:active { transform: scale(.92); background: #334155; }
     .csc-btn:active { transform: scale(.92); background: #334155; }
     input[type="date"] {
       color-scheme: dark;
@@ -341,11 +352,10 @@
     <div id="homeGreeting" class="hidden"></div>
     <button type="button" id="homeResultsBtn" onclick="openTodayResults()" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95" style="min-height:52px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.55);color:#a7f3d0">📊 Voir les résultats de ta séance du jour</button>
     <button type="button" id="homeChatBig" onclick="openCoachChat()" style="display:none" class="hidden w-full rounded-2xl font-extrabold text-[15px] active:scale-95 flex items-center justify-center gap-2" style="min-height:50px;background:rgba(139,92,246,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Discuter avec le coach</button>
-    <div id="homeRecovery" class="hidden"></div>
+    <div id="homeRecovery" class="hidden" style="display:flex;flex-direction:column;gap:10px"><div id="recSubBar" class="hsub"></div><div id="recSubBody" style="display:flex;flex-direction:column;gap:8px"></div><div id="homeSleepHost"></div></div>
     <div id="homeLastRun" class="hidden"></div>
     <button type="button" id="homeProfUpd" onclick="openProfUpdModal()" class="hidden" style="min-height:46px;border-radius:16px;border:1px solid rgba(34,211,238,.5);background:rgba(34,211,238,.1);color:#a5f3fc;font-weight:900;font-size:14px"></button>
     <div id="homeFeelHost"></div>
-    <div id="homeSleepHost"></div>
 
     <div id="homeRest" class="bg-slate-900 border border-slate-700 rounded-3xl p-4 space-y-2 hidden">
       <div class="flex items-start justify-between gap-2">
@@ -407,6 +417,7 @@
     
     <div id="ytBox" class="hidden" style="width:100%;position:relative;border-radius:14px;overflow:hidden;background:#000;margin-bottom:8px;aspect-ratio:16/9">
       <div id="ytPlayer" style="width:100%;height:100%"></div>
+      <button type="button" onclick="ytFull()" aria-label="Vidéo en plein écran" style="position:absolute;top:6px;right:48px;width:36px;height:36px;border-radius:18px;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:18px;font-weight:900">⛶</button>
       <button type="button" onclick="ytStop()" aria-label="Fermer la vidéo" style="position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:18px;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:16px;font-weight:900">✕</button>
     </div>
     <!-- TEMPS RESTANT (APPUI : BASCULE SÉANCE / SEGMENT) -->
@@ -427,7 +438,7 @@
 
     <!-- CHRONOMÈTRE CIRCULAIRE : UNIQUEMENT LE CHIFFRE GÉANT DE LA VITESSE -->
     <div id="circleZone" class="relative flex items-center justify-center my-2">
-      <svg class="w-72 h-72 sm:w-80 sm:h-80 -rotate-90 transform" viewBox="0 0 100 100">
+      <svg class="w-56 h-56 sm:w-60 sm:h-60 -rotate-90 transform" viewBox="0 0 100 100">
         <!-- Cercle de fond -->
         <circle cx="50" cy="50" r="44" stroke="#1e293b" stroke-width="7" fill="none" />
         <!-- Cercle dynamique de progression -->
@@ -437,14 +448,14 @@
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
       <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
-        <div id="circleSpdCtl" class="pointer-events-auto hidden" style="display:flex;gap:2.4rem;margin-bottom:.35rem">
-          <button type="button" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins 0,5" class="csc-btn"><svg width="44%" height="44%" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/></svg></button>
-          <button type="button" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus 0,5" class="csc-btn"><svg width="44%" height="44%" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="12" y1="4" x2="12" y2="20"/></svg></button>
-        </div>
-        <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio • Double appui : segment suivant" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black tracking-tight text-white drop-shadow-lg" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-0.02em;line-height:1">
+        <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black tracking-tight text-white drop-shadow-lg" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-0.02em;line-height:1">
           8
         </div>
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
+        <div id="circleNav" class="pointer-events-auto hidden" style="display:none;gap:1.6rem;margin-top:.5rem">
+          <button type="button" onclick="skipToPrevStage()" aria-label="Segment précédent" class="cn-b"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="3" height="14" rx="1"/><polygon points="20 5 9 12 20 19"/></svg></button>
+          <button type="button" onclick="skipToNextStage()" aria-label="Segment suivant" class="cn-b"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><polygon points="4 5 15 12 4 19"/><rect x="17" y="5" width="3" height="14" rx="1"/></svg></button>
+        </div>
       </div>
     </div>
     <div id="runMapBox" class="hidden" style="width:100%;position:relative;height:50vh;min-height:250px;border-radius:18px;overflow:hidden;margin:4px 0 8px;background:#0b1324;border:1px solid #1e293b">
@@ -457,7 +468,6 @@
       <button type="button" onclick="runMapFollow=true;runMapRefresh(true)" aria-label="Recentrer" style="position:absolute;right:8px;bottom:8px;z-index:800;width:46px;height:46px;border-radius:23px;border:1px solid #334155;background:rgba(2,6,23,.88);color:#fff;font-size:22px">◎</button>
     </div>
     <div id="runRouteRow" class="hidden" style="width:100%;gap:.4rem;margin-bottom:6px"></div>
-    <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="oneMoreBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.6)">
       <div id="oneMoreMsg" class="hidden"></div>
       <div class="grid grid-cols-3 gap-2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
@@ -466,12 +476,21 @@
         <button id="omTwo" onclick="oneMoreChoice('two')" aria-label="Une série de plus" class="rounded-2xl font-black active:scale-95" style="min-height:96px;font-size:40px;background:#34d399;color:#04140d">+1</button>
       </div>
     </div>
-    <div id="freeSpeedCtl" class="flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
+    <div id="liveCtl" class="w-full max-w-xs" style="display:none;flex-direction:column;gap:8px;margin:2px 0 8px">
+      <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span class="lc-l" id="lcSpdL">vitesse</span><button type="button" class="lc-b" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
+      <div id="lcTime" class="lc-row"><button type="button" class="lc-b lc-t" onclick="adjStageTime(-15)" aria-label="15 secondes de moins">−15 s</button><span class="lc-l" id="lcTimeL">durée</span><button type="button" class="lc-b lc-t" onclick="adjStageTime(15)" aria-label="15 secondes de plus">+15 s</button></div>
+    </div>
+    <div id="cdAddBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.55)">
+      <div style="font-size:14px;font-weight:800;color:#d1fae5;text-align:center;margin-bottom:8px">Encore de l'énergie ? Une série de plus avant le retour au calme</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"><button type="button" onclick="cdAddAnswer(false)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:28px;background:#334155;color:#fff">✕</button><button type="button" onclick="cdAddAnswer(true)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:34px;background:#34d399;color:#04140d">+1</button></div>
+    </div>
+    <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
+    <div id="freeSpeedCtl" class="w-full max-w-xs flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
       <span id="freeSpeedLbl" class="hidden"></span>
-      <div id="freePenteRow" class="flex items-center gap-2 px-2 py-1 rounded-full" style="display:flex;align-items:center;gap:.5rem;padding:4px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155">
-        <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">−</button>
-        <span id="freePenteLbl" class="w-24 text-center text-[14px] text-slate-200 font-bold">pente</span>
-        <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="w-11 h-9 rounded-full bg-slate-800 text-white font-black text-lg">+</button>
+      <div id="freePenteRow" class="lc-row" style="display:flex">
+        <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="lc-b">−</button>
+        <span id="freePenteLbl" class="lc-l">pente</span>
+        <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="lc-b">+</button>
       </div>
     </div>
 
@@ -1226,12 +1245,12 @@
   <!-- ==================== MODALE 5 : VALIDATION DU RESSENTI ==================== -->
   <div id="validationModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 max-h-[92vh] overflow-y-auto custom-scroll">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800 val-hd">
         <div>
           <span class="text-base font-bold text-white block val-t1">Valider la séance</span>
           <span class="text-[10px] text-slate-400 val-x">Enregistrer votre forme du jour</span><span class="val-t2 text-[20px] font-black text-white">Séance terminée 🎉</span>
         </div>
-        <button onclick="closeValidationModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
+        <button onclick="closeValidationModal()" class="val-x w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
           <span class="icon-slot" data-icon="x"></span>
         </button>
       </div>
@@ -1245,7 +1264,7 @@
 
       <div>
         <label class="text-[10px] text-slate-400 uppercase font-bold block mb-1.5 text-center val-lbl">Ressenti de l'effort :</label>
-        <div class="grid grid-cols-4 gap-2">
+        <div class="grid grid-cols-4 gap-2 val-feel">
           <button type="button" onclick="selectFeeling('green')" id="feelGreen" class="p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-center transition active:scale-95">
             <span class="text-2xl block">😌</span>
             <span class="text-[9px] font-bold text-sky-300">Facile</span>
@@ -1287,7 +1306,6 @@
         <div id="valAnalysis" class="text-[11px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-lg p-2 hidden"></div>
       </div>
 
-      <button type="button" class="val-t2" onclick="selectedValidationFeeling='';confirmValidation()" style="width:100%;min-height:40px;border:none;background:none;color:#94a3b8;font-size:14px;font-weight:700;text-decoration:underline">Plus tard</button>
       <div class="pt-1 val-x">
         <button onclick="confirmValidation()" class="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition shadow active:scale-95 text-xs">
           <span class="val-x">Confirmer & Enregistrer dans le Suivi</span><span class="val-t2">✅ Valider</span>
@@ -1984,21 +2002,9 @@
       renderHome();
       setTimeout(downloadAllPreviews, 4000);
 
-      // Chiffre central : appui simple = vitesse ⇄ cardio ; double appui = segment suivant
+      // Chiffre central : appui = vitesse ⇄ cardio (segment suivant / précédent : boutons du cercle)
       const speedEl = document.getElementById('stageSpeedBig');
-      let lastTap = 0, singleTimer = null;
-      speedEl.addEventListener('pointerup', () => {
-        const now = Date.now();
-        if (now - lastTap < 380) {
-          lastTap = 0;
-          clearTimeout(singleTimer);
-          skipToNextStage();
-        } else {
-          lastTap = now;
-          clearTimeout(singleTimer);
-          singleTimer = setTimeout(toggleBigDisplay, 390);
-        }
-      });
+      speedEl.addEventListener('pointerup', () => toggleBigDisplay());
 
       document.addEventListener('fullscreenchange', updateFullscreenIcons);
       document.addEventListener('webkitfullscreenchange', updateFullscreenIcons);
@@ -2082,11 +2088,21 @@
     function pyramidSum(sess) {
       return (sess.pyramide || []).reduce((a, p) => a + (parseFloat(p.duration) || 0), 0);
     }
+    // Fractionné (une seule série de répétitions, 4 ou plus) : coupé en 2 blocs, récup du milieu 50 % plus longue
+    function fracSplitAt(sess) {
+      try {
+        if (!sess || sess.free || sess.noSplit) return 0;
+        const reps = Math.max(1, parseInt(sess.repet) || 1), nb = Math.max(1, parseInt(sess.nbBlocs) || 1), P = sess.pyramide || [];
+        if (nb !== 1 || reps < 4 || P.length !== 2 || !isRecoveryTail(P) || guideKind(sess) !== 'fractionne') return 0;
+        return Math.ceil(reps / 2);
+      } catch (e) { return 0; }
+    }
     function computeSessionTotalMin(sess) {
       sess = routeRunSess(sess);
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
       const reps = Math.max(1, parseInt(sess.repet) || 1);
-      return (sess.chauffe || 0) + pyramidSum(sess) * reps * nb + (nb - 1) * (sess.recupBloc || 0) + (sess.recup || 0) + ((sess.extension && sess.extension.minutes) || 0);
+      const spl = fracSplitAt(sess) ? (parseFloat((sess.pyramide[1] || {}).duration) || 0) * 0.5 : 0;
+      return (sess.chauffe || 0) + pyramidSum(sess) * reps * nb + (nb - 1) * (sess.recupBloc || 0) + (sess.recup || 0) + ((sess.extension && sess.extension.minutes) || 0) + spl;
     }
     function computeSessionDistanceKm(sess) {
       const ri = routeRunInfo(sess);
@@ -2216,8 +2232,8 @@
       if (!dir) return null;
       const tap = ss.type === 'tapis', sp = parseFloat(st.speed) || 0;
       if (tap && (dir > 0 || sp > 4)) return { dir, mode: 'speed', to: Math.max(3, Math.min(14, Math.round(sp + dir))), from: sp, drop, exp: Math.round(exp), type: st.type };
-      const delta = dir < 0 ? Math.max(15, Math.round(d * 0.25 / 15) * 15) : -Math.max(15, Math.round(d * 0.2 / 15) * 15);
-      if (dir > 0 && d + delta < 30) return null;
+      let delta = dir < 0 ? Math.max(15, Math.round(d * 0.25 / 15) * 15) : -Math.max(15, Math.round(d * 0.2 / 15) * 15);
+      if (dir > 0) { const fl = recFloorSec(ri, 0.75); if (d + delta < fl) delta = -Math.floor(Math.max(0, d - fl) / 15) * 15; if (delta >= 0 || d + delta < 30) return null; }
       return { dir, mode: 'time', delta, drop, exp: Math.round(exp), type: st.type };
     }
     function recPropose(p) {
@@ -2238,7 +2254,7 @@
       timerState.stages.forEach((x, k) => {
         if (k < i || !isRecoveryStage(x) || x.type !== p.type) return;
         if (p.mode === 'speed') { if (x.plannedSpeed === undefined) x.plannedSpeed = parseFloat(x.speed) || 0; x.speed = p.to; }
-        else { const nd = Math.max(20, x.durationSec + p.delta), dd = nd - x.durationSec; x.durationSec = nd; tot += dd; if (k === i) timerState.stageRemainingMs = Math.max(5000, timerState.stageRemainingMs + dd * 1000); }
+        else { const nd = Math.max(20, p.delta < 0 ? recFloorSec(k, 0.75) : 0, x.durationSec + p.delta), dd = nd - x.durationSec; if (!dd) return; x.durationSec = nd; tot += dd; if (k === i) timerState.stageRemainingMs = Math.max(5000, timerState.stageRemainingMs + dd * 1000); }
         n++;
       });
       if (tot) { timerState.totalSessionMs += tot * 1000; recomputeTotalRemaining(); }
@@ -2260,6 +2276,7 @@
 
       const reps = Math.max(1, parseInt(sess.repet) || 1);
       const nb = Math.max(1, parseInt(sess.nbBlocs) || 1);
+      const splitAt = fracSplitAt(sess);
       if (sess.free) {
         stages.push({ type: 'palier', name: 'Séance libre', speed: sess.pyramide[0].speed, durationSec: 4 * 3600, isFree: true, repIndex: 1, totalReps: 1, blocIndex: 1, nbBlocs: 1, isBlockStart: true, isRepStart: true });
       } else
@@ -2268,8 +2285,10 @@
         for (let r = 1; r <= reps; r++) {
           let repFirst = true;
           sess.pyramide.forEach((step, si) => {
-            const d = Math.round((parseFloat(step.duration) || 0) * 60);
+            let d = Math.round((parseFloat(step.duration) || 0) * 60);
             if (d <= 0) return;
+            const blockPause = splitAt && r === splitAt && si === sess.pyramide.length - 1;
+            if (blockPause) d = Math.round(d * 1.5 / 5) * 5;
             // Dernière série du dernier bloc : la récup finale est remplacée par le retour au calme
             if (b === nb && r === reps && si === sess.pyramide.length - 1 && sess.recup > 0 && !(sess.extension && sess.extension.minutes > 0) && isRecoveryTail(sess.pyramide)) return;
             stages.push({
@@ -2282,7 +2301,8 @@
               blocIndex: b,
               nbBlocs: nb,
               isBlockStart: first,
-              isRepStart: repFirst
+              isRepStart: repFirst,
+              isBlockPause: blockPause || undefined
             });
             first = false;
             repFirst = false;
@@ -2323,6 +2343,7 @@
         else st.intensity = 'normal';
         st.isPeak = st.type === 'palier' && maxS > minS && v === maxS && new Set(pal).size >= 3 && !st.isRepStart;
         if (st.isFree) { st.intensity = 'normal'; st.isPeak = false; }
+        if (st.isBlockPause) { st.intensity = 'easy'; st.name = 'Récup entre blocs'; }
       });
       // Échauffement, récups et retour au calme : vitesses au km/h près
       stages.forEach(st => { if (isSlowStage(st) && parseFloat(st.speed) > 0) st.speed = Math.max(3, Math.round(parseFloat(st.speed))); });
@@ -2424,10 +2445,18 @@
       const fsc = document.getElementById('freeSpeedCtl');
       const tapRun = sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished;
       if (fsc) fsc.classList.toggle('hidden', !(tapRun && (sess.free || (curStage && (curStage.type === 'chauffe' || curStage.type === 'recup')))));
-      { const cc = document.getElementById('circleSpdCtl'); if (cc) { const on = tapRun; if (cc.classList.contains('hidden') === on) { cc.classList.toggle('hidden', !on); setTimeout(() => fitCircle(true), 0); } } }
+      { const lc = document.getElementById('liveCtl'), live = !!(timerState.sessionStarted && !timerState.finished && curStage);
+        const spOn = tapRun, tOn = live && !sess.free && !curStage.isFree, on = spOn || tOn, nav = document.getElementById('circleNav'), navOn = live && !sess.free;
+        if (lc) { const was = lc.style.display !== 'none'; lc.style.display = on ? 'flex' : 'none';
+          const a = document.getElementById('lcSpd'), b = document.getElementById('lcTime'); if (a) a.style.display = spOn ? 'flex' : 'none'; if (b) b.style.display = tOn ? 'flex' : 'none';
+          if (spOn) { const l = document.getElementById('lcSpdL'); if (l) l.innerHTML = `vitesse${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? `<i>prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')}</i>` : ''}`; }
+          if (tOn) { const l = document.getElementById('lcTimeL'), w = isRecoveryStage(curStage) ? 'récup' : curStage.intensity === 'fast' ? 'rapide' : curStage.type === 'chauffe' ? 'échauffement' : curStage.type === 'recup' ? 'retour au calme' : 'segment';
+            if (l) l.innerHTML = `${w}<b>${formatMMSS(curStage.durationSec)}</b>${curStage.plannedSec !== undefined && curStage.plannedSec !== curStage.durationSec ? `<i>prévu ${formatMMSS(curStage.plannedSec)}</i>` : ''}`; }
+          if (was !== on) setTimeout(() => fitCircle(true), 0); }
+        if (nav) { const was = nav.style.display !== 'none'; nav.style.display = navOn ? 'flex' : 'none'; nav.classList.toggle('hidden', !navOn); if (was !== navOn) setTimeout(() => fitCircle(true), 0); } }
       { const pr = document.getElementById('freePenteRow'), wOn = !sess.free && sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished && curStage && (curStage.type === 'chauffe' || curStage.type === 'recup');
         if (pr) { pr.classList.toggle('hidden', !sess.free && !wOn); pr.style.display = sess.free || wOn ? 'flex' : 'none'; }
-        if (wOn) { const pl = document.getElementById('freePenteLbl'); if (pl) pl.textContent = `pente ${String(stagePente(curStage, sess)).replace('.', ',')} %`; } }
+        if (wOn) { const pl = document.getElementById('freePenteLbl'); if (pl) pl.innerHTML = `pente<b>${String(stagePente(curStage, sess)).replace('.', ',')} %</b>`; } }
       { const was = document.body.classList.contains('free-ctl'), now2 = !!(fsc && !fsc.classList.contains('hidden'));
         document.body.classList.toggle('free-ctl', now2); if (was !== now2) setTimeout(() => fitCircle(true), 30); }
       { const sl = document.getElementById('freeSpeedLbl');
@@ -2436,7 +2465,7 @@
       if (sess.free) {
         const sl = document.getElementById('freeSpeedLbl'), pl = document.getElementById('freePenteLbl');
         if (sl) sl.innerHTML = `vitesse <b style="color:#fff">${formatSpeed(curStage ? curStage.speed : 0).replace('.', ',')}</b>`;
-        if (pl) pl.textContent = `pente ${String(sess.pente || 0).replace('.', ',')} %`;
+        if (pl) pl.innerHTML = `pente<b>${String(sess.pente || 0).replace('.', ',')} %</b>`;
       }
       const infoLine = document.getElementById('stageInfoLine');
       if (infoLine) {
@@ -2525,14 +2554,14 @@
       if (!svg) return;
       if (!document.body.classList.contains('started') && !document.body.classList.contains('running')) { svg.style.width = svg.style.height = ''; if (big) big.style.fontSize = ''; return; }
       const avail = cz.clientHeight - 8;
-      const size = Math.round(Math.max(150, Math.min(300, window.innerWidth * 0.8, avail > 0 ? avail : 300)));
+      const size = Math.round(Math.max(150, Math.min(240, window.innerWidth * 0.62, avail > 0 ? avail : 240)));
       svg.style.width = svg.style.height = size + 'px';
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
       if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.25 : 0.3)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
       if (sub) { sub.style.fontSize = Math.round(size * 0.115) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
-      { const cc = document.getElementById('circleSpdCtl'), ccOn = cc && !cc.classList.contains('hidden');
-        if (cc) { const bs = Math.round(size * 0.15); cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bs + 'px'; b.style.fontSize = Math.round(bs * 0.6) + 'px'; }); cc.style.gap = Math.round(size * 0.12) + 'px'; }
-        if (big && ccOn) big.style.fontSize = Math.round(size * (subOn ? 0.22 : 0.26)) + 'px'; }
+      { const cc = document.getElementById('circleNav'), ccOn = cc && cc.style.display !== 'none';
+        if (cc) { const bs = Math.round(size * 0.2); cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bs + 'px'; }); cc.style.gap = Math.round(size * 0.14) + 'px'; cc.style.marginTop = Math.round(size * 0.03) + 'px'; }
+        if (big && ccOn) big.style.fontSize = Math.round(size * (subOn ? 0.22 : 0.27)) + 'px'; }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
     window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
@@ -4630,6 +4659,67 @@
       showToast("⏭ Segment suivant");
     }
 
+    function skipToPrevStage() {
+      if (timerState.finished || !timerState.stages.length) return;
+      const i = Math.max(0, timerState.currentStageIndex - 1);
+      cancelSpeech();
+      goToStage(i);
+      if ('vibrate' in navigator) navigator.vibrate(60);
+      if (timerState.isRunning) speak(goPieces(timerState.stages[i]));
+      updateUIHeaderAndCircle(); saveLiveRun();
+      showToast("⏮ Segment précédent");
+    }
+    // Durée de la répétition rapide qui précède une récup (la récup ne descend pas sous un % de ce temps)
+    function prevFastSec(k) { const S = timerState.stages; for (let j = k - 1; j >= 0; j--) { if (S[j].type === 'palier' && S[j].intensity === 'fast') return S[j].durationSec; if (S[j].type === 'chauffe') break; } return 0; }
+    function recFloorSec(k, pct) { return Math.max(15, Math.ceil(prevFastSec(k) * pct / 5) * 5); }
+    // ±15 s sur le segment en cours (et les suivants du même genre : récups ou répétitions rapides)
+    function adjStageTime(d) {
+      const S = timerState.stages, i = timerState.currentStageIndex, st = S[i];
+      if (!st || st.isFree || timerState.finished || !timerState.sessionStarted) return;
+      const el = st.durationSec - timerState.stageRemainingMs / 1000;
+      const rec = isRecoveryStage(st), fast = st.type === 'palier' && st.intensity === 'fast' && !st.isExtension;
+      const same = x => rec ? isRecoveryStage(x) : fast ? (x.type === 'palier' && x.intensity === 'fast' && !x.isExtension && !x.isFree) : x === st;
+      let tot = 0, n = 0, floorHit = false, curD = 0;
+      S.forEach((x, k) => {
+        if (k < i || !same(x)) return;
+        if (x.plannedSec === undefined) x.plannedSec = x.durationSec;
+        let nd = x.durationSec + d;
+        const fl = isRecoveryStage(x) ? recFloorSec(k, 0.5) : 15;
+        if (nd < fl) { nd = Math.max(fl, Math.min(x.durationSec, fl)); floorHit = true; }
+        if (k === i) nd = Math.max(nd, Math.ceil(el) + 5);
+        const dd = nd - x.durationSec; if (!dd) return;
+        x.durationSec = nd; tot += dd; n++; if (k === i) curD = dd;
+      });
+      if (!tot) { showToast(floorHit ? 'Récup minimale atteinte : la moitié du temps rapide' : 'Segment presque fini'); return; }
+      if (curD) timerState.stageRemainingMs = Math.max(1000, timerState.stageRemainingMs + curD * 1000);
+      timerState.totalSessionMs += tot * 1000; recomputeTotalRemaining();
+      if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
+      runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i, extra: true, name: `${rec ? 'récup' : fast ? 'répétition rapide' : st.name || 'segment'} ${d > 0 ? 'allongée' : 'raccourcie'} de 15 s${n > 1 ? ` (et les ${n - 1} suivantes)` : ''} : ${formatMMSS(st.durationSec)}` });
+      if ('vibrate' in navigator) navigator.vibrate(30);
+      updateUIHeaderAndCircle(); saveLiveRun();
+      showToast(`${rec ? 'Récup' : fast ? 'Répétition' : 'Segment'} ${formatMMSS(st.durationSec)}${n > 1 ? ` · aussi pour les ${n - 1} suivantes` : ''}${floorHit ? ' (minimum : moitié du temps rapide)' : ''}`);
+    }
+    // Fin d'une répétition rapide : cardio moyen et max, comparés à la cible
+    function fastHrReport(k) {
+      try {
+        const hrs = (runData.track || []).filter(r => r[3] === k).map(r => r[1]).filter(x => x > 0);
+        if (hrs.length < 3) return;
+        const avg = Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length), mx = Math.max(...hrs), g = sessHrGoal(getActiveSession() || {}), en = appData.audioSettings.voiceLang === 'en';
+        let t;
+        if (!g) t = en ? `Heart rate on this rep: average ${avg}, max ${mx}.` : `Cardio de la répétition : moyenne ${avg}, max ${mx}.`;
+        else if (g.kind === 'max') {
+          const lo = Math.round(g.max * 0.93), v = mx > g.max + 2 ? (en ? 'above the target' : 'au-dessus de la cible') : mx < lo ? (en ? 'below the target' : 'en dessous de la cible') : (en ? 'on target' : 'dans la cible');
+          t = en ? `Average ${avg}, max ${mx}: ${v} of ${g.max}.` : `Moyenne ${avg}, max ${mx} : ${v}, qui est à ${g.max}.`;
+        } else {
+          const cm = g.max || g.hi + 5, va = avg < g.lo ? (en ? 'below' : 'en dessous') : avg > g.hi ? (en ? 'above' : 'au-dessus') : '', vm = mx > cm;
+          t = en ? `Average ${avg}, ${va ? va + ' the target' : 'on target'}. Max ${mx}, ${vm ? 'too high' : 'fine'}.`
+            : `Moyenne ${avg}, ${va ? va + ' de la cible' : 'dans la cible'}. Max ${mx}, ${vm ? `au-dessus de ${cm}` : 'dans la cible'}.`;
+        }
+        sayWhenFree(t, 10);
+      } catch (e) { }
+    }
+    function sayWhenFree(t, tries) { setTimeout(() => { if (!timerState.isRunning || timerState.finished) return; if (isSpeaking() && tries > 0) { sayWhenFree(t, tries - 1); return; } speakOpt(t); }, 1500); }
+
     function tickTimerClock() {
       if (!timerState.isRunning) return;
 
@@ -4719,6 +4809,7 @@
       try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       try { recoveryHrCheck(curStage, remMs); } catch (e) { }
       try { oneMoreCheck(curStage, curStage ? curStage.durationSec * 1000 - remMs : 0, remMs); } catch (e) { }
+      try { cdAddCheck(curStage, curStage ? curStage.durationSec * 1000 - remMs : 0); } catch (e) { }
       try { sensorAnnouncements(curStage, elapsedMs, remMs); } catch (e) { tickErr('capteurs', e); }
       try { hrInfoTick(curStage, elapsedMs, remMs); } catch (e) { tickErr('cardio', e); }
 
@@ -4753,6 +4844,7 @@
         if (i === idx + 1 && Date.now() - start < 1500) {
           speak(goPieces(timerState.stages[i]));
           if ('vibrate' in navigator) navigator.vibrate(250);
+          if (curStage && curStage.type === 'palier' && curStage.intensity === 'fast' && !curStage.isFree) fastHrReport(idx);
         } else {
           syncFlagsToNow();
         }
@@ -5361,9 +5453,49 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
     const HARD_K = ['fractionne', 'pyramide', 'seuil', 'cotes', 'test', 'course'];
     function isHardSess(x) { return HARD_K.includes(guideKind(x)); }
     function weekMon(iso) { const d = parseISODateLocal(iso); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return toISODateLocal(d); }
+    // Durée max plausible d'une séance (3 h, ou plus pour un ultra) et durée cible d'une sortie longue corrigée
+    function goalMinPlan() { const g = appData.goal || {}; return +g.durationMin || 0; }
+    function sessMaxMin() { const gm = goalMinPlan(); return gm > 300 ? Math.round(gm * 0.8) : 180; }
+    function longRunCap() { const gm = goalMinPlan(), mx = sessMaxMin(); return gm > 300 ? mx : Math.round(Math.min(mx, Math.max(90, gm ? gm * 1.1 : 150))); }
+    // Corrige une séance trop longue (erreur de plan) : renvoie "345 → 150 min" si corrigée, sinon ''
+    function planFixSess(x) {
+      try {
+        if (!x || !(x.pyramide || []).length || routeRunInfo(x)) return '';
+        const before = computeSessionTotalMin(x); if (before <= sessMaxMin()) return '';
+        const one = new Set(x.pyramide.map(p => +p.speed)).size === 1, cap = !one && ['fractionne', 'pyramide', 'cotes', 'seuil'].includes(guideKind(x)) ? Math.min(75, longRunCap()) : longRunCap();
+        const fixedMin = () => (x.chauffe || 0) + (x.recup || 0) + (Math.max(1, x.nbBlocs || 1) - 1) * (x.recupBloc || 0) + ((x.extension && x.extension.minutes) || 0);
+        // course continue répétée par erreur : une seule fois
+        if (one && ((x.repet || 1) > 1 || (x.nbBlocs || 1) > 1)) { x.repet = 1; x.nbBlocs = 1; x.recupBloc = 0; }
+        // fractionné : moins de blocs puis moins de répétitions
+        while (!one && computeSessionTotalMin(x) > cap && (x.nbBlocs || 1) > 1) x.nbBlocs--;
+        if ((x.nbBlocs || 1) <= 1) x.recupBloc = 0;
+        while (!one && computeSessionTotalMin(x) > cap && (x.repet || 1) > 1) x.repet--;
+        // encore trop long : on raccourcit la partie principale
+        const m = computeSessionTotalMin(x);
+        if (m > cap) {
+          const main = m - fixedMin(), f = Math.max(0.05, (cap - fixedMin()) / main);
+          x.pyramide = x.pyramide.map(p => { const q = Object.assign({}, p);
+            if (q.unit === 'km') { q.distance = round2(q.distance * f); q.duration = q.distance / q.speed * 60; }
+            else { const d = q.duration * f; q.duration = d >= 10 ? Math.round(d) : Math.max(0.5, Math.round(d * 2) / 2); }
+            return q; });
+        }
+        const after = computeSessionTotalMin(x);
+        x.planFix = { at: todayISO(), from: Math.round(before), to: Math.round(after) };
+        return `${Math.round(before)} → ${Math.round(after)} min`;
+      } catch (e) { return ''; }
+    }
+    function planRecShort() { const t = todayISO(); return (appData.sessions || []).filter(x => !isSessionDone(x) && (!x.dateISO || x.dateISO >= t) && recMinFix(JSON.parse(JSON.stringify(x)))); }
+    function planAnomalies() { const t = todayISO(); return (appData.sessions || []).filter(x => !isSessionDone(x) && (!x.dateISO || x.dateISO >= t) && !routeRunInfo(x) && computeSessionTotalMin(x) > sessMaxMin()); }
+    function planFixAll() {
+      const R = planRecShort(); R.forEach(x => recMinFix(x));
+      const L = planAnomalies(); if (!L.length) { if (R.length) { saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderHome(); } catch (e) { } showToast(`✓ Récup allongée sur ${R.length} séance${R.length > 1 ? 's' : ''}`); } return; }
+      const txt = L.map(x => { const k = sessionKind(x).label.toLowerCase(), d = x.dateISO ? fmtDayLong(x.dateISO) : ''; const r = planFixSess(x); return r ? `${k} ${d} : ${r}` : ''; }).filter(Boolean);
+      saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderHome(); } catch (e) { }
+      showToast(`✓ ${txt.length} séance${txt.length > 1 ? 's' : ''} corrigée${txt.length > 1 ? 's' : ''}`);
+    }
     function sessAnomaly(x, all) {
       const m = computeSessionTotalMin(x), k = guideKind(x);
-      if (m > 180) return `durée de ${Math.round(m)} min anormale (probable erreur du plan)`;
+      if (m > sessMaxMin()) return `durée de ${Math.round(m)} min anormale (probable erreur du plan)`;
       const same = (all || []).filter(y => y !== x && guideKind(y) === k).map(y => computeSessionTotalMin(y)).sort((a, b) => a - b);
       if (same.length >= 3) { const med = same[Math.floor(same.length / 2)]; if (m > med * 2.5 && m > 90) return `durée ${Math.round(m)} min, plus de 2,5 fois les autres séances du même type`; }
       return '';
@@ -5424,7 +5556,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
         const act = String(c && c.action || '').toLowerCase(), sid = ids[String(c.id || '').trim().toUpperCase()], s = sid ? appData.sessions.find(x => x.id === sid) : null;
         const date = /^\d{4}-\d{2}-\d{2}$/.test(c.date || '') && c.date >= t ? c.date : '';
         const hasSeance = c.seance && Array.isArray(c.seance.segments) && c.seance.segments.length;
-        const mkProp = base => { const pr = proposalToSession(base, c.seance); if (c.seance.type === 'exterieur' || c.seance.type === 'tapis') pr.type = c.seance.type; if (pr.type === 'exterieur') pr.pente = 0; const cc = parseCardio(c.cardio); if (cc) pr.cardio = cc; const kk = String(c.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup', 'test', 'course'].includes(kk)) pr.kind = kk === 'endurance' ? 'endu' : kk; return pr; };
+        const mkProp = base => { const pr = proposalToSession(base, c.seance); if (c.seance.type === 'exterieur' || c.seance.type === 'tapis') pr.type = c.seance.type; if (pr.type === 'exterieur') pr.pente = 0; const cc = parseCardio(c.cardio); if (cc) pr.cardio = cc; const kk = String(c.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup', 'test', 'course'].includes(kk)) pr.kind = kk === 'endurance' ? 'endu' : kk; recMinFix(pr); return pr; };
         const human = x => `${capFirst(describeSessionHuman(Object.assign({}, x, { chauffe: 0, recup: 0 })))} · ${Math.round(computeSessionTotalMin(x))} min`;
         if ((act === 'deplacer' || act === 'modifier' || act === 'supprimer') && !s) return;
         if (act === 'deplacer' && date && date !== s.dateISO) { const pr = hasSeance ? mkProp(s) : null; out.push({ act, sid, date, prop: pr, txt: `📅 ${fmtDayLong(s.dateISO)} → ${fmtDayLong(date)} : ${pr ? `${human(s)} → ${human(pr)}` : human(s)}`, why: String(c.raison || ''), on: true }); }
@@ -6974,6 +7106,8 @@ Donne 2 ou 3 axes de travail.`;
       if (view.mode === 'main') { renderPlanningHeader(items); plDragInit(); }
 
       const out = [];
+      if (view.mode === 'main') { const rs = planRecShort(); if (rs.length) out.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35)"><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fde68a;line-height:1.35">⚠️ Récup trop courte sur ${rs.length} séance${rs.length > 1 ? 's' : ''} (${rs.slice(0, 3).map(x => x.date || '').join(', ')}${rs.length > 3 ? '…' : ''}) : moins de la moitié du temps rapide.</div><button type="button" onclick="planFixAll()" style="flex:none;min-height:40px;padding:0 14px;border-radius:12px;border:none;background:#fbbf24;color:#1c1300;font-size:13px;font-weight:800">Corriger</button></div>`); }
+      if (view.mode === 'main') { const an = planAnomalies(); if (an.length) out.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35)"><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fde68a;line-height:1.35">⚠️ ${an.length} séance${an.length > 1 ? 's' : ''} de plus de ${Math.round(sessMaxMin() / 60)} h dans ton plan (${an.slice(0, 3).map(x => `${x.date || ''} : ${Math.round(computeSessionTotalMin(x))} min`).join(', ')}${an.length > 3 ? '…' : ''}), probablement une erreur.</div><button type="button" onclick="planFixAll()" style="flex:none;min-height:40px;padding:0 14px;border-radius:12px;border:none;background:#fbbf24;color:#1c1300;font-size:13px;font-weight:800">Corriger</button></div>`); }
       const sec = txt => out.push(`<div class="pl-sec">${txt}</div>`);
       const missedList = list => {
         let cur = '';
@@ -7785,7 +7919,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       if (G.slow.length) return false;
       return (rp > 1) || (nb > 1 && !(+sx.recupBloc > 0));
     }
-    const COACH_METHOD = `Méthode à suivre (références reconnues de l'entraînement en course à pied) : répartition d'intensité polarisée, environ 80 % du temps en endurance facile et 20 % en intensité (Seiler) ; allures et zones de Daniels (E endurance, M marathon, T seuil, I intervalles VO2max, R répétitions) ; travail de VMA de Véronique Billat (30/30, fractions de 1 à 5 min à 95-100 % VMA, récupération active d'une durée proche de l'effort) ; progression de la charge de 10 % maximum par semaine et rapport charge aiguë/chronique entre 0,8 et 1,3 (Gabbett) ; périodisation foncier → spécifique → affûtage, avec une semaine allégée toutes les 3 à 4 semaines (Pfitzinger, Bompa) ; affûtage de 7 à 14 jours avec 40 à 60 % de volume en moins en gardant l'intensité (Mujika), UNIQUEMENT avant une course : pas d'affûtage ni de baisse de volume ou d'intensité avant un test (test VMA, test en côte, lacets…), qui se fait dans une semaine normale, simplement pas le lendemain d'une séance très dure ; zones cardio en % de FC max. Utilise ces principes, sans les citer dans tes réponses.`;
+    const COACH_METHOD = `Méthode à suivre (références reconnues de l'entraînement en course à pied) : répartition d'intensité polarisée, environ 80 % du temps en endurance facile et 20 % en intensité (Seiler) ; allures et zones de Daniels (E endurance, M marathon, T seuil, I intervalles VO2max, R répétitions) ; travail de VMA de Véronique Billat (30/30, fractions de 1 à 5 min à 95-100 % VMA, récupération active d'une durée proche de l'effort) ; progression de la charge de 10 % maximum par semaine et rapport charge aiguë/chronique entre 0,8 et 1,3 (Gabbett) ; périodisation foncier → spécifique → affûtage, avec une semaine allégée toutes les 3 à 4 semaines (Pfitzinger, Bompa) ; affûtage de 7 à 14 jours avec 40 à 60 % de volume en moins en gardant l'intensité (Mujika), UNIQUEMENT avant une course : pas d'affûtage ni de baisse de volume ou d'intensité avant un test (test VMA, test en côte, lacets…), qui se fait dans une semaine normale, simplement pas le lendemain d'une séance très dure ; zones cardio en % de FC max. Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 % (ex. 2'10 rapide → récup d'au moins 1'05, idéalement 1'40) ; une récup plus courte est corrigée par l'app. Utilise ces principes, sans les citer dans tes réponses.`;
     function planPrefs() { if (!appData.planPrefs || typeof appData.planPrefs !== 'object') appData.planPrefs = {}; return appData.planPrefs; }
     const FOCUS_OPTS = [['', '⚖️ Équilibré'], ['faibles', '🎯 Mes points faibles'], ['forts', '💪 Mes qualités'], ['specifique', '🔧 Un point précis']];
     function focusText(f, txt) {
@@ -8333,7 +8467,7 @@ ${COACH_METHOD}
 Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
 {"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
-Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance : cardio moyen visé (moy_min-moy_max) et cardio max à ne pas dépasser, en bpm, calculés avec la FC max ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
+Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance, en bpm, calculé avec la FC max : fractionné, pyramide et côtes = uniquement "max" (FC max visée sur les fractions, moy_min et moy_max à 0) ; seuil, endurance et récup = moy_min et moy_max (cardio moyen visé) ; durée totale de chaque séance (échauffement et retour au calme compris) : jamais plus de ${longRunCap()} min, sortie longue comprise ; une course continue = un seul segment avec "repet":1 ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
       say("🧠 Le coach prépare ton plan… (20 à 60 s)");
       try {
         const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
@@ -8342,10 +8476,12 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
         pdfImportResult = normalizeImportedSessions(list);
         if (!pdfImportResult.length) { say("Le coach n'a proposé aucune séance, réessaie", true); return; }
         pdfImportResult.forEach(x => { if (!x.chauffe) x.chauffe = r.warmMin ?? 10; if (!x.recup) x.recup = r.coolMin ?? 5; });
+        const nFix = pdfImportResult.filter(x => planFixSess(x)).length;
+        pdfImportResult.forEach(x => { if (recMinFix(x)) x.recFix = true; });
         const adv = document.getElementById('coachAdviceCard');
         if (adv) { adv.classList.toggle('hidden', !data.resume); document.getElementById('coachAdviceText').textContent = String(data.resume || ''); }
         renderPdfImportPreview();
-        say(`✓ ${pdfImportResult.length} séances proposées : vérifie-les ci-dessous puis valide.`);
+        say(`✓ ${pdfImportResult.length} séances proposées${nFix ? ` (${nFix} trop longue${nFix > 1 ? 's' : ''} corrigée${nFix > 1 ? 's' : ''})` : ''} : vérifie-les ci-dessous puis valide.`);
         setTimeout(() => document.getElementById('pdfImportPreview').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       } catch (e) {
         say(`Plan impossible : ${e.message || e}`, true);
@@ -9152,6 +9288,7 @@ Réponds uniquement avec le JSON.`;
           <div class="flex justify-between font-bold text-slate-200"><span>${formatSessTitle(s)}</span><span class="font-mono text-sky-400">${Math.round(computeSessionTotalMin(s))}'</span></div>
           <div class="text-[11px] text-slate-300">${capFirst(describeSessionHuman(s))}${s.type === 'tapis' ? '' : ' • extérieur'}</div>
           ${s.notes ? `<div class="text-[9px] text-slate-500 italic">${s.notes.replace(/</g, '&lt;')}</div>` : ''}
+          ${s.recFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Récup allongée à la moitié du temps rapide</div>` : ''}${s.planFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Durée corrigée : ${s.planFix.from} → ${s.planFix.to} min (erreur du plan)</div>` : computeSessionTotalMin(s) > sessMaxMin() ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Plus de ${Math.round(sessMaxMin() / 60)} h : vérifie cette séance</div>` : ''}
         </div>`).join('');
       box.classList.remove('hidden');
     }
@@ -10447,22 +10584,30 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
     function redZoneAlert(cur, hr, now) {
       const fc = runnerFcMax(), ss = getActiveSession() || {};
       if (!fc || !hr || ss.kind === 'test' || ss.kind === 'course' || isRecoveryStage(cur)) return false;
-      const z5 = pctToBpm(0.9), en = appData.audioSettings.voiceLang === 'en';
-      if (hr >= z5) {
+      const en = appData.audioSettings.voiceLang === 'en';
+      // Cible de la séance : FC max visée (fractionné, pyramide, côtes) sur les répétitions, FC moyenne visée (autres séances) sur la partie principale
+      const g = sessHrGoal(ss), main = cur && cur.type === 'palier' && !cur.isFree && (g && g.kind === 'max' ? cur.intensity === 'fast' : true);
+      let lim, over, near;
+      if (g && main && g.kind === 'max') {
+        lim = g.max;
+        over = en ? `Above your target max heart rate: ${hr}, target ${lim}. Relax your shoulders and breathe.` : `Tu dépasses ta FC max cible : ${hr}, ta cible est ${lim}. Relâche les épaules et respire.`;
+        near = en ? `Close to your target max heart rate: ${hr}, target ${lim}.` : `Tu es proche de ta FC max cible : ${hr}, ta cible est ${lim}.`;
+      } else if (g && main && g.kind === 'moy') {
+        lim = g.hi;
+        over = en ? `Above your target average heart rate: ${hr}, target ${g.lo} to ${g.hi}. Ease off a little.` : `Tu dépasses ta FC moyenne cible : ${hr}, ta cible est de ${g.lo} à ${g.hi}. Ralentis un peu.`;
+        near = en ? `Close to the top of your target average heart rate: ${hr}, target ${g.lo} to ${g.hi}.` : `Tu es proche du haut de ta FC moyenne cible : ${hr}, ta cible est de ${g.lo} à ${g.hi}.`;
+      } else {
+        lim = pctToBpm(0.9);
+        over = en ? `Close to your max heart rate: ${hr}, max ${fc}. Relax your shoulders and breathe.` : `Tu es proche de ta FC max : ${hr}, ton max est à ${fc}. Relâche les épaules et respire.`;
+        near = en ? `Careful, getting close to your max heart rate: ${hr}, max ${fc}.` : `Attention, tu approches de ta FC max : ${hr}, ton max est à ${fc}.`;
+      }
+      if (hr > lim) {
         if (!runData.redSince) runData.redSince = now;
-        if (now - runData.redSince > 8000 && now - (runData.redAt || 0) > 120000) {
-          runData.redAt = now;
-          speakLive(en ? `Red zone: ${hr}. Relax your shoulders and breathe.` : `Tu es en zone rouge : ${hr}. Relâche les épaules et respire.`);
-          return true;
-        }
+        if (now - runData.redSince > 8000 && now - (runData.redAt || 0) > 120000) { runData.redAt = now; speakLive(over); return true; }
         return false;
       }
       runData.redSince = 0;
-      if (hr >= z5 - 4 && now - (runData.redAt || 0) > 120000 && now - (runData.redNearAt || 0) > 120000) {
-        runData.redNearAt = now;
-        speakLive(en ? `Careful, approaching the red zone: ${hr}, red zone at ${z5}.` : `Attention, tu approches de la zone rouge : ${hr}, zone rouge à ${z5}.`);
-        return true;
-      }
+      if (hr >= lim - 3 && now - (runData.redAt || 0) > 120000 && now - (runData.redNearAt || 0) > 120000) { runData.redNearAt = now; speakLive(near); return true; }
       return false;
     }
     // ---------- Fin de récup : le cardio est-il redescendu ?
@@ -10507,6 +10652,37 @@ Règles : "vitesse_kmh" = vitesse moyenne réaliste sur tout le parcours pour un
       if (box) box.classList.remove('hidden');
       omHighlight('');
       coachRepAdvice(idx);
+    }
+    function cdAddCheck(cur, elapsedMs) {
+      const box = document.getElementById('cdAddBox'), idx = timerState.currentStageIndex, ss = getActiveSession();
+      if (box && !box.classList.contains('hidden') && (runData.cdAt !== idx || elapsedMs > 45000)) box.classList.add('hidden');
+      if (runData.cdAsked || !cur || cur.type !== 'recup' || !ss || ss.free || !['fractionne', 'pyramide', 'cotes'].includes(guideKind(ss)) || runData.omChoice === 'two' || runData.omChoice === 'stop') return;
+      const F = fastStageIdx(); if (F.length < 2 || F[F.length - 1] > idx || elapsedMs < 1500) return;
+      runData.cdAsked = true; runData.cdAt = idx;
+      if (box) box.classList.remove('hidden');
+      const en = appData.audioSettings.voiceLang === 'en';
+      sayWhenFree(en ? 'Still got energy? Tap plus one for one more rep.' : 'Encore de l\'énergie ? Appuie sur plus un pour une série de plus.', 6);
+    }
+    function cdAddAnswer(yes) {
+      const box = document.getElementById('cdAddBox'); if (box) box.classList.add('hidden');
+      if (!yes) return;
+      const S = timerState.stages, i = timerState.currentStageIndex, F = fastStageIdx(), L = F[F.length - 1], last = S[L], cur = S[i];
+      if (L === undefined || !last || !cur || cur.type !== 'recup') return;
+      let src = null; for (let j = L - 1; j >= 0; j--) { if (isRecoveryStage(S[j]) && !S[j].isBlockPause) { src = S[j]; break; } if (S[j].type === 'chauffe') break; }
+      const recC = src ? Object.assign({}, src, { key: `${src.key}-cd${Date.now()}`, isExtra: true }) : { type: 'palier', name: 'Récupération', speed: easyStageSpeed('recup', getActiveSession() || {}), durationSec: Math.max(60, recFloorSec(L + 1, 0.75)), intensity: 'easy', key: `cd-r${Date.now()}`, isExtra: true };
+      delete recC.isBlockPause; delete recC.plannedSec;
+      const tr = (last.totalReps || 1) + 1;
+      S.forEach(x => { if (x.type === 'palier' && x.blocIndex === last.blocIndex && x.totalReps) x.totalReps = tr; });
+      const repC = Object.assign({}, last, { key: `${last.key}-cd${Date.now()}`, isExtra: true, repIndex: (last.repIndex || 1) + 1, totalReps: tr, isRepStart: true });
+      recC.repIndex = last.repIndex; if (recC.type === 'palier') recC.totalReps = tr;
+      S.splice(i, 0, recC, repC);
+      timerState.totalSessionMs += (recC.durationSec + repC.durationSec) * 1000;
+      cancelSpeech(); goToStage(i);
+      if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
+      runData.speedLog.push({ t: Math.round((timerState.totalSessionMs - timerState.totalRemainingMs) / 1000), i, extra: true, name: `1 répétition ajoutée au début du retour au calme (${formatSpeed(last.speed)} km/h pendant ${formatMMSS(last.durationSec)})` });
+      const en = appData.audioSettings.voiceLang === 'en';
+      speakLive(en ? 'Great, one more! Short recovery first.' : 'Super, une de plus ! Petite récup d\'abord.');
+      updateUIHeaderAndCircle(); saveLiveRun();
     }
     function omHighlight(k) {
       [['stop', 'omStop'], ['one', 'omOne'], ['two', 'omTwo']].forEach(([x, id]) => { const b = document.getElementById(id); if (b) { b.style.outline = x === k ? '5px solid #fde047' : 'none'; b.style.outlineOffset = '2px'; b.style.opacity = k && x !== k ? '.55' : '1'; } });
@@ -10553,6 +10729,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       runData.omAdvice = { ch, phrase, lbl };
     }
     function oneMoreChoice(k) {
+      runData.omChoice = k;
       const box = document.getElementById('oneMoreBox'); if (box) box.classList.add('hidden');
       const en = appData.audioSettings.voiceLang === 'en';
       if (!Array.isArray(runData.speedLog)) runData.speedLog = [];
@@ -13221,25 +13398,34 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           <div class="flex flex-col gap-1 mt-1.5 text-[12px] text-slate-300">${(r.why || []).map(w => `<span>• ${plEsc(w)}</span>`).join('')}</div>
           <div class="text-[11px] text-slate-500 mt-1.5">Charge = minutes passées dans chaque zone × 1 (Z1) à 5 (Z5). Ajoute ta FC de repos et ton âge dans ton profil pour un calcul plus juste.</div></details>`;
     }
+    let recSub = '', recSubUser = false;
     function renderRecovery() {
-      const el = document.getElementById('homeRecovery');
-      if (!el) return;
-      const r = recoveryInfo();
-      if (!r || r.left <= 0.5 || r.left > 96) { el.classList.add('hidden'); return; }
+      const el = document.getElementById('homeRecovery'), bar = document.getElementById('recSubBar'), body = document.getElementById('recSubBody'), sh = document.getElementById('homeSleepHost');
+      if (!el || !bar || !body) return;
+      const r = recoveryInfo(), on = !!(r && r.left > 0.5 && r.left <= 96);
+      el.classList.remove('hidden');
+      const subs = [on ? ['time', '⏳ Temps restant'] : null, on ? ['tips', '💡 Conseils'] : null, ['sleep', '😴 Sommeil']].filter(Boolean);
+      if (!recSubUser || !subs.some(x => x[0] === recSub)) recSub = subs[0][0];
+      bar.innerHTML = subs.map(([k, l]) => `<button type="button" class="${recSub === k ? 'on' : ''}" onclick="recSub='${k}';recSubUser=true;renderRecovery()">${l}</button>`).join('');
+      bar.style.display = subs.length > 1 ? 'flex' : 'none';
+      if (sh) sh.style.display = recSub === 'sleep' ? '' : 'none';
+      body.style.display = recSub === 'sleep' ? 'none' : 'flex';
+      if (!on || recSub === 'sleep') { body.innerHTML = ''; return; }
       const t = todayISO();
       const runToday = appData.sessions.some(s => s.dateISO === t && !isSessionDone(s));
       const h = Math.round(r.left);
       const pct = Math.max(0, Math.min(100, Math.round((1 - r.left / r.hours) * 100)));
       const col = r.left > 12 && runToday ? '#fb923c' : '#38bdf8';
-      el.classList.remove('hidden');
-      el.innerHTML = `<div class="flex items-center gap-3 px-3 py-2.5 rounded-2xl" style="background:${col}14;border:1px solid ${col}66">
+      const tipsAll = recoveryTipsHtml(r), cut = tipsAll.indexOf('<details class="mt-2"><summary class="text-[12px] font-bold text-sky-300 cursor-pointer">🧮');
+      const tips = cut > 0 ? tipsAll.slice(0, cut) : tipsAll, calc = cut > 0 ? tipsAll.slice(cut) : '';
+      const box = x => `<div class="px-3 py-2.5 rounded-xl text-[13px] leading-relaxed text-slate-200" style="background:#0f172a;border:1px solid #1e293b">${x}</div>`;
+      body.innerHTML = recSub === 'time' ? `<div class="flex items-center gap-3 px-3 py-2.5 rounded-2xl" style="background:${col}14;border:1px solid ${col}66">
           <span class="text-2xl">🔋</span>
           <div class="flex-1 min-w-0 flex flex-col gap-1">
             <span class="text-[14px] font-extrabold text-white">Récupération : encore ${h >= 24 ? `${Math.floor(h / 24)} j ${h % 24} h` : `${h} h`}</span>
             <div style="height:6px;border-radius:3px;background:#1e293b;overflow:hidden"><div style="width:${pct}%;height:6px;background:${col}"></div></div>
             <span class="text-[11px] text-slate-400">Après ta séance (${plEsc(r.label)})${runToday && r.left > 12 ? " · séance prévue aujourd'hui : écoute tes sensations" : ''}</span>
-          </div></div>
-        ${recTipsOpen ? `<div class="mt-1.5 px-3 py-2.5 rounded-xl text-[13px] leading-relaxed text-slate-200" style="background:#0f172a;border:1px solid #1e293b">${recoveryTipsHtml(r)}</div>` : ''}`;
+          </div></div>${calc ? box(calc.replace('<details class="mt-2">', '<details>')) : ''}` : box(tips);
     }
     // ==================== ÉVOLUTION VMA / VO2max ====================
     let _vmaSerCache = null;
@@ -14186,12 +14372,19 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const tMax = tg.length ? Math.max(...tg) : 0, tMin = tg.length ? Math.min(...tg) : 0, varied = tMax - tMin >= 0.5;
         const isRec = g => !isWarm(g) && (/r[ée]cup/i.test(g.label || '') || (varied && g.target && g.target < (tMax + tMin) / 2));
         const isFast = g => !isWarm(g) && !isRec(g) && g.target > 0;
-        const reps = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= 20);
+        // Prévu : durée d'une répétition / d'une récup et nombre de répétitions (une répétition ou une récup trop courte = sautée, non comptée)
+        const lkP = item.linked && Array.isArray(item.linked.pyramide) && item.linked.pyramide.length ? item.linked : null;
+        const plan0 = (() => { try { if (!lkP) return {}; const Py = lkP.pyramide, mx = Math.max(...Py.map(q => +q.speed || 0)), mn = Math.min(...Py.map(q => +q.speed || 0)); const fs = Py.filter(q => +q.speed >= mx - 0.5), ss = Py.filter(q => mx > mn && +q.speed <= mn + 0.5); const sec = q => q && q.unit !== 'km' ? (+q.duration || 0) * 60 : 0; return { n: fs.length * Math.max(1, parseInt(lkP.repet) || 1) * Math.max(1, parseInt(lkP.nbBlocs) || 1), fsec: sec(fs[0]), rsec: sec(ss[0]) }; } catch (e) { return {}; } })();
+        const minRep = plan0.fsec ? Math.max(20, plan0.fsec * 0.6) : 20, minRec = plan0.rsec ? Math.max(10, plan0.rsec * 0.6) : 10;
+        const skipped = g => isWarm(g) ? false : isRec(g) ? g.sec < minRec : isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec < minRep;
+        const reps = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec >= minRep);
+        const nSkip = G.filter(g => isFast(g) && (!varied || g.target >= tMax - 0.5) && g.sec < minRep).length;
         const vOf = g => P.hasEle ? g.vap : g.kmh;
         const lkC = (item.linked && item.linked.cardio) || null;
         const repHrMax = (lkC && lkC.max ? lkC.max : lkC && lkC.moy ? lkC.moy[1] : pctToBpm(fastHrRange(guideKind(item.linked || { kind: hh.kind || 'fractionne' }), { type: hh.type })[1])) - hrOff(hh);
         const okRep = g => { const d = vOf(g) - g.target; return d >= -0.5 && (d <= 0.6 || (repHrMax && g.hr && g.hr <= repHrMax) || (!g.hr && d <= 1.5)); };
-        let score = reps.length ? Math.round(reps.filter(okRep).length / reps.length * 100) : null;
+        const planN = plan0.n && plan0.n >= 2 ? plan0.n : 0;
+        let score = reps.length ? Math.round(reps.filter(okRep).length / (planN || reps.length) * 100) : null;
         const recupK = guideKind(item.linked || { kind: hh.kind || '' }) === 'recup' || hh.kind === 'recup';
         const col = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="56" text-anchor="middle" font-size="${score >= 100 ? 18 : 21}" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
@@ -14218,9 +14411,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const fmtP = sec => { const r5 = Math.round(sec / 5) * 5; return r5 >= 60 ? `${Math.floor(r5 / 60)}'${r5 % 60 ? String(r5 % 60).padStart(2, '0') : ''}` : `${r5}"`; };
           const plannedSec = (() => { try { const lk = item.linked; if (!lk) return 0; const G0 = gSegs(lk), f = G0.fast[0]; if (!f) return 0; return f.unit === 'km' ? 0 : f.duration * 60; } catch (e) { return 0; } })();
           const plannedKm = (() => { try { const f = gSegs(item.linked).fast[0]; return f && f.unit === 'km' ? f.distance : 0; } catch (e) { return 0; } })();
-          goal = `${reps.length} × ${plannedKm ? (plannedKm < 1 ? Math.round(plannedKm * 1000) + ' m' : String(plannedKm).replace('.', ',') + ' km') : fmtP(plannedSec || dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
+          goal = `${planN || reps.length} × ${plannedKm ? (plannedKm < 1 ? Math.round(plannedKm * 1000) + ' m' : String(plannedKm).replace('.', ',') + ' km') : fmtP(plannedSec || dm)} à ${f1(tMax)} km/h${P.hasEle ? ' (VAP)' : ''}`;
           const nFast = reps.filter(g => okRep(g) && vOf(g) - g.target > 0.6).length;
-          why = `${nOk} répétition${nOk > 1 ? 's' : ''} sur ${reps.length} réussie${nOk > 1 ? 's' : ''}${nFast ? `, dont ${nFast} plus vite avec un cardio maîtrisé` : ''}`;
+          why = `${nOk} répétition${nOk > 1 ? 's' : ''} réussie${nOk > 1 ? 's' : ''} sur ${planN || reps.length}${planN ? ' prévues' : ''}${nFast ? `, dont ${nFast} plus vite avec un cardio maîtrisé` : ''}${planN && reps.length > planN ? ` · ${reps.length - planN} en plus` : ''}${nSkip ? ` · ${nSkip} sautée${nSkip > 1 ? 's' : ''}` : ''}`;
         } else if (body.length) {
           const lk = item.linked || {};
           const hrMax = lk.cardio && lk.cardio.moy ? lk.cardio.moy[1] : easyHrMax();
@@ -14267,10 +14460,10 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const kS = item.linked || { kind: hh.kind || '' }, kLab = capFirst(String((kind && kind.label) || sessionKind(kS).label || '').toLowerCase());
         const fe = feel ? feel[0].split(' ') : null, nOkR = reps.filter(okRep).length;
         const tilesR = sTiles([
-          whereTile(hh),
+          [whereTile(hh), !item.live ? sTile(fe ? fe[0] : '🙂', fe ? fe.slice(1).join(' ') : 'non renseigné', 'Ressenti', feel ? feel[1] : '#94a3b8') : ''],
           [sTile(kindIcon(kS), kLab), sTile('⏱️', totTxt), sTile('📏', `${f1(km)} km`)],
           [sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–'), sTile('', f1(bKmh), 'km/h', '#7dd3fc'), showVap ? sTile('', f1(bVap), 'VAP', '#c4b5fd') : ''],
-          [!item.live ? sTile(fe ? fe[0] : '', fe ? fe.slice(1).join(' ') : 'non renseigné', 'Ressenti', feel ? feel[1] : '#94a3b8') : '', bHr ? sTile('❤️', `${bHr}`, '', '#fda4af', { tag: 'Moy' }) : '', hrMaxB ? sTile('❤️', `${hrMaxB}`, '', '#fb7185', { tag: 'Max' }) : ''],
+          [hg ? sTile('🎯', hg.kind === 'max' ? `≤ ${hg.max}` : `${hg.lo}–${hg.hi}`, '', '#fde68a', { tag: hg.kind === 'max' ? 'FC max' : 'FC moy' }) : '', bHr ? sTile('❤️', `${bHr}`, '', '#fda4af', { tag: 'Moy' }) : '', hrMaxB ? sTile('❤️', `${hrMaxB}`, '', '#fb7185', { tag: 'Max' }) : ''],
           [hh.type === 'exterieur' ? sTile('', dpm.dp != null ? dpm.dp + ' m' : '–', 'D+', '#fdba74') : '', hh.type === 'exterieur' ? sTile('', dpm.dm != null ? dpm.dm + ' m' : '–', 'D−', '#86efac') : '']
         ]);
         void nOkR;
@@ -14304,13 +14497,16 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const canEdit = !item.live && hh.type !== 'exterieur' && (appData.history || []).some(x => x.id === item.id);
         const fastIdx = G.filter(g => !isWarm(g) && !isRec(g) && g.target > 0).map(g => R[g.a].seg).join('.');
         const kmAt = i => i > 0 ? R[i - 1].km : 0;
-        const row = (n, g, st, cls, tgt, sub) => { const k0 = kmAt(g.a), k1 = R[g.b].km;
-          return `<tr data-hsf="${cls}"${sub ? ` data-sub="${sub}"` : ''} data-sec="${st.sec.toFixed(1)}" data-km="${st.km.toFixed(4)}" data-kmh="${(st.kmh || 0).toFixed(2)}" data-vap="${(st.vap || 0).toFixed(2)}" data-hr="${st.hr || 0}" data-g="${(st.g || 0).toFixed(2)}" data-k0="${k0.toFixed(3)}" style="border-top:1px solid #1e293b${cls === 'k' || cls === 'p' ? ';display:none' : ''}">
+        // Cardio d'une récup : ce qui compte, c'est la baisse (pic en début de récup − cardio en fin de récup)
+        const recGain = g => { let pk = g.a > 0 && R[g.a - 1].hr ? R[g.a - 1].hr : 0; for (let i = g.a; i <= g.b && R[i].t - R[g.a].t <= 20; i++) if (R[i].hr > pk) pk = R[i].hr; let end = 0; for (let i = g.b; i >= g.a; i--) if (R[i].hr) { end = R[i].hr; break; } return pk && end ? Math.max(0, pk - end) : null; };
+        const row = (n, g, st, cls, tgt, sub, skip) => { const k0 = kmAt(g.a), k1 = R[g.b].km;
+          const hk = fracMode && (cls === 'f' || cls === 'w') ? 'max' : cls === 'r' && fracMode ? 'gain' : 'moy', hv = hk === 'max' ? (st.hrMax || 0) : hk === 'gain' ? (recGain(g) ?? 0) : (st.hr || 0);
+          return `<tr data-hsf="${cls}"${sub ? ` data-sub="${sub}"` : ''}${skip ? ' data-skip="1"' : ''} data-hrk="${hk}" data-sec="${st.sec.toFixed(1)}" data-km="${st.km.toFixed(4)}" data-kmh="${(st.kmh || 0).toFixed(2)}" data-vap="${(st.vap || 0).toFixed(2)}" data-hr="${hv}" data-g="${(st.g || 0).toFixed(2)}" data-k0="${k0.toFixed(3)}" style="border-top:1px solid #1e293b${cls === 'k' || cls === 'p' ? ';display:none' : ''}">
             <td style="padding:6px 3px 6px 0;color:#e2e8f0;font-weight:700;line-height:1.2">${canEdit && (cls === 'f' || cls === 'r' || cls === 'w') ? `<button type="button" onclick="histSpeedEdit('${item.id}',${R[g.a].seg},'${cls}',${(st.kmh || 0).toFixed(1)},'${fastIdx}')" aria-label="Corriger la vitesse" style="float:right;margin-left:4px;border:none;background:transparent;font-size:13px;padding:0 2px">✏️</button>` : ''}${plEsc(n)}<span style="display:block;font-size:10px;font-weight:600;color:#64748b">${f2(k0)} → ${f2(k1)} km</span></td>
             <td style="text-align:right;color:#cbd5e1">${f2(st.km)}</td><td style="text-align:right;color:#94a3b8">${mmss(st.sec)}</td>
-            <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:#fda4af">${cls === 'f' && st.sec < 120 && st.hrMax ? `${st.hrMax}<span style="font-size:9px;color:#94a3b8"> max</span>` : st.hr || '–'}</td></tr>`; };
+            <td style="text-align:right;font-weight:800;color:${tgt && Math.abs(vOf(st) - tgt) > 0.6 ? '#fbbf24' : '#7dd3fc'}">${f1(st.kmh)}</td>${showVap ? `<td style="text-align:right;color:#c4b5fd">${f1(st.vap)}</td>` : ''}${showG ? `<td style="text-align:right;color:${rcSlopeColor(st.g)}">${pctG(st.g)}</td>` : ''}<td style="text-align:right;color:${hk === 'gain' ? '#34d399' : '#fda4af'}">${hk === 'gain' ? (hv ? `−${hv}` : '–') : hv || '–'}</td></tr>`.replace('<tr ', skip ? '<tr style="opacity:.45" ' : '<tr '); };
         let nF = 0, nR = 0;
-        const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f'; const lab = c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, g, c, c === 'f' ? g.target : 0); }).join('');
+        const segRows = G.map(g => { const c = isWarm(g) ? 'w' : isRec(g) ? 'r' : 'f', sk = fracMode && skipped(g); const lab = sk ? `${c === 'r' ? 'Récup' : 'Rapide'} sautée` : c === 'f' ? `${g.target ? `Rapide ${++nF}` : g.label}` : c === 'r' ? `Récup ${++nR}` : g.label; return row(`${lab}${g.target && c !== 'w' ? ` · ${f1(g.target)}` : ''}`, g, g, c, c === 'f' ? g.target : 0, '', sk); }).join('');
         const kmRows = rcGroups(P, 'km').map(g => { const st = rcStats(P, g.a, g.b); return row(g.label, g, st, 'k', 0); }).join('');
         const profG = P.hasEle ? rcGroups(P, 'prof') : [];
         let nU = 0, nP = 0, nD = 0;
@@ -14322,7 +14518,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         segTab = `<div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:grid;grid-template-columns:repeat(${flt.length},minmax(0,1fr));gap:4px">${flt.map(([f, l], i) => btn('data-hsb', f, l, !i, `histSegFilter('${uid}','${f}')`)).join('')}</div>
           ${profRows ? `<div data-hssub="${uid}" style="display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px">${[['', 'Tout'], ['up', '⬈ Montées'], ['flat', '➡ Plat'], ['down', '⬊ Descentes']].map(([f, l], i) => btn('data-hssb', f, l, !i, `histSegFilter('${uid}','p','${f}')`)).join('')}</div>` : ''}
-          <div style="max-height:380px;overflow:auto;${card};padding:4px 8px"><table id="${uid}" style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase">${th('k0', 'Segment ↕', 'left')}${th('km', 'Dist')}${th('sec', 'Durée')}${th('kmh', 'km/h')}${showVap ? th('vap', 'VAP') : ''}${showG ? th('g', 'Pente') : ''}${th('hr', 'FC')}</tr></thead>
+          <div style="max-height:380px;overflow:auto;${card};padding:4px 8px"><table id="${uid}" style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="font-size:10px;color:#64748b;text-transform:uppercase">${th('k0', 'Segment ↕', 'left')}${th('km', 'Dist')}${th('sec', 'Durée')}${th('kmh', 'km/h')}${showVap ? th('vap', 'VAP') : ''}${showG ? th('g', 'Pente') : ''}${th('hr', fracMode ? 'FC max' : 'FC').replace('<th ', `<th data-hrth="${uid}" data-fm="${fracMode ? 1 : 0}" `)}</tr></thead>
             <tbody>${segRows}${kmRows}${profRows}</tbody><tfoot data-hsavg="${uid}" data-vap="${showVap ? 1 : 0}" data-g="${showG ? 1 : 0}"></tfoot></table></div>
           <span style="font-size:11px;color:#64748b">Touche un titre de colonne pour trier. Distances en km.</span></div>`;
         setTimeout(() => { const t0 = document.getElementById(uid); if (t0 && !t0.dataset.f) histSegFilter(uid, 'all'); }, 0);
@@ -14358,7 +14554,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const noData = !item.live && (!item.track || !item.track.length)
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
       void top; void spokenTab;
-      const tabs = [['recap', '📊', `${noData}${stats}${recLine}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
+      const tabs = [['recap', '📊', `${noData}${recLine}${stats}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : 'recap';
@@ -14666,11 +14862,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       document.querySelectorAll(`[data-hsb="${uid}"]`).forEach(b => { const on = b.dataset.f === f; b.style.background = on ? '#38bdf8' : '#0f172a'; b.style.color = on ? '#04121f' : '#94a3b8'; b.style.borderColor = on ? '#38bdf8' : '#1e293b'; });
       document.querySelectorAll(`[data-hssub="${uid}"]`).forEach(d => { d.style.display = f === 'p' ? 'grid' : 'none'; });
       document.querySelectorAll(`[data-hssb="${uid}"]`).forEach(b => { const on = b.dataset.f === (sub || ''); b.style.background = on ? '#38bdf8' : '#0f172a'; b.style.color = on ? '#04121f' : '#94a3b8'; b.style.borderColor = on ? '#38bdf8' : '#1e293b'; });
+      { const th = document.querySelector(`[data-hrth="${uid}"]`); if (th) { const ks = new Set([...t.querySelectorAll('tbody tr[data-hsf]')].filter(r => r.style.display !== 'none').map(r => r.dataset.hrk)); th.textContent = ks.size === 1 && ks.has('gain') ? 'Gain FC' : th.dataset.fm === '1' ? 'FC max' : 'FC'; } }
       histSegAvg(uid);
     }
     function histSegAvg(uid) {
       const t = document.getElementById(uid), ft = t && t.querySelector(`[data-hsavg="${uid}"]`); if (!ft) return;
-      const rows = [...t.querySelectorAll('tbody tr[data-hsf]')].filter(r => r.style.display !== 'none');
+      const rows = [...t.querySelectorAll('tbody tr[data-hsf]')].filter(r => r.style.display !== 'none' && !r.dataset.skip);
+      const hrMixed = new Set(rows.map(r => r.dataset.hrk)).size > 1;
       if (rows.length < 2) { ft.innerHTML = ''; return; }
       let sec = 0, km = 0, vap = 0, hr = 0, hs = 0, g = 0;
       rows.forEach(r => { const d = r.dataset, s1 = +d.sec, k1 = +d.km; sec += s1; km += k1; vap += +d.vap * s1; if (+d.hr) { hr += +d.hr * s1; hs += s1; } g += +d.g * k1; });
@@ -14678,7 +14876,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const kmh = km > 0.01 ? km / (sec / 3600) : rows.reduce((a, r) => a + +r.dataset.kmh * +r.dataset.sec, 0) / Math.max(1, sec);
       const gg = km > 0 ? g / km : 0;
       const td = (v, c) => `<td style="text-align:right;font-weight:800;color:${c};padding:8px 0">${v}</td>`;
-      ft.innerHTML = `<tr style="border-top:2px solid #334155;background:rgba(56,189,248,.06)"><td style="padding:8px 3px 8px 0;font-weight:800;color:#f1f5f9">Total / moy. <span style="font-size:10px;color:#64748b">(${rows.length})</span></td>${td(f2(km), '#cbd5e1')}${td(`${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`, '#94a3b8')}${td(f1(kmh), '#7dd3fc')}${ft.dataset.vap === '1' ? td(f1(vap / Math.max(1, sec)), '#c4b5fd') : ''}${ft.dataset.g === '1' ? td(`${gg > 0.05 ? '+' : ''}${(Math.round(gg * 10) / 10).toFixed(1).replace('.', ',')} %`, rcSlopeColor(gg)) : ''}${td(hs ? Math.round(hr / hs) : '–', '#fda4af')}</tr>`;
+      ft.innerHTML = `<tr style="border-top:2px solid #334155;background:rgba(56,189,248,.06)"><td style="padding:8px 3px 8px 0;font-weight:800;color:#f1f5f9">Total / moy. <span style="font-size:10px;color:#64748b">(${rows.length})</span></td>${td(f2(km), '#cbd5e1')}${td(`${Math.floor(sec / 60)}'${String(Math.round(sec % 60)).padStart(2, '0')}`, '#94a3b8')}${td(f1(kmh), '#7dd3fc')}${ft.dataset.vap === '1' ? td(f1(vap / Math.max(1, sec)), '#c4b5fd') : ''}${ft.dataset.g === '1' ? td(`${gg > 0.05 ? '+' : ''}${(Math.round(gg * 10) / 10).toFixed(1).replace('.', ',')} %`, rcSlopeColor(gg)) : ''}${td(hrMixed || !hs ? '–' : rows[0].dataset.hrk === 'gain' ? `−${Math.round(hr / hs)}` : Math.round(hr / hs), rows[0] && rows[0].dataset.hrk === 'gain' ? '#34d399' : '#fda4af')}</tr>`;
     }
     function histSegSort(uid, k) {
       const t = document.getElementById(uid); if (!t) return;
@@ -15467,6 +15665,22 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       }
     }
 
+    // Récup entre fractions trop courte : portée à pct (50 %) du temps de la fraction rapide qui précède. Renvoie le nombre de récups allongées.
+    function recMinFix(x, pct = 0.5) {
+      try {
+        if (!x || x.free || !Array.isArray(x.pyramide) || x.pyramide.length < 2 || !['fractionne', 'pyramide', 'cotes'].includes(guideKind(x))) return 0;
+        const P = x.pyramide, sp = P.map(q => +q.speed || 0), mx = Math.max(...sp), mn = Math.min(...sp); if (!(mx > mn)) return 0;
+        const th = mn + (mx - mn) * 0.5, sec = q => q.unit === 'km' ? (+q.distance || 0) / (+q.speed || 1) * 3600 : (+q.duration || 0) * 60;
+        let n = 0;
+        P.forEach((q, i) => {
+          if (i === 0 || +q.speed >= th) return;
+          const prev = P[i - 1]; if (!prev || +prev.speed < th) return;
+          const need = Math.ceil(Math.round(sec(prev)) * pct / 5) * 5;
+          if (sec(q) + 1 < need) { if (q.unit === 'km') { q.distance = Math.round(need / 3600 * q.speed * 100) / 100; q.duration = q.distance / q.speed * 60; } else q.duration = Math.round(need / 60 * 10000) / 10000; n++; }
+        });
+        return n;
+      } catch (e) { return 0; }
+    }
     function proposalToSession(base, s) {
       const num = (v, d) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? d : n; };
       const copy = JSON.parse(JSON.stringify(base));
@@ -15482,6 +15696,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       if (base.type !== 'exterieur') copy.pente = Math.max(0, num(s.pente, base.pente));
       const segs = (s.segments || []).map(x => ({ speed: num(x.vitesse ?? x.speed, 0), duration: round2(num(x.duree_min ?? x.duration, 0)), unit: 'min' })).filter(x => x.speed > 0 && x.duration > 0);
       if (segs.length) copy.pyramide = segs;
+      recMinFix(copy);
       return copy;
     }
 
@@ -18316,7 +18531,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     // État de la musique : relevé régulièrement pendant la séance, et juste avant chaque annonce
     const sp = { playing: false, at: 0, device: '', busy: false, pausedByUs: false };
     async function spPoll() { if (!spConnected()) return; const j = await spApi('GET', '/me/player'); if (j) { sp.playing = !!j.is_playing; sp.device = (j.device && j.device.id) || sp.device; sp.at = Date.now(); if (j.device && j.device.volume_percent != null) sp.vol = j.device.volume_percent; sp.track = j.item ? `${j.item.name}${j.item.artists && j.item.artists.length ? ' · ' + j.item.artists.map(a => a.name).join(', ') : ''}` : ''; spBarRender(); } }
-    function spBarOn() { return spConnected() && timerState.sessionStarted && !timerState.finished; }
+    function spBarOn() { return spConnected() && timerState.sessionStarted && !timerState.finished && !(typeof yt !== 'undefined' && yt.active); }
     function spBarRender() {
       const b = document.getElementById('spBar'); if (!b) return; const on = spBarOn();
       b.classList.toggle('hidden', !on); b.style.display = on ? 'flex' : 'none'; if (!on) return;
@@ -18365,7 +18580,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (c.pauseLong && longOne && sp.playing) { sp.pausedByUs = true; spApi('PUT', '/me/player/pause'); }
     }
     function spAfterAnnounce() {
-      if (!spConnected() || !timerState.sessionStarted || sp.busy) return;
+      if (!spConnected() || !timerState.sessionStarted || sp.busy || yt.active) return;
       const c = spCfg(); if (!c.resume && !sp.pausedByUs) return;
       const wasPlaying = sp.pausedByUs || (sp.playing && Date.now() - sp.at < 40000);
       if (!wasPlaying) return;
@@ -18452,6 +18667,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!c.on || sess.type !== 'tapis' || yt.active) return;
       const p = ytParse(c.url); if (!p) return;
       yt.active = true;
+      try { if (spConnected() && (sp.playing || sp.pausedByUs)) { sp.ytPaused = true; sp.pausedByUs = false; spApi('PUT', '/me/player/pause' + (sp.device ? `?device_id=${sp.device}` : '')); sp.playing = false; } spBarRender(); } catch (e) { }
       document.getElementById('ytBox').classList.remove('hidden'); setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 50);
       try { await ytLoadApi(); } catch (e) { showToast('Vidéo YouTube impossible à charger'); ytStop(); return; }
       if (!yt.active) return;
@@ -18461,12 +18677,28 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         events: { onReady: e => { yt.ready = true; try { e.target.setVolume(100); e.target.playVideo(); } catch (er) { } }, onError: () => showToast("Cette vidéo ne peut pas être lue ici (lecture intégrée refusée par YouTube)") } });
     }
     function ytStop() {
+      const wasOn = yt.active;
       yt.active = false; yt.ready = false; yt.vol = -1; yt.autoPaused = false;
+      try { if (sp.ytPaused) { sp.ytPaused = false; if (wasOn && spConnected() && timerState.sessionStarted && !timerState.finished) spApi('PUT', '/me/player/play' + (sp.device ? `?device_id=${sp.device}` : '')).then(ok => { if (ok != null) { sp.playing = true; sp.at = Date.now(); } spBarRender(); }); } spBarRender(); } catch (e) { }
       try { yt.player && yt.player.destroy(); } catch (e) { }
       yt.player = null;
       const box = document.getElementById('ytBox'); if (box) { box.classList.add('hidden'); if (!document.getElementById('ytPlayer')) box.insertAdjacentHTML('afterbegin', '<div id="ytPlayer" style="width:100%;height:100%"></div>'); }
       setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 50);
     }
+    // Plein écran de la vidéo (bouton de l'app ou de YouTube) : écran en paysage
+    async function ytFull() {
+      const box = document.getElementById('ytBox'); if (!box) return;
+      const f = box.querySelector('iframe') || box;
+      try { const fn = f.requestFullscreen || f.webkitRequestFullscreen; if (fn) await fn.call(f); } catch (e) { }
+      ytFsOrient();
+    }
+    function ytFsOrient() {
+      const fe = document.fullscreenElement || document.webkitFullscreenElement, box = document.getElementById('ytBox');
+      if (fe && box && (fe === box || box.contains(fe))) { yt.fsLand = true; try { const p = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (p && p.catch) p.catch(() => { }); } catch (e) { } }
+      else if (yt.fsLand) { yt.fsLand = false; try { const p = screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait'); if (p && p.catch) p.catch(() => { try { screen.orientation.unlock(); } catch (e) { } }); } catch (e) { } }
+    }
+    document.addEventListener('fullscreenchange', ytFsOrient);
+    document.addEventListener('webkitfullscreenchange', ytFsOrient);
     // Volume baissé pendant les annonces, pause/reprise avec la séance
     setInterval(() => {
       if (!yt.player || !yt.ready) return;
@@ -19246,7 +19478,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
-    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Dernière séance', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['sleep', '😴 Sommeil', ['homeSleepHost']], ['recup', '💤 Récup', ['homeRecovery']]];
+    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Précédente', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
     let _autoSugg = '';
@@ -19301,7 +19533,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const rt = !tap && x && x.route ? `parcours ${(+x.route.totalKm || 0).toFixed(1).replace('.', ',')} km` : '';
       return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
     }
-    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
+    function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : r.length === 2 && r.some(x => String(x).startsWith('<div data-wide')) ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${r.join('')}</div>` : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
     function homeSessTilesHtml(sess) {
       if (!sess || sess.free) return '';
       const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess), main = G.segs[0], kl = sessionKind(sess).label;
@@ -19367,6 +19599,7 @@ ${feel ? `Sensations du jour : ${feel}.` : ''}
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 ${planPrefsText()}
 ${backgroundText()}
+Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 % (ex. 2'10 rapide → récup d'au moins 1'05, idéalement 1'40).
 Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
 Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}
 "seance" seulement si decision n'est pas "garder".`;
@@ -19375,7 +19608,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         const j = parseJsonLoose(await Promise.race([geminiText([{ text: prompt }], { json: true, maxTokens: 800 }), sleep(26000).then(() => { throw new Error('délai dépassé'); })])) || {};
         const dec = ['garder', 'adapter', 'remplacer'].includes(j.decision) ? j.decision : 'garder';
         let prop = null;
-        if (dec !== 'garder' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) { prop = proposalToSession(sess, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'exterieur') prop.pente = 0; const cc = parseCardio(j.cardio); if (cc) prop.cardio = cc; else delete prop.cardio; const kk = String(j.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup'].includes(kk)) prop.kind = kk === 'endurance' ? 'endu' : kk; }
+        if (dec !== 'garder' && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length) { prop = proposalToSession(sess, j.seance); if (j.seance.type === 'exterieur' || j.seance.type === 'tapis') prop.type = j.seance.type; if (prop.type === 'exterieur') prop.pente = 0; const cc = parseCardio(j.cardio); if (cc) prop.cardio = cc; else delete prop.cardio; const kk = String(j.type_seance || '').toLowerCase(); if (['fractionne', 'seuil', 'endurance', 'longue', 'cotes', 'recup'].includes(kk)) prop.kind = kk === 'endurance' ? 'endu' : kk; recMinFix(prop); }
         appData.dayCheck = { sig, sid: sess.id, d: t, res: { decision: prop ? dec : 'garder', avis: String(j.avis || '').slice(0, 600) }, prop, done: false };
         if (prop) homeSessSub = 'recap';
         saveAppData(); try { renderHome(); } catch (e) { }
