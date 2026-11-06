@@ -277,6 +277,18 @@
     body.running #hrZoneBar, body.started #hrZoneBar, body.started #oneMoreBox, body.started #freeSpeedCtl { flex: 0 0 auto; }
     body.running #bottomZone, body.started #bottomZone { flex: 0 0 auto; margin-top: .6rem; }
     .csc-btn { width: 4.6rem; height: 4.6rem; font-size: 2.6rem !important; border-radius: 999px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 1.7rem; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .pg-sec { display: flex; flex-direction: column; gap: 8px; }
+    .pg-t { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #94a3b8; }
+    .pg-g { display: grid; gap: 6px; }
+    .pg-c { min-height: 46px; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: #cbd5e1; font-size: 13px; font-weight: 800; padding: 6px 6px; line-height: 1.15; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+    .pg-c small { font-size: 10.5px; font-weight: 600; color: #94a3b8; }
+    .pg-c.on { background: rgba(167,139,250,.2); border-color: #a78bfa; color: #ede9fe; }
+    .pg-c.on small { color: #ddd6fe; }
+    .pg-day { padding: 10px; border-radius: 14px; background: #0b1220; border: 1px solid #334155; display: flex; flex-direction: column; gap: 7px; }
+    .pg-day b { font-size: 14px; color: #f1f5f9; }
+    .pg-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pg-ch { min-height: 34px; padding: 0 10px; border-radius: 999px; border: 1px solid #334155; background: #0f172a; color: #cbd5e1; font-size: 12.5px; font-weight: 700; }
+    .pg-ch.on { background: #a78bfa; border-color: #a78bfa; color: #13092b; }
     .lc-row { display: flex; align-items: center; gap: 10px; width: 100%; }
     .lc-b { flex: none; width: 80px; height: 62px; border-radius: 18px; background: #1e293b; border: 1px solid #475569; color: #fff; font-size: 36px; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; }
     .lc-b:active { transform: scale(.94); background: #334155; }
@@ -975,44 +987,28 @@
             <span class="pm-cap" style="color:#6ee7b7">Mon plan actuel</span>
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
             <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'), true)" class="pm-btn" style="height:48px;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800;font-size:14px">📝 Ma pratique avant l'app</button>
-            <div class="flex flex-col gap-1"><span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Style du plan</span><div id="planStyleChips" class="grid grid-cols-2 gap-2"></div></div>
             <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #334155"><input type="checkbox" id="chkCoachExpert" onchange="setCoachExpert(this.checked, this)" class="w-5 h-5 mt-0.5 accent-purple-400 shrink-0"><span class="flex flex-col gap-0.5"><span class="text-[14px] font-extrabold text-white">🧠 Coach expert (Gemini 4 Argon)</span><span class="text-[12px] text-slate-400">Analyse et génération du plan plus poussées. Payant : environ 5 × le prix de Flash.</span></span></label>
  <div class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid #334155">
               <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Ce que le coach doit analyser</span>
               <div id="planAnaCrit" class="grid grid-cols-2 gap-1.5"></div>
-              <label class="pm-lbl">Type d'analyse<select id="planAnaMode" class="pm-in" onchange="planAnaCfg().mode=this.value;saveAppData()"><option value="full">Complète (plus précise)</option><option value="eco">Allégée (moins de crédit, réponse courte)</option></select></label>
+              <div class="pg-sec"><span class="pg-t">Type d'analyse</span><div id="planAnaMode" class="pg-g" style="grid-template-columns:1fr 1fr"></div></div>
               <button type="button" onclick="fillCardioLocal()" class="pm-btn" style="height:44px;border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-weight:800;font-size:13px">❤️ Calculer les cardios cibles manquants (gratuit, sans IA)</button>
               <span class="text-[11px] text-slate-500 leading-snug">Sans analyse du coach, l'app calcule déjà la cible de chaque séance au moment de la faire (FC max sur les fractions courtes, FC moyenne sinon, abaissée sur tapis). Ce bouton l'inscrit dans le plan.</span>
             </div>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <button type="button" onclick="exportPlanIcs()" class="pm-btn" style="height:44px;font-size:13px">📅 Exporter mon plan vers mon agenda (Google, Apple…)</button>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="planBackupSave()" class="pm-btn" style="height:44px;font-size:13px">💾 Sauvegarder le plan</button>
+              <label class="pm-btn flex items-center justify-center cursor-pointer" style="height:44px;font-size:13px">📂 Restaurer<input type="file" accept="application/json,.json" class="hidden" onchange="planBackupLoad(this)"></label>
+            </div>
+            <button type="button" onclick="planDeleteAsk()" class="pm-btn" style="height:44px;font-size:13px;border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.08);color:#fda4af">🗑️ Supprimer le plan</button>
             <div id="planAnaBox" class="hidden flex flex-col gap-2"></div>
           </div>
           <div class="pm-card" style="border-color:#3b2a63">
             <span class="pm-cap" style="color:#a78bfa">Générer mon plan avec le coach</span>
-            <span class="text-[12px] text-slate-400 -mt-1">Le coach crée les séances jusqu'au jour J à partir de ton profil, ton niveau et ton objectif.</span>
-            <div class="pm-lbl">Jours où je peux courir<div id="planDays" class="grid grid-cols-7 gap-1"></div></div>
-            <div class="pm-lbl">Ce que le plan doit travailler<div id="planFocus" class="grid grid-cols-2 gap-1.5"></div></div>
-            <details class="pm-det" open><summary>Pour un plan sur mesure (optionnel)</summary>
-              <div class="flex flex-col gap-2 mt-2" oninput="readPlanPrefs()" onchange="readPlanPrefs()">
-                <div class="grid grid-cols-2 gap-2">
-                  <label class="pm-lbl">Séances / semaine<select id="ppNb" class="pm-in"><option value="">Selon les jours</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
-                  <label class="pm-lbl">Priorité<select id="ppPrio" class="pm-in"><option value="">—</option><option value="chrono">Le chrono</option><option value="finir">Finir en forme</option><option value="sante">Sans blessure</option></select></label>
-                  <label class="pm-lbl">Durée max en semaine (min)<input id="ppDurSem" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 60"></label>
-                  <label class="pm-lbl">Durée max le week-end (min)<input id="ppDurWe" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 120"></label>
-                  <label class="pm-lbl">Jour de la sortie longue<select id="ppLongue" class="pm-in"><option value="">Au choix</option><option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option><option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option></select></label>
-                  <label class="pm-lbl">Km par semaine actuels<input id="ppKm" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 25"></label>
-                  <label class="pm-lbl">Plus longue sortie récente (km)<input id="ppLongest" type="number" inputmode="decimal" class="pm-in c" placeholder="ex. 12"></label>
-                  <label class="pm-lbl">Activités en plus<select id="ppCross" class="pm-in"><option value="">—</option><option value="aucun">Aucune</option><option value="velo">Vélo</option><option value="renfo">Renforcement</option><option value="les2">Vélo + renfo</option></select></label>
-                  <label class="pm-lbl">Combien / semaine<input id="ppCrossN" type="number" inputmode="numeric" class="pm-in c" placeholder="ex. 1"></label>
-                </div>
-                <label class="pm-lbl">Blessures ou points faibles<input id="ppBless" type="text" class="pm-in" placeholder="ex. tendinite d'Achille l'an dernier"></label>
-                <label class="pm-lbl">Séances que j'aime<input id="ppAime" type="text" class="pm-in" placeholder="ex. côtes, fractionné court"></label>
-                <label class="pm-lbl">À éviter<input id="ppEvite" type="text" class="pm-in" placeholder="ex. sorties de plus de 2 h"></label>
-              </div>
-            </details>
-            <label class="pm-lbl">Où ?<select id="planPlace" class="pm-in"><option value="mixte">Tapis et extérieur</option><option value="tapis">Tapis uniquement</option><option value="exterieur">Extérieur uniquement</option></select></label>
+            <span class="text-[12px] text-slate-400 -mt-1">Le coach crée les séances jusqu'au jour J à partir de ton profil (Moi : niveau, ce que tu aimes, tapis), de tes séances faites et de ton plan actuel.</span>
+            <div id="planGenForm" class="flex flex-col gap-4"></div>
             <label class="pm-lbl">Consignes pour le coach (optionnel)<textarea id="coachCustomInstructions" rows="2" placeholder="ex. 45 min maximum en semaine, sortie longue le dimanche…" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px"></textarea></label>
             <button type="button" onclick="generatePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#a78bfa;color:#13092b;font-weight:800;font-size:14px">🧠 Générer le plan</button>
             <div id="planGenStatus" class="text-[12px] font-semibold text-purple-300"></div>
@@ -5488,7 +5484,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
     function planAnomalies() { const t = todayISO(); return (appData.sessions || []).filter(x => !isSessionDone(x) && (!x.dateISO || x.dateISO >= t) && !routeRunInfo(x) && computeSessionTotalMin(x) > sessMaxMin()); }
     function planFixAll() {
       const R = planRecShort(); R.forEach(x => recMinFix(x));
-      const L = planAnomalies(); if (!L.length) { if (R.length) { saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderHome(); } catch (e) { } showToast(`✓ Récup allongée sur ${R.length} séance${R.length > 1 ? 's' : ''}`); } return; }
+      const L = planAnomalies(); if (!L.length) { if (R.length) { saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderHome(); } catch (e) { } showToast(`✓ Récup ajustée sur ${R.length} séance${R.length > 1 ? 's' : ''}`); } return; }
       const txt = L.map(x => { const k = sessionKind(x).label.toLowerCase(), d = x.dateISO ? fmtDayLong(x.dateISO) : ''; const r = planFixSess(x); return r ? `${k} ${d} : ${r}` : ''; }).filter(Boolean);
       saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderHome(); } catch (e) { }
       showToast(`✓ ${txt.length} séance${txt.length > 1 ? 's' : ''} corrigée${txt.length > 1 ? 's' : ''}`);
@@ -6686,6 +6682,68 @@ Donne 2 ou 3 axes de travail.`;
       const det = `${capFirst(describeSessionHuman(s))}\nDurée : ${Math.round(computeSessionTotalMin(s))} min${s.type === 'exterieur' ? ' · dehors' : ' · tapis'}${(() => { try { const t = hrTargetShort(s); return t ? '\n' + t : ''; } catch (e) { return ''; } })()}`;
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${f(d)}/${f(d2)}&details=${encodeURIComponent(det)}`;
     }
+    // ---------- Sauvegarde du plan dans un fichier (téléphone, Drive… via le menu Partager)
+    function planToSave() { return (appData.sessions || []).filter(x => !isSessionDone(x)); }
+    function planRangeTxt(L) { const d = L.map(x => x.dateISO).filter(Boolean).sort(); const f = iso => parseISODateLocal(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); return d.length ? (d[0] === d[d.length - 1] ? `le ${f(d[0])}` : `du ${f(d[0])} au ${f(d[d.length - 1])}`) : 'sans date'; }
+    async function planBackupSave() {
+      const L = planToSave(); if (!L.length) { showToast('Aucune séance prévue à sauvegarder'); return; }
+      const data = { app: 'Run Ai', type: 'plan', v: 1, at: new Date().toISOString(), goal: appData.goal || null, sessions: JSON.parse(JSON.stringify(L)) };
+      const name = `RunAi-plan-${todayISO()}.json`, blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+      try { const f = new File([blob], name, { type: 'application/json' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Plan Run Ai' }); showToast('✓ Plan sauvegardé'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      showToast(`✓ Plan sauvegardé (${L.length} séances) dans Téléchargements`);
+    }
+    let planBackupPending = null;
+    async function planBackupLoad(input) {
+      const f = input.files && input.files[0]; input.value = ''; if (!f) return;
+      let j = null; try { j = JSON.parse(await f.text()); } catch (e) { }
+      const L = j && Array.isArray(j.sessions) ? j.sessions.filter(x => x && Array.isArray(x.pyramide)) : null;
+      if (!L || !L.length) { showToast('Fichier non reconnu : choisis une sauvegarde de plan Run Ai'); return; }
+      planBackupPending = { L, goal: j.goal };
+      const cur = planToSave();
+      planConfirm(`📂 Restaurer le plan`, `${L.length} séance${L.length > 1 ? 's' : ''} ${planRangeTxt(L)}${j.at ? `<br><span style="color:#94a3b8;font-size:12px">sauvegarde du ${new Date(j.at).toLocaleDateString('fr-FR')}</span>` : ''}${cur.length ? `<br><br>Ton plan actuel : ${cur.length} séance${cur.length > 1 ? 's' : ''} ${planRangeTxt(cur)}.` : ''}`,
+        cur.length ? [['Remplacer mon plan', 'planBackupApply(true)', '#38bdf8', '#041018'], ['Ajouter à mon plan', 'planBackupApply(false)', '#1e293b', '#e2e8f0']] : [['Restaurer', 'planBackupApply(true)', '#38bdf8', '#041018']]);
+    }
+    function planBackupApply(replace) {
+      const P = planBackupPending; planBackupPending = null; planConfirmClose(); if (!P) return;
+      const ids = new Set((appData.sessions || []).map(x => x.id));
+      const L = P.L.map((x, i) => { const y = JSON.parse(JSON.stringify(x)); delete y.done; if (!y.id || (!replace && ids.has(y.id))) y.id = 's_' + Date.now() + '_' + i; return y; });
+      appData.sessions = (replace ? (appData.sessions || []).filter(x => isSessionDone(x)) : (appData.sessions || [])).concat(L);
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      if (replace && P.goal && P.goal.distanceKm && !(appData.goal && appData.goal.distanceKm)) appData.goal = P.goal;
+      appData.activeSessionIndex = 0; sanitizeData(); saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderPlanSummary(); } catch (e) { } try { renderHome(); } catch (e) { }
+      showToast(`✓ ${L.length} séance${L.length > 1 ? 's' : ''} restaurée${L.length > 1 ? 's' : ''}`);
+    }
+    // ---------- Suppression du plan (séances prévues, les séances faites sont gardées)
+    function planDeleteAsk() {
+      const L = planToSave(); if (!L.length) { showToast('Aucune séance prévue'); return; }
+      planConfirm('🗑️ Supprimer le plan', `${L.length} séance${L.length > 1 ? 's' : ''} prévue${L.length > 1 ? 's' : ''} ${planRangeTxt(L)} ${L.length > 1 ? 'seront supprimées' : 'sera supprimée'}.<br><span style="color:#94a3b8;font-size:12px">Tes séances déjà faites et leurs résultats sont gardés.</span>`,
+        [['💾 Sauvegarder d\'abord', 'planBackupSave()', '#1e293b', '#e2e8f0'], ['Supprimer', 'planDeleteStep2()', '#f43f5e', '#fff']]);
+    }
+    function planDeleteStep2() {
+      const L = planToSave();
+      planConfirm('Tu confirmes ?', `Suppression définitive de ${L.length} séance${L.length > 1 ? 's' : ''} ${planRangeTxt(L)}.`, [['Annuler', 'planConfirmClose()', '#1e293b', '#e2e8f0'], ['Oui, supprimer', 'planDeleteDo()', '#f43f5e', '#fff']]);
+    }
+    function planDeleteDo() {
+      planConfirmClose();
+      const n = planToSave().length;
+      appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x));
+      appData.activeSessionIndex = 0; try { delete appData.dayCheck; delete appData.addSugg; } catch (e) { }
+      sanitizeData(); saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderPlanSummary(); } catch (e) { } try { renderHome(); } catch (e) { }
+      showToast(`✓ Plan supprimé (${n} séance${n > 1 ? 's' : ''})`);
+    }
+    function planConfirmClose() { const m = document.getElementById('planConfirmModal'); if (m) m.remove(); }
+    function planConfirm(title, html, btns) {
+      planConfirmClose();
+      const m = document.createElement('div'); m.id = 'planConfirmModal'; m.style.cssText = 'position:fixed;inset:0;z-index:170;background:rgba(2,6,23,.86);display:flex;align-items:center;justify-content:center;padding:16px';
+      m.onclick = e => { if (e.target === m) planConfirmClose(); };
+      m.innerHTML = `<div style="width:100%;max-width:380px;background:#0f172a;border:1px solid #334155;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:17px;font-weight:900;color:#f1f5f9;text-align:center">${title}</span>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.45;text-align:center">${html}</div>
+        <div style="display:grid;grid-template-columns:repeat(${btns.length},minmax(0,1fr));gap:8px">${btns.map(([l, fn, bg, c]) => `<button type="button" onclick="${fn}" style="min-height:50px;border-radius:14px;border:1px solid #334155;background:${bg};color:${c};font-size:14px;font-weight:800;padding:0 6px">${l}</button>`).join('')}</div>
+        <button type="button" onclick="planConfirmClose()" style="min-height:40px;border:none;background:none;color:#94a3b8;font-size:13px;font-weight:700">Fermer</button></div>`;
+      document.body.appendChild(m);
+    }
     function exportPlanIcs() {
       const up = upcomingPlanSessions(); if (!up.length) { showToast('Aucune séance à venir'); return; }
       const esc = t => String(t).replace(/\\/g, '\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
@@ -7106,7 +7164,7 @@ Donne 2 ou 3 axes de travail.`;
       if (view.mode === 'main') { renderPlanningHeader(items); plDragInit(); }
 
       const out = [];
-      if (view.mode === 'main') { const rs = planRecShort(); if (rs.length) out.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35)"><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fde68a;line-height:1.35">⚠️ Récup trop courte sur ${rs.length} séance${rs.length > 1 ? 's' : ''} (${rs.slice(0, 3).map(x => x.date || '').join(', ')}${rs.length > 3 ? '…' : ''}) : moins de la moitié du temps rapide.</div><button type="button" onclick="planFixAll()" style="flex:none;min-height:40px;padding:0 14px;border-radius:12px;border:none;background:#fbbf24;color:#1c1300;font-size:13px;font-weight:800">Corriger</button></div>`); }
+      if (view.mode === 'main') { const rs = planRecShort(); if (rs.length) out.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35)"><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fde68a;line-height:1.35">⚠️ Récup à ajuster sur ${rs.length} séance${rs.length > 1 ? 's' : ''} (${rs.slice(0, 3).map(x => x.date || '').join(', ')}${rs.length > 3 ? '…' : ''})  : moins de la moitié du temps rapide, ou plus longue que la fraction.</div><button type="button" onclick="planFixAll()" style="flex:none;min-height:40px;padding:0 14px;border-radius:12px;border:none;background:#fbbf24;color:#1c1300;font-size:13px;font-weight:800">Corriger</button></div>`); }
       if (view.mode === 'main') { const an = planAnomalies(); if (an.length) out.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35)"><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fde68a;line-height:1.35">⚠️ ${an.length} séance${an.length > 1 ? 's' : ''} de plus de ${Math.round(sessMaxMin() / 60)} h dans ton plan (${an.slice(0, 3).map(x => `${x.date || ''} : ${Math.round(computeSessionTotalMin(x))} min`).join(', ')}${an.length > 3 ? '…' : ''}), probablement une erreur.</div><button type="button" onclick="planFixAll()" style="flex:none;min-height:40px;padding:0 14px;border-radius:12px;border:none;background:#fbbf24;color:#1c1300;font-size:13px;font-weight:800">Corriger</button></div>`); }
       const sec = txt => out.push(`<div class="pl-sec">${txt}</div>`);
       const missedList = list => {
@@ -7861,7 +7919,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       if (k >= 0) { if (sel.length > 1) sel.splice(k, 1); } else sel.push(i);
       appData.planDays = sel.sort((a, b) => a - b);
       saveAppData();
-      renderPlanDays();
+      try { renderPlanGen(); } catch (e) { renderPlanDays(); }
     }
     // ==================== ANALYSE DU PLAN PAR LE COACH ====================
     let planReview = null;
@@ -7919,7 +7977,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       if (G.slow.length) return false;
       return (rp > 1) || (nb > 1 && !(+sx.recupBloc > 0));
     }
-    const COACH_METHOD = `Méthode à suivre (références reconnues de l'entraînement en course à pied) : répartition d'intensité polarisée, environ 80 % du temps en endurance facile et 20 % en intensité (Seiler) ; allures et zones de Daniels (E endurance, M marathon, T seuil, I intervalles VO2max, R répétitions) ; travail de VMA de Véronique Billat (30/30, fractions de 1 à 5 min à 95-100 % VMA, récupération active d'une durée proche de l'effort) ; progression de la charge de 10 % maximum par semaine et rapport charge aiguë/chronique entre 0,8 et 1,3 (Gabbett) ; périodisation foncier → spécifique → affûtage, avec une semaine allégée toutes les 3 à 4 semaines (Pfitzinger, Bompa) ; affûtage de 7 à 14 jours avec 40 à 60 % de volume en moins en gardant l'intensité (Mujika), UNIQUEMENT avant une course : pas d'affûtage ni de baisse de volume ou d'intensité avant un test (test VMA, test en côte, lacets…), qui se fait dans une semaine normale, simplement pas le lendemain d'une séance très dure ; zones cardio en % de FC max. Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 % (ex. 2'10 rapide → récup d'au moins 1'05, idéalement 1'40) ; une récup plus courte est corrigée par l'app. Utilise ces principes, sans les citer dans tes réponses.`;
+    const COACH_METHOD = `Méthode à suivre (références reconnues de l'entraînement en course à pied) : répartition d'intensité polarisée, environ 80 % du temps en endurance facile et 20 % en intensité (Seiler) ; allures et zones de Daniels (E endurance, M marathon, T seuil, I intervalles VO2max, R répétitions) ; travail de VMA de Véronique Billat (30/30, fractions de 1 à 5 min à 95-100 % VMA, récupération active d'une durée proche de l'effort) ; progression de la charge de 10 % maximum par semaine et rapport charge aiguë/chronique entre 0,8 et 1,3 (Gabbett) ; périodisation foncier → spécifique → affûtage, avec une semaine allégée toutes les 3 à 4 semaines (Pfitzinger, Bompa) ; affûtage de 7 à 14 jours avec 40 à 60 % de volume en moins en gardant l'intensité (Mujika), UNIQUEMENT avant une course : pas d'affûtage ni de baisse de volume ou d'intensité avant un test (test VMA, test en côte, lacets…), qui se fait dans une semaine normale, simplement pas le lendemain d'une séance très dure ; zones cardio en % de FC max. Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 %, et JAMAIS plus longue que la fraction rapide (ex. 2'10 rapide → récup entre 1'05 et 2'10, idéalement 1'40) ; une récup hors de ces bornes est corrigée par l'app. Utilise ces principes, sans les citer dans tes réponses.`;
     function planPrefs() { if (!appData.planPrefs || typeof appData.planPrefs !== 'object') appData.planPrefs = {}; return appData.planPrefs; }
     const FOCUS_OPTS = [['', '⚖️ Équilibré'], ['faibles', '🎯 Mes points faibles'], ['forts', '💪 Mes qualités'], ['specifique', '🔧 Un point précis']];
     function focusText(f, txt) {
@@ -7932,9 +7990,9 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       return '';
     }
     function planPrefsText() {
-      const P = planPrefs(), J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      let P = planPrefs(), J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
       const out = [];
-      if (P.nbSeances) out.push(`${P.nbSeances} séances de course par semaine souhaitées`);
+      const P0 = P; P = Object.assign({}, P0, { nbSeances: '', durSem: '', durWe: '', jourLongue: '', kmSem: '', longest: '' });
       { const r0 = runnerProfile(); if (typeof r0.warmMin === 'number') out.push(`échauffement de ${r0.warmMin} min`); if (typeof r0.coolMin === 'number') out.push(`retour au calme de ${r0.coolMin} min`); }
       if (P.durSem) out.push(`séance de ${P.durSem} min maximum en semaine`);
       if (P.durWe) out.push(`jusqu'à ${P.durWe} min le week-end`);
@@ -7953,10 +8011,47 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const fo = focusText(P.focus, P.focusTxt);
       return (out.length ? `Préférences et contraintes du coureur : ${out.join(' ; ')}.` : '') + (lk ? `\n${lk}` : '') + (fo ? `\n${fo}` : '');
     }
+    const PG_WHERE = [['', '↔ Au choix'], ['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']];
+    const PG_KIND = [['', 'Au choix'], ['endu', 'Endurance'], ['fractionne', 'Fractionné'], ['seuil', 'Seuil'], ['cotes', 'Côtes'], ['longue', 'Sortie longue']];
+    const PG_DUR = [[0, 'Sans limite'], [45, "45'"], [60, '1 h'], [75, '1 h 15'], [90, '1 h 30'], [120, '2 h'], [150, '2 h 30']];
+    const PG_J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { w: '', k: '', d: 0 }; return P.dayPrefs[i]; }
+    function pgSet(i, key, v) { pgDay(i)[key] = v; saveAppData(); renderPlanGen(); }
+    function pgP(key, v) { const P = planPrefs(); P[key] = P[key] === v && key !== 'genMode' ? '' : v; saveAppData(); renderPlanGen(); }
+    function planFuture() { const t = todayISO(); return (appData.sessions || []).filter(x => !isSessionDone(x) && x.dateISO && x.dateISO > t); }
+    function renderPlanGen() {
+      const box = document.getElementById('planGenForm'); if (!box) return;
+      const P = planPrefs(), sel = planDays(), fut = planFuture();
+      const chip = (on, fn, l) => `<button type="button" class="pg-ch${on ? ' on' : ''}" onclick="${fn}">${l}</button>`;
+      const card = (on, fn, l, sub) => `<button type="button" class="pg-c${on ? ' on' : ''}" onclick="${fn}">${l}${sub ? `<small>${sub}</small>` : ''}</button>`;
+      const days = sel.map(i => { const D = pgDay(i); return `<div class="pg-day"><b>${capFirst(PG_J[i])}</b>
+          <div class="pg-chips">${PG_WHERE.map(([k, l]) => chip(D.w === k, `pgSet(${i},'w','${k}')`, l)).join('')}</div>
+          <div class="pg-chips">${PG_KIND.map(([k, l]) => chip(D.k === k, `pgSet(${i},'k','${k}')`, l)).join('')}</div>
+          <div class="pg-chips">${PG_DUR.map(([k, l]) => chip((+D.d || 0) === k, `pgSet(${i},'d',${k})`, l)).join('')}</div></div>`; }).join('');
+      const tier = runnerTier(), few = sel.length < ({ debutant: 2, intermediaire: 3, confirme: 4, elite: 5 }[tier] || 3);
+      box.innerHTML = `
+        ${fut.length ? `<div class="pg-sec"><span class="pg-t">Mon plan actuel : ${fut.length} séance${fut.length > 1 ? 's' : ''} ${planRangeTxt(fut)}</span>
+          <div class="pg-g" style="grid-template-columns:1fr 1fr">${card((P.genMode || 'replace') === 'replace', "pgP('genMode','replace')", '🔄 Nouveau plan', 'remplace les séances à venir · comparaison des 2 plans')}${card(P.genMode === 'add', "pgP('genMode','add')", '➕ Compléter', `ajoute des séances, ${tier === 'elite' ? '2 le même jour possibles (Élite)' : 'jamais le même jour qu\'une séance prévue'}`)}</div></div>` : ''}
+        <div class="pg-sec"><span class="pg-t">Mes jours de course</span><div id="planDays" class="grid grid-cols-7 gap-1"></div>
+          ${few ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">💡 ${sel.length} séance${sel.length > 1 ? 's' : ''} par semaine : le coach te dira quelle séance ajouter pour augmenter tes chances.</span>` : ''}
+          <span style="font-size:12px;color:#94a3b8">Pour chaque jour : où, quel type de séance, durée maximale.</span>${days}</div>
+        <div class="pg-sec"><span class="pg-t">Style du plan</span><div id="planStyleChips" class="grid grid-cols-2 gap-2"></div></div>
+        <div class="pg-sec"><span class="pg-t">Ce que le plan doit travailler</span><div id="planFocus" class="grid grid-cols-2 gap-1.5"></div></div>
+        <div class="pg-sec"><span class="pg-t">Ma priorité</span><div class="pg-g" style="grid-template-columns:repeat(3,1fr)">${[['chrono', '⏱️ Le chrono'], ['finir', '🏁 Finir en forme'], ['sante', '🩹 Sans blessure']].map(([k, l]) => card(P.priorite === k, `pgP('priorite','${k}')`, l)).join('')}</div></div>
+        <div class="pg-sec"><span class="pg-t">En plus de la course</span><div class="pg-g" style="grid-template-columns:repeat(4,1fr)">${[['aucun', 'Rien'], ['velo', '🚴 Vélo'], ['renfo', '💪 Renfo'], ['les2', 'Les 2']].map(([k, l]) => card((P.cross || 'aucun') === k, `pgP('cross','${k}')`, l)).join('')}</div>
+          ${P.cross && P.cross !== 'aucun' ? `<div class="pg-chips">${[1, 2, 3].map(n => chip(+P.crossN === n, `pgP('crossN',${n})`, `${n} / semaine`)).join('')}</div>` : ''}</div>`;
+      try { renderPlanDays(); } catch (e) { } try { renderPlanStyleChips(); } catch (e) { } try { renderPlanFocus(); } catch (e) { }
+    }
+    function dayPrefsText() {
+      const W = { tapis: 'sur tapis', exterieur: 'en extérieur' }, K = { endu: 'endurance', fractionne: 'fractionné', seuil: 'seuil', cotes: 'côtes', longue: 'sortie longue' };
+      return planDays().map(i => { const D = pgDay(i), x = [W[D.w] || 'tapis ou extérieur au choix', K[D.k] ? `séance de type ${K[D.k]} de préférence` : 'type au choix', +D.d ? `${D.d} min maximum (échauffement et retour au calme compris)` : 'durée libre']; return `${PG_J[i]} (${x.join(', ')})`; }).join(' ; ');
+    }
     function readPlanPrefs() {
       const P = planPrefs(), v = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
       const num = id => { const x = parseFloat(v(id).replace(',', '.')); return isNaN(x) ? '' : x; };
-      Object.assign(P, { nbSeances: num('ppNb'), durSem: num('ppDurSem'), durWe: num('ppDurWe'), jourLongue: v('ppLongue'), kmSem: num('ppKm'), longest: num('ppLongest'), penteMax: num('ppPente'), vitMax: num('ppVit'), cotes: v('ppCotes'), cross: v('ppCross'), crossN: num('ppCrossN'), priorite: v('ppPrio'), blessures: v('ppBless').slice(0, 200), aime: v('ppAime').slice(0, 150), evite: v('ppEvite').slice(0, 150) });
+      const has = id => !!document.getElementById(id);
+      if (has('ppPente')) P.penteMax = num('ppPente'); if (has('ppVit')) P.vitMax = num('ppVit'); if (has('ppCotes')) P.cotes = v('ppCotes');
+      if (false) Object.assign(P, { nbSeances: num('ppNb'), durSem: num('ppDurSem'), durWe: num('ppDurWe'), jourLongue: v('ppLongue'), kmSem: num('ppKm'), longest: num('ppLongest'), penteMax: num('ppPente'), vitMax: num('ppVit'), cotes: v('ppCotes'), cross: v('ppCross'), crossN: num('ppCrossN'), priorite: v('ppPrio'), blessures: v('ppBless').slice(0, 200), aime: v('ppAime').slice(0, 150), evite: v('ppEvite').slice(0, 150) });
       saveAppData();
     }
     function renderPlanFocus() {
@@ -7965,7 +8060,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
         + (P.focus === 'specifique' ? `<input class="pm-in" style="grid-column:1/-1" placeholder="ex. force musculaire, vitesse, côtes, endurance, foulée…" value="${plEsc(P.focusTxt || '').replace(/"/g, '&quot;')}" onchange="planPrefs().focusTxt=this.value.trim().slice(0,120);saveAppData()">` : '');
     }
     function fillPlanPrefs() {
-      try { renderPlanFocus(); } catch (e) { }
+      try { renderPlanGen(); } catch (e) { }
       const P = planPrefs(), set = (id, x) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = x ?? ''; };
       const b = appData.runBackground || {};
       set('ppNb', P.nbSeances || ''); set('ppDurSem', P.durSem); set('ppDurWe', P.durWe); set('ppLongue', P.jourLongue ?? '');
@@ -8030,7 +8125,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function renderPlanAnaCrit() {
       const box = document.getElementById('planAnaCrit'); if (!box) return; const C = planAnaCfg();
       box.innerHTML = PLAN_CRIT.map(([k, l]) => { const on = C.crit.includes(k); return `<button type="button" onclick="togglePlanCrit('${k}')" style="min-height:38px;border-radius:10px;font-size:12.5px;font-weight:800;text-align:left;padding:0 10px;${on ? 'background:rgba(52,211,153,.15);color:#6ee7b7;border:1px solid rgba(52,211,153,.6)' : 'background:#0f172a;color:#64748b;border:1px solid #1e293b'}">${on ? '☑' : '☐'} ${l}</button>`; }).join('');
-      const m = document.getElementById('planAnaMode'); if (m) m.value = C.mode || 'full';
+      const m = document.getElementById('planAnaMode'); if (m) m.innerHTML = [['full', 'Complète', 'plus précise'], ['eco', 'Allégée', 'moins de crédit, réponse courte']].map(([k, l, sub]) => `<button type="button" class="pg-c${(C.mode || 'full') === k ? ' on' : ''}" onclick="planAnaCfg().mode='${k}';saveAppData();renderPlanAnaCrit()">${l}<small>${sub}</small></button>`).join('');
     }
     function togglePlanCrit(k) { const C = planAnaCfg(); C.crit = C.crit.includes(k) ? C.crit.filter(x => x !== k) : C.crit.concat(k); if (!C.crit.length) C.crit = [k]; saveAppData(); renderPlanAnaCrit(); }
     function fillCardioLocal() {
@@ -8447,26 +8542,35 @@ Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pou
       const r = runnerProfile();
       const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
       const days = planDays().map(i => jours[i]).join(', ');
-      const place = { mixte: 'tapis ou extérieur (choisis selon la séance)', tapis: 'uniquement sur tapis', exterieur: 'uniquement en extérieur' }[document.getElementById('planPlace').value] || 'tapis ou extérieur';
-      const hist = (appData.history || []).slice(0, 8).map(h => `- ${h.date} ${h.details || ''} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${feelTxt(h.feeling)}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}`).join('\n') || '- aucune';
+      const P = planPrefs(), mode = planFuture().length ? (P.genMode || 'replace') : 'new', fut = planFuture(), elite = runnerTier() === 'elite';
+      const place = dayPrefsText();
+      const hist = (() => { const lim = new Date(); lim.setDate(lim.getDate() - 56); const li = toISODateLocal(lim); const H = runHistory().filter(h => h._iso && h._iso >= li).sort((a, b) => a._iso.localeCompare(b._iso)); const L = (H.length ? H : runHistory().slice(0, 8)).slice(-24);
+        return L.map(h => `- ${h._iso || h.date} ${h.details || sessionKind(h).label} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${feelTxt(h.feeling)}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}${h.note ? ` ; note : ${String(h.note).slice(0, 120)}` : ''}`).join('\n') || '- aucune'; })();
+      const appEst = (() => { try { const p = computeGoalProbability(); return p && !p.noData ? `Estimation de l'app aujourd'hui pour le jour J avec la progression habituelle : ${fmtClock(p.tDay)} (VMA estimée ${formatSpeed(p.vma)} km/h).` : ''; } catch (e) { return ''; } })();
+      const curPlan = fut.length ? planWeeksText(fut, 'P') : '';
+      const modeTxt = mode === 'replace' ? `PLAN ACTUEL du coureur (${fut.length} séances à venir), que ton nouveau plan remplacera s'il le valide :\n${curPlan}\nCOMPARAISON OBLIGATOIRE : compare ton nouveau plan et le plan actuel dans leur ensemble (volume, progression, spécificité pour l'objectif, récupération, risque de blessure), sans détailler séance par séance, et estime pour chacun le chrono du jour J.`
+        : mode === 'add' ? `PLAN ACTUEL du coureur (${fut.length} séances à venir), qui est GARDÉ tel quel :\n${curPlan}\nMODE COMPLÉTER : propose UNIQUEMENT des séances supplémentaires qui complètent ce plan pour mieux réussir l'objectif ; ne modifie ni ne répète les séances existantes ; ${elite ? 'profil Élite : une 2e séance le même jour est possible si elle est utile (biquotidien)' : `JAMAIS de séance un jour où une séance est déjà prévue (dates occupées : ${[...new Set(fut.map(x => x.dateISO))].join(', ')})`}.` : '';
       const weeks = Math.ceil((parseISODateLocal(gIso) - parseISODateLocal(todayISO())) / (7 * 864e5));
       try { readPlanPrefs(); } catch (e) { }
       const prompt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
-Construis mon plan d'entraînement de demain (${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}) jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines${weeks > 20 ? ' : planifie seulement les 16 prochaines semaines' : ''}).
+${mode === 'add' ? 'Complète' : 'Construis'} mon plan d'entraînement de demain (${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}) jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines${weeks > 20 ? ' : planifie seulement les 16 prochaines semaines' : ''}).
 Objectif : ${g.distanceKm} km en ${g.durationMin} min${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
 Niveau actuel (temps possibles aujourd'hui) : ${runnerLevelsText()}.
-Séances récentes :
+Séances faites ces 8 dernières semaines (ce qui a été fait, à prendre en compte pour la charge et la progression) :
 ${hist}
+${appEst}
+${modeTxt}
 ${backgroundText()}
 ${planStyleText()}
 ${planPrefsText()}
 ${zonesText()}
 ${coachMemoryText('', 12)}
 ${COACH_METHOD}
-Contraintes : séances uniquement le ${days} ; ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
+BUT : le plan le plus efficace possible pour RÉUSSIR L'OBJECTIF dans ces contraintes (spécificité croissante vers l'allure cible, progression de charge maîtrisée, une seule vraie séance dure par jour, assez de récupération, affûtage) ; chaque séance doit avoir une raison d'être.
+Contraintes : séances uniquement le ${days} ; préférences par jour (à respecter, durée max comprise) : ${place} ; échauffement ${r.warmMin ?? 10} min et retour au calme ${r.coolMin ?? 5} min à l'endurance fondamentale ; progression raisonnable avec une semaine plus légère toutes les 3 à 4 semaines ; affûtage les 7 à 10 derniers jours ; pas de séance la veille de la course.${(document.getElementById('coachCustomInstructions').value || '').trim() ? `\nConsignes du coureur : ${document.getElementById('coachCustomInstructions').value.trim()}` : ''}
 Format JSON strict :
-{"resume":"2 phrases qui présentent le plan","sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
+{"resume":"2 phrases qui présentent le plan","chrono_jourJ_min":chrono estimé le jour J en minutes avec ce plan s'il est suivi,${mode === 'replace' ? '"comparaison":{"nouveau":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"actuel":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"conseil":"lequel choisir et pourquoi, en 1 phrase"},' : ''}"suggestions":["si le nombre de séances par semaine (ou les durées max) limite les chances de réussir : quelle séance ajouter, quel jour, et ce qu'elle apporterait ; [] sinon"],"sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
 Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance, en bpm, calculé avec la FC max : fractionné, pyramide et côtes = uniquement "max" (FC max visée sur les fractions, moy_min et moy_max à 0) ; seuil, endurance et récup = moy_min et moy_max (cardio moyen visé) ; durée totale de chaque séance (échauffement et retour au calme compris) : jamais plus de ${longRunCap()} min, sortie longue comprise ; une course continue = un seul segment avec "repet":1 ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
       say("🧠 Le coach prépare ton plan… (20 à 60 s)");
       try {
@@ -8475,11 +8579,14 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
         const list = Array.isArray(data) ? data : (data.sessions || []);
         pdfImportResult = normalizeImportedSessions(list);
         if (!pdfImportResult.length) { say("Le coach n'a proposé aucune séance, réessaie", true); return; }
+        if (mode !== 'new') { const t0 = todayISO(); pdfImportResult = pdfImportResult.filter(x => !x.dateISO || x.dateISO > t0); }
+        pdfImportGen = { mode, data };
         pdfImportResult.forEach(x => { if (!x.chauffe) x.chauffe = r.warmMin ?? 10; if (!x.recup) x.recup = r.coolMin ?? 5; });
         const nFix = pdfImportResult.filter(x => planFixSess(x)).length;
         pdfImportResult.forEach(x => { if (recMinFix(x)) x.recFix = true; });
         const adv = document.getElementById('coachAdviceCard');
-        if (adv) { adv.classList.toggle('hidden', !data.resume); document.getElementById('coachAdviceText').textContent = String(data.resume || ''); }
+        if (adv) { adv.classList.remove('hidden'); document.getElementById('coachAdviceText').innerHTML = planGenAdviceHtml(data, mode); }
+        try { const pv = document.getElementById('pdfImportPreview'); pv.dataset.sub = 'Générer'; pmSelectSub('plan', 'Générer'); } catch (e) { }
         renderPdfImportPreview();
         say(`✓ ${pdfImportResult.length} séances proposées${nFix ? ` (${nFix} trop longue${nFix > 1 ? 's' : ''} corrigée${nFix > 1 ? 's' : ''})` : ''} : vérifie-les ci-dessous puis valide.`);
         setTimeout(() => document.getElementById('pdfImportPreview').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -9184,7 +9291,21 @@ Réponds uniquement en JSON : {"conseil": "...", "conseils_course": ["...", "...
       el.className = `text-[10px] font-semibold ${isError ? 'text-rose-400' : 'text-sky-300'}`;
     }
 
+    let pdfImportGen = null;
+    function planGenAdviceHtml(d, mode) {
+      const e = x => plEsc(String(x || '')), num = x => +x > 0 ? fmtClock(+x) : '–', L = a => (Array.isArray(a) ? a : []).filter(Boolean).slice(0, 5);
+      const ul = (a, c) => L(a).length ? `<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px">${L(a).map(x => `<li style="color:${c}">${e(x)}</li>`).join('')}</ul>` : '';
+      const C = d.comparaison, goalT = +((appData.goal || {}).durationMin) || 0;
+      const col = (t, o, acc) => `<div style="flex:1;min-width:0;padding:10px;border-radius:12px;background:#0b1220;border:1px solid ${acc}55;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;color:${acc};text-transform:uppercase;letter-spacing:.5px">${t}</span><span style="font-size:22px;font-weight:900;color:#f1f5f9">⏱ ${num(o && o.chrono_jourJ_min)}</span>${goalT ? `<span style="font-size:11px;color:#94a3b8;margin-top:-4px">objectif ${fmtClock(goalT)}</span>` : ''}${ul(o && o.avantages, '#86efac')}${ul(o && o.inconvenients, '#fca5a5')}</div>`;
+      return `<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.4">
+        ${d.resume ? `<span style="color:#e2e8f0">${e(d.resume)}</span>` : ''}
+        ${mode === 'replace' && C ? `<div style="display:flex;gap:8px">${col('Nouveau plan', C.nouveau || { chrono_jourJ_min: d.chrono_jourJ_min }, '#a78bfa')}${col('Plan actuel', C.actuel, '#38bdf8')}</div>${C.conseil ? `<span style="color:#fde68a;font-weight:700">👉 ${e(C.conseil)}</span>` : ''}`
+          : +d.chrono_jourJ_min > 0 ? `<span style="font-size:15px;font-weight:800;color:#f1f5f9">⏱ Chrono estimé le jour J : ${num(d.chrono_jourJ_min)}${goalT ? ` <span style="color:#94a3b8;font-weight:600">(objectif ${fmtClock(goalT)})</span>` : ''}</span>` : ''}
+        ${L(d.suggestions).length ? `<div style="padding:10px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:800;color:#fcd34d">💡 Pour augmenter tes chances</span>${ul(d.suggestions, '#fde68a')}</div>` : ''}
+        ${mode === 'add' ? `<span style="color:#94a3b8;font-size:12px">Mode compléter : ces séances s'ajoutent à ton plan actuel, qui reste inchangé.</span>` : ''}</div>`;
+    }
     async function importPlanFromPdf(input) {
+      pdfImportGen = null; try { const pv = document.getElementById('pdfImportPreview'); pv.dataset.sub = 'Import PDF'; } catch (e) { } try { document.querySelectorAll('input[name="pdfImportMode"]').forEach(r => { r.closest('div').style.display = ''; }); } catch (e) { }
       const file = input.files && input.files[0];
       input.value = '';
       if (!file) return;
@@ -9282,21 +9403,39 @@ Réponds uniquement avec le JSON.`;
 
     function renderPdfImportPreview() {
       const box = document.getElementById('pdfImportPreview');
+      try { const r0 = document.querySelector('input[name="pdfImportMode"]'); if (r0) r0.closest('div').style.display = pdfImportGen ? 'none' : ''; } catch (e) { }
       const list = document.getElementById('pdfImportList');
       list.innerHTML = pdfImportResult.map(s => `
         <div class="bg-slate-900 border border-slate-800 rounded-lg p-1.5">
           <div class="flex justify-between font-bold text-slate-200"><span>${formatSessTitle(s)}</span><span class="font-mono text-sky-400">${Math.round(computeSessionTotalMin(s))}'</span></div>
           <div class="text-[11px] text-slate-300">${capFirst(describeSessionHuman(s))}${s.type === 'tapis' ? '' : ' • extérieur'}</div>
           ${s.notes ? `<div class="text-[9px] text-slate-500 italic">${s.notes.replace(/</g, '&lt;')}</div>` : ''}
-          ${s.recFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Récup allongée à la moitié du temps rapide</div>` : ''}${s.planFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Durée corrigée : ${s.planFix.from} → ${s.planFix.to} min (erreur du plan)</div>` : computeSessionTotalMin(s) > sessMaxMin() ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Plus de ${Math.round(sessMaxMin() / 60)} h : vérifie cette séance</div>` : ''}
+          ${s.recFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Récup ajustée (entre la moitié et le temps rapide)</div>` : ''}${s.planFix ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Durée corrigée : ${s.planFix.from} → ${s.planFix.to} min (erreur du plan)</div>` : computeSessionTotalMin(s) > sessMaxMin() ? `<div class="text-[11px] font-bold" style="color:#fbbf24">⚠️ Plus de ${Math.round(sessMaxMin() / 60)} h : vérifie cette séance</div>` : ''}
         </div>`).join('');
       box.classList.remove('hidden');
     }
 
-    function confirmPdfImport() {
+    function confirmPdfImport(skipConflicts) {
       if (!pdfImportResult.length) return;
       applyRunnerWarmCool(pdfImportResult);
-      const mode = document.querySelector('input[name="pdfImportMode"]:checked')?.value || 'replace';
+      let mode = document.querySelector('input[name="pdfImportMode"]:checked')?.value || 'replace';
+      if (pdfImportGen) {
+        const gm = pdfImportGen.mode, t0 = todayISO();
+        if (gm === 'add') {
+          const busy = new Set(planFuture().map(x => x.dateISO)), cf = pdfImportResult.filter(x => busy.has(x.dateISO));
+          if (cf.length && runnerTier() !== 'elite' && !skipConflicts) {
+            planConfirm('⚠️ Même jour qu\'une séance prévue', `${cf.length} séance${cf.length > 1 ? 's' : ''} proposée${cf.length > 1 ? 's' : ''} tombe${cf.length > 1 ? 'nt' : ''} un jour où une séance est déjà prévue (${cf.slice(0, 4).map(x => fmtDateShort(x.dateISO)).join(', ')}${cf.length > 4 ? '…' : ''}).<br><span style="color:#94a3b8;font-size:12px">Deux séances le même jour ne sont possibles qu'avec le profil Élite (Moi › Niveau).</span>`, [['Annuler', 'planConfirmClose()', '#1e293b', '#e2e8f0'], [`Ajouter sans ${cf.length > 1 ? 'elles' : 'elle'}`, 'planConfirmClose();confirmPdfImport(true)', '#a78bfa', '#13092b']]);
+            return;
+          }
+          if (cf.length && runnerTier() !== 'elite') pdfImportResult = pdfImportResult.filter(x => !busy.has(x.dateISO));
+          if (!pdfImportResult.length) { showToast('Aucune séance à ajouter'); return; }
+          mode = 'append';
+        } else if (gm === 'replace') {
+          appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x) || !x.dateISO || x.dateISO <= t0);
+          mode = 'append';
+        }
+        pdfImportGen = null;
+      }
       if (mode === 'replace') {
         appData.sessions = pdfImportResult.slice();
       } else {
@@ -12913,6 +13052,22 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       h.eleShot = { dplus: es.dplus, dminus: es.dminus, at: todayISO(), pts: es.pts || undefined, unit: es.pts ? 'km' : undefined, km: es.km || undefined };
       return out.join(' et ');
     }
+    // Onglet Cardio d'une séance faite : ajouter une capture du cardio de la montre
+    function histHrShotHtml(hh, item) {
+      if (item.live || !(hh.id || item.rawIdx >= 0)) return '';
+      const key = hh.id || '#' + item.rawIdx, hs = hh.hrShot;
+      return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;padding:10px 12px;border-radius:14px;background:#0f172a;border:1px solid #1e293b">
+        ${hs ? `<span style="font-size:12px;font-weight:700;color:#94a3b8">📷 Capture lue${hs.fc_moy ? ` : moyenne ${hs.fc_moy}` : ''}${hs.fc_max ? `, max ${hs.fc_max}` : ''}${hs.courbe ? ', courbe' : ''}${hs.zones_min ? ', minutes par zone' : ''}</span>` : ''}
+        <label style="min-height:46px;border-radius:12px;border:1px solid rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">📷 ${hs ? 'Remplacer la capture du cardio' : 'Ajouter une capture du cardio'}<input type="file" accept="image/*" multiple style="display:none" onchange="histHrShotAdd('${key}', this)"></label>
+        <span style="font-size:11px;color:#64748b;line-height:1.35">Capture de ta montre (courbe cardio, zones, moyenne/max) : le cardio, les zones et l'analyse seront recalculés.</span></div>`;
+    }
+    async function histHrShotAdd(key, input) {
+      const h = histByKey(key), files = Array.from(input.files || []).slice(0, 6); input.value = '';
+      if (!h || !files.length) return;
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire pour lire la capture'); return; }
+      const shots = []; for (const f of files) { try { shots.push(await resizeImageFile(f)); } catch (e) { showToast(e.message); } }
+      if (shots.length) { try { delete h.hrFix; } catch (e) { } attachHrShot(h, shots); }
+    }
     async function attachHrShot(h, shots) {
       if (!h || !shots || !shots.length) return;
       showToast('📷 Lecture de ta capture (cardio, altitude)… les résultats se mettront à jour dans quelques secondes');
@@ -14460,7 +14615,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const kS = item.linked || { kind: hh.kind || '' }, kLab = capFirst(String((kind && kind.label) || sessionKind(kS).label || '').toLowerCase());
         const fe = feel ? feel[0].split(' ') : null, nOkR = reps.filter(okRep).length;
         const tilesR = sTiles([
-          [whereTile(hh), !item.live ? sTile(fe ? fe[0] : '🙂', fe ? fe.slice(1).join(' ') : 'non renseigné', 'Ressenti', feel ? feel[1] : '#94a3b8') : ''],
+          [whereTile(hh), !item.live ? sTileWide(fe ? fe[0] : '🙂', `<span style="color:${feel ? feel[1] : '#94a3b8'}">${fe ? fe.slice(1).join(' ') : 'Ressenti ?'}</span>`, fe ? '' : 'non renseigné') : ''],
           [sTile(kindIcon(kS), kLab), sTile('⏱️', totTxt), sTile('📏', `${f1(km)} km`)],
           [sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–'), sTile('', f1(bKmh), 'km/h', '#7dd3fc'), showVap ? sTile('', f1(bVap), 'VAP', '#c4b5fd') : ''],
           [hg ? sTile('🎯', hg.kind === 'max' ? `≤ ${hg.max}` : `${hg.lo}–${hg.hi}`, '', '#fde68a', { tag: hg.kind === 'max' ? 'FC max' : 'FC moy' }) : '', bHr ? sTile('❤️', `${bHr}`, '', '#fda4af', { tag: 'Moy' }) : '', hrMaxB ? sTile('❤️', `${hrMaxB}`, '', '#fb7185', { tag: 'Max' }) : ''],
@@ -14527,6 +14682,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           const b = (m, l) => `<button type="button" onclick="${md === m ? '' : `applyHrFix('${key}','${m}')`}" style="min-height:44px;border-radius:10px;font-size:12.5px;font-weight:800;line-height:1.2;${md === m ? 'background:#fb7185;color:#1f0a10;border:1px solid #fb7185' : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${l}</button>`;
           const sel = has ? `<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">Cardio pris en compte</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px">${b('orig', '⌚ Montre')}${b('est', '🔧 Réévalué<br><span style="font-weight:600;font-size:10.5px">montre en défaut</span>')}${b('ignore', '🚫 Ignoré<br><span style="font-weight:600;font-size:10.5px">montre en défaut</span>')}</div></div>` : '';
           hrTab = sel + (hrRowHtml || '') + zonesB + (R.some(r => r.hr) ? resultChartsHtml(trk, item.seg, { pente, only: 'hr' }) : '<span style="font-size:13px;color:#94a3b8">Pas de cardio enregistré pour cette séance.</span>'); }
+        hrTab += histHrShotHtml(hh, item);
       }
       const recLine = recs && recs.length ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5)"><span style="font-size:20px">🏆</span><span style="font-size:13px;font-weight:700;color:#fde68a">Record : ${plEsc(recs.join(', '))}</span></div>` : '';
       // Onglet coach : analyse détaillée + discussion + relancer
@@ -14552,8 +14708,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
       const spokenTab = !item.live ? (spk.length ? `<button type="button" onclick="openSpokenLog('${item.id}')" style="min-height:42px;border-radius:12px;border:1px solid rgba(192,132,252,.5);background:rgba(168,85,247,.12);color:#e9d5ff;font-weight:800;font-size:13px">📜 Ce que le coach a dit pendant la séance (plein écran)</button><div style="max-height:380px;overflow-y:auto;padding:4px 10px;${card}">${spk.map(x => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b"><span style="font-family:monospace;font-size:12px;color:#7dd3fc;width:44px;flex-shrink:0">${fmtS(x[0])}</span><span style="font-size:13px;color:#e2e8f0">${plEsc(x[1])}</span></div>`).join('')}</div>`
         : `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas d'annonces enregistrées pour cette séance (faite avant la mise à jour qui les garde, ou sans le chrono de l'app).</div>`) : '';
       const noData = !item.live && (!item.track || !item.track.length)
-        ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (✏️ Modifier) pour avoir le cardio et le profil.</div>` : '';
+        ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (onglet ❤️ Cardio, ou ✏️ Modifier pour l'altitude) pour avoir le cardio et le profil.</div>` : '';
       void top; void spokenTab;
+      if (!hrTab && !item.live && (hh.id || item.rawIdx >= 0)) hrTab = '<span style="font-size:13px;color:#94a3b8">Pas de cardio enregistré par l\'app pour cette séance.</span>' + histHrShotHtml(hh, item);
       const tabs = [['recap', '📊', `${noData}${recLine}${stats}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
@@ -15675,7 +15832,8 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
         P.forEach((q, i) => {
           if (i === 0 || +q.speed >= th) return;
           const prev = P[i - 1]; if (!prev || +prev.speed < th) return;
-          const need = Math.ceil(Math.round(sec(prev)) * pct / 5) * 5;
+          const need = Math.ceil(Math.round(sec(prev)) * pct / 5) * 5, cap = Math.round(sec(prev));
+          if (sec(q) > cap + 1) { if (q.unit === 'km') { q.distance = Math.round(cap / 3600 * q.speed * 100) / 100; q.duration = q.distance / q.speed * 60; } else q.duration = Math.round(cap / 60 * 10000) / 10000; n++; return; }
           if (sec(q) + 1 < need) { if (q.unit === 'km') { q.distance = Math.round(need / 3600 * q.speed * 100) / 100; q.duration = q.distance / q.speed * 60; } else q.duration = Math.round(need / 60 * 10000) / 10000; n++; }
         });
         return n;
@@ -16641,7 +16799,25 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       return r.levelsHist;
     }
     function pushLevelsHist(L, src) { const H = levelsHist(), t = todayISO(); const r = runnerProfile(); r.levelsHist = H.filter(x => !(x.d === t && x.src === src)).concat({ d: t, L: Object.assign({}, L), src }).slice(-80); }
+    // Estimation lissée : une seule séance ne peut pas faire bondir l'estimation (sauf test VMA récent)
+    const _vmaRawC = new Map(), _vmaSmC = new Map();
+    function vmaSig(opt) { const H = appData.history || []; return `${H.length}|${(H[0] || {}).id || ''}|${(H[H.length - 1] || {}).id || ''}|${opt.noLevels ? 1 : 0}|${JSON.stringify(opt.noLevels ? {} : runnerLevels())}|${JSON.stringify(runnerProfile().vmaTest || '')}|${runnerFcMax()}`; }
     function estimateVma(asOf, opt = {}) {
+      const ref = asOf ? new Date(asOf) : new Date(), refISO = toISODateLocal(ref), sig = vmaSig(opt) + '|' + refISO;
+      if (_vmaSmC.has(sig)) return _vmaSmC.get(sig);
+      const raw = d => { const k = vmaSig(opt) + '|' + d; if (!_vmaRawC.has(k)) _vmaRawC.set(k, estimateVmaRaw(d + 'T23:59:00', opt)); return _vmaRawC.get(k); };
+      const cur = raw(refISO);
+      if (!cur || cur.fromTest || cur.fromLevels) { _vmaSmC.set(sig, cur); return cur; }
+      const from = new Date(ref); from.setDate(from.getDate() - 60); const fromISO = toISODateLocal(from);
+      const days = [...new Set(runHistory().map(h => h._iso).filter(d => d && d >= fromISO && d < refISO))].sort(); days.push(refISO);
+      const gap = (a, b) => Math.max(1, Math.round((parseISODateLocal(b) - parseISODateLocal(a)) / 864e5));
+      let v = null, pd = null;
+      days.forEach(d => { const e = raw(d); if (!e) return; if (v == null || e.fromTest || e.fromLevels) { v = e.vma; pd = d; return; } const lim = Math.min(0.04, 0.01 * gap(pd, d)); v = Math.min(v * (1 + lim), Math.max(v * (1 - lim), e.vma)); pd = d; });
+      const out = v == null ? cur : Object.assign({}, cur, { vma: v, rawVma: cur.vma });
+      _vmaSmC.set(sig, out); if (_vmaSmC.size > 400) _vmaSmC.clear(); if (_vmaRawC.size > 600) _vmaRawC.clear();
+      return out;
+    }
+    function estimateVmaRaw(asOf, opt = {}) {
       { const vt = runnerProfile().vmaTest, ref0 = asOf ? new Date(asOf) : new Date();
         if (vt && vt.v > 5 && vt.at && (ref0 - parseISODateLocal(vt.at)) / 864e5 <= 120 && (ref0 - parseISODateLocal(vt.at)) >= -864e5) return { vma: vt.v, n: 8, withHr: 2, fromTest: true, testAt: vt.at }; }
       const fc = runnerFcMax();
@@ -19599,7 +19775,7 @@ ${feel ? `Sensations du jour : ${feel}.` : ''}
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 ${planPrefsText()}
 ${backgroundText()}
-Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 % (ex. 2'10 rapide → récup d'au moins 1'05, idéalement 1'40).
+Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 %, et jamais plus longue que la fraction rapide (ex. 2'10 rapide → récup entre 1'05 et 2'10, idéalement 1'40).
 Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
 Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}
 "seance" seulement si decision n'est pas "garder".`;
