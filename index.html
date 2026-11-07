@@ -8054,7 +8054,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       ['cotes', '⛰️', 'Côtes', 'Montées et récups', 'Montées courtes et dynamiques, retour en trottinant : force et puissance.', "8 × 1' en côte / retour trot"],
       ['recup', '💤', 'Récupération', 'Très facile', 'Très lent et court, le lendemain d\'une séance dure : faire circuler sans fatiguer.', "30' très lent"],
       ['vma', '🧪', 'Test VMA', '', '', ''], ['course', '🏁', 'Course', 'Compétition', '', '']];
-    const PG_WHERE = [['', '↔ Au choix'], ['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']];
+    const PG_WHERE = [['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']];
     const PG_ACT = [['run', '🏃 Course'], ['renfo', '💪 Renfo'], ['velo', '🚴 Vélo']];
     const PG_TYPES = () => RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0]));
     const PG_KIND = [['', 'Au choix']].concat(RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0])).map(t => [t[0], t[2]]));
@@ -8079,9 +8079,9 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function pgStep(n) { const P = planPrefs(); P.pgStep = Math.max(1, Math.min(6, n)); if (P.pgStep === 1 && P.pgDayI == null) P.pgDayI = -1; pgTouch(); saveAppData(); renderPlanGen(); pgScrollTop(); }
     function pgDayGo(i) { const P = planPrefs(); P.pgStep = 1; P.pgDayI = i; saveAppData(); renderPlanGen(); pgScrollTop(); }
     function pgNext(dir) {
-      const P = planPrefs(), st = P.pgStep || 1, n = planDays().length, di = P.pgDayI == null ? -1 : P.pgDayI;
-      if (st === 1) { if (dir > 0 && !n) { showToast('Choisis au moins un jour'); return; } const i = di + dir; if (i >= -1 && i < n) { pgDayGo(i); return; } }
-      if (st === 2 && dir < 0) { P.pgStep = 1; P.pgDayI = n - 1; saveAppData(); renderPlanGen(); pgScrollTop(); return; }
+      const P = planPrefs(), st = P.pgStep || 1, di = P.pgDayI == null ? -1 : P.pgDayI;
+      if (st === 1) { const i = di + dir; if (i >= -1 && i <= 6) { pgDayGo(i); return; } if (dir > 0 && !planDays().length) { showToast('Choisis au moins un jour d\'activité'); return; } }
+      if (st === 2 && dir < 0) { P.pgStep = 1; P.pgDayI = 6; saveAppData(); renderPlanGen(); pgScrollTop(); return; }
       pgStep(st + dir);
     }
     function planFuture() { const t = todayISO(); return (appData.sessions || []).filter(x => !isSessionDone(x) && x.dateISO && x.dateISO > t); }
@@ -8127,7 +8127,8 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
     function renderPlanGen() {
       const box = document.getElementById('planGenForm'); if (!box) return;
       const P = planPrefs(), sel = planDays(), fut = planFuture(), T = appData.planTalk || {};
-      if (P.pgV !== 2) { if ((P.pgStep || 1) >= 2) P.pgStep = Math.max(1, P.pgStep - 1); P.pgV = 2; P.pgDayI = -1; }
+      if (P.pgV !== 2 && P.pgV !== 3) { if ((P.pgStep || 1) >= 2) P.pgStep = Math.max(1, P.pgStep - 1); }
+      if (P.pgV !== 3) { P.pgV = 3; P.pgDayI = -1; }
       let st = P.pgStep || 1; if (st > 6) st = P.pgStep = 6;
       const RC = planRecoD(), recoKinds = RC && Array.isArray(RC.types) ? RC.types : [];
       const chip = (on, fn, l, reco) => `<button type="button" class="pg-ch${on ? ' on' : ''}${reco ? ' reco' : ''}" onclick="${fn}">${l}</button>`;
@@ -8143,22 +8144,26 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       }
       const recoBox = RC ? `<div class="pg-reco"><b style="color:#facc15">🧠 Le conseil du coach</b><span>${plEsc(RC.resume || '')}</span>${(RC.conseils || []).slice(0, 3).map(c => `<span>• ${plEsc(c)}</span>`).join('')}<span style="font-size:11.5px;color:#fde68a">★ Les choix encadrés en jaune sont ceux qu'il te conseille.</span></div>` : '';
       let body = '';
-      const di = P.pgDayI == null ? -1 : Math.min(P.pgDayI, sel.length - 1);
+      const di = P.pgDayI == null ? -1 : Math.max(-1, Math.min(6, P.pgDayI));
       if (st === 1 && di < 0) {
         const runN = sel.filter(i => pgDay(i).a === 'run').length, few = runN < ({ debutant: 2, intermediaire: 3, confirme: 4, elite: 5 }[tier] || 3);
-        const rows = PG_J.map((j, i) => { const on = sel.includes(i), a = on ? pgDay(i).a : 'off';
-          return `<div style="display:flex;align-items:center;gap:6px"><b style="width:74px;flex:none;font-size:13px;color:${on ? '#f1f5f9' : '#94a3b8'}">${capFirst(j)}</b><div class="pg-chips" style="flex:1;flex-wrap:nowrap">${[['off', 'Repos'], ['run', '🏃'], ['renfo', '💪'], ['velo', '🚴']].map(([k, l]) => `<button type="button" class="pg-ch${a === k ? ' on' : ''}" style="flex:1;padding:0 4px" onclick="pgAct(${i},'${k}')">${l}</button>`).join('')}</div></div>`; }).join('');
-        body = `${recoBox}${fut.length ? sec(`Mon plan actuel : ${fut.length} séance${fut.length > 1 ? 's' : ''} ${planRangeTxt(fut)}`, `<div class="pg-g" style="grid-template-columns:1fr 1fr">${card((P.genMode || 'replace') === 'replace', "pgP('genMode','replace')", '🔄 Nouveau plan', 'remplace les séances à venir · comparaison des 2 plans')}${card(P.genMode === 'add', "pgP('genMode','add')", '➕ Compléter', `ajoute des séances, ${tier === 'elite' ? '2 le même jour possibles (Élite)' : 'jamais le même jour qu\'une séance prévue'}`)}</div>`) : ''}
-          ${sec('Mes jours d\'activité', `<span style="font-size:12px;color:#94a3b8">🏃 course · 💪 renfo · 🚴 vélo${RC && RC.jours_course ? ` · <span style="color:#fde68a">★ conseillé : ${RC.jours_course} course${+RC.renfo ? ` + ${RC.renfo} renfo` : ''} par semaine</span>` : ''}</span><div style="display:flex;flex-direction:column;gap:6px">${rows}</div>${few && runN ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">💡 ${runN} séance${runN > 1 ? 's' : ''} de course par semaine : le coach te dira quoi ajouter pour augmenter tes chances.</span>` : ''}${sel.length ? `<span style="font-size:12px;color:#c4b5fd">Ensuite, règle chaque jour avec les onglets en haut (${sel.map(i => capFirst(PG_J[i]).slice(0, 3)).join(', ')}).</span>` : ''}`)}`;
+        const types = PG_TYPES().map(([k, ic, l, sub, d, ex]) => `<div style="padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid ${recoKinds.includes(k) ? '#facc15' : '#334155'};display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:800;color:#f1f5f9">${ic} ${l}${recoKinds.includes(k) ? ' <span style="font-size:10.5px;color:#facc15">★ conseillé</span>' : ''}</span><span style="font-size:12px;color:#cbd5e1;line-height:1.35">${d}</span><span style="font-size:11.5px;color:#c4b5fd;font-weight:700">ex. ${ex} · profil : ${PG_KPROF[k] || 'au choix'}</span></div>`).join('');
+        body = `${fut.length ? sec(`Mon plan actuel : ${fut.length} séance${fut.length > 1 ? 's' : ''} ${planRangeTxt(fut)}`, `<div class="pg-g" style="grid-template-columns:1fr 1fr">${card((P.genMode || 'replace') === 'replace', "pgP('genMode','replace')", '🔄 Nouveau plan', 'remplace les séances à venir · comparaison des 2 plans')}${card(P.genMode === 'add', "pgP('genMode','add')", '➕ Compléter', `ajoute des séances, ${tier === 'elite' ? '2 le même jour possibles (Élite)' : 'jamais le même jour qu\'une séance prévue'}`)}</div>`) : ''}
+          ${recoBox}${RC && RC.jours_course ? `<span style="font-size:12.5px;color:#fde68a">★ Conseillé : ${RC.jours_course} séance${RC.jours_course > 1 ? 's' : ''} de course${+RC.renfo ? ` + ${RC.renfo} renfo` : ''} par semaine${sel.length ? ` · toi : ${runN} course${sel.length - runN ? ` + ${sel.length - runN} autre${sel.length - runN > 1 ? 's' : ''}` : ''}` : ''}.</span>` : ''}
+          ${few && runN ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">💡 ${runN} séance${runN > 1 ? 's' : ''} de course par semaine : le coach te dira quoi ajouter pour augmenter tes chances.</span>` : ''}
+          ${sec('Les types de séance', `<span style="font-size:12px;color:#94a3b8">Règle ensuite chaque jour avec les onglets L M M J V S D en haut.</span>${types}`)}`;
       } else if (st === 1) {
-        const i = sel[di], D = pgDay(i), run = D.a === 'run';
-        body = `<div class="pg-day" style="border:none;padding:0;background:none"><b style="font-size:18px">${capFirst(PG_J[i])} <span style="font-size:12px;color:#94a3b8;font-weight:700">${D.a === 'run' ? '🏃 course' : D.a === 'renfo' ? '💪 renfo' : '🚴 vélo'}</span></b>
-            ${run ? `<span style="font-size:11px;font-weight:700;color:#94a3b8">Où</span><div class="pg-chips">${PG_WHERE.map(([k, l]) => chip(D.w === k, `pgSet(${i},'w','${k}')`, l)).join('')}</div>
-              <span style="font-size:11px;font-weight:700;color:#94a3b8">Profil</span><div class="pg-chips">${PG_PROF.map(([k, l]) => chip((D.p || '') === k, `pgSet(${i},'p','${k}')`, l)).join('')}</div>
-              <span style="font-size:11px;font-weight:700;color:#94a3b8">${D.alt ? 'Semaine A' : 'Type de séance'}</span>${pgTypeCards(i, 'k', D.k, recoKinds)}
-              <div class="pg-chips">${chip(!!D.alt, `pgSet(${i},'alt',${!D.alt})`, '🔁 Alterner 1 semaine sur 2')}</div>
-              ${D.alt ? `<span style="font-size:11px;font-weight:700;color:#94a3b8">Semaine B</span>${pgTypeCards(i, 'k2', D.k2, recoKinds)}` : ''}` : ''}
-            <span style="font-size:11px;font-weight:700;color:#94a3b8">Durée max</span><div class="pg-chips">${(D.a === 'renfo' ? PG_DUR_RENFO : PG_DUR).map(([k, l]) => chip((+D.d || 0) === k, `pgSet(${i},'d',${k})`, l)).join('')}</div></div>`;
+        const i = di, on = sel.includes(i), D = pgDay(i), a = on ? D.a : 'off', run = on && a === 'run';
+        const lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">${t}</span>`;
+        const kc = (key, cur) => `<div class="pg-g" style="grid-template-columns:repeat(3,1fr)">${[['', '🧠', 'Au choix']].concat(PG_TYPES().map(t => [t[0], t[1], t[2]])).map(([k, ic, l]) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${recoKinds.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="min-height:58px;font-size:12.5px;padding:6px 4px"><span style="font-size:18px">${ic}</span>${l}</button>`).join('')}</div>`;
+        body = `<div class="pg-sec"><b style="font-size:18px;color:#f1f5f9">${capFirst(PG_J[i])}</b>
+          ${lab('Activité')}<div class="pg-g" style="grid-template-columns:repeat(4,1fr)">${[['off', '😴', 'Repos'], ['run', '🏃', 'Course'], ['renfo', '💪', 'Renfo'], ['velo', '🚴', 'Vélo']].map(([k, ic, l]) => `<button type="button" class="pg-c${a === k ? ' on' : ''}" onclick="pgAct(${i},'${k}')" style="min-height:54px;font-size:12.5px"><span style="font-size:18px">${ic}</span>${l}</button>`).join('')}</div>
+          ${run ? `${lab('Où')}<div class="pg-chips">${PG_WHERE.map(([k, l]) => chip(D.w === k, `pgSet(${i},'w','${k}')`, l)).join('')}</div>
+            ${lab('Profil')}<div class="pg-chips">${PG_PROF.map(([k, l]) => chip((D.p || '') === k, `pgSet(${i},'p','${k}')`, l)).join('')}</div>
+            ${lab('Alternance')}<div class="pg-chips">${chip(!D.alt, `pgSet(${i},'alt',false)`, 'Même séance chaque semaine')}${chip(!!D.alt, `pgSet(${i},'alt',true)`, '🔁 Semaines A / B')}</div>` : ''}
+          ${on ? `${lab('Durée max')}<div class="pg-chips">${(a === 'renfo' ? PG_DUR_RENFO : PG_DUR).map(([k, l]) => chip((+D.d || 0) === k, `pgSet(${i},'d',${k})`, l)).join('')}</div>` : ''}
+          ${run ? `${lab(D.alt ? 'Séance semaine A' : 'Séance')}${kc('k', D.k)}${D.alt ? `${lab('Séance semaine B')}${kc('k2', D.k2)}` : ''}` : ''}
+          ${!on ? '<span style="font-size:13px;color:#94a3b8">Jour de repos. Choisis une activité pour ce jour si tu veux t\'entraîner.</span>' : ''}</div>`;
       } else if (st === 2) {
         body = `${sec('Organisation des semaines', `<div class="pg-g" style="grid-template-columns:1fr 1fr">${PG_TYPO.map(([k, l, sub]) => card((P.typo || '') === k, `pgP('typo','${k}')`, l, sub, RC && RC.organisation === k)).join('')}</div>`)}
           ${sec('Style du plan', '<div id="planStyleChips" class="grid grid-cols-2 gap-2"></div>')}
@@ -8187,11 +8192,11 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
         const ok = T.agreed && !T.dirty;
         body = sec('Prêt à dérouler le plan', `<span style="font-size:13px;color:${ok ? '#86efac' : '#fcd34d'};line-height:1.4">${ok ? '✅ Le coach va construire tout le plan en suivant ce que vous avez validé ensemble.' : T.msgs && T.msgs.length ? '⚠️ Tu n\'as pas encore validé l\'avis du coach (ou tu as changé des réglages depuis). Tu peux générer quand même ou revenir à l\'étape Avis.' : '💡 Conseil : demande d\'abord l\'avis du coach (étape Avis) pour vous mettre d\'accord avant de tout générer.'}</span>${planSetupSummaryHtml()}${planFuture().length && (P.genMode || 'replace') === 'replace' ? `<span style="font-size:12.5px;color:#cbd5e1;line-height:1.4">🔄 Ton plan actuel (${planFuture().length} séances à venir) sera remplacé, pas cumulé. Avant de valider, l'app te proposera de le <b>sauvegarder</b> dans un fichier.</span>` : ''}`);
       }
-      const n = sel.length;
-      const nextL = st === 1 ? (di < n - 1 ? `${capFirst(PG_J[sel[di + 1]])} →` : 'Structure →') : st === 4 ? 'Avis du coach →' : st === 5 ? 'Plan complet →' : 'Suivant →';
-      const prevL = st === 1 && di >= 0 ? `← ${di > 0 ? capFirst(PG_J[sel[di - 1]]) : 'Semaine'}` : st === 2 && n ? `← ${capFirst(PG_J[sel[n - 1]])}` : '← Précédent';
+      const nextL = st === 1 ? (di < 6 ? `${capFirst(PG_J[di + 1])} →` : 'Structure →') : st === 4 ? 'Avis du coach →' : st === 5 ? 'Plan complet →' : 'Suivant →';
+      const prevL = st === 1 && di >= 0 ? `← ${di > 0 ? capFirst(PG_J[di - 1]) : 'Paramètres'}` : st === 2 ? '← Dimanche' : '← Précédent';
       const nav = `<div class="pg-nav">${st > 1 || di >= 0 ? `<button type="button" onclick="pgNext(-1)">${prevL}</button>` : '<span></span>'}${st < 6 ? `<button type="button" class="go" onclick="pgNext(1)">${nextL}</button>` : '<span></span>'}</div>`;
-      const days = st === 1 && n ? `<div class="pg-days"><button type="button" class="${di < 0 ? 'on' : ''}" onclick="pgDayGo(-1)">📅 Semaine</button>${sel.map((x, q) => `<button type="button" class="${q === di ? 'on' : ''}" onclick="pgDayGo(${q})">${capFirst(PG_J[x]).slice(0, 3)}</button>`).join('')}</div>` : '';
+      const AIC = { run: '🏃', renfo: '💪', velo: '🚴' };
+      const days = st === 1 ? `<div class="pg-days"><button type="button" class="${di < 0 ? 'on' : ''}" style="flex:2.6;font-size:11.5px;padding:0 2px;white-space:nowrap" onclick="pgDayGo(-1)">Paramètres</button>${PG_J.map((j, q) => `<button type="button" class="${q === di ? 'on' : ''}" onclick="pgDayGo(${q})" style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;gap:1px;padding:0">${j[0].toUpperCase()}<span style="font-size:10px;height:11px">${sel.includes(q) ? AIC[pgDay(q).a] || '' : ''}</span></button>`).join('')}</div>` : '';
       box.innerHTML = `<div class="pg-head"><div class="pg-steps">${PG_STEPS.map(([l, ic], i) => `<button type="button" class="pg-st${st === i + 1 ? ' on' : i + 1 < st ? ' done' : ''}" onclick="pgStep(${i + 1})"><b>${ic}</b>${l}</button>`).join('')}</div>${days}</div>${body}${nav}`;
       try { const sb = box.closest('.pm-panel').querySelector(':scope > .pm-subtabs'); if (sb) box.querySelector('.pg-head').style.top = sb.offsetHeight + 'px'; } catch (e) { }
       if (st === 2) { try { renderPlanStyleChips(); } catch (e) { } try { renderPlanFocus(); } catch (e) { }
