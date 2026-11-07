@@ -8114,7 +8114,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
 Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${gi} (dans ${weeks} semaines)${g.hilly ? ', parcours vallonné' : ''}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, niveau ${runnerTier()}, ${vtxt}, temps possibles aujourd'hui : ${runnerLevelsText()}. Km des 4 dernières semaines : ${wk}.
 ${backgroundText()}
-Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif réaliste ou non, et l'enjeu principal","jours_course":4,"renfo":1,"organisation":"3-1|2-1|blocs|lineaire|polarise","style":"ambitieux|progressif","test":"vma|course|les2|aucun","test_freq":4,"types":["les 3 ou 4 types de séance clés parmi : fc (fractionné court), fl (fractionné long), seuil, allure (allure course), endu (endurance), longue (sortie longue), cotes, recup"],"conseils":["2 ou 3 conseils très courts"]}`;
+Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif réaliste ou non, et l'enjeu principal","jours_course":4,"renfo":1,"organisation":"3-1|2-1|blocs|lineaire|polarise","style":"ambitieux|progressif","test":"vma|course|les2|aucun","test_freq":4,"test_semaine":"decharge|fin_charge|debut (où placer le test dans un cycle charge/décharge)","types":["les 3 ou 4 types de séance clés parmi : fc (fractionné court), fl (fractionné long), seuil, allure (allure course), endu (endurance), longue (sortie longue), cotes, recup"],"conseils":["2 ou 3 conseils très courts"]}`;
       try {
         const txt = await Promise.race([geminiText([{ text: prompt }], { tier: 'lite', json: true }), new Promise((_, rj) => setTimeout(() => rj(new Error('délai dépassé')), 25000))]);
         const d = parseJsonLoose(txt); appData.planReco = { sig, d: d && typeof d === 'object' ? d : null, at: Date.now() };
@@ -8124,6 +8124,32 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
     function pgTypeCards(i, key, cur, reco) {
       const c = (k, ic, l, d, ex) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${reco.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="align-items:flex-start;text-align:left;padding:10px 12px;gap:3px;min-height:0"><span style="font-size:15px">${ic} ${l}</span>${d ? `<small style="font-size:12px;line-height:1.35">${d}</small>` : ''}${ex || PG_KPROF[k] ? `<small style="font-size:11.5px;color:#c4b5fd;font-weight:700">${ex ? `ex. ${ex}` : ''}${ex && PG_KPROF[k] ? ' · ' : ''}${PG_KPROF[k] ? `pente : ${PG_KPROF[k]}` : ''}</small>` : ''}</button>`;
       return `<div class="pg-g" style="grid-template-columns:1fr">${c('', '🧠', 'Au choix', 'Le coach choisit la séance la plus utile ce jour-là.', '')}${PG_TYPES().map(([k, ic, l, sub, d, ex]) => c(k, ic, l, d, ex)).join('')}</div>`;
+    }
+    const PG_TWEEK = [['', '🧠 Le coach choisit', ''], ['decharge', 'Semaine de décharge', 'frais, sans fatigue accumulée'], ['fin_charge', 'Fin de charge', 'la semaine juste avant la décharge'], ['debut', 'Début de cycle', 'juste après la décharge']];
+    function pgCycleLen() { const t = planPrefs().typo; return t === '3-1' ? 4 : t === '2-1' ? 3 : 0; }
+    // Carte des semaines : position dans le cycle charge/décharge calée sur la date du prochain test
+    function planCycleMap() {
+      const P = planPrefs(), L = pgCycleLen(), g = appData.goal || {}, gi = guessISOFromDDMM(g.date || '');
+      const t1 = new Date(); t1.setDate(t1.getDate() + 1); const w0 = parseISODateLocal(weekStartISO(toISODateLocal(t1)));
+      const endISO = gi || (() => { const d = new Date(w0); d.setDate(d.getDate() + 7 * 16); return toISODateLocal(d); })();
+      const nW = Math.max(1, Math.min(40, Math.floor((parseISODateLocal(weekStartISO(endISO)) - w0) / (7 * 864e5)) + 1));
+      const tn = P.testType && P.testNext && P.testNext > todayISO() ? P.testNext : '', tw = tn ? Math.floor((parseISODateLocal(weekStartISO(tn)) - w0) / (7 * 864e5)) + 1 : 0;
+      const pos = { decharge: L, fin_charge: L - 1, debut: 1 }[P.testWeek || ''] || 0;
+      const first = L && tw && pos ? (((pos - tw) % L) + L) % L + 1 : 1;
+      const fq = +P.testFreq || 0, out = [];
+      for (let w = 1; w <= nW; w++) {
+        const st = new Date(w0); st.setDate(st.getDate() + 7 * (w - 1));
+        const c = L ? ((first - 1 + w - 1) % L) + 1 : 0;
+        const test = !!tw && (w === tw || (fq ? w > tw && (w - tw) % fq === 0 : L && pos && w > tw && c === pos));
+        out.push({ w, iso: toISODateLocal(st < t1 ? t1 : st), c, dech: L && c === L, test, last: gi && w === nW });
+      }
+      return { L, first, tw, tn, pos, list: out };
+    }
+    function planCycleText() {
+      const P = planPrefs(), M = planCycleMap(); if (!M.tn && !M.L) return '';
+      const f = iso => fmtDateShort(iso);
+      const lines = M.list.map(x => `semaine ${x.w} (${x.w === 1 ? 'à partir du' : 'lundi'} ${f(x.iso)})${M.L ? ` = S${x.c} du cycle (${x.dech ? 'DÉCHARGE' : 'charge'})` : ''}${x.test ? (x.w === M.tw ? ` + TEST le ${f(M.tn)}` : ' + TEST') : ''}${x.last ? ' + COURSE OBJECTIF' : ''}`);
+      return `CALENDRIER DES CYCLES ET DES TESTS (calculé par l'app, à respecter) : le plan est construit autour des tests${M.tn ? `, premier test le ${f(M.tn)}` : ''}${M.L && M.pos ? ` placé en ${{ decharge: 'semaine de décharge', fin_charge: 'fin de charge (semaine avant la décharge)', debut: 'début de cycle (juste après la décharge)' }[P.testWeek]}` : ''}${M.L && M.first > 1 ? ` ; le 1er cycle commence donc en S${M.first} (pas en S1)` : ''}.\n${lines.join('\n')}`;
     }
     function planRecoD() { const R = appData.planReco; return R && R.d && R.sig === planRecoSig() ? R.d : null; }
     function renderPlanGen() {
@@ -8181,6 +8207,8 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
             <div class="pg-chips">${[['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']].map(([k, l]) => chip((TC.w || 'tapis') === k, `pgTC('w','${k}')`, l)).join('')}</div>
             <input type="text" class="pg-in" value="${plEsc(TC.txt || '')}" placeholder="Précision (optionnel) : ex. à fond, même parcours à chaque fois" oninput="pgTC('txt',this.value)">`) : ''}
           ${sec('Fréquence des tests', `<div class="pg-chips">${[[0, 'Le coach propose'], [3, 'Toutes les 3 sem.'], [4, 'Toutes les 4 sem.'], [6, 'Toutes les 6 sem.'], [8, 'Toutes les 8 sem.']].map(([k, l]) => chip((+P.testFreq || 0) === k, `pgP('testFreq',${k})`, l, RC && +RC.test_freq === k && k)).join('')}</div>`)}
+          ${P.testType ? sec('Semaine du test dans le cycle', pgCycleLen() ? `<div class="pg-g" style="grid-template-columns:1fr 1fr">${PG_TWEEK.map(([k, l, sub]) => card((P.testWeek || '') === k, `pgP('testWeek','${k}')`, l, sub, RC && RC.test_semaine === k)).join('')}</div>` : `<span style="font-size:12px;color:#94a3b8">Choisis une organisation 3 + 1 ou 2 + 1 (étape Structure) pour placer le test dans le cycle charge / décharge. Sinon, le coach le place au mieux.</span>`) : ''}
+          ${P.testType ? sec('Date du prochain test', `<input type="date" class="pg-in" min="${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}" value="${P.testNext || ''}" onchange="pgP('testNext',this.value)"><span style="font-size:12px;color:#94a3b8;line-height:1.35">Le plan est construit à partir de cette date : les cycles sont calés pour que le test tombe dans la semaine choisie.</span>${P.testNext ? planCycleHtml() : ''}`) : ''}
           ${sec('Quel jour', `<div class="pg-chips">${chip(P.testDay === '' || P.testDay == null, `pgP('testDay','')`, 'Au choix du coach')}${runD.map(i => chip(String(P.testDay) === String(i), `pgP('testDay','${i}')`, capFirst(PG_J[i]))).join('')}</div>`)}`;
       } else if (st === 4) {
         const A = P.absences || [], f = iso => fmtDateShort(iso), DR = P.absDraft || {};
@@ -8207,6 +8235,10 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       if (st === 2) { try { renderPlanStyleChips(); } catch (e) { } try { renderPlanFocus(); } catch (e) { }
         if (RC && RC.style) { const b = document.querySelector(`#planStyleChips [onclick="setPlanStyle('${RC.style}')"]`); if (b && !b.querySelector('.pg-star')) b.insertAdjacentHTML('beforeend', '<span class="pg-star" style="display:block;font-size:9.5px;font-weight:800;color:#facc15">★ recommandé</span>'); } }
     }
+    function planCycleHtml() {
+      const M = planCycleMap(), f = iso => fmtDateShort(iso);
+      return `<div style="display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#cbd5e1">${M.L && M.first > 1 ? `<span style="color:#c4b5fd;font-weight:700">Le 1er cycle commence en S${M.first}.</span>` : ''}${M.list.slice(0, 10).map(x => `<span style="${x.test ? 'color:#fde68a;font-weight:800' : ''}">Sem. ${x.w} · ${f(x.iso)}${M.L ? ` · S${x.c} ${x.dech ? '🔋 décharge' : 'charge'}` : ''}${x.test ? ` · ⏱️ test${x.w === M.tw ? ` le ${f(M.tn)}` : ''}` : ''}</span>`).join('')}${M.list.length > 10 ? '<span style="color:#64748b">…</span>' : ''}</div>`;
+    }
     function planSetupSummaryHtml() {
       const L = planSetupText().split('\n').filter(Boolean);
       return `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#cbd5e1;line-height:1.4">${L.map(x => `<span>• ${plEsc(x)}</span>`).join('')}</div>`;
@@ -8227,6 +8259,9 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       const TC = P.testCustom || {}, tcTxt = `test sur mesure : ${TC.km ? `${String(TC.km).replace('.', ',')} km à fond` : 'distance à préciser'}${+TC.pente ? ` à ${String(TC.pente).replace('.', ',')} % de pente` : ' sur le plat'}, ${(TC.w || 'tapis') === 'tapis' ? 'sur tapis' : 'en extérieur'}${TC.txt ? ` (${TC.txt})` : ''}, à reproduire à l'identique à chaque fois pour comparer`;
       if (P.testType) out.push(`Tests intermédiaires : ${{ vma: 'test VMA', course: 'test sur la distance objectif (ou une partie, à fond)', les2: 'test VMA et test course en alternance', custom: tcTxt }[P.testType]}, ${+P.testFreq ? `toutes les ${P.testFreq} semaines` : 'fréquence proposée par le coach'}, ${P.testDay !== '' && P.testDay != null ? `le ${PG_J[+P.testDay]}` : 'jour au choix du coach'}`);
       else out.push('Tests intermédiaires : aucun');
+      if (P.testType && P.testWeek) out.push(`Semaine du test : ${{ decharge: 'en semaine de décharge', fin_charge: 'en fin de charge (semaine avant la décharge)', debut: 'en début de cycle (juste après la décharge)' }[P.testWeek]}`);
+      if (P.testType && P.testNext) out.push(`Prochain test : le ${fmtDateShort(P.testNext)}`);
+      { const c = planCycleText(); if (c) out.push(c); }
       const A = P.absences || []; if (A.length) out.push(`Indisponibilités : ${A.map(x => `${x.l.toLowerCase()} ${x.from === x.to ? `le ${f(x.from)}` : `du ${f(x.from)} au ${f(x.to)}`} (${x.m === 'light' ? 'course possible en extérieur, pas de tapis, pas de séance dure' : 'AUCUNE séance'})`).join(' ; ')}`);
       return out.join('\n');
     }
