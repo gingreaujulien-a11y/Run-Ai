@@ -125,7 +125,7 @@
     .pm-hrrow > span small { font-size: 11px; font-weight: 600; color: #94a3b8; }
     .pm-hrin { width: 96px !important; height: 44px !important; flex: none; }
     .pm-hrro { display: flex; align-items: center; justify-content: center; color: #94a3b8; background: #0b1220 !important; }
-    .pm-tabs6 .pm-tab { font-size: 12.5px !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .pm-tabs6 .pm-tab { font-size: 13px !important; padding-left: 0 !important; padding-right: 0 !important; text-align: center; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
     .pm-autosave { flex: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); text-align: center; font-size: 12px; font-weight: 700; color: #64748b; transition: color .3s; }
     .pm-autosave.on { color: #34d399; }
     .val-t2 { display: none; }
@@ -896,7 +896,7 @@
         <h2 class="pm-title">Mon profil</h2>
         <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
-      <div class="pm-tabs pm-tabs6" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+      <div class="pm-tabs pm-tabs6" style="grid-template-columns:repeat(5,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
         <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
         <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')">Séance</button>
@@ -6651,15 +6651,18 @@ Donne 2 ou 3 axes de travail.`;
       renderProgressInner();
       const box = document.getElementById('progressPanel'), st = document.getElementById('statsPanel');
       if (st && box) {
-        const perBar = `<div class="pm-card" data-sub="Périodique" style="padding:4px"><div class="hsub" style="margin:0">${[['m', '📅 Mois'], ['w', '🗓️ Semaine']].map(([k, l]) => `<button type="button" class="${statPer === k ? 'on' : ''}" onclick="statPer='${k}';renderProgress()">${l}</button>`).join('')}</div></div>`;
+        const bar = (sub, v, name, opts) => `<div class="pm-card" data-sub="${sub}" style="padding:4px"><div class="hsub" style="margin:0">${opts.map(([k, l]) => `<button type="button" class="${v === k ? 'on' : ''}" onclick="${name}='${k}';renderProgress()">${l}</button>`).join('')}</div></div>`;
         const cmp = `<div class="pm-card" data-sub="Progrès" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span><span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span><button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer mes séances</button></div>`;
-        st.innerHTML = perBar + (statPer === 'w' ? weekRecapHtml() : monthRecapHtml()) + feelLogCardHtml() + sleepCardHtml();
+        st.innerHTML = bar('Périodique', statPer, 'statPer', [['m', '📅 Mois'], ['w', '🗓️ Semaine']]) + (statPer === 'w' ? weekRecapHtml() : monthRecapHtml())
+          + bar('Forme', statForme, 'statForme', [['sens', '🙂 Sensations'], ['sleep', '😴 Sommeil']]) + (statForme === 'sleep' ? sleepCardHtml() : feelLogCardHtml())
+          + bar('Progrès', statProg, 'statProg', [['rec', '🏆 Records'], ['chr', '⏱️ Chronos'], ['cmp', '📈 Comparer']]);
         [...st.children].forEach(el => { const k = el.dataset.sub; if (k === 'Sensations' || k === 'Sommeil') el.dataset.sub = 'Forme'; });
         const kids = [...box.children], rec = kids.find(e => e.dataset.sub === 'Records'), km = kids.find(e => e.dataset.sub === 'Km / semaine'), others = kids.filter(e => e !== rec && e !== km);
         const chr = others.find(e => /Chronos/.test(e.textContent.slice(0, 80))), rest = others.filter(e => e !== chr);
-        if (km && statPer === 'w') { km.dataset.sub = 'Périodique'; st.insertBefore(km, st.children[2] ? st.children[2] : null); }
-        [rec, chr, ...rest].filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
-        st.insertAdjacentHTML('beforeend', cmp);
+        if (km && statPer === 'w') { km.dataset.sub = 'Périodique'; const fb = [...st.children].find(e => e.dataset.sub === 'Forme'); st.insertBefore(km, fb || null); }
+        const P = statProg === 'rec' ? [rec] : statProg === 'chr' ? [chr, ...rest] : [];
+        P.filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
+        if (statProg === 'cmp') st.insertAdjacentHTML('beforeend', cmp);
         applySubTabs(st);
       }
       try { renderLikes(); } catch (e) { }
@@ -8037,17 +8040,29 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const fo = focusText(P.focus, P.focusTxt);
       return (out.length ? `Préférences et contraintes du coureur : ${out.join(' ; ')}.` : '') + (lk ? `\n${lk}` : '') + (fo ? `\n${fo}` : '');
     }
+    // [clé, icône, nom, sous-titre, à quoi ça sert, exemple]
+    const RUN_TYPES = [['fc', '⚡', 'Fractionné court', '30 s à 1 min vite', 'Répétitions très rapides (95 à 100 % de ta VMA), récup aussi longue : développe ta VMA.', "10 × 1' vite / 1' trot"],
+      ['fl', '🔥', 'Fractionné long', '3 à 5 min soutenu', 'Répétitions longues à environ 90 % de VMA : tenir vite plus longtemps.', "5 × 3' / 2' trot"],
+      ['seuil', '🎯', 'Seuil', 'Allure tempo', 'Blocs « confortablement difficiles » (≈ 85 % VMA) : repousse le moment où ça brûle.', "3 × 8' / 2' trot"],
+      ['allure', '🏅', 'Allure course', 'Ton allure objectif', 'Blocs à l\'allure visée le jour J : l\'apprivoiser et la rendre facile.', "3 × 10' allure course / 2'"],
+      ['endu', '🌿', 'Endurance', 'Footing facile', 'Footing où tu peux parler (≈ 70 % FC max) : la base, 30 à 60 min.', "45' facile"],
+      ['longue', '🛣️', 'Sortie longue', 'Allure facile, aisance', 'Même allure que l\'endurance mais plus longue, 1 fois par semaine : apprendre à durer.', '1 h 30 facile'],
+      ['cotes', '⛰️', 'Côtes', 'Montées et récups', 'Montées courtes et dynamiques, retour en trottinant : force et puissance.', "8 × 1' en côte / retour trot"],
+      ['recup', '💤', 'Récupération', 'Très facile', 'Très lent et court, le lendemain d\'une séance dure : faire circuler sans fatiguer.', "30' très lent"],
+      ['vma', '🧪', 'Test VMA', '', '', ''], ['course', '🏁', 'Course', 'Compétition', '', '']];
     const PG_WHERE = [['', '↔ Au choix'], ['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']];
     const PG_ACT = [['run', '🏃 Course'], ['renfo', '💪 Renfo'], ['velo', '🚴 Vélo']];
-    const PG_KIND = [['', 'Au choix'], ['endu', 'Endurance'], ['vma', 'VMA courte'], ['fractionne', 'Fractionné long'], ['seuil', 'Seuil'], ['allure', 'Allure course'], ['cotes', 'Côtes'], ['longue', 'Sortie longue']];
-    const PG_KTXT = { endu: 'endurance', vma: 'VMA courte (fractions de 30 s à 2 min)', fractionne: 'fractionné long (fractions de 2 à 6 min)', seuil: 'seuil', allure: 'allure course (allure objectif)', cotes: 'côtes', longue: 'sortie longue' };
+    const PG_TYPES = () => RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0]));
+    const PG_KIND = [['', 'Au choix']].concat(RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0])).map(t => [t[0], t[2]]));
+    const PG_KOLD = { vma: 'fc', fractionne: 'fl' };
+    const PG_KTXT = { fc: 'fractionné court (répétitions de 30 s à 1 min 30 à 95-100 % VMA, ex. 10×1\')', fl: 'fractionné long (répétitions de 3 à 5 min à ≈ 90 % VMA, ex. 5×3\')', seuil: 'seuil (blocs à ≈ 85 % VMA, ex. 3×8\')', allure: 'allure course (blocs à l\'allure objectif, ex. 3×10\')', endu: 'endurance (footing facile 30 à 60 min)', longue: 'sortie longue (allure facile, la plus longue de la semaine)', cotes: 'côtes (montées courtes dynamiques)', recup: 'récupération (très lent et court)' };
     const PG_DUR = [[0, 'Sans limite'], [30, "30'"], [45, "45'"], [60, '1 h'], [75, '1 h 15'], [90, '1 h 30'], [120, '2 h'], [150, '2 h 30']];
     const PG_DUR_RENFO = [[15, "15'"], [30, "30'"], [45, "45'"], [60, '1 h']];
     const PG_J = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
     const PG_TYPO = [['', '🧠 Le coach choisit', 'la structure la plus adaptée à ton objectif et au temps restant'], ['3-1', '3 + 1', '3 semaines de charge qui montent, puis 1 semaine de décharge (le classique)'], ['2-1', '2 + 1', '2 semaines de charge, 1 de décharge : plus de récupération (débutant, reprise, +45 ans)'], ['blocs', 'Par blocs', 'foncier → VMA / seuil → spécifique allure course → affûtage'], ['lineaire', 'Progression continue', 'montée régulière sans décharge marquée (plans courts, moins de 8 semaines)'], ['polarise', 'Polarisé 80/20', '80 % très facile, 20 % très intense, peu de seuil']];
     const PG_TEST = [['', 'Aucun test', ''], ['vma', 'Test VMA', '6 min à fond ou palier'], ['course', 'Test course', 'la distance objectif ou une partie, à fond'], ['les2', 'VMA + course', 'en alternance'], ['custom', '🎯 Sur mesure', 'ex. 2,25 km à 5 %']];
     const PG_STEPS = [['Semaine', '📅'], ['Jours', '🗓️'], ['Structure', '🏗️'], ['Tests', '⏱️'], ['Absences', '🏖️'], ['Avis', '💬'], ['Plan', '🧠']];
-    function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { a: 'run', w: '', k: '', k2: '', alt: false, d: 0 }; const D = P.dayPrefs[i]; if (!D.a) D.a = 'run'; return D; }
+    function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { a: 'run', w: '', k: '', k2: '', alt: false, d: 0 }; const D = P.dayPrefs[i]; if (!D.a) D.a = 'run'; if (PG_KOLD[D.k]) D.k = PG_KOLD[D.k]; if (PG_KOLD[D.k2]) D.k2 = PG_KOLD[D.k2]; return D; }
     function pgTouch() { const P = planPrefs(); P.pgActive = true; }
     function pgSet(i, key, v) { const D = pgDay(i); D[key] = v; if (key === 'a' && v === 'renfo' && ![15, 30, 45, 60].includes(+D.d)) D.d = 45; pgTouch(); pgDirty(); saveAppData(); renderPlanGen(); }
     function pgP(key, v) { const P = planPrefs(); P[key] = P[key] === v && !['genMode', 'typo', 'testType', 'testFreq', 'testDay'].includes(key) ? '' : v; pgTouch(); if (key !== 'genMode') pgDirty(); saveAppData(); renderPlanGen(); }
@@ -8090,12 +8105,16 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
 Objectif : ${g.distanceKm} km en ${g.durationMin} min le ${gi} (dans ${weeks} semaines)${g.hilly ? ', parcours vallonné' : ''}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, niveau ${runnerTier()}, ${vtxt}, temps possibles aujourd'hui : ${runnerLevelsText()}. Km des 4 dernières semaines : ${wk}.
 ${backgroundText()}
-Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif réaliste ou non, et l'enjeu principal","jours_course":4,"renfo":1,"organisation":"3-1|2-1|blocs|lineaire|polarise","style":"ambitieux|progressif","test":"vma|course|les2|aucun","test_freq":4,"types":["les 3 ou 4 types de séance clés parmi : endu, vma, fractionne, seuil, allure, cotes, longue"],"conseils":["2 ou 3 conseils très courts"]}`;
+Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif réaliste ou non, et l'enjeu principal","jours_course":4,"renfo":1,"organisation":"3-1|2-1|blocs|lineaire|polarise","style":"ambitieux|progressif","test":"vma|course|les2|aucun","test_freq":4,"types":["les 3 ou 4 types de séance clés parmi : fc (fractionné court), fl (fractionné long), seuil, allure (allure course), endu (endurance), longue (sortie longue), cotes, recup"],"conseils":["2 ou 3 conseils très courts"]}`;
       try {
         const txt = await Promise.race([geminiText([{ text: prompt }], { tier: 'lite', json: true }), new Promise((_, rj) => setTimeout(() => rj(new Error('délai dépassé')), 25000))]);
         const d = parseJsonLoose(txt); appData.planReco = { sig, d: d && typeof d === 'object' ? d : null, at: Date.now() };
       } catch (e) { appData.planReco = { sig, d: null, at: Date.now(), err: String(e.message || e) }; }
       planRecoBusy = false; saveAppData(); renderPlanGen();
+    }
+    function pgTypeCards(i, key, cur, reco) {
+      const c = (k, ic, l, d, ex) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${reco.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="align-items:flex-start;text-align:left;padding:9px 10px;gap:3px;min-height:0"><span style="font-size:14px">${ic} ${l}</span>${d ? `<small style="font-size:11px;line-height:1.3">${d}</small>` : ''}${ex ? `<small style="font-size:11px;color:#c4b5fd;font-weight:700">ex. ${ex}</small>` : ''}</button>`;
+      return `<div class="pg-g" style="grid-template-columns:1fr 1fr">${c('', '🧠', 'Au choix', 'Le coach choisit la séance la plus utile ce jour-là.', '')}${PG_TYPES().map(([k, ic, l, sub, d, ex]) => c(k, ic, l, d, ex)).join('')}</div>`;
     }
     function planRecoD() { const R = appData.planReco; return R && R.d && R.sig === planRecoSig() ? R.d : null; }
     function renderPlanGen() {
@@ -8130,9 +8149,9 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
           body = `<div style="display:flex;gap:4px">${sel.map((x, q) => `<button type="button" onclick="planPrefs().pgDayI=${q};saveAppData();renderPlanGen()" style="flex:1;min-height:34px;border-radius:10px;border:1px solid ${q === di ? '#a78bfa' : '#334155'};background:${q === di ? 'rgba(167,139,250,.2)' : '#0b1220'};color:${q === di ? '#ede9fe' : '#94a3b8'};font-size:12px;font-weight:800">${capFirst(PG_J[x]).slice(0, 3)}</button>`).join('')}</div>
             <div class="pg-day"><b style="font-size:17px">${capFirst(PG_J[i])} <span style="font-size:12px;color:#94a3b8;font-weight:700">${di + 1}/${n} · ${D.a === 'run' ? '🏃 course' : D.a === 'renfo' ? '💪 renfo' : '🚴 vélo'}</span></b>
             ${run ? `<span style="font-size:11px;font-weight:700;color:#94a3b8">Où</span><div class="pg-chips">${PG_WHERE.map(([k, l]) => chip(D.w === k, `pgSet(${i},'w','${k}')`, l)).join('')}</div>
-              <span style="font-size:11px;font-weight:700;color:#94a3b8">${D.alt ? 'Semaine A' : 'Type de séance'}</span><div class="pg-chips">${PG_KIND.map(([x, l]) => chip(D.k === x, `pgSet(${i},'k','${x}')`, l, recoKinds.includes(x))).join('')}</div>
+              <span style="font-size:11px;font-weight:700;color:#94a3b8">${D.alt ? 'Semaine A' : 'Type de séance'}</span>${pgTypeCards(i, 'k', D.k, recoKinds)}
               <div class="pg-chips">${chip(!!D.alt, `pgSet(${i},'alt',${!D.alt})`, '🔁 Alterner 1 semaine sur 2')}</div>
-              ${D.alt ? `<span style="font-size:11px;font-weight:700;color:#94a3b8">Semaine B</span><div class="pg-chips">${PG_KIND.map(([x, l]) => chip(D.k2 === x, `pgSet(${i},'k2','${x}')`, l, recoKinds.includes(x))).join('')}</div>` : ''}` : ''}
+              ${D.alt ? `<span style="font-size:11px;font-weight:700;color:#94a3b8">Semaine B</span>${pgTypeCards(i, 'k2', D.k2, recoKinds)}` : ''}` : ''}
             <span style="font-size:11px;font-weight:700;color:#94a3b8">Durée max</span><div class="pg-chips">${(D.a === 'renfo' ? PG_DUR_RENFO : PG_DUR).map(([k, l]) => chip((+D.d || 0) === k, `pgSet(${i},'d',${k})`, l)).join('')}</div></div>`; void kinds; }
       } else if (st === 3) {
         body = `${sec('Organisation des semaines', `<div class="pg-g" style="grid-template-columns:1fr 1fr">${PG_TYPO.map(([k, l, sub]) => card((P.typo || '') === k, `pgP('typo','${k}')`, l, sub, RC && RC.organisation === k)).join('')}</div>`)}
@@ -13887,7 +13906,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         <span style="font-size:13px;font-weight:700;color:#cbd5e1">Ressenti : 😌 ${S.feel.green} · 😊 ${S.feel.yellow} · 😤 ${S.feel.orange} · 😫 ${S.feel.red}</span>
         <span style="font-size:11px;color:#64748b">Flèches : comparé au mois précédent${cut ? ` à la même date (1er → ${cut})` : ''}.</span>` : '<span class="text-[13px] text-slate-400">Aucune séance ce mois-ci.</span>'}</div>`;
     }
-    let recapWeekOff = 0, statPer = 'm';
+    let recapWeekOff = 0, statPer = 'm', statForme = 'sens', statProg = 'rec';
     function weekRecapHtml() {
       const d0 = parseISODateLocal(weekStartISO(todayISO())); d0.setDate(d0.getDate() + 7 * recapWeekOff); const dIdx = iso => (parseISODateLocal(iso).getDay() + 6) % 7 + 1;
       const ym = iso => iso ? weekStartISO(iso) : '', key = toISODateLocal(d0);
@@ -17620,7 +17639,6 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
       velo: ['Au choix du coach', 'Récupération', 'Endurance', 'Intervalles', 'Côtes'],
       muscu: ['Au choix du coach', 'Gainage', 'Jambes', 'Haut du corps', 'Corps entier', 'Mobilité']
     };
-    const RUN_TYPES = [['fc', '⚡', 'Fractionné court', '30 s à 1 min vite'], ['fl', '🔥', 'Fractionné long', '3 à 5 min soutenu'], ['seuil', '🎯', 'Seuil', 'Allure tempo'], ['longue', '🛣️', 'Sortie longue', 'Allure facile, aisance'], ['cotes', '⛰️', 'Côtes', 'Montées et récups'], ['recup', '💤', 'Récupération', 'Très facile'], ['vma', '🧪', 'Test VMA', ''], ['course', '🏁', 'Course', 'Compétition']];
     function wheelHtml(id, vals, cur, fmt) {
       return `<div class="wheel-box"><div class="wheel" id="${id}" onscroll="wheelScroll('${id}')">${vals.map(v => `<div data-v="${v}" class="${v === cur ? 'sel' : ''}" onclick="this.parentNode.scrollTo({top:${vals.indexOf(v)}*44,behavior:'smooth'})">${fmt(v)}</div>`).join('')}</div></div>`;
     }
@@ -17849,6 +17867,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         fl: { repet: 5, segs: [{ v: r5(vma * 0.9), d: 3 }, { v: rec, d: 2 }] },
         seuil: { repet: 3, segs: [{ v: r5(vma * 0.85), d: 8 }, { v: rec, d: 2 }] },
         endu: { repet: 1, segs: [{ v: ef, d: 40 }] },
+        allure: (() => { const g = appData.goal || {}; const km = parseFloat(g.distanceKm), mn = parseFloat(g.durationMin); const v = km && mn ? Math.round(km / mn * 600) / 10 : r5(vma * 0.8); return { repet: 3, segs: [{ v, d: 10 }, { v: rec, d: 2 }] }; })(),
         longue: { repet: 1, chauffe: 0, recup: 0, segs: [{ v: ef, d: 60 }] },
         cotes: { repet: 8, pente: 5, segs: [{ v: r5(ef + 0.5), d: 1 }, { v: rec, d: 1.5 }] },
         recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] },
@@ -17965,7 +17984,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         repet: f.repet, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(),
         pyramide: f.segs.filter(sg => sg.v > 0 && sg.d > 0).map(sg => ({ speed: sg.v, duration: round2(sg.d), unit: 'min' })),
         notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : act.runType === 'vma' ? (act.type === 'tapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)') : ''),
-        kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test' }[act.runType] || undefined,
+        kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', allure: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test' }[act.runType] || undefined,
         wcIn: act.runType === 'longue' || act.runType === 'endu' || act.runType === 'recup' ? true : undefined,
         route: act.type === 'exterieur' && act.route ? act.route : undefined,
         test: act.runType === 'vma' ? { proto: act.type === 'tapis' ? 'vmaTapis' : 'vma6', start: (f.segs[0] || {}).v } : undefined
