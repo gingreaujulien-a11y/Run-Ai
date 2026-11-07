@@ -289,9 +289,8 @@
     .pg-days { display: flex; gap: 4px; }
     .pg-days button { flex: 1; min-height: 38px; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
     .pg-days button.on { border-color: #a78bfa; background: rgba(167,139,250,.22); color: #ede9fe; }
-    .pg-c.reco, .pg-ch.reco { box-shadow: 0 0 0 2px #facc15; }
-    .pg-c.reco::after { content: '★ conseillé'; font-size: 9.5px; font-weight: 800; color: #facc15; }
-    .pg-ch.reco:not(.on) { color: #fde68a; }
+    .pg-c.reco::after { content: '★ recommandé'; font-size: 9.5px; font-weight: 800; color: #facc15; }
+    .pg-ch.reco::after { content: ' ★'; color: #facc15; }
     .pg-reco { padding: 10px 12px; border-radius: 14px; background: rgba(250,204,21,.08); border: 1px solid rgba(250,204,21,.55); display: flex; flex-direction: column; gap: 5px; font-size: 13px; line-height: 1.4; color: #fef3c7; }
     .pg-st { min-height: 44px; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 10px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; line-height: 1.1; padding: 2px; }
     .pg-st b { font-size: 15px; color: #cbd5e1; }
@@ -8066,10 +8065,13 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     const PG_TYPO = [['', '🧠 Le coach choisit', 'la structure la plus adaptée à ton objectif et au temps restant'], ['3-1', '3 + 1', '3 semaines de charge qui montent, puis 1 semaine de décharge (le classique)'], ['2-1', '2 + 1', '2 semaines de charge, 1 de décharge : plus de récupération (débutant, reprise, +45 ans)'], ['blocs', 'Par blocs', 'foncier → VMA / seuil → spécifique allure course → affûtage'], ['lineaire', 'Progression continue', 'montée régulière sans décharge marquée (plans courts, moins de 8 semaines)'], ['polarise', 'Polarisé 80/20', '80 % très facile, 20 % très intense, peu de seuil']];
     const PG_TEST = [['', 'Aucun test', ''], ['vma', 'Test VMA', '6 min à fond ou palier'], ['course', 'Test course', 'la distance objectif ou une partie, à fond'], ['les2', 'VMA + course', 'en alternance'], ['custom', '🎯 Sur mesure', 'ex. 2,25 km à 5 %']];
     const PG_STEPS = [['Semaine', '📅'], ['Structure', '🏗️'], ['Tests', '⏱️'], ['Absences', '🏖️'], ['Avis', '💬'], ['Plan', '🧠']];
-    const PG_PROF = [['', '↔ Au choix'], ['plat', '➖ Plat'], ['pente', '⛰️ En pente']];
+    // Pente d'un jour : '' = variable selon la séance (rien d'imposé) ; sinon un % (tapis : 1 → pente max du tapis ; dehors : côtes 5 à 25 %)
+    function pgTapisMax() { const m = parseFloat(planPrefs().penteMax); return m > 0 ? Math.min(40, Math.round(m)) : 15; }
+    function pgSlopeOpts(w, kind) { if (w === 'tapis') return Array.from({ length: pgTapisMax() }, (_, q) => q + 1); if (w === 'exterieur' && kind === 'cotes') return [5, 10, 15, 20, 25]; return null; }
+    function pgProfTxt(v, w, kind) { const n = parseFloat(v); if (!(n > 0) || !pgSlopeOpts(w, kind)) return 'pente variable selon la séance (rien d\'imposé, à toi de choisir la pente la plus utile)'; return w === 'tapis' ? `inclinaison du tapis ${n} %` : `côtes d'environ ${n} %`; }
     // profil habituel de chaque type
-    const PG_KPROF = { fc: 'plat (ou légère pente)', fl: 'plat ou légère pente', seuil: 'plat ou pente (ex. seuil sur tapis incliné)', allure: 'plat, comme le parcours de la course', endu: 'plat ou vallonné', longue: 'plat ou vallonné', cotes: 'en pente (obligatoire)', recup: 'plat' };
-    function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { a: 'run', w: '', k: '', k2: '', alt: false, d: 0 }; const D = P.dayPrefs[i]; if (!D.a) D.a = 'run'; if (PG_KOLD[D.k]) D.k = PG_KOLD[D.k]; if (PG_KOLD[D.k2]) D.k2 = PG_KOLD[D.k2]; return D; }
+    const PG_KPROF = { fc: 'plat', fl: 'plat ou légère pente', seuil: 'plat ou pente modérée (ex. seuil sur tapis à 4-6 %)', allure: 'comme le parcours de ta course', endu: 'variable', longue: 'variable', cotes: '5 à 25 % dehors, jusqu\'à la pente max sur tapis', recup: 'plat' };
+    function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { a: 'run', w: '', k: '', k2: '', alt: false, d: 0 }; const D = P.dayPrefs[i]; if (!D.a) D.a = 'run'; if (PG_KOLD[D.k]) D.k = PG_KOLD[D.k]; if (PG_KOLD[D.k2]) D.k2 = PG_KOLD[D.k2]; if (D.p && !(parseFloat(D.p) > 0)) D.p = ''; if (D.p2 && !(parseFloat(D.p2) > 0)) D.p2 = ''; return D; }
     function pgTouch() { const P = planPrefs(); P.pgActive = true; }
     function pgSet(i, key, v) { const D = pgDay(i); D[key] = v; if (key === 'a' && v === 'renfo' && ![15, 30, 45, 60].includes(+D.d)) D.d = 45; pgTouch(); pgDirty(); saveAppData(); renderPlanGen(); }
     function pgP(key, v) { const P = planPrefs(); P[key] = P[key] === v && !['genMode', 'typo', 'testType', 'testFreq', 'testDay'].includes(key) ? '' : v; pgTouch(); if (key !== 'genMode') pgDirty(); saveAppData(); renderPlanGen(); }
@@ -8120,7 +8122,7 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       planRecoBusy = false; saveAppData(); renderPlanGen();
     }
     function pgTypeCards(i, key, cur, reco) {
-      const c = (k, ic, l, d, ex) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${reco.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="align-items:flex-start;text-align:left;padding:10px 12px;gap:3px;min-height:0"><span style="font-size:15px">${ic} ${l}</span>${d ? `<small style="font-size:12px;line-height:1.35">${d}</small>` : ''}${ex || PG_KPROF[k] ? `<small style="font-size:11.5px;color:#c4b5fd;font-weight:700">${ex ? `ex. ${ex}` : ''}${ex && PG_KPROF[k] ? ' · ' : ''}${PG_KPROF[k] ? `profil : ${PG_KPROF[k]}` : ''}</small>` : ''}</button>`;
+      const c = (k, ic, l, d, ex) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${reco.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="align-items:flex-start;text-align:left;padding:10px 12px;gap:3px;min-height:0"><span style="font-size:15px">${ic} ${l}</span>${d ? `<small style="font-size:12px;line-height:1.35">${d}</small>` : ''}${ex || PG_KPROF[k] ? `<small style="font-size:11.5px;color:#c4b5fd;font-weight:700">${ex ? `ex. ${ex}` : ''}${ex && PG_KPROF[k] ? ' · ' : ''}${PG_KPROF[k] ? `pente : ${PG_KPROF[k]}` : ''}</small>` : ''}</button>`;
       return `<div class="pg-g" style="grid-template-columns:1fr">${c('', '🧠', 'Au choix', 'Le coach choisit la séance la plus utile ce jour-là.', '')}${PG_TYPES().map(([k, ic, l, sub, d, ex]) => c(k, ic, l, d, ex)).join('')}</div>`;
     }
     function planRecoD() { const R = appData.planReco; return R && R.d && R.sig === planRecoSig() ? R.d : null; }
@@ -8142,27 +8144,30 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
         if (!planRecoBusy) setTimeout(() => planRecoRun(), 0);
         return;
       }
-      const recoBox = RC ? `<div class="pg-reco"><b style="color:#facc15">🧠 Le conseil du coach</b><span>${plEsc(RC.resume || '')}</span>${(RC.conseils || []).slice(0, 3).map(c => `<span>• ${plEsc(c)}</span>`).join('')}<span style="font-size:11.5px;color:#fde68a">★ Les choix encadrés en jaune sont ceux qu'il te conseille.</span></div>` : '';
+      const recoBox = RC ? `<div class="pg-reco"><b style="color:#facc15">🧠 Le conseil du coach</b><span>${plEsc(RC.resume || '')}</span>${(RC.conseils || []).slice(0, 3).map(c => `<span>• ${plEsc(c)}</span>`).join('')}<span style="font-size:11.5px;color:#fde68a">Ses choix sont marqués ★ recommandé.</span></div>` : '';
       let body = '';
       const di = P.pgDayI == null ? -1 : Math.max(-1, Math.min(6, P.pgDayI));
       if (st === 1 && di < 0) {
         const runN = sel.filter(i => pgDay(i).a === 'run').length, few = runN < ({ debutant: 2, intermediaire: 3, confirme: 4, elite: 5 }[tier] || 3);
-        const types = PG_TYPES().map(([k, ic, l, sub, d, ex]) => `<div style="padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid ${recoKinds.includes(k) ? '#facc15' : '#334155'};display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:800;color:#f1f5f9">${ic} ${l}${recoKinds.includes(k) ? ' <span style="font-size:10.5px;color:#facc15">★ conseillé</span>' : ''}</span><span style="font-size:12px;color:#cbd5e1;line-height:1.35">${d}</span><span style="font-size:11.5px;color:#c4b5fd;font-weight:700">ex. ${ex} · profil : ${PG_KPROF[k] || 'au choix'}</span></div>`).join('');
+        const types = PG_TYPES().map(([k, ic, l, sub, d, ex]) => `<div style="padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:800;color:#f1f5f9">${ic} ${l}${recoKinds.includes(k) ? ' <span style="font-size:10.5px;color:#facc15">★ recommandé</span>' : ''}</span><span style="font-size:12px;color:#cbd5e1;line-height:1.35">${d}</span><span style="font-size:11.5px;color:#c4b5fd;font-weight:700">ex. ${ex} · pente : ${PG_KPROF[k] || 'variable'}</span></div>`).join('');
         body = `${fut.length ? sec(`Mon plan actuel : ${fut.length} séance${fut.length > 1 ? 's' : ''} ${planRangeTxt(fut)}`, `<div class="pg-g" style="grid-template-columns:1fr 1fr">${card((P.genMode || 'replace') === 'replace', "pgP('genMode','replace')", '🔄 Nouveau plan', 'remplace les séances à venir · comparaison des 2 plans')}${card(P.genMode === 'add', "pgP('genMode','add')", '➕ Compléter', `ajoute des séances, ${tier === 'elite' ? '2 le même jour possibles (Élite)' : 'jamais le même jour qu\'une séance prévue'}`)}</div>`) : ''}
-          ${recoBox}${RC && RC.jours_course ? `<span style="font-size:12.5px;color:#fde68a">★ Conseillé : ${RC.jours_course} séance${RC.jours_course > 1 ? 's' : ''} de course${+RC.renfo ? ` + ${RC.renfo} renfo` : ''} par semaine${sel.length ? ` · toi : ${runN} course${sel.length - runN ? ` + ${sel.length - runN} autre${sel.length - runN > 1 ? 's' : ''}` : ''}` : ''}.</span>` : ''}
+          ${recoBox}${RC && RC.jours_course ? `<span style="font-size:12.5px;color:#fde68a">★ Recommandé : ${RC.jours_course} séance${RC.jours_course > 1 ? 's' : ''} de course${+RC.renfo ? ` + ${RC.renfo} renfo` : ''} par semaine${sel.length ? ` · toi : ${runN} course${sel.length - runN ? ` + ${sel.length - runN} autre${sel.length - runN > 1 ? 's' : ''}` : ''}` : ''}.</span>` : ''}
           ${few && runN ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">💡 ${runN} séance${runN > 1 ? 's' : ''} de course par semaine : le coach te dira quoi ajouter pour augmenter tes chances.</span>` : ''}
           ${sec('Les types de séance', `<span style="font-size:12px;color:#94a3b8">Règle ensuite chaque jour avec les onglets L M M J V S D en haut.</span>${types}`)}`;
       } else if (st === 1) {
         const i = di, on = sel.includes(i), D = pgDay(i), a = on ? D.a : 'off', run = on && a === 'run';
         const lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">${t}</span>`;
+        const profCards = (key, cur, kind) => { const O = pgSlopeOpts(D.w, kind); if (!O) return `<span style="font-size:12px;color:#94a3b8">${D.w === 'exterieur' ? 'Dehors : pente variable selon le parcours, rien n\'est imposé.' : 'Choisis d\'abord tapis ou dehors.'}</span>`;
+          return `<div class="pg-chips">${chip(!(parseFloat(cur) > 0), `pgSet(${i},'${key}','')`, '🧠 Variable')}${O.map(n => chip(+cur === n, `pgSet(${i},'${key}','${n}')`, `${n} %`)).join('')}</div>${D.w === 'tapis' ? `<span style="font-size:11px;color:#64748b">jusqu'à ${pgTapisMax()} % (pente max de ton tapis, Séance › Matériel)</span>` : ''}`; };
         const kc = (key, cur) => `<div class="pg-g" style="grid-template-columns:repeat(3,1fr)">${[['', '🧠', 'Au choix']].concat(PG_TYPES().map(t => [t[0], t[1], t[2]])).map(([k, ic, l]) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}${recoKinds.includes(k) ? ' reco' : ''}" onclick="pgSet(${i},'${key}','${k}')" style="min-height:58px;font-size:12.5px;padding:6px 4px"><span style="font-size:18px">${ic}</span>${l}</button>`).join('')}</div>`;
         body = `<div class="pg-sec"><b style="font-size:18px;color:#f1f5f9">${capFirst(PG_J[i])}</b>
           ${lab('Activité')}<div class="pg-g" style="grid-template-columns:repeat(4,1fr)">${[['off', '😴', 'Repos'], ['run', '🏃', 'Course'], ['renfo', '💪', 'Renfo'], ['velo', '🚴', 'Vélo']].map(([k, ic, l]) => `<button type="button" class="pg-c${a === k ? ' on' : ''}" onclick="pgAct(${i},'${k}')" style="min-height:54px;font-size:12.5px"><span style="font-size:18px">${ic}</span>${l}</button>`).join('')}</div>
           ${run ? `${lab('Où')}<div class="pg-chips">${PG_WHERE.map(([k, l]) => chip(D.w === k, `pgSet(${i},'w','${k}')`, l)).join('')}</div>
-            ${lab('Profil')}<div class="pg-chips">${PG_PROF.map(([k, l]) => chip((D.p || '') === k, `pgSet(${i},'p','${k}')`, l)).join('')}</div>
             ${lab('Alternance')}<div class="pg-chips">${chip(!D.alt, `pgSet(${i},'alt',false)`, 'Même séance chaque semaine')}${chip(!!D.alt, `pgSet(${i},'alt',true)`, '🔁 Semaines A / B')}</div>` : ''}
           ${on ? `${lab('Durée max')}<div class="pg-chips">${(a === 'renfo' ? PG_DUR_RENFO : PG_DUR).map(([k, l]) => chip((+D.d || 0) === k, `pgSet(${i},'d',${k})`, l)).join('')}</div>` : ''}
-          ${run ? `${lab(D.alt ? 'Séance semaine A' : 'Séance')}${kc('k', D.k)}${D.alt ? `${lab('Séance semaine B')}${kc('k2', D.k2)}` : ''}` : ''}
+          ${run ? [['', 'p', 'k']].concat(D.alt ? [['B', 'p2', 'k2']] : []).map(([w, pk, kk], q) => `<div style="display:flex;flex-direction:column;gap:8px;${D.alt ? `padding:10px;border-radius:14px;border:1px solid #334155;background:#0b1220` : ''}">${D.alt ? `<b style="font-size:14px;color:#ede9fe">Semaine ${q ? 'B' : 'A'}</b>` : ''}
+              ${lab('Séance')}${kc(kk, D[kk])}
+              ${D.w === 'exterieur' && D[kk] !== 'cotes' ? '' : `${lab(D.w === 'tapis' ? 'Pente du tapis' : 'Pente des côtes')}${profCards(pk, D[pk] || '', D[kk])}`}</div>`).join('') : ''}
           ${!on ? '<span style="font-size:13px;color:#94a3b8">Jour de repos. Choisis une activité pour ce jour si tu veux t\'entraîner.</span>' : ''}</div>`;
       } else if (st === 2) {
         body = `${sec('Organisation des semaines', `<div class="pg-g" style="grid-template-columns:1fr 1fr">${PG_TYPO.map(([k, l, sub]) => card((P.typo || '') === k, `pgP('typo','${k}')`, l, sub, RC && RC.organisation === k)).join('')}</div>`)}
@@ -8200,7 +8205,7 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       box.innerHTML = `<div class="pg-head"><div class="pg-steps">${PG_STEPS.map(([l, ic], i) => `<button type="button" class="pg-st${st === i + 1 ? ' on' : i + 1 < st ? ' done' : ''}" onclick="pgStep(${i + 1})"><b>${ic}</b>${l}</button>`).join('')}</div>${days}</div>${body}${nav}`;
       try { const sb = box.closest('.pm-panel').querySelector(':scope > .pm-subtabs'); if (sb) box.querySelector('.pg-head').style.top = sb.offsetHeight + 'px'; } catch (e) { }
       if (st === 2) { try { renderPlanStyleChips(); } catch (e) { } try { renderPlanFocus(); } catch (e) { }
-        if (RC && RC.style) { const b = document.querySelector(`#planStyleChips [onclick="setPlanStyle('${RC.style}')"]`); if (b) b.style.boxShadow = '0 0 0 2px #facc15'; } }
+        if (RC && RC.style) { const b = document.querySelector(`#planStyleChips [onclick="setPlanStyle('${RC.style}')"]`); if (b && !b.querySelector('.pg-star')) b.insertAdjacentHTML('beforeend', '<span class="pg-star" style="display:block;font-size:9.5px;font-weight:800;color:#facc15">★ recommandé</span>'); } }
     }
     function planSetupSummaryHtml() {
       const L = planSetupText().split('\n').filter(Boolean);
@@ -8211,12 +8216,13 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       return planDays().map(i => { const D = pgDay(i);
         if (D.a !== 'run') return `${PG_J[i]} : ${D.a === 'velo' ? 'VÉLO (pas de course)' : 'RENFORCEMENT MUSCULAIRE (pas de course)'}${+D.d ? `, ${D.d} min maximum` : ''}`;
         const k1 = PG_KTXT[D.k] || 'type au choix du coach', k2 = PG_KTXT[D.k2] || 'type au choix du coach';
-        const x = [W[D.w] || 'tapis ou extérieur au choix', D.p === 'plat' ? 'profil PLAT (pente 0-1 %)' : D.p === 'pente' ? 'profil EN PENTE (tapis incliné ou parcours vallonné, même pour une séance qui se fait d\'habitude à plat, ex. seuil en côte)' : 'profil plat ou en pente au choix', D.alt ? `en alternance une semaine sur deux : semaine A = ${k1}, semaine B = ${k2} (A la 1re semaine du plan, puis B, puis A…)` : D.k ? `séance de type ${k1} de préférence` : 'type au choix du coach', +D.d ? `${D.d} min maximum (échauffement et retour au calme compris)` : 'durée libre'];
+        const x = [W[D.w] || 'tapis ou extérieur au choix', D.alt ? `en alternance une semaine sur deux : semaine A = ${k1}, ${pgProfTxt(D.p, D.w, D.k)} ; semaine B = ${k2}, ${pgProfTxt(D.p2, D.w, D.k2)} (A la 1re semaine du plan, puis B, puis A…)` : `${D.k ? `séance de type ${k1} de préférence` : 'type au choix du coach'}, ${pgProfTxt(D.p, D.w, D.k)}`, +D.d ? `${D.d} min maximum (échauffement et retour au calme compris)` : 'durée libre'];
         return `${PG_J[i]} : course ${x.join(', ')}`; }).join(' ; ');
     }
     function planSetupText() {
       const P = planPrefs(), f = iso => fmtDateShort(iso), TY = Object.fromEntries(PG_TYPO.map(x => [x[0], x])), out = [];
       out.push(`Semaine type : ${dayPrefsText() || 'jours non choisis'}`);
+      { const g = appData.goal || {}; out.push(`Pentes : quand la pente est « variable », choisis toi-même la pente idéale de chaque séance${g.hilly && +g.pente ? ` en préparant le relief de l'objectif (course vallonnée, pente moyenne ${String(g.pente).replace('.', ',')} %) : plus de séances en pente proches de cette valeur à l'approche de la course, et des côtes plus raides pour la force` : ` (objectif sur parcours plat : surtout du plat, un peu de pente pour la force)`} ; sur tapis, jamais plus de ${pgTapisMax()} %.`); }
       out.push(`Organisation : ${P.typo ? `${TY[P.typo][1]} (${TY[P.typo][2]})` : 'au choix du coach'}`);
       const TC = P.testCustom || {}, tcTxt = `test sur mesure : ${TC.km ? `${String(TC.km).replace('.', ',')} km à fond` : 'distance à préciser'}${+TC.pente ? ` à ${String(TC.pente).replace('.', ',')} % de pente` : ' sur le plat'}, ${(TC.w || 'tapis') === 'tapis' ? 'sur tapis' : 'en extérieur'}${TC.txt ? ` (${TC.txt})` : ''}, à reproduire à l'identique à chaque fois pour comparer`;
       if (P.testType) out.push(`Tests intermédiaires : ${{ vma: 'test VMA', course: 'test sur la distance objectif (ou une partie, à fond)', les2: 'test VMA et test course en alternance', custom: tcTxt }[P.testType]}, ${+P.testFreq ? `toutes les ${P.testFreq} semaines` : 'fréquence proposée par le coach'}, ${P.testDay !== '' && P.testDay != null ? `le ${PG_J[+P.testDay]}` : 'jour au choix du coach'}`);
