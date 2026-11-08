@@ -8074,7 +8074,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function pgDay(i) { const P = planPrefs(); if (!P.dayPrefs || typeof P.dayPrefs !== 'object') P.dayPrefs = {}; if (!P.dayPrefs[i]) P.dayPrefs[i] = { a: 'run', w: '', k: '', k2: '', alt: false, d: 0 }; const D = P.dayPrefs[i]; if (!D.a) D.a = 'run'; if (PG_KOLD[D.k]) D.k = PG_KOLD[D.k]; if (PG_KOLD[D.k2]) D.k2 = PG_KOLD[D.k2]; if (D.p && !(parseFloat(D.p) > 0)) D.p = ''; if (D.p2 && !(parseFloat(D.p2) > 0)) D.p2 = ''; return D; }
     function pgTouch() { const P = planPrefs(); P.pgActive = true; }
     function pgSet(i, key, v) { const D = pgDay(i); D[key] = v; if (key === 'a' && v === 'renfo' && ![15, 30, 45, 60].includes(+D.d)) D.d = 45; pgTouch(); pgDirty(); saveAppData(); renderPlanGen(); }
-    function pgP(key, v) { const P = planPrefs(); P[key] = P[key] === v && !['genMode', 'typo', 'testType', 'testFreq', 'testDay'].includes(key) ? '' : v; pgTouch(); if (key !== 'genMode') pgDirty(); saveAppData(); renderPlanGen(); }
+    function pgP(key, v) { const P = planPrefs(); P[key] = P[key] === v && !['genMode', 'typo', 'testType', 'testFreq', 'testDay', 'genStart', 'genPos', 'testNext'].includes(key) ? '' : v; pgTouch(); if (key !== 'genMode') pgDirty(); saveAppData(); renderPlanGen(); }
     function pgAct(i, a) { const sel = new Set(planDays()); if (a === 'off') sel.delete(i); else { sel.add(i); pgDay(i).a = a; if (a === 'renfo' && ![15, 30, 45, 60].includes(+pgDay(i).d)) pgDay(i).d = 45; } appData.planDays = [...sel].sort((x, y) => x - y); pgTouch(); pgDirty(); saveAppData(); renderPlanGen(); }
     function pgDirty() { const T = appData.planTalk; if (T && T.msgs && T.msgs.length) T.dirty = true; }
     function pgScrollTop() { try { const b = document.getElementById('planGenForm'), body = b.closest('.pm-body'); body.scrollTop = Math.max(0, b.offsetTop - 70); } catch (e) { } }
@@ -8126,16 +8126,48 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       return `<div class="pg-g" style="grid-template-columns:1fr">${c('', '🧠', 'Au choix', 'Le coach choisit la séance la plus utile ce jour-là.', '')}${PG_TYPES().map(([k, ic, l, sub, d, ex]) => c(k, ic, l, d, ex)).join('')}</div>`;
     }
     const PG_TWEEK = [['', '🧠 Le coach choisit', ''], ['decharge', 'Semaine de décharge', 'frais, sans fatigue accumulée'], ['fin_charge', 'Fin de charge', 'la semaine juste avant la décharge'], ['debut', 'Début de cycle', 'juste après la décharge']];
+    function pgStartISO() { const P = planPrefs(), t1 = new Date(); t1.setDate(t1.getDate() + 1); const tm = toISODateLocal(t1); return P.genStart && P.genStart > tm ? P.genStart : tm; }
+    // Semaines avant le plan : volume par semaine (lundi → dimanche)
+    function pgPrevWeeks(n) {
+      const s0 = parseISODateLocal(weekStartISO(pgStartISO())), H = runHistory(), out = [];
+      for (let k = n; k >= 1; k--) { const a = new Date(s0); a.setDate(a.getDate() - 7 * k); const ai = toISODateLocal(a), e = new Date(a); e.setDate(e.getDate() + 6); const ei = toISODateLocal(e);
+        const t0 = todayISO(), st0 = pgStartISO(), PL = ei > t0 ? (appData.sessions || []).filter(x => !isSessionDone(x) && x.dateISO && x.dateISO > t0 && x.dateISO < st0 && x.dateISO >= ai && x.dateISO <= ei) : [];
+        const W = H.filter(h => h._iso && h._iso >= ai && h._iso <= ei).concat(PL.map(x => ({ durationMin: computeSessionTotalMin(x), kind: x.kind, pyramide: x.pyramide, repet: x.repet, planned: true }))), min = W.reduce((t, h) => t + (+h.durationMin || 0), 0), km = W.reduce((t, h) => t + ((h.summary && +h.summary.km) || 0), 0);
+        const hard = W.filter(h => { let k = h.kind; try { k = guideKind(h); } catch (e) { } return ['fractionne', 'pyramide', 'cotes', 'seuil', 'test', 'course'].includes(k); }).length;
+        const fe = W.map(h => ({ green: 1, yellow: 2, orange: 3, red: 4 }[h.feeling] || 0)).filter(Boolean);
+        out.push({ iso: ai, planned: PL.length, n: W.length, min: Math.round(min), km: Math.round(km * 10) / 10, hard, feel: fe.length ? fe.reduce((a2, b2) => a2 + b2, 0) / fe.length : 0 }); }
+      return out;
+    }
+    // Où en est le coureur dans son cycle juste avant le début du plan (estimation de l'app)
+    function pgPosAuto() {
+      const L = pgCycleLen(), W = pgPrevWeeks(5), last = W[W.length - 1], prev = W.slice(-4, -1).filter(w => w.min > 0);
+      if (!W.slice(-2).some(w => w.n)) return { pos: 'reprise', txt: 'pas de course ces 2 dernières semaines : reprise' };
+      const avg = prev.length ? prev.reduce((t, w) => t + w.min, 0) / prev.length : 0;
+      if (avg && last.min < 0.75 * avg) return { pos: 1, txt: `semaine dernière plus légère (${last.min} min contre ${Math.round(avg)} en moyenne) : décharge faite, nouveau cycle` };
+      if (!L) return { pos: 0, txt: 'charge régulière ces dernières semaines' };
+      let n = 0; for (let k = W.length - 1; k >= 0 && n < L; k--) { const ref = W.slice(Math.max(0, k - 3), k).filter(w => w.min > 0); const a = ref.length ? ref.reduce((t, w) => t + w.min, 0) / ref.length : 0; if (W[k].min > 0 && (!a || W[k].min >= 0.75 * a)) n++; else break; }
+      const p = Math.min(L, n + 1);
+      return { pos: p, txt: `${n} semaine${n > 1 ? 's' : ''} de charge d'affilée : le plan commence en S${p}${p === L ? ' (décharge)' : ''}` };
+    }
+    function pgPosStart() { const P = planPrefs(), L = pgCycleLen(); if (!P.genPos || P.genPos === 'auto') return pgPosAuto(); if (P.genPos === 'reprise') return { pos: 'reprise', txt: 'reprise (après coupure, blessure ou vacances)' }; const p = Math.min(L || 1, +P.genPos || 1); return { pos: p, txt: `choisi : le plan commence en S${p}${L && p === L ? ' (décharge)' : ''}` }; }
+    function pgPrevText() {
+      const W = pgPrevWeeks(8), f = iso => fmtDateShort(iso), PS = pgPosStart(), L = pgCycleLen();
+      const kept = planToSave().filter(x => x.dateISO && x.dateISO > todayISO() && x.dateISO < pgStartISO());
+      return `CONTINUITÉ AVEC CE QUI A ÉTÉ FAIT (très important) : le plan commence le ${f(pgStartISO())} — volume des 8 semaines précédentes (lundi : séances, minutes, km, séances dures, ressenti 1 facile → 4 trop dur) :
+${W.map(w => `- sem. du ${f(w.iso)}${w.planned ? ` (dont ${w.planned} prévue${w.planned > 1 ? 's' : ''})` : ''} : ${w.n} séance${w.n > 1 ? 's' : ''}, ${w.min} min, ${w.km} km, ${w.hard} dure${w.hard > 1 ? 's' : ''}${w.feel ? `, ressenti ${w.feel.toFixed(1).replace('.', ',')}` : ''}`).join('\n')}
+${kept.length ? `Séances déjà prévues d'ici le début du plan (gardées, à compter dans la charge) : ${kept.map(x => `${x.dateISO} ${sessionKind(x).label} ${Math.round(computeSessionTotalMin(x))} min`).join(' ; ')}.\n` : ''}Position dans la structure au début du plan : ${PS.txt}.${PS.pos === 'reprise' ? ' Commence par 1 à 2 semaines de reprise progressive (volume réduit, pas de séance très dure).' : ''} La 1re semaine doit être dans la continuité de ce volume récent (pas de saut de plus de 10 à 15 %), puis progresser selon la structure${L ? ` ${planPrefs().typo}` : ''}.`;
+    }
     function pgCycleLen() { const t = planPrefs().typo; return t === '3-1' ? 4 : t === '2-1' ? 3 : 0; }
     // Carte des semaines : position dans le cycle charge/décharge calée sur la date du prochain test
     function planCycleMap() {
       const P = planPrefs(), L = pgCycleLen(), g = appData.goal || {}, gi = guessISOFromDDMM(g.date || '');
-      const t1 = new Date(); t1.setDate(t1.getDate() + 1); const w0 = parseISODateLocal(weekStartISO(toISODateLocal(t1)));
+      const t1 = parseISODateLocal(pgStartISO()); const w0 = parseISODateLocal(weekStartISO(pgStartISO()));
       const endISO = gi || (() => { const d = new Date(w0); d.setDate(d.getDate() + 7 * 16); return toISODateLocal(d); })();
-      const nW = Math.max(1, Math.min(40, Math.floor((parseISODateLocal(weekStartISO(endISO)) - w0) / (7 * 864e5)) + 1));
-      const tn = P.testType && P.testNext && P.testNext > todayISO() ? P.testNext : '', tw = tn ? Math.floor((parseISODateLocal(weekStartISO(tn)) - w0) / (7 * 864e5)) + 1 : 0;
+      const nW = Math.max(1, Math.min(40, Math.round((parseISODateLocal(weekStartISO(endISO)) - w0) / (7 * 864e5)) + 1));
+      const tn = P.testType && P.testNext && P.testNext > todayISO() ? P.testNext : '', tw = tn ? Math.round((parseISODateLocal(weekStartISO(tn)) - w0) / (7 * 864e5)) + 1 : 0;
       const pos = { decharge: L, fin_charge: L - 1, debut: 1 }[P.testWeek || ''] || 0;
-      const first = L && tw && pos ? (((pos - tw) % L) + L) % L + 1 : 1;
+      const PS = L ? pgPosStart() : null;
+      const first = L && tw && pos ? (((pos - tw) % L) + L) % L + 1 : PS && +PS.pos > 0 ? +PS.pos : 1;
       const fq = +P.testFreq || 0, out = [];
       for (let w = 1; w <= nW; w++) {
         const st = new Date(w0); st.setDate(st.getDate() + 7 * (w - 1));
@@ -8149,7 +8181,15 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       const P = planPrefs(), M = planCycleMap(); if (!M.tn && !M.L) return '';
       const f = iso => fmtDateShort(iso);
       const lines = M.list.map(x => `semaine ${x.w} (${x.w === 1 ? 'à partir du' : 'lundi'} ${f(x.iso)})${M.L ? ` = S${x.c} du cycle (${x.dech ? 'DÉCHARGE' : 'charge'})` : ''}${x.test ? (x.w === M.tw ? ` + TEST le ${f(M.tn)}` : ' + TEST') : ''}${x.last ? ' + COURSE OBJECTIF' : ''}`);
-      return `CALENDRIER DES CYCLES ET DES TESTS (calculé par l'app, à respecter) : le plan est construit autour des tests${M.tn ? `, premier test le ${f(M.tn)}` : ''}${M.L && M.pos ? ` placé en ${{ decharge: 'semaine de décharge', fin_charge: 'fin de charge (semaine avant la décharge)', debut: 'début de cycle (juste après la décharge)' }[P.testWeek]}` : ''}${M.L && M.first > 1 ? ` ; le 1er cycle commence donc en S${M.first} (pas en S1)` : ''}.\n${lines.join('\n')}`;
+      return `CALENDRIER DES CYCLES ET DES TESTS (calculé par l'app à partir de la position actuelle du coureur dans son cycle${M.tn ? ' et de la date du test' : ''}, à respecter) : le plan est construit autour des tests${M.tn ? `, premier test le ${f(M.tn)}` : ''}${M.L && M.pos ? ` placé en ${{ decharge: 'semaine de décharge', fin_charge: 'fin de charge (semaine avant la décharge)', debut: 'début de cycle (juste après la décharge)' }[P.testWeek]}` : ''}${M.L && M.first > 1 ? ` ; le 1er cycle commence donc en S${M.first} (pas en S1)` : ''}.\n${lines.join('\n')}`;
+    }
+    function planGenBlocks() {
+      const M = planCycleMap(), Lw = M.list, out = []; if (!Lw.length) return [[]];
+      let n1 = M.L ? M.L - M.first + 1 : 4; if (n1 < 2 && M.L) n1 += M.L; n1 = Math.min(n1, Lw.length);
+      out.push(Lw.slice(0, n1)); const step = M.L ? (M.L === 4 ? 8 : 6) : 6;
+      for (let i = n1; i < Lw.length; i += step) out.push(Lw.slice(i, i + step));
+      if (out.length > 1 && out[out.length - 1].length < 2) { const x = out.pop(); out[out.length - 1] = out[out.length - 1].concat(x); }
+      return out;
     }
     function planRecoD() { const R = appData.planReco; return R && R.d && R.sig === planRecoSig() ? R.d : null; }
     function renderPlanGen() {
@@ -8177,6 +8217,7 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
         const runN = sel.filter(i => pgDay(i).a === 'run').length, few = runN < ({ debutant: 2, intermediaire: 3, confirme: 4, elite: 5 }[tier] || 3);
         const types = PG_TYPES().map(([k, ic, l, sub, d, ex]) => `<div style="padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:800;color:#f1f5f9">${ic} ${l}${recoKinds.includes(k) ? ' <span style="font-size:10.5px;color:#facc15">★ recommandé</span>' : ''}</span><span style="font-size:12px;color:#cbd5e1;line-height:1.35">${d}</span><span style="font-size:11.5px;color:#c4b5fd;font-weight:700">ex. ${ex} · pente : ${PG_KPROF[k] || 'variable'}</span></div>`).join('');
         body = `${fut.length ? sec(`Mon plan actuel : ${fut.length} séance${fut.length > 1 ? 's' : ''} ${planRangeTxt(fut)}`, `<div class="pg-g" style="grid-template-columns:1fr 1fr">${card((P.genMode || 'replace') === 'replace', "pgP('genMode','replace')", '🔄 Nouveau plan', 'remplace les séances à venir · comparaison des 2 plans')}${card(P.genMode === 'add', "pgP('genMode','add')", '➕ Compléter', `ajoute des séances, ${tier === 'elite' ? '2 le même jour possibles (Élite)' : 'jamais le même jour qu\'une séance prévue'}`)}</div>`) : ''}
+          ${sec('Début du plan', `<input type="date" class="pg-in" min="${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}" value="${pgStartISO()}" onchange="pgP('genStart',this.value)"><span style="font-size:12px;color:#94a3b8;line-height:1.35">${fut.length && (P.genMode || 'replace') === 'replace' ? 'Les séances prévues avant cette date sont gardées ; le nouveau plan remplace celles à partir de cette date.' : 'Le plan démarre à cette date.'}</span>`)}
           ${recoBox}${RC && RC.jours_course ? `<span style="font-size:12.5px;color:#fde68a">★ Recommandé : ${RC.jours_course} séance${RC.jours_course > 1 ? 's' : ''} de course${+RC.renfo ? ` + ${RC.renfo} renfo` : ''} par semaine${sel.length ? ` · toi : ${runN} course${sel.length - runN ? ` + ${sel.length - runN} autre${sel.length - runN > 1 ? 's' : ''}` : ''}` : ''}.</span>` : ''}
           ${few && runN ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">💡 ${runN} séance${runN > 1 ? 's' : ''} de course par semaine : le coach te dira quoi ajouter pour augmenter tes chances.</span>` : ''}
           ${sec('Les types de séance', `<span style="font-size:12px;color:#94a3b8">Règle ensuite chaque jour avec les onglets L M M J V S D en haut.</span>${types}`)}`;
@@ -8197,6 +8238,9 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
           ${!on ? '<span style="font-size:13px;color:#94a3b8">Jour de repos. Choisis une activité pour ce jour si tu veux t\'entraîner.</span>' : ''}</div>`;
       } else if (st === 2) {
         body = `${sec('Organisation des semaines', `<div class="pg-g" style="grid-template-columns:1fr 1fr">${PG_TYPO.map(([k, l, sub]) => card((P.typo || '') === k, `pgP('typo','${k}')`, l, sub, RC && RC.organisation === k)).join('')}</div>`)}
+          ${(() => { const L = pgCycleLen(), A = pgPosAuto(), cur = P.genPos || 'auto';
+            const opts = [['auto', `🧠 Auto`]].concat(L ? Array.from({ length: L }, (_, q) => [String(q + 1), q + 1 === L ? `S${q + 1} décharge` : `S${q + 1} charge`]) : []).concat([['reprise', '🔄 Reprise']]);
+            return sec('Où en es-tu au début du plan ?', `<div class="pg-chips">${opts.map(([k, l]) => chip(cur === k, `pgP('genPos','${k}')`, l)).join('')}</div><span style="font-size:12px;color:#94a3b8;line-height:1.35">Estimation de l'app d'après tes dernières semaines : <b style="color:#e2e8f0">${A.txt}</b>.${L ? ' Le 1er cycle du plan démarre à cette semaine' + (P.testNext ? ' (si tu as choisi une date de test, c\'est elle qui cale les cycles)' : '') + '.' : ''}</span>${(() => { const W = pgPrevWeeks(6), mx = Math.max(1, ...W.map(w => w.min)); return `<div style="display:flex;gap:4px;align-items:flex-end;height:54px;padding-top:4px">${W.map(w => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><span style="font-size:9px;color:#94a3b8">${w.min ? w.min + "'" : ''}</span><div style="width:100%;height:${Math.max(2, Math.round(w.min / mx * 34))}px;border-radius:3px;background:${w.hard ? '#a78bfa' : '#475569'}"></div><span style="font-size:9px;color:#64748b">${fmtDateShort(w.iso).replace(/ .*/, '')}</span></div>`).join('')}</div><span style="font-size:10.5px;color:#64748b">Minutes de course des 6 dernières semaines (violet : avec séance dure)</span>`; })()}`); })()}
           ${sec('Style du plan', '<div id="planStyleChips" class="grid grid-cols-2 gap-2"></div>')}
           ${sec('Ce que le plan doit travailler', '<div id="planFocus" class="grid grid-cols-2 gap-1.5"></div>')}
           ${sec('Ma priorité', `<div class="pg-g" style="grid-template-columns:repeat(3,1fr)">${[['chrono', '⏱️ Le chrono'], ['finir', '🏁 Finir en forme'], ['sante', '🩹 Sans blessure']].map(([k, l]) => card(P.priorite === k, `pgP('priorite','${k}')`, l)).join('')}</div>`)}`;
@@ -8223,7 +8267,7 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
         body = planTalkHtml(T);
       } else {
         const ok = T.agreed && !T.dirty;
-        body = sec('Prêt à dérouler le plan', `<span style="font-size:13px;color:${ok ? '#86efac' : '#fcd34d'};line-height:1.4">${ok ? '✅ Le coach va construire tout le plan en suivant ce que vous avez validé ensemble.' : T.msgs && T.msgs.length ? '⚠️ Tu n\'as pas encore validé l\'avis du coach (ou tu as changé des réglages depuis). Tu peux générer quand même ou revenir à l\'étape Avis.' : '💡 Conseil : demande d\'abord l\'avis du coach (étape Avis) pour vous mettre d\'accord avant de tout générer.'}</span>${planSetupSummaryHtml()}${planFuture().length && (P.genMode || 'replace') === 'replace' ? `<span style="font-size:12.5px;color:#cbd5e1;line-height:1.4">🔄 Ton plan actuel (${planFuture().length} séances à venir) sera remplacé, pas cumulé. Avant de valider, l'app te proposera de le <b>sauvegarder</b> dans un fichier.</span>` : ''}`);
+        body = sec('Prêt à dérouler le plan', `<span style="font-size:13px;color:${ok ? '#86efac' : '#fcd34d'};line-height:1.4">${ok ? '✅ Le coach va construire tout le plan en suivant ce que vous avez validé ensemble.' : T.msgs && T.msgs.length ? '⚠️ Tu n\'as pas encore validé l\'avis du coach (ou tu as changé des réglages depuis). Tu peux générer quand même ou revenir à l\'étape Avis.' : '💡 Conseil : demande d\'abord l\'avis du coach (étape Avis) pour vous mettre d\'accord avant de tout générer.'}</span>${planSetupSummaryHtml()}${pgModelHtml('mdlGen')}${planFuture().length && (P.genMode || 'replace') === 'replace' ? `<span style="font-size:12.5px;color:#cbd5e1;line-height:1.4">🔄 Ton plan actuel (${planFuture().length} séances à venir) sera remplacé, pas cumulé. Avant de valider, l'app te proposera de le <b>sauvegarder</b> dans un fichier.</span>` : ''}`);
       }
       const nextL = st === 1 ? (di < 6 ? `${capFirst(PG_J[di + 1])} →` : 'Structure →') : st === 4 ? 'Avis du coach →' : st === 5 ? 'Plan complet →' : 'Suivant →';
       const prevL = st === 1 && di >= 0 ? `← ${di > 0 ? capFirst(PG_J[di - 1]) : 'Paramètres'}` : st === 2 ? '← Dimanche' : '← Précédent';
@@ -8239,9 +8283,38 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       const M = planCycleMap(), f = iso => fmtDateShort(iso);
       return `<div style="display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#cbd5e1">${M.L && M.first > 1 ? `<span style="color:#c4b5fd;font-weight:700">Le 1er cycle commence en S${M.first}.</span>` : ''}${M.list.slice(0, 10).map(x => `<span style="${x.test ? 'color:#fde68a;font-weight:800' : ''}">Sem. ${x.w} · ${f(x.iso)}${M.L ? ` · S${x.c} ${x.dech ? '🔋 décharge' : 'charge'}` : ''}${x.test ? ` · ⏱️ test${x.w === M.tw ? ` le ${f(M.tn)}` : ''}` : ''}</span>`).join('')}${M.list.length > 10 ? '<span style="color:#64748b">…</span>' : ''}</div>`;
     }
+    // Coût estimé (tarifs notés dans l'app ; Argon : 2 $ / 10 $ par million de tokens jusqu'au 30/11/2026, puis 4 $ / 20 $ ; Flash ≈ 5 × moins cher)
+    function pgCost(kind, model) { const late = todayISO() >= '2026-12-01', inP = late ? 4 : 2, outP = late ? 20 : 10, f = model === 'argon' ? 1 : 0.2;
+      if (kind === 'talk') return (8000 * inP + 3000 * outP) / 1e6 * f;
+      const B = planGenBlocks(), blk = b => (11000 * inP + b.length * 1500 * outP) / 1e6;
+      return B.reduce((t, b, i) => t + blk(b) * (model === 'argon' || (model === 'argon1' && i === 0) ? 1 : 0.2), 0); }
+    function pgCostTxt(c) { return c < 0.01 ? '< 0,01 $' : `≈ ${c.toFixed(c < 0.1 ? 3 : 2).replace('.', ',')} $`; }
+    function pgModelHtml(key) {
+      const P = planPrefs(), talk = key === 'mdlTalk', cur = P[key] || (talk ? (appData.coachExpert ? 'argon' : 'flash') : 'argon1'), nb = planGenBlocks().length;
+      const opt = (k, ic, l, pros, cons) => `<button type="button" class="pg-c${cur === k ? ' on' : ''}" onclick="planPrefs().${key}='${k}';saveAppData();renderPlanGen()" style="align-items:flex-start;text-align:left;padding:10px 12px;gap:3px;min-height:0"><span style="font-size:14px">${ic} ${l} <span style="font-size:11.5px;color:#fde68a;font-weight:800">${pgCostTxt(pgCost(talk ? 'talk' : 'gen', k))}</span></span><small style="font-size:11.5px;color:#86efac;line-height:1.35">+ ${pros}</small><small style="font-size:11.5px;color:#fca5a5;line-height:1.35">− ${cons}</small></button>`;
+      const B = planGenBlocks();
+      return `<div class="pg-sec"><span class="pg-t">Modèle d'IA ${talk ? 'pour l\'avis' : `pour le plan complet${nb > 1 ? ` (${nb} blocs : 1er cycle = ${B[0].length} sem., puis ${B.slice(1).map(b => b.length).join(' + ')} sem.)` : ''}`}</span><div class="pg-g" style="grid-template-columns:1fr">
+        ${opt('flash', '⚡', talk ? 'Gemini Flash' : 'Flash pour tout le plan', talk ? 'réponse en 10 à 20 s, très peu cher' : 'rapide (≈ 1 min par bloc), très peu cher', talk ? 'avis plus général, voit moins les détails d\'enchaînement' : 'peut oublier une contrainte ou faire une progression en dents de scie (l\'app corrige une partie)')}
+        ${talk ? '' : opt('argon1', '🎯', 'Argon pour le 1er cycle, Flash ensuite', `les ${B[0].length} premières semaines (les plus importantes : continuité avec ce que tu as fait) construites par le modèle expert`, 'la suite reste en Flash, avec moins de finesse ; tu pourras regénérer plus tard')}
+        ${opt('argon', '🧠', talk ? 'Gemini 4 Argon (expert)' : 'Argon pour tout le plan', talk ? 'raisonnement plus fin sur l\'enchaînement, la charge et tes contraintes' : 'progression et périodisation plus cohérentes, respecte mieux toutes les contraintes', talk ? '2 à 3 fois plus lent, environ 5 fois plus cher' : '2 à 3 fois plus lent (plusieurs minutes), environ 5 fois plus cher, nécessite une clé avec facturation')}</div>
+        <span style="font-size:11px;color:#64748b">Coût estimé par ${talk ? 'avis' : 'plan'} (tarifs Gemini notés dans l'app${todayISO() < '2026-12-01' ? ', Argon double à partir du 1er décembre' : ''}). Si Argon n'est pas accessible avec ta clé, Flash est utilisé.</span></div>`;
+    }
+    // ---- récap visuel de la configuration
     function planSetupSummaryHtml() {
-      const L = planSetupText().split('\n').filter(Boolean);
-      return `<div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#cbd5e1;line-height:1.4">${L.map(x => `<span>• ${plEsc(x)}</span>`).join('')}</div>`;
+      const P = planPrefs(), sel = planDays(), M = planCycleMap(), A = P.absences || [], TY = Object.fromEntries(PG_TYPO.map(x => [x[0], x])), KN = Object.fromEntries(RUN_TYPES.map(t => [t[0], t]));
+      const IC = { run: '🏃', renfo: '💪', velo: '🚴' };
+      const days = PG_J.map((j, i) => { const on = sel.includes(i), D = on ? pgDay(i) : null, k1 = D && KN[D.k], k2 = D && D.alt && KN[D.k2];
+        return `<div style="flex:1;min-width:0;padding:5px 2px;border-radius:10px;background:${on ? '#13213a' : '#0b1220'};border:1px solid ${on ? '#334155' : '#1e293b'};display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center">
+          <b style="font-size:11px;color:#94a3b8">${j[0].toUpperCase()}</b><span style="font-size:16px;line-height:1.1">${on ? IC[D.a] || '🏃' : '·'}</span>
+          ${on && D.a === 'run' ? `<span style="font-size:13px;line-height:1.1">${k1 ? k1[1] : '🧠'}${k2 ? `/${k2[1]}` : D.alt ? '/🧠' : ''}</span><span style="font-size:9px;color:#94a3b8">${D.w === 'tapis' ? '🏠' : D.w === 'exterieur' ? '🌳' : ''}${+D.p ? ` ${D.p}%` : ''}</span>` : on && +D.d ? `<span style="font-size:9px;color:#94a3b8">${D.d}'</span>` : ''}</div>`; }).join('');
+      const absIn = iso => { const e = new Date(parseISODateLocal(iso)); e.setDate(e.getDate() + 6); const ei = toISODateLocal(e); return A.some(x => x.from <= ei && x.to >= iso); };
+      const strip = M.list.map(x => `<span title="Sem. ${x.w}" style="flex:1;min-width:4px;height:18px;border-radius:3px;position:relative;background:${x.last ? '#f43f5e' : absIn(x.iso) ? '#475569' : x.dech ? '#34d399' : M.L ? '#7c3aed' : '#4c1d95'}">${x.test ? '<span style="position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:6px;height:6px;border-radius:3px;background:#facc15"></span>' : ''}</span>`).join('');
+      const chips = [P.typo ? `🏗️ ${TY[P.typo][1]}` : '🏗️ organisation au choix du coach', P.testType ? `⏱️ ${{ vma: 'Test VMA', course: 'Test course', les2: 'VMA + course', custom: 'Test sur mesure' }[P.testType]}${P.testWeek ? ` · ${{ decharge: 'décharge', fin_charge: 'fin de charge', debut: 'début de cycle' }[P.testWeek]}` : ''}${P.testNext ? ` · 1er le ${fmtDateShort(P.testNext)}` : ''}` : '⏱️ pas de test', A.length ? `🏖️ ${A.length} absence${A.length > 1 ? 's' : ''}` : '', `📆 ${M.list.length} semaine${M.list.length > 1 ? 's' : ''} jusqu'au jour J`].filter(Boolean);
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:#0b1220;border:1px solid #334155">
+        <div style="display:flex;gap:3px">${days}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${chips.map(c => `<span style="font-size:11.5px;font-weight:700;color:#e2e8f0;padding:4px 8px;border-radius:999px;background:#13213a;border:1px solid #334155">${c}</span>`).join('')}</div>
+        <div style="display:flex;gap:2px;align-items:flex-end;padding-top:6px">${strip}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8"><span><b style="color:#7c3aed">■</b> charge</span>${M.L ? '<span><b style="color:#34d399">■</b> décharge</span>' : ''}<span><b style="color:#facc15">●</b> test</span>${A.length ? '<span><b style="color:#475569">■</b> absence</span>' : ''}<span><b style="color:#f43f5e">■</b> course</span></div></div>`;
     }
     function dayPrefsText() {
       const W = { tapis: 'sur tapis', exterieur: 'en extérieur' };
@@ -8271,9 +8344,6 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
       const coachMsg = (d, isLast, mi) => `<div class="pg-msg c"><span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.5px">🧠 COACH</span>
         ${d.avis ? `<span>${e(d.avis)}</span>` : ''}
         ${(d.points || []).length ? `<div style="display:flex;flex-direction:column;gap:3px">${d.points.slice(0, 8).map(p => `<span style="color:${p.ok ? '#86efac' : '#fcd34d'}">${p.ok ? '✓' : '⚠️'} ${e(p.texte)}</span>`).join('')}</div>` : ''}
-        ${(d.semaine_type || []).length ? `<div style="display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:#0b1220"><span style="font-size:11px;font-weight:800;color:#94a3b8">SEMAINE TYPE PROPOSÉE</span>${d.semaine_type.slice(0, 10).map(j => `<span><b>${e(capFirst(j.jour))}</b> · ${e(j.seance)}${+j.duree_min ? ` <span style="color:#94a3b8">(${j.duree_min} min)</span>` : ''}</span>`).join('')}</div>` : ''}
-        ${(d.phases || []).length ? `<div style="display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:#0b1220"><span style="font-size:11px;font-weight:800;color:#94a3b8">DÉROULÉ JUSQU'AU JOUR J</span>${d.phases.slice(0, 8).map(ph => `<span><b>${e(ph.nom)}</b>${ph.semaines ? ` <span style="color:#94a3b8">(sem. ${e(ph.semaines)})</span>` : ''} · ${e(ph.contenu)}</span>`).join('')}</div>` : ''}
-        ${(d.tests || []).length ? `<span>⏱️ Tests : ${d.tests.slice(0, 6).map(e).join(' · ')}</span>` : ''}
         ${+d.chrono_jourJ_min > 0 ? `<span style="font-weight:800">⏱ Chrono visé le jour J avec ce plan : ${fmtClock(+d.chrono_jourJ_min)}</span>` : ''}
         ${(d.propositions || []).length ? `<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:800;color:#94a3b8">PROPOSITIONS</span>${d.propositions.slice(0, 6).map((p, pi) => { const v = (d.rep || {})[pi]; return `<div style="display:flex;flex-direction:column;gap:5px;padding:8px;border-radius:10px;background:#0b1220;border:1px solid ${v === 1 ? '#22c55e' : v === -1 ? '#f43f5e' : '#334155'}"><span>${e(p.texte || p)}</span>${isLast ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button type="button" onclick="planTalkVote(${mi},${pi},1)" style="min-height:38px;border-radius:10px;border:1px solid #22c55e;background:${v === 1 ? '#22c55e' : 'transparent'};color:${v === 1 ? '#052e16' : '#86efac'};font-weight:800">✓ D'accord</button><button type="button" onclick="planTalkVote(${mi},${pi},-1)" style="min-height:38px;border-radius:10px;border:1px solid #f43f5e;background:${v === -1 ? '#f43f5e' : 'transparent'};color:${v === -1 ? '#fff' : '#fda4af'};font-weight:800">✕ Non</button></div>` : `<span style="font-size:11px;color:${v === 1 ? '#86efac' : v === -1 ? '#fda4af' : '#94a3b8'}">${v === 1 ? '✓ accepté' : v === -1 ? '✕ refusé' : 'sans réponse'}</span>`}</div>`; }).join('')}</div>` : ''}
         ${d.question ? `<span style="color:#fde68a;font-weight:700">❓ ${e(d.question)}</span>` : ''}</div>`;
@@ -8283,6 +8353,7 @@ Réponds en JSON strict : {"resume":"2 phrases courtes en tutoyant : objectif r�
         ${T.dirty ? `<span style="font-size:12px;color:#fcd34d">⚠️ Tu as changé des réglages depuis le dernier avis : redemande l'avis du coach.</span>` : ''}
         <div style="display:flex;flex-direction:column;gap:8px">${conv}</div>
         <div id="pgTalkStatus" style="font-size:12px;font-weight:600;color:#c4b5fd"></div>
+        ${!T.agreed ? pgModelHtml('mdlTalk') : ''}
         ${!msgs.length || T.dirty ? `<button type="button" onclick="planTalkAsk()" style="min-height:52px;border-radius:14px;border:none;background:#a78bfa;color:#13092b;font-size:15px;font-weight:800">💬 ${msgs.length ? 'Redemander l\'avis du coach' : 'Demander l\'avis du coach'}</button>`
           : !T.agreed ? `<textarea id="pgTalkReply" rows="3" class="pg-in" placeholder="Ta réponse au coach (question, précision, désaccord…)" oninput="appData.planTalk.draft=this.value;clearTimeout(window.__pgDT);window.__pgDT=setTimeout(saveAppData,600)">${e(T.draft || '')}</textarea>
           <button type="button" onclick="planTalkAsk(true)" style="min-height:48px;border-radius:14px;border:1px solid #a78bfa;background:rgba(167,139,250,.15);color:#ede9fe;font-size:14px;font-weight:800">💬 Répondre au coach</button>
@@ -8314,7 +8385,7 @@ ${hist ? `ÉCHANGES PRÉCÉDENTS (tiens compte des réponses du coureur, ne repr
 {"avis":"3 phrases max, en tutoyant","points":[{"ok":true,"texte":"ce qui va ou ce qui coince, court"}],"semaine_type":[{"jour":"mardi","seance":"VMA courte 10×1' dehors","duree_min":55}],"phases":[{"nom":"Foncier","semaines":"1-3","contenu":"court"}],"tests":["sem. 4, mardi : test VMA"],"propositions":[{"texte":"ajustement concret proposé"}],"question":"une question ou vide","chrono_jourJ_min":chrono estimé le jour J en minutes si le plan est suivi,"pret":true}`;
       say('🧠 Le coach étudie ta configuration… (10 à 40 s)');
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', model: planPrefs().mdlTalk || (appData.coachExpert ? 'argon' : 'flash'), json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
         const d = parseJsonLoose(txt); if (!d || typeof d !== 'object') throw new Error('réponse illisible');
         T.msgs.push({ r: 'c', d, at: Date.now() }); saveAppData(); renderPlanGen();
       } catch (e) { say(`Avis impossible : ${e.message || e}`, true); }
@@ -8821,17 +8892,18 @@ Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pou
         return L.map(h => `- ${h._iso || h.date} ${h.details || sessionKind(h).label} ; ${(+h.durationMin || 0).toFixed(0)} min ; ressenti ${feelTxt(h.feeling)}${h.summary && summaryText(h.summary) ? ` ; ${summaryText(h.summary)}` : ''}${h.note ? ` ; note : ${String(h.note).slice(0, 120)}` : ''}`).join('\n') || '- aucune'; })();
       const appEst = (() => { try { const p = computeGoalProbability(); return p && !p.noData ? `Estimation de l'app aujourd'hui pour le jour J avec la progression habituelle : ${fmtClock(p.tDay)} (VMA estimée ${formatSpeed(p.vma)} km/h).` : ''; } catch (e) { return ''; } })();
       const curPlan = fut.length ? planWeeksText(fut, 'P') : '';
-      const modeTxt = mode === 'replace' ? `PLAN ACTUEL du coureur (${fut.length} séances à venir), que ton nouveau plan remplacera s'il le valide :\n${curPlan}\nCOMPARAISON OBLIGATOIRE : compare ton nouveau plan et le plan actuel dans leur ensemble (volume, progression, spécificité pour l'objectif, récupération, risque de blessure), sans détailler séance par séance, et estime pour chacun le chrono du jour J.`
+      const modeTxt = mode === 'replace' ? `PLAN ACTUEL du coureur (${fut.length} séances à venir), que ton nouveau plan remplacera s'il le valide :\n${curPlan}\nCOMPARAISON OBLIGATOIRE : compare ton nouveau plan et le plan actuel dans leur ensemble (volume, progression, spécificité pour l'objectif, récupération, risque de blessure), sans détailler séance par séance, et estime pour chacun le chrono du jour J (pour le plan actuel, pars de l'estimation de l'app ci-dessus et ajuste-la seulement si le plan actuel le justifie, en le disant).`
         : mode === 'add' ? `PLAN ACTUEL du coureur (${fut.length} séances à venir), qui est GARDÉ tel quel :\n${curPlan}\nMODE COMPLÉTER : propose UNIQUEMENT des séances supplémentaires qui complètent ce plan pour mieux réussir l'objectif ; ne modifie ni ne répète les séances existantes ; ${elite ? 'profil Élite : une 2e séance le même jour est possible si elle est utile (biquotidien)' : `JAMAIS de séance un jour où une séance est déjà prévue (dates occupées : ${[...new Set(fut.map(x => x.dateISO))].join(', ')})`}.` : '';
       const weeks = Math.ceil((parseISODateLocal(gIso) - parseISODateLocal(todayISO())) / (7 * 864e5));
       try { readPlanPrefs(); } catch (e) { }
       const ctxTxt = `Tu es un entraîneur de course à pied expérimenté. ${coachToneText()}
-${mode === 'add' ? 'Complète' : 'Construis'} mon plan d'entraînement de demain (${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}) jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines${weeks > 20 ? ' : planifie seulement les 16 prochaines semaines' : ''}).
+${mode === 'add' ? 'Complète' : 'Construis'} mon plan d'entraînement du ${pgStartISO()} jusqu'au jour de ma course le ${gIso} (environ ${weeks} semaines).
 Objectif : ${g.distanceKm} km en ${g.durationMin} min${g.hilly ? `, parcours vallonné (pente moyenne ${g.pente} %)` : ', parcours plat'}.
 Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans, ${r.weightKg || '?'} kg, FC max ${runnerFcMax() || '?'}, endurance fondamentale ${formatSpeed(runnerEF())} km/h.
 Niveau actuel (temps possibles aujourd'hui) : ${runnerLevelsText()}.
 Séances faites ces 8 dernières semaines (ce qui a été fait, à prendre en compte pour la charge et la progression) :
 ${hist}
+${pgPrevText()}
 ${appEst}
 ${modeTxt}
 ${backgroundText()}
@@ -8850,14 +8922,25 @@ Contraintes : séances uniquement le ${days} (plus les jours ajoutés par une pr
 Format JSON strict :
 {"resume":"2 phrases qui présentent le plan","chrono_jourJ_min":chrono estimé le jour J en minutes avec ce plan s'il est suivi,${mode === 'replace' ? '"comparaison":{"nouveau":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"actuel":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"conseil":"lequel choisir et pourquoi, en 1 phrase"},' : ''}"suggestions":["si le nombre de séances par semaine (ou les durées max) limite les chances de réussir : quelle séance ajouter, quel jour, et ce qu'elle apporterait ; [] sinon"],${planDays().some(i => pgDay(i).a !== 'run') ? '"autres":[{"dateISO":"AAAA-MM-JJ","activite":"musculation|velo","duree_min":40,"titre":"titre court","detail":"contenu de la séance, une ligne par étape"}],' : ''}"sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
 Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance, en bpm, calculé avec la FC max : fractionné, pyramide et côtes = uniquement "max" (FC max visée sur les fractions, moy_min et moy_max à 0) ; seuil, endurance et récup = moy_min et moy_max (cardio moyen visé) ; durée totale de chaque séance (échauffement et retour au calme compris) : jamais plus de ${longRunCap()} min, sortie longue comprise ; une course continue = un seul segment avec "repet":1 ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
-      say("🧠 Le coach prépare ton plan… (20 à 60 s)");
+      const BL = planGenBlocks(), mdlSel = planPrefs().mdlGen || 'argon1';
       try {
-        const txt = await geminiText([{ text: prompt }], { tier: 'full', expert: true, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
-        const data = parseJsonLoose(txt);
-        const list = Array.isArray(data) ? data : (data.sessions || []);
+        let data = null, list = [], autres = [];
+        for (let bi = 0; bi < BL.length; bi++) {
+          const B = BL[bi], from = B.length ? B[0].iso : ''; let toD = B.length ? (() => { const e = parseISODateLocal(B[B.length - 1].iso); e.setDate(e.getDate() + (B[B.length - 1].w === 1 ? 7 - ((e.getDay() + 6) % 7) - 1 : 6)); return toISODateLocal(e); })() : '';
+          { const gI = guessISOFromDDMM((appData.goal || {}).date || ''); if (gI && toD > gI) toD = gI; }
+          say(`🧠 Le coach prépare ton plan${BL.length > 1 ? ` : bloc ${bi + 1}/${BL.length} (semaines ${B[0].w} à ${B[B.length - 1].w})` : ''}… ${mdlSel === 'argon' || (mdlSel === 'argon1' && bi === 0) ? '(Argon, 1 à 3 min)' : '(Flash, 30 à 60 s)'}`);
+          const prev = list.length ? list.filter(x => x.dateISO).slice(-10).map(x => `${x.dateISO} ${x.type || ''} ${(x.segments || []).map(g => `${g.vitesse || g.speed || ''}km/h ${g.duree_min || ''}min`).join(' + ')}${+x.repet > 1 ? ` ×${x.repet}` : ''}${x.pente ? ` pente ${x.pente}%` : ''}`).join('\n') : '';
+          const blockTxt = BL.length > 1 ? `\nGÉNÉRATION PAR BLOCS : le plan complet (${BL.flat().length} semaines jusqu'au jour J) est généré en ${BL.length} blocs pour ne rien oublier. CETTE RÉPONSE = BLOC ${bi + 1}/${BL.length} : génère UNIQUEMENT les séances (et "autres") des semaines ${B[0].w} à ${B[B.length - 1].w} du plan, du ${from} au ${toD} inclus, TOUTES les séances de ces semaines, en suivant le calendrier des cycles et des tests.${bi > 0 ? ` Ne renvoie ni résumé, ni comparaison, ni suggestions (laisse-les vides). Continue la progression là où le bloc précédent s'est arrêté ; ses dernières séances :\n${prev}` : ' Remplis aussi résumé, chrono, comparaison et suggestions pour le plan COMPLET.'}` : '';
+          const mdl = mdlSel === 'argon' || (mdlSel === 'argon1' && bi === 0) ? 'argon' : 'flash';
+          const txt = await geminiText([{ text: prompt + blockTxt }], { tier: 'full', model: mdl, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+          const d = parseJsonLoose(txt), L2 = (Array.isArray(d) ? d : (d.sessions || [])).filter(x => !from || !x.dateISO || BL.length === 1 || (x.dateISO >= from && x.dateISO <= toD));
+          if (!data) data = Array.isArray(d) ? {} : d;
+          list = list.concat(L2); if (Array.isArray(d.autres)) autres = autres.concat(d.autres.filter(c => c && (!from || BL.length === 1 || (c.dateISO >= from && c.dateISO <= toD))));
+        }
+        data.autres = autres;
         pdfImportResult = normalizeImportedSessions(list);
         if (!pdfImportResult.length) { say("Le coach n'a proposé aucune séance, réessaie", true); return; }
-        if (mode !== 'new') { const t0 = todayISO(); pdfImportResult = pdfImportResult.filter(x => !x.dateISO || x.dateISO > t0); }
+        { const s0 = pgStartISO(); pdfImportResult = pdfImportResult.filter(x => !x.dateISO || x.dateISO >= s0); }
         // Absences : aucune séance pendant une période "off" ; pas de tapis pendant une période "light"
         let nAbs = 0; { const A = planPrefs().absences || []; const inA = (iso, m) => A.some(x => x.m === m && iso >= x.from && iso <= x.to);
           pdfImportResult = pdfImportResult.filter(x => { if (x.dateISO && inA(x.dateISO, 'off')) { nAbs++; return false; } if (x.dateISO && inA(x.dateISO, 'light') && x.type === 'tapis') x.type = 'exterieur'; return true; });
@@ -9194,7 +9277,8 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       const models = (tier === 'full' ? GEMINI_TEXT_MODELS_FULL : GEMINI_TEXT_MODELS_LITE).slice();
       const si = models.indexOf(saved);
       if (si > 0) models.unshift(models.splice(si, 1)[0]);
-      if (opts.expert && appData.coachExpert && !geminiTextBad.has(GEMINI_EXPERT_MODEL)) models.unshift(GEMINI_EXPERT_MODEL);
+      const wantExpert = opts.model === 'argon' ? true : opts.model === 'flash' ? false : !!(opts.expert && appData.coachExpert);
+      if (wantExpert && !geminiTextBad.has(GEMINI_EXPERT_MODEL)) models.unshift(GEMINI_EXPERT_MODEL);
       let lastErr = "Aucun modèle Gemini disponible";
       for (const model of models) {
         if (geminiTextBad.has(model)) continue;
@@ -9581,7 +9665,7 @@ Réponds uniquement en JSON : {"conseil": "...", "conseils_course": ["...", "...
       const col = (t, o, acc) => `<div style="flex:1;min-width:0;padding:10px;border-radius:12px;background:#0b1220;border:1px solid ${acc}55;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;color:${acc};text-transform:uppercase;letter-spacing:.5px">${t}</span><span style="font-size:22px;font-weight:900;color:#f1f5f9">⏱ ${num(o && o.chrono_jourJ_min)}</span>${goalT ? `<span style="font-size:11px;color:#94a3b8;margin-top:-4px">objectif ${fmtClock(goalT)}</span>` : ''}${ul(o && o.avantages, '#86efac')}${ul(o && o.inconvenients, '#fca5a5')}</div>`;
       return `<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.4">
         ${d.resume ? `<span style="color:#e2e8f0">${e(d.resume)}</span>` : ''}
-        ${mode === 'replace' && C ? `<div style="display:flex;gap:8px">${col('Nouveau plan', C.nouveau || { chrono_jourJ_min: d.chrono_jourJ_min }, '#a78bfa')}${col('Plan actuel', C.actuel, '#38bdf8')}</div>${C.conseil ? `<span style="color:#fde68a;font-weight:700">👉 ${e(C.conseil)}</span>` : ''}`
+        ${mode === 'replace' && C ? `<div style="display:flex;gap:8px">${col('Nouveau plan', C.nouveau || { chrono_jourJ_min: d.chrono_jourJ_min }, '#a78bfa')}${col('Plan actuel', C.actuel, '#38bdf8')}</div>${(() => { try { const pp = computeGoalProbability(); return pp && !pp.noData ? `<span style="font-size:12px;color:#94a3b8">📊 Estimation de l'app (profil › Objectif) avec ta progression actuelle : <b style="color:#e2e8f0">${fmtClock(pp.tDay)}</b></span>` : ''; } catch (e) { return ''; } })()}${C.conseil ? `<span style="color:#fde68a;font-weight:700">👉 ${e(C.conseil)}</span>` : ''}`
           : +d.chrono_jourJ_min > 0 ? `<span style="font-size:15px;font-weight:800;color:#f1f5f9">⏱ Chrono estimé le jour J : ${num(d.chrono_jourJ_min)}${goalT ? ` <span style="color:#94a3b8;font-weight:600">(objectif ${fmtClock(goalT)})</span>` : ''}</span>` : ''}
         ${L(d.suggestions).length ? `<div style="padding:10px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:800;color:#fcd34d">💡 Pour augmenter tes chances</span>${ul(d.suggestions, '#fde68a')}</div>` : ''}
         ${Array.isArray(d.autres) && d.autres.length ? `<span style="color:#cbd5e1">💪🚴 + ${d.autres.length} séance${d.autres.length > 1 ? 's' : ''} de renfo / vélo ajoutée${d.autres.length > 1 ? 's' : ''} au planning à la validation.</span>` : ''}
@@ -9701,7 +9785,7 @@ Réponds uniquement avec le JSON.`;
     // Remplacement d'un plan existant : proposer d'abord une sauvegarde de l'ancien
     let planReplaceOk = false;
     function planReplaceAsk() {
-      const t0 = todayISO(), fut = planToSave().filter(x => !x.dateISO || x.dateISO > t0);
+      const s0 = pgStartISO(), fut = planToSave().filter(x => !x.dateISO || x.dateISO >= s0);
       planConfirm('🔄 Remplacer ton plan', `Ton plan actuel : <b>${fut.length} séance${fut.length > 1 ? 's' : ''}</b> ${planRangeTxt(fut)}.<br>Il sera <b>supprimé</b> et remplacé par les ${pdfImportResult.length} séances du nouveau plan (pas de cumul).<br><span style="color:#94a3b8;font-size:12px">Tes séances déjà faites et leurs résultats sont gardés.</span>`,
         [['💾 Sauvegarder puis remplacer', 'planReplaceGo(true)', '#a78bfa', '#13092b'], ['Remplacer sans sauvegarde', 'planReplaceGo(false)', '#1e293b', '#e2e8f0']]);
     }
@@ -9711,7 +9795,7 @@ Réponds uniquement avec le JSON.`;
     }
     function confirmPdfImport(skipConflicts) {
       if (!pdfImportResult.length) return;
-      if (pdfImportGen && pdfImportGen.mode === 'replace' && !planReplaceOk && planToSave().some(x => !x.dateISO || x.dateISO > todayISO())) { planReplaceAsk(); return; }
+      if (pdfImportGen && pdfImportGen.mode === 'replace' && !planReplaceOk && planToSave().some(x => !x.dateISO || x.dateISO >= pgStartISO())) { planReplaceAsk(); return; }
       planReplaceOk = false;
       applyRunnerWarmCool(pdfImportResult);
       let mode = document.querySelector('input[name="pdfImportMode"]:checked')?.value || 'replace';
@@ -9727,7 +9811,7 @@ Réponds uniquement avec le JSON.`;
           if (!pdfImportResult.length) { showToast('Aucune séance à ajouter'); return; }
           mode = 'append';
         } else if (gm === 'replace') {
-          appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x) || (x.dateISO && x.dateISO <= t0));
+          { const s0 = pgStartISO(); appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x) || (x.dateISO && x.dateISO < s0)); }
           mode = 'append';
         }
         { const P0 = planPrefs(); P0.pgActive = false; P0.pgStep = 1; }
