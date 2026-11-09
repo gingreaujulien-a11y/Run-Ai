@@ -999,6 +999,7 @@
 
         <!-- ===== PLAN ===== -->
         <div class="pm-panel pm-off" data-p="plan">
+          <div class="pm-card" data-sub="Mon plan" id="myPlanCard"></div>
           <div class="pm-card" style="border-color:rgba(52,211,153,.4)">
             <span class="pm-cap" style="color:#6ee7b7">Mon plan actuel</span>
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
@@ -1011,6 +1012,8 @@
               <button type="button" onclick="fillCardioLocal()" class="pm-btn" style="height:44px;border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-weight:800;font-size:13px">❤️ Calculer les cardios cibles manquants (gratuit, sans IA)</button>
               <span class="text-[11px] text-slate-500 leading-snug">Sans analyse du coach, l'app calcule déjà la cible de chaque séance au moment de la faire (FC max sur les fractions courtes, FC moyenne sinon, abaissée sur tapis). Ce bouton l'inscrit dans le plan.</span>
             </div>
+            <button type="button" onclick="planTypeCheck()" class="pm-btn" style="height:46px;font-size:13.5px;border-color:rgba(232,121,249,.5);background:rgba(232,121,249,.08);color:#f5d0fe;font-weight:800">🏷️ Vérifier les types de séance</button>
+            <div id="planTypeBox" style="display:none;flex-direction:column;gap:8px"></div>
             <button id="planAnaBtn" type="button" onclick="analyzePlanWithCoach()" class="pm-btn" style="height:48px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">🔎 Analyser mon plan avec le coach</button>
             <div id="planAnaStatus" class="text-[12px] font-semibold text-emerald-300"></div>
             <button type="button" onclick="exportPlanIcs()" class="pm-btn" style="height:44px;font-size:13px">📅 Exporter mon plan vers mon agenda (Google, Apple…)</button>
@@ -4933,7 +4936,7 @@
       if (s.kind && CFG_KINDS.some(k => k[0] === s.kind)) return s.kind;
       if (s.free) return 'libre';
       if (/\b(course|compétition|competition|semi|marathon|10 ?km officiel)\b/i.test(s.notes || '') && /course|compét|semi|marathon/i.test(s.notes || '') && (s.pyramide || []).length === 1 && s.pyramide[0].unit === 'km') return 'course';
-      if (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && (s.pyramide || []).length === 1) return 'test';
+      if (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && !/%\s*(de\s*)?(la\s*|ta\s*)?vma|vma\s*(courte|longue)/i.test(s.notes || '') && (s.pyramide || []).length === 1) return 'test';
       const L = sessionKind(s).label;
       return { 'FRACTIONNÉ': 'fractionne', 'SEUIL': 'seuil', 'SORTIE LONGUE': 'longue' }[L] || 'longue';
     }
@@ -6180,7 +6183,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
       if (s.kind === 'course') return { label: 'COURSE', color: '#facc15' };
-      if (s.kind === 'test' || (!s.kind && (/\btest\b|\bvma\b|cooper/i.test(s.notes || '') || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
+      if (s.kind === 'test' || (!s.kind && (s.pyramide || []).length <= 1 && ((/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && !/%\s*(de\s*)?(la\s*|ta\s*)?vma|vma\s*(courte|longue)/i.test(s.notes || '')) || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
       if (s.kind === 'endu') return { label: 'ENDURANCE', color: '#60a5fa' };
       if (s.kind === 'longue') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
       if (s.kind === 'fractionne') return { label: 'FRACTIONNÉ', color: '#fb923c' };
@@ -7048,7 +7051,7 @@ Donne 2 ou 3 axes de travail.`;
       const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`);
       const actions = `
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
-          ${guideHtml(s, item.rawIdx)}
+          ${plSessViewHtml(s, item.rawIdx)}
           ${item.iso ? `<a href="${gcalUrl(s)}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;min-height:40px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#bae6fd;font-weight:800;font-size:13px;text-decoration:none">📅 Ajouter à Google Agenda</a>` : ''}
         </div>`;
       if (isToday) {
@@ -7060,6 +7063,17 @@ Donne 2 ou 3 axes de travail.`;
       }
       return `<div class="pl-card ${past ? 'past' : ''}" data-plsid="${s.id}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
     }
+    // Détail d'une séance du planning : onglets Récap / Objectif / Adapter comme sur l'accueil
+    function plSessViewHtml(s, idx) {
+      if (!s || s.free) return guideHtml(s, idx);
+      const id = 'plv_' + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
+      return `<div id="${id}" style="display:flex;flex-direction:column;gap:8px">
+        <div class="hsub" style="margin:0">${[['recap', '📊 Récap'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
+        <div data-pv="recap">${homeSessTilesHtml(s)}</div>
+        <div data-pv="obj" style="display:none;flex-direction:column;gap:8px">${part('obj')}</div>
+        <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${part('adapt')}</div></div>`;
+    }
+    function plSessSub(id, k, btn) { const b = document.getElementById(id); if (!b) return; b.querySelectorAll('[data-pv]').forEach(e => { e.style.display = e.dataset.pv === k ? (k === 'recap' ? '' : 'flex') : 'none'; }); b.querySelectorAll('.hsub button').forEach(x => x.classList.toggle('on', x === btn)); }
     function plRaceCard(i) {
       const g = appData.goal || {};
       return `<div class="pl-card" style="border-color:rgba(250,204,21,.55);background:linear-gradient(135deg,rgba(250,204,21,.14),rgba(15,23,42,.6))">
@@ -7796,7 +7810,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function openCoachModal() { openAudioModal(); setPmTab('audioModal', 'coach'); }
     // Sous-onglets : un par bloc (carte) de chaque onglet du profil
     const PM_SUB_LBL = { 'Identité': 'Identité', 'Cardio': 'Cardio', 'Mon niveau actuel': 'Niveau', 'Allures et routine': 'Allures', "👍 Ce que j'aime": "J'aime",
-      'Modifier': 'Objectif', 'Mes chances': 'Estimation chrono', 'Mon chrono jour J': 'Estimation chrono', 'Estimation chrono': 'Estimation chrono', 'Mon plan actuel': 'Analyser', 'Générer mon plan avec le coach': 'Générer', 'Importer un plan PDF': 'Importer', 'Séances proposées': 'Importer' };
+      'Modifier': 'Objectif', 'Mes chances': 'Estimation chrono', 'Mon chrono jour J': 'Estimation chrono', 'Estimation chrono': 'Estimation chrono', 'Mon plan': 'Mon plan', 'Mon plan actuel': 'Analyser', 'Générer mon plan avec le coach': 'Générer', 'Importer un plan PDF': 'Importer', 'Séances proposées': 'Importer' };
     const pmSubSel = {};
     function pmBlockLabel(b) {
       if (b.dataset && b.dataset.sub) return b.dataset.sub;
@@ -7972,7 +7986,120 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const cur = planStyle();
       b.innerHTML = [['ambitieux', '🚀 Ambitieux', 'Vitesses élevées dès le début, on dose par la durée et les répétitions'], ['progressif', '🌱 Progressif', 'Allures modérées au début, montée en douceur']].map(([v, l, d]) => `<button type="button" onclick="setPlanStyle('${v}')" class="rounded-xl p-2.5 text-left flex flex-col gap-0.5" style="${v === cur ? 'background:rgba(52,211,153,.15);border:2px solid #34d399' : 'background:#0f172a;border:1px solid #334155'}"><span class="text-[13px] font-extrabold text-white">${l}</span><span class="text-[11px] text-slate-400 leading-tight">${d}</span></button>`).join('');
     }
+    // ---------- Mon plan : récap visuel du plan en cours
+    const PL_HARD = { fractionne: 1, pyramide: 1, cotes: 1, test: 1, course: 1, seuil: 0.7 };
+    function renderMyPlan() {
+      const box = document.getElementById('myPlanCard'); if (!box) return;
+      const S = (appData.sessions || []).filter(x => x.dateISO && !x.free).sort((a, b) => a.dateISO.localeCompare(b.dateISO)), t0 = todayISO(), meta = appData.planMeta || null;
+      const fut = S.filter(x => !isSessionDone(x) && x.dateISO >= t0);
+      if (!fut.length) { box.innerHTML = `<span class="pm-cap" style="color:#6ee7b7">Mon plan</span><span style="font-size:13px;color:#94a3b8">Aucune séance prévue. Crée ton plan dans l'onglet Générer ou importe-le.</span>`; return; }
+      const g = appData.goal || {}, gi = guessISOFromDDMM(g.date || '');
+      const start = meta && meta.start && meta.start <= fut[0].dateISO ? meta.start : (S.find(x => x.dateISO >= weekStartISO(t0)) || fut[0]).dateISO;
+      const end = [fut[fut.length - 1].dateISO, gi].filter(Boolean).sort().pop();
+      // semaines
+      const W = []; for (let d = parseISODateLocal(weekStartISO(start)); toISODateLocal(d) <= end; d.setDate(d.getDate() + 7)) { const iso = toISODateLocal(d), e = new Date(d); e.setDate(e.getDate() + 6); const ei = toISODateLocal(e);
+        const L = S.filter(x => x.dateISO >= iso && x.dateISO <= ei), min = L.reduce((t, x) => t + computeSessionTotalMin(x), 0), hard = L.reduce((t, x) => { let k = x.kind; try { k = guideKind(x); } catch (er) { } return t + computeSessionTotalMin(x) * (PL_HARD[k] || 0); }, 0);
+        const mw = meta && (meta.weeks || []).find(w => w.iso === iso || (w.iso >= iso && w.iso <= ei));
+        W.push({ iso, ei, L, min: Math.round(min), hard: Math.round(hard), test: L.some(x => (x.kind || '') === 'test') || !!(mw && mw.test), race: gi && gi >= iso && gi <= ei, now: t0 >= iso && t0 <= ei, c: mw ? mw.c : 0, dech: mw ? mw.dech : null }); }
+      W.forEach((w, i) => { if (w.dech === null) { const ref = W.slice(Math.max(0, i - 3), i).filter(x => x.min); const a = ref.length ? ref.reduce((t, x) => t + x.min, 0) / ref.length : 0; w.dech = !!(a && w.min && w.min < 0.8 * a); } });
+      const mx = Math.max(1, ...W.map(w => w.min)), cur = W.findIndex(w => w.now), cw = W[cur] || W[0];
+      const where = cur >= 0 ? `Semaine ${cur + 1} sur ${W.length}${cw.c ? ` · S${cw.c} du cycle` : ''} · ${cw.race ? 'semaine de course' : cw.dech ? '🔋 décharge' : 'charge'}` : `Le plan commence le ${fmtDateShort(start)}`;
+      const nextTest = W.find((w, i) => i > cur && w.test), nextDech = W.find((w, i) => i > cur && w.dech);
+      // barres charge (gris = facile, violet = dur)
+      const bars = W.map((w, i) => `<div title="Sem. ${i + 1}" style="flex:1;min-width:3px;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:84px;position:relative;${w.now ? 'outline:2px solid #38bdf8;outline-offset:1px;border-radius:3px;' : ''}">
+          ${w.test ? '<span style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:3px;background:#facc15"></span>' : ''}
+          <div style="height:${Math.round((w.min - w.hard) / mx * 70)}px;background:${w.race ? '#f43f5e' : w.dech ? '#34d399' : '#475569'};border-radius:3px 3px 0 0"></div>
+          <div style="height:${Math.round(w.hard / mx * 70)}px;background:${w.race ? '#f43f5e' : '#a78bfa'}"></div>
+          <div style="height:6px;margin-top:2px;border-radius:2px;background:${w.race ? '#f43f5e' : w.dech ? '#34d399' : '#7c3aed'}"></div></div>`).join('');
+      // types par jour (ce qui est prévu le plus souvent) + évolution par jour
+      const KN = Object.fromEntries(RUN_TYPES.map(t => [t[0], t])), KMAP = { fractionne: '⚡', seuil: '🎯', endu: '🌿', longue: '🛣️', cotes: '⛰️', recup: '💤', test: '🧪', course: '🏁', pyramide: '🔺' };
+      const byDay = PG_J.map((j, dw) => fut.filter(x => (parseISODateLocal(x.dateISO).getDay() + 6) % 7 === dw));
+      const dayCells = byDay.map((L, dw) => { const cnt = {}; L.forEach(x => { const k = sessionKind(x).label; cnt[k] = (cnt[k] || 0) + 1; }); const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2); const md = meta && meta.days && meta.days[dw];
+        const ic = L.length ? [...new Set(L.slice(0, 12).map(x => KMAP[(() => { try { return guideKind(x); } catch (e) { return x.kind; } })()] || '🏃'))].slice(0, 2).join('') : md && md.a === 'renfo' ? '💪' : md && md.a === 'velo' ? '🚴' : '·';
+        return `<div style="flex:1;min-width:0;padding:5px 2px;border-radius:10px;background:${L.length ? '#13213a' : '#0b1220'};border:1px solid ${L.length ? '#334155' : '#1e293b'};display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center"><b style="font-size:11px;color:#94a3b8">${PG_J[dw][0].toUpperCase()}</b><span style="font-size:15px;line-height:1.1">${ic}</span><span style="font-size:8.5px;color:#94a3b8;line-height:1.1">${top.map(t => plEsc(t[0].toLowerCase())).join('<br>')}</span></div>`; }).join('');
+      const evo = byDay.map((L, dw) => { if (!L.length) return ''; const m = Math.max(1, ...L.map(x => computeSessionTotalMin(x)));
+        return `<div style="display:flex;align-items:flex-end;gap:6px"><b style="width:30px;font-size:11px;color:#94a3b8">${capFirst(PG_J[dw]).slice(0, 3)}</b><div style="flex:1;display:flex;align-items:flex-end;gap:1.5px;height:30px">${L.map(x => { const k = sessionKind(x); return `<div title="${x.dateISO} · ${plEsc(k.label)} · ${Math.round(computeSessionTotalMin(x))} min" style="flex:1;min-width:2px;height:${Math.max(3, Math.round(computeSessionTotalMin(x) / m * 30))}px;border-radius:2px;background:${k.color}"></div>`; }).join('')}</div><span style="width:58px;font-size:10px;color:#94a3b8;text-align:right">${Math.round(computeSessionTotalMin(L[0]))}' → ${Math.round(computeSessionTotalMin(L[L.length - 1]))}'</span></div>`; }).join('');
+      const kinds = [...new Map(fut.map(x => { const k = sessionKind(x); return [k.label, k.color]; })).entries()];
+      box.innerHTML = `<span class="pm-cap" style="color:#6ee7b7">Mon plan</span>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${[g.distanceKm ? `🏁 ${g.distanceKm} km${g.durationMin ? ` en ${fmtClock(+g.durationMin)}` : ''}${gi ? ` · ${fmtDateShort(gi)}` : ''}` : '', `📆 ${fmtDateShort(start)} → ${fmtDateShort(end)}`, `${fut.length} séances à venir`, meta && meta.typo ? `🏗️ ${(PG_TYPO.find(x => x[0] === meta.typo) || [, meta.typo])[1]}` : ''].filter(Boolean).map(c => `<span style="font-size:11.5px;font-weight:700;color:#e2e8f0;padding:4px 8px;border-radius:999px;background:#13213a;border:1px solid #334155">${c}</span>`).join('')}</div>
+        <div style="padding:10px 12px;border-radius:12px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35);display:flex;flex-direction:column;gap:3px"><b style="font-size:14px;color:#e0f2fe">📍 ${where}</b><span style="font-size:12px;color:#94a3b8">${[nextDech ? `prochaine décharge : semaine du ${fmtDateShort(nextDech.iso)}` : '', nextTest ? `prochain test : semaine du ${fmtDateShort(nextTest.iso)}` : ''].filter(Boolean).join(' · ') || ' '}</span></div>
+        <div class="pg-sec"><span class="pg-t">Structure, charge et difficulté par semaine</span>
+          <div style="display:flex;gap:2px;align-items:flex-end;padding-top:6px">${bars}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8"><span><b style="color:#475569">■</b> minutes faciles</span><span><b style="color:#a78bfa">■</b> minutes dures</span><span><b style="color:#7c3aed">▬</b> charge</span><span><b style="color:#34d399">▬</b> décharge</span><span><b style="color:#facc15">●</b> test</span><span><b style="color:#f43f5e">■</b> course</span><span><b style="color:#38bdf8">▢</b> cette semaine</span></div></div>
+        <div class="pg-sec"><span class="pg-t">Type de séance par jour</span><div style="display:flex;gap:3px">${dayCells}</div></div>
+        <div class="pg-sec"><span class="pg-t">Évolution des séances par jour (durée)</span>${evo}
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8">${kinds.map(([l, c]) => `<span><b style="color:${c}">■</b> ${plEsc(l.toLowerCase())}</span>`).join('')}</div></div>`;
+    }
+    // ---------- Vérification des types de séance (app, sans IA) : le type affiché correspond-il au contenu ?
+    const KIND_LAB = { endu: 'Endurance', longue: 'Sortie longue', recup: 'Récupération', fractionne: 'Fractionné', pyramide: 'Pyramide', seuil: 'Seuil', cotes: 'Côtes', test: 'Test', course: 'Course' };
+    function structKind(s) {
+      let vma = 0; try { const e = estimateVma(); vma = e ? e.vma : 0; } catch (e) { } if (!vma) vma = 14;
+      const ef = runnerEF() || vma * 0.68, G = gSegs(s), P = G.segs, reps = G.reps, pente = +s.pente || 0;
+      if (!P.length) return null;
+      const segMin = q => q.unit === 'km' ? (+q.distance || 0) / (+q.speed || 1) * 60 : +q.duration || 0;
+      const cont = !G.fast.length;
+      if (cont) {
+        const v = Math.max(...P.map(q => +q.speed)), dur = P.reduce((t, q) => t + segMin(q), 0) * reps;
+        if (v >= 0.93 * vma && dur <= 15) return { k: 'test', why: `un seul effort de ${Math.round(dur)} min à ${fmtV(v)} km/h (≈ ${Math.round(v / vma * 100)} % VMA)` };
+        if (v >= 0.8 * vma && dur >= 10) return { k: 'seuil', why: `effort continu à ${fmtV(v)} km/h (≈ ${Math.round(v / vma * 100)} % VMA)` };
+        if (v < ef * 0.93 && dur <= 45) return { k: 'recup', why: `${Math.round(dur)} min très faciles à ${fmtV(v)} km/h` };
+        return dur >= 75 ? { k: 'longue', why: `${Math.round(dur)} min à allure facile (${fmtV(v)} km/h)` } : { k: 'endu', why: `${Math.round(dur)} min à allure facile (${fmtV(v)} km/h)` };
+      }
+      const fd = segMin(G.fast[0]), vf = G.vmax;
+      if (pente >= 4 && s.type === 'tapis') return { k: 'cotes', why: `répétitions en pente (${pente} %)` };
+      if (pyramidIsPyr(s)) return { k: 'pyramide', why: 'vitesses en pyramide' };
+      if (vf >= 0.88 * vma && fd <= 6) return { k: 'fractionne', why: `${reps} × ${fmtQ(G.fast[0])} à ${fmtV(vf)} km/h (≈ ${Math.round(vf / vma * 100)} % VMA)` };
+      if (vf >= 0.78 * vma) return { k: 'seuil', why: `${reps} × ${fmtQ(G.fast[0])} à ${fmtV(vf)} km/h (≈ ${Math.round(vf / vma * 100)} % VMA)` };
+      return { k: 'endu', why: `répétitions à allure facile (${fmtV(vf)} km/h)` };
+    }
+    function declKind(s) { const L = sessionKind(s).label; return { 'TEST': 'test', 'ENDURANCE': 'endu', 'SORTIE LONGUE': 'longue', 'FRACTIONNÉ': 'fractionne', 'SEUIL': 'seuil', 'CÔTES': 'cotes', 'RÉCUPÉRATION': 'recup', 'COURSE': 'course' }[L] || s.kind || ''; }
+    let planTypeIssues = [];
+    function planTypeCheck() {
+      const box = document.getElementById('planTypeBox'); if (!box) return;
+      const t0 = todayISO(), meta = appData.planMeta, gi = guessISOFromDDMM((appData.goal || {}).date || '');
+      const testWeek = iso => { if (!meta || !Array.isArray(meta.weeks)) return null; const ws = weekStartISO(iso); return meta.weeks.some(w => w.test && weekStartISO(w.iso) === ws); };
+      const easy = ['endu', 'longue', 'recup'], hardK = ['fractionne', 'pyramide', 'seuil', 'cotes'];
+      planTypeIssues = [];
+      (appData.sessions || []).forEach(s => {
+        if (!s.dateISO || s.dateISO < t0 || isSessionDone(s) || s.free || s.cross) return;
+        const d = declKind(s), st = structKind(s); if (!st || !d) return;
+        let issue = null;
+        if (d === 'course') { if (gi && s.dateISO !== gi && st.k !== 'test') issue = { to: st.k, why: `marquée « course » mais ce n'est pas le jour de ta course (${fmtDateShort(gi)}) : ${st.why}` }; }
+        else if (d === 'test') { const tw = testWeek(s.dateISO);
+          if (st.k !== 'test') issue = { to: st.k, why: `marquée « test » mais le contenu est ${st.why}${tw === false ? ', et ce n\'est pas une semaine de test du plan' : ''}` };
+          else if (tw === false) issue = { to: 'seuil', why: 'ressemble à un test mais tombe hors des semaines de test prévues à la génération du plan', soft: true }; }
+        else if (st.k === 'test' && d !== 'test') { if (testWeek(s.dateISO)) issue = { to: 'test', why: `semaine de test prévue et contenu de test : ${st.why}` }; }
+        else if (easy.includes(d) && hardK.includes(st.k)) issue = { to: st.k, why: `marquée « ${KIND_LAB[d].toLowerCase()} » mais contient ${st.why}` };
+        else if (hardK.includes(d) && easy.includes(st.k)) issue = { to: st.k, why: `marquée « ${KIND_LAB[d].toLowerCase()} » mais tout est ${st.why}` };
+        else if (d === 'cotes' && st.k !== 'cotes' && s.type === 'tapis' && (+s.pente || 0) < 2) issue = { to: st.k, why: `marquée « côtes » mais la pente du tapis n'est que de ${+s.pente || 0} %` };
+        else if (d === 'longue' && st.k === 'endu' && computeSessionTotalMin(s) < 55) issue = { to: 'endu', why: `« sortie longue » de seulement ${Math.round(computeSessionTotalMin(s))} min`, soft: true };
+        if (issue) planTypeIssues.push(Object.assign({ id: s.id, iso: s.dateISO, from: d, on: !issue.soft }, issue));
+      });
+      // semaines de test prévues sans test
+      const miss = meta && Array.isArray(meta.weeks) ? meta.weeks.filter(w => w.test && w.iso >= weekStartISO(t0) && !(appData.sessions || []).some(s => s.dateISO && weekStartISO(s.dateISO) === weekStartISO(w.iso) && declKind(s) === 'test')) : [];
+      renderPlanTypeBox(miss);
+    }
+    let planTypeMiss = [];
+    function renderPlanTypeBox(miss) {
+      if (miss) planTypeMiss = miss; else miss = planTypeMiss;
+      const box = document.getElementById('planTypeBox'); if (!box) return; box.style.display = 'flex';
+      const I = planTypeIssues, nOn = I.filter(x => x.on).length;
+      box.innerHTML = `${!I.length ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.4);font-size:13px;color:#bbf7d0">✓ Tous les types de séance correspondent à leur contenu.</div>` : `<span style="font-size:13px;color:#e2e8f0;font-weight:700">${I.length} séance${I.length > 1 ? 's' : ''} avec un type incohérent. Coche celles à corriger :</span>
+        ${I.map((x, i) => `<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#0b1220;border:1px solid ${x.on ? '#e879f9' : '#334155'};cursor:pointer"><input type="checkbox" ${x.on ? 'checked' : ''} onchange="planTypeIssues[${i}].on=this.checked;renderPlanTypeBox()" style="margin-top:3px;width:20px;height:20px;accent-color:#e879f9;flex:none">
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><b style="font-size:13.5px;color:#f1f5f9">${capFirst(parseISODateLocal(x.iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }))} : ${KIND_LAB[x.from] || x.from} → <span style="color:#f5d0fe">${KIND_LAB[x.to] || x.to}</span></b><span style="font-size:12px;color:#94a3b8;line-height:1.35">${plEsc(x.why)}${x.soft ? ' (à vérifier)' : ''}</span></span></label>`).join('')}
+        <button type="button" onclick="planTypeApply()" ${nOn ? '' : 'disabled'} style="min-height:48px;border-radius:14px;border:none;background:${nOn ? '#e879f9' : '#334155'};color:${nOn ? '#2e0636' : '#94a3b8'};font-size:14px;font-weight:800">Corriger ${nOn} séance${nOn > 1 ? 's' : ''}</button>`}
+        ${(miss || []).length ? `<span style="font-size:12px;color:#fcd34d;line-height:1.35">⚠️ Semaine${miss.length > 1 ? 's' : ''} de test prévue${miss.length > 1 ? 's' : ''} sans séance de test : ${miss.map(w => `sem. du ${fmtDateShort(w.iso)}`).join(', ')}. Tu peux en ajouter une ou demander au coach d'adapter le plan.</span>` : ''}
+        ${!appData.planMeta ? '<span style="font-size:11px;color:#64748b">Ton plan a été créé avant l\'enregistrement des semaines de test : la vérification se fait seulement sur le contenu des séances.</span>' : ''}`;
+    }
+    function planTypeApply() {
+      const L = planTypeIssues.filter(x => x.on); let n = 0;
+      L.forEach(x => { const s = (appData.sessions || []).find(y => y.id === x.id); if (!s) return; s.kindBefore = s.kindBefore || s.kind || declKind(s); s.kind = x.to === 'pyramide' ? 'fractionne' : x.to; n++; });
+      saveAppData(); try { reloadChrono(); } catch (e) { } try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { } try { renderMyPlan(); } catch (e) { }
+      planTypeIssues = planTypeIssues.filter(x => !x.on); renderPlanTypeBox();
+      showToast(`✓ ${n} type${n > 1 ? 's' : ''} de séance corrigé${n > 1 ? 's' : ''}`);
+    }
     function renderPlanSummary() {
+      try { renderMyPlan(); } catch (e) { }
       renderPlanStyleChips();
       const el = document.getElementById('planSummaryLine');
       if (!el) return;
@@ -9814,7 +9941,8 @@ Réponds uniquement avec le JSON.`;
           { const s0 = pgStartISO(); appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x) || (x.dateISO && x.dateISO < s0)); }
           mode = 'append';
         }
-        { const P0 = planPrefs(); P0.pgActive = false; P0.pgStep = 1; }
+        { const P0 = planPrefs(); P0.pgActive = false; P0.pgStep = 1;
+          try { const M = planCycleMap(); appData.planMeta = { at: Date.now(), start: pgStartISO(), typo: P0.typo || '', L: M.L, weeks: M.list.map(x => ({ iso: x.iso, c: x.c, dech: !!x.dech, test: !!x.test })), days: JSON.parse(JSON.stringify(Object.fromEntries(planDays().map(i => [i, pgDay(i)])))) }; } catch (e) { } }
         const au = Array.isArray(pdfImportGen.data && pdfImportGen.data.autres) ? pdfImportGen.data.autres : [];
         if (gm === 'replace') appData.crossPlan = (appData.crossPlan || []).filter(c => !(c.fromPlan && c.dateISO > t0));
         if (au.length) { appData.crossPlan = appData.crossPlan || []; au.forEach((c, i) => { if (!c.dateISO || c.dateISO <= t0) return; const a = String(c.activite || '').toLowerCase(); appData.crossPlan.push({ id: `cross_${Date.now()}_${i}`, type: a.startsWith('v') ? 'velo' : 'muscu', dateISO: c.dateISO, dur: Math.round(+c.duree_min || 30), intensite: 'moderee', titre: String(c.titre || ''), detail: String(c.detail || ''), fromPlan: true }); }); }
