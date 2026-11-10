@@ -140,12 +140,13 @@
     #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
-    body.rv-tall #readView { max-height: 62vh; flex: 1; }
-    #readViewBody { position: relative; overflow-y: auto; line-height: 1.45; color: #64748b; font-weight: 600; min-height: 0; }
+    body.rv-on #readView { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: auto; max-height: none; margin: 0; z-index: 2; }
+    body.rv-on #circleZone > svg, body.rv-on #circleCenter { visibility: hidden; }
+    #readViewBody { position: relative; flex: 1; overflow-y: auto; line-height: 1.35; color: #f8fafc; font-weight: 700; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 2px; }
     #readViewBody span.rv-cur { color: #f8fafc; }
     #readViewBody span.rv-past { color: #475569; }
     .rv-b { min-width: 40px; height: 34px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-weight: 800; font-size: 14px; }
-    body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-circle #circleZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
+    body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
     .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 3px; padding: 4px; margin: 6px 0 2px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 -8px 0 #050a14; scrollbar-width: none; }
     .pm-subtabs::-webkit-scrollbar { display: none; }
     .pm-subtabs button { flex: 1 0 auto; min-height: 36px; padding: 0 7px; border-radius: 10px; font-size: 12.5px; font-weight: 800; background: transparent; color: #94a3b8; border: 0; white-space: nowrap; }
@@ -314,7 +315,7 @@
     .lc-b:active { transform: scale(.94); background: #334155; }
     .lc-b.lc-t { font-size: 19px; }
     .lc-l { flex: 1; min-width: 0; text-align: center; font-size: 12px; font-weight: 800; color: #94a3b8; line-height: 1.15; text-transform: uppercase; letter-spacing: .4px; }
-    .lc-l b { display: block; font-size: 22px; color: #fff; letter-spacing: 0; text-transform: none; }
+    .lc-l b { display: block; font-size: 40px; line-height: 1; color: #fff; letter-spacing: -.5px; text-transform: none; font-variant-numeric: tabular-nums; }
     .lc-l i { display: block; font-style: normal; font-size: 11px; color: #fcd34d; text-transform: none; letter-spacing: 0; }
     .cn-b { width: 52px; height: 52px; border-radius: 999px; background: rgba(30,41,59,.9); border: 1px solid #475569; color: #e2e8f0; display: flex; align-items: center; justify-content: center; }
     .cn-b:active { transform: scale(.92); background: #334155; }
@@ -478,16 +479,29 @@
       </svg>
 
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
-      <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+      <div id="circleCenter" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
         <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black tracking-tight text-white drop-shadow-lg" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-0.02em;line-height:1">
           8
         </div>
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
-        <div id="circleNav" class="pointer-events-auto hidden" style="display:none;gap:1.6rem;margin-top:.5rem">
-          <button type="button" onclick="skipToPrevStage()" aria-label="Segment précédent" class="cn-b"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="3" height="14" rx="1"/><polygon points="20 5 9 12 20 19"/></svg></button>
-          <button type="button" onclick="skipToNextStage()" aria-label="Segment suivant" class="cn-b"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><polygon points="4 5 15 12 4 19"/><rect x="17" y="5" width="3" height="14" rx="1"/></svg></button>
-        </div>
+      </div>
+    <div id="readView">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="readViewHead" style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#7dd3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📖 Lecture</span>
+        <button type="button" onclick="readFont(-2)" aria-label="Texte plus petit" class="rv-b">A−</button>
+        <button type="button" onclick="readFont(2)" aria-label="Texte plus grand" class="rv-b">A+</button>
+        <button type="button" onclick="readViewToggle(false)" aria-label="Masquer le texte" class="rv-b">✕</button>
+      </div>
+      <div id="readViewBody" class="custom-scroll"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button type="button" onclick="readBack15()" aria-label="Revenir 15 secondes en arrière" class="rv-b" style="height:46px;font-size:16px">↺ 15 s</button>
+        <button type="button" id="rvPlayBtn" onclick="readUserToggle()" aria-label="Pause lecture" class="rv-b" style="height:46px;font-size:16px">⏸ Pause</button>
+      </div>
+    </div>
+      <div id="circleNav" class="hidden" style="display:none;position:absolute;inset:0;align-items:center;justify-content:space-between;pointer-events:none">
+          <button type="button" onclick="skipToPrevStage()" aria-label="Segment précédent" class="cn-b" style="pointer-events:auto"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="3" height="14" rx="1"/><polygon points="20 5 9 12 20 19"/></svg></button>
+          <button type="button" onclick="skipToNextStage()" aria-label="Segment suivant" class="cn-b" style="pointer-events:auto"><svg width="50%" height="50%" viewBox="0 0 24 24" fill="currentColor"><polygon points="4 5 15 12 4 19"/><rect x="17" y="5" width="3" height="14" rx="1"/></svg></button>
       </div>
     </div>
     <div id="runMapBox" class="hidden" style="width:100%;position:relative;height:50vh;min-height:250px;border-radius:18px;overflow:hidden;margin:4px 0 8px;background:#0b1324;border:1px solid #1e293b">
@@ -508,33 +522,24 @@
         <button id="omTwo" onclick="oneMoreChoice('two')" aria-label="Une série de plus" class="rounded-2xl font-black active:scale-95" style="min-height:96px;font-size:40px;background:#34d399;color:#04140d">+1</button>
       </div>
     </div>
-    <div id="liveCtl" class="w-full max-w-xs" style="display:none;flex-direction:column;gap:8px;margin:2px 0 8px">
-      <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span class="lc-l" id="lcSpdL">vitesse</span><button type="button" class="lc-b" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
-      <div id="lcTime" class="lc-row"><button type="button" class="lc-b lc-t" onclick="adjStageTime(-15)" aria-label="15 secondes de moins">−15 s</button><span class="lc-l" id="lcTimeL">durée</span><button type="button" class="lc-b lc-t" onclick="adjStageTime(15)" aria-label="15 secondes de plus">+15 s</button></div>
-    </div>
     <div id="cdAddBox" class="w-full max-w-xs mb-3 p-3 rounded-2xl hidden" style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.55)">
       <div style="font-size:14px;font-weight:800;color:#d1fae5;text-align:center;margin-bottom:8px">Encore de l'énergie ? Une série de plus avant le retour au calme</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"><button type="button" onclick="cdAddAnswer(false)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:28px;background:#334155;color:#fff">✕</button><button type="button" onclick="cdAddAnswer(true)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:34px;background:#34d399;color:#04140d">+1</button></div>
     </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
+    <div id="liveCtl" class="w-full max-w-xs" style="display:none;flex-direction:column;gap:8px;margin:2px 0 8px">
+      <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" style="flex:1;width:auto" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span id="lcSpdL" style="display:none"></span><button type="button" class="lc-b" style="flex:1;width:auto" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
+      <div id="lcTime" class="lc-row"><button type="button" class="lc-b lc-t" onclick="adjStageTime(-15)" aria-label="15 secondes de moins">−15 s</button><span class="lc-l" id="lcTimeL"></span><button type="button" class="lc-b lc-t" onclick="adjStageTime(15)" aria-label="15 secondes de plus">+15 s</button></div>
+    </div>
     <div id="freeSpeedCtl" class="w-full max-w-xs flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
       <span id="freeSpeedLbl" class="hidden"></span>
       <div id="freePenteRow" class="lc-row" style="display:flex">
         <button onclick="adjustFreePente(-0.5)" aria-label="Pente moins" class="lc-b">−</button>
-        <span id="freePenteLbl" class="lc-l">pente</span>
+        <span id="freePenteLbl" class="lc-l"></span>
         <button onclick="adjustFreePente(0.5)" aria-label="Pente plus" class="lc-b">+</button>
       </div>
     </div>
 
-    <div id="readView">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span id="readViewHead" style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#7dd3fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📖 Lecture</span>
-        <button type="button" onclick="readFont(-2)" aria-label="Texte plus petit" class="rv-b">A−</button>
-        <button type="button" onclick="readFont(2)" aria-label="Texte plus grand" class="rv-b">A+</button>
-        <button type="button" onclick="readViewToggle(false)" aria-label="Masquer le texte" class="rv-b">✕</button>
-      </div>
-      <div id="readViewBody" class="custom-scroll"></div>
-    </div>
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
       <div id="idleRow" class="grid grid-cols-3 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
@@ -544,6 +549,7 @@
         <div id="idleExtras" style="grid-column:1 / -1;display:flex;gap:.5rem">
           <button id="readBtn" onclick="openReadModal()" class="rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd">📖 Texte à écouter</button>
           <button id="spBtn" onclick="openSpotifyModal()" class="rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:rgba(30,215,96,.1);border:1px solid rgba(30,215,96,.5);color:#bbf7d0">🎵 Spotify</button>
+          <button id="spPlBtn" onclick="openSpPlaylists()" class="hidden rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:#1ed760;border:none;color:#04140a">🎶 Playlist</button>
         </div>
         <button id="ytBtn" onclick="openYtModal()" class="hidden rounded-2xl font-bold text-[14px] active:scale-95" style="grid-column:1 / -1;min-height:46px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);color:#fecaca">▶️ Vidéo YouTube : aucune</button>
       </div>
@@ -565,6 +571,7 @@
         <button id="btnCtlStop" onclick="ctlRight()" aria-label="Arrêter la séance" class="hidden py-4 rounded-2xl bg-rose-600 text-white shadow-lg shadow-rose-600/30 active:scale-95 transition flex items-center justify-center">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>
         </button>
+        <button id="btnCtlMusic" onclick="musicBtn()" aria-label="Musique" class="hidden py-4 rounded-2xl active:scale-95 transition flex items-center justify-center" style="background:#1ed760;color:#04140a;font-size:26px;font-weight:900">⏭</button>
       </div>
       <button onclick="enterPocketMode()" class="pocket-btn w-full py-3 bg-indigo-500/15 hover:bg-indigo-500/25 active:scale-95 transition border border-indigo-500/50 text-indigo-200 rounded-2xl items-center justify-center gap-2 font-bold text-sm">
         🌙 <span>MODE POCHE</span>
@@ -969,6 +976,7 @@
             <div id="goalProbBox"></div>
             <div id="goalCoachOut" class="text-[12px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-xl p-2.5 hidden"></div>
           </div>
+          <button type="button" onclick="goalDeleteAsk()" style="min-height:46px;border-radius:14px;border:1px solid rgba(244,63,94,.45);background:rgba(244,63,94,.08);color:#fda4af;font-size:14px;font-weight:800">🗑️ Supprimer l'objectif</button>
         </div>
 
         <!-- ===== SÉANCE ===== -->
@@ -2372,9 +2380,11 @@
     // Recharge la séance active sur le chrono (arrêt + remise à zéro)
     function reloadChrono() {
       try { if (yt.active) ytStop(); } catch (e) { }
+      const live = timerState.sessionStarted && !timerState.finished;
       if (timerState.isRunning) pauseTimer();
       clearLiveRun();
-      cancelSpeech();
+      // ne pas couper une annonce en cours (bravo, commentaire du coach…) quand aucune séance n'est en cours
+      if (live) cancelSpeech();
       buildCurrentSessionStages();
       updateUIHeaderAndCircle();
       setRunningUI(false);
@@ -2453,14 +2463,13 @@
         const spOn = tapRun, tOn = live && !sess.free && !curStage.isFree, on = spOn || tOn, nav = document.getElementById('circleNav'), navOn = live && !sess.free;
         if (lc) { const was = lc.style.display !== 'none'; lc.style.display = on ? 'flex' : 'none';
           const a = document.getElementById('lcSpd'), b = document.getElementById('lcTime'); if (a) a.style.display = spOn ? 'flex' : 'none'; if (b) b.style.display = tOn ? 'flex' : 'none';
-          if (spOn) { const l = document.getElementById('lcSpdL'); if (l) l.innerHTML = `vitesse${curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? `<i>prévu ${formatSpeed(curStage.plannedSpeed).replace('.', ',')}</i>` : ''}`; }
-          if (tOn) { const l = document.getElementById('lcTimeL'), w = isRecoveryStage(curStage) ? 'récup' : curStage.intensity === 'fast' ? 'rapide' : curStage.type === 'chauffe' ? 'échauffement' : curStage.type === 'recup' ? 'retour au calme' : 'segment';
-            if (l) l.innerHTML = `${w}<b>${formatMMSS(curStage.durationSec)}</b>${curStage.plannedSec !== undefined && curStage.plannedSec !== curStage.durationSec ? `<i>prévu ${formatMMSS(curStage.plannedSec)}</i>` : ''}`; }
+                    if (tOn) { const l = document.getElementById('lcTimeL'), w = isRecoveryStage(curStage) ? 'récup' : curStage.intensity === 'fast' ? 'rapide' : curStage.type === 'chauffe' ? 'échauffement' : curStage.type === 'recup' ? 'retour au calme' : 'segment';
+            void w; if (l) l.innerHTML = `<b${curStage.plannedSec !== undefined && curStage.plannedSec !== curStage.durationSec ? ' style="color:#fcd34d"' : ''}>${formatMMSS(curStage.durationSec)}</b>`; }
           if (was !== on) setTimeout(() => fitCircle(true), 0); }
         if (nav) { const was = nav.style.display !== 'none'; nav.style.display = navOn ? 'flex' : 'none'; nav.classList.toggle('hidden', !navOn); if (was !== navOn) setTimeout(() => fitCircle(true), 0); } }
       { const pr = document.getElementById('freePenteRow'), wOn = !sess.free && sess.type === 'tapis' && timerState.sessionStarted && !timerState.finished && curStage && (curStage.type === 'chauffe' || curStage.type === 'recup');
         if (pr) { pr.classList.toggle('hidden', !sess.free && !wOn); pr.style.display = sess.free || wOn ? 'flex' : 'none'; }
-        if (wOn) { const pl = document.getElementById('freePenteLbl'); if (pl) pl.innerHTML = `pente<b>${String(stagePente(curStage, sess)).replace('.', ',')} %</b>`; } }
+        if (wOn) { const pl = document.getElementById('freePenteLbl'); if (pl) pl.innerHTML = `<b>${String(stagePente(curStage, sess)).replace('.', ',')} %</b>`; } }
       { const was = document.body.classList.contains('free-ctl'), now2 = !!(fsc && !fsc.classList.contains('hidden'));
         document.body.classList.toggle('free-ctl', now2); if (was !== now2) setTimeout(() => fitCircle(true), 30); }
       { const sl = document.getElementById('freeSpeedLbl');
@@ -2469,7 +2478,7 @@
       if (sess.free) {
         const sl = document.getElementById('freeSpeedLbl'), pl = document.getElementById('freePenteLbl');
         if (sl) sl.innerHTML = `vitesse <b style="color:#fff">${formatSpeed(curStage ? curStage.speed : 0).replace('.', ',')}</b>`;
-        if (pl) pl.innerHTML = `pente<b>${String(sess.pente || 0).replace('.', ',')} %</b>`;
+        if (pl) pl.innerHTML = `<b>${String(sess.pente || 0).replace('.', ',')} %</b>`;
       }
       const infoLine = document.getElementById('stageInfoLine');
       if (infoLine) {
@@ -2497,11 +2506,11 @@
         speedBig.classList.toggle('text-white', !showHr);
         speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
-          const vp = showHr ? null : liveVapKmh(sess, curStage);
-          const on = vp !== null;
-          bigSub.textContent = on ? `VAP ${String(Math.round(vp * 2) / 2).replace('.', ',')}` : '';
+          const pv = !showHr && tapRun && curStage && curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? +curStage.plannedSpeed : null;
+          const on = pv !== null;
+          bigSub.textContent = on ? `prévu ${formatSpeed(pv).replace('.', ',')}` : '';
           bigSub.className = on ? 'font-black tracking-tight' : 'hidden';
-          bigSub.style.color = '#c4b5fd'; bigSub.style.lineHeight = '1';
+          bigSub.style.color = '#fcd34d'; bigSub.style.lineHeight = '1';
           if (on !== !!window.__vapOn) { window.__vapOn = on; setTimeout(() => fitCircle(true), 0); }
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
@@ -2557,15 +2566,16 @@
       const cz = document.getElementById('circleZone'), svg = cz && cz.querySelector('svg'), big = document.getElementById('stageSpeedBig');
       if (!svg) return;
       if (!document.body.classList.contains('started') && !document.body.classList.contains('running')) { svg.style.width = svg.style.height = ''; if (big) big.style.fontSize = ''; return; }
-      const avail = cz.clientHeight - 8;
-      const size = Math.round(Math.max(150, Math.min(240, window.innerWidth * 0.62, avail > 0 ? avail : 240)));
+      const avail = cz.clientHeight - 8, nv = document.getElementById('circleNav'), nvOn = nv && nv.style.display !== 'none';
+      const bsN = Math.round(Math.max(58, Math.min(78, (cz.clientWidth || window.innerWidth) * 0.17)));
+      const wAv = (cz.clientWidth || window.innerWidth * 0.9) - (nvOn ? 2 * bsN + 12 : 0);
+      const size = Math.round(Math.max(150, Math.min(360, wAv, avail > 0 ? avail : 240)));
       svg.style.width = svg.style.height = size + 'px';
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
-      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.25 : 0.3)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
-      if (sub) { sub.style.fontSize = Math.round(size * 0.115) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
+      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.3 : 0.34)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
+      if (sub) { sub.style.fontSize = Math.round(size * 0.09) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
       { const cc = document.getElementById('circleNav'), ccOn = cc && cc.style.display !== 'none';
-        if (cc) { const bs = Math.round(size * 0.2); cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bs + 'px'; }); cc.style.gap = Math.round(size * 0.14) + 'px'; cc.style.marginTop = Math.round(size * 0.03) + 'px'; }
-        if (big && ccOn) big.style.fontSize = Math.round(size * (subOn ? 0.22 : 0.27)) + 'px'; }
+        if (cc) cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bsN + 'px'; }); const rvB = document.getElementById('readView'); if (rvB) rvB.style.left = rvB.style.right = (ccOn ? bsN + 6 : 0) + 'px'; }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
     window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
@@ -2927,7 +2937,7 @@
         if (appData.audioSettings.encouragements !== false) {
           set.add(t.sessionHalf);
           const fe = lastFeeling();
-          if (t.feel[fe]) set.add(t.feel[fe]);
+          void fe;
         }
         if (appData.audioSettings.encouragements !== false) {
           if (timerState.stages.some(st => st.intensity === 'fast')) {
@@ -3955,7 +3965,7 @@
     }
     function coachToneText() {
       const p = coachProfile();
-      return `Ton du coach à adopter (profil « ${p.label} ») : ${p.tone} Quel que soit le ton, la santé passe avant tout : en cas de douleur, conseille de ralentir ou d'arrêter.`;
+      return `Ton du coach à adopter (profil « ${p.label} ») : ${p.tone} Quel que soit le ton, la santé passe avant tout : en cas de douleur, conseille de ralentir ou d'arrêter. Style : n'ouvre JAMAIS par une salutation ou une interpellation (pas de « Salut », « Hey », « champion », « championne », « guerrier », « l'artiste »…), entre directement dans le sujet ; varie ton vocabulaire et tes tournures d'une réponse à l'autre ; un surnom affectueux reste exceptionnel (une fois de temps en temps, jamais en début de phrase).`;
     }
     // Sélecteur de profil (fenêtre Profil, objectif & coach IA)
     function renderCoachProfileChips() {
@@ -4086,19 +4096,22 @@
       if (!fast) fast = r5(vmaE * 0.85);
       const fv = spF(fast), mv = spF(mid);
       const d = st.durationSec * 1000, out = [];
-      const add = (t, text, speed) => { if (t >= 20000 && d - t >= 50000) out.push({ t, kind: 'wu', text, speed }); };
+      const add = (t, text, speed, role) => { if (t >= 20000 && d - t >= 50000) out.push({ t, kind: 'wu', text, speed, role }); };
       const tapSp = v => tap ? Math.max(3, Math.round(speedOnGrade(v, treadmillGrade(ss.pente)) * 2) / 2) : v;
       const mvT = spF(tapSp(mid));
-      add(Math.round(d * 0.35), en ? `Now speed up gradually, up to your easy pace, about ${tap ? mvT : mv}.` : tap ? `Accélère progressivement : passe à ${mvT} kilomètres heure.` : `Accélère progressivement, jusqu'à ton allure d'endurance, environ ${mv} kilomètres heure.`, tap ? tapSp(mid) : null);
+      // jamais « accélère » vers une vitesse plus lente que celle de l'échauffement
+      const stSp = parseFloat(st.speed) || 0, upSp = tap ? Math.max(tapSp(mid), stSp) : mid, upTxt = spF(upSp);
+      if (tap && stSp >= tapSp(mid) - 0.05) add(Math.round(d * 0.35), en ? `Keep ${upTxt}, your warm-up pace, relaxed.` : `Garde ${upTxt} kilomètres heure, c'est ton allure d'échauffement, bien relâché.`, null, 'up');
+      else add(Math.round(d * 0.35), en ? `Now speed up gradually, up to your easy pace, about ${tap ? upTxt : mv}.` : tap ? `Accélère progressivement : passe à ${upTxt} kilomètres heure.` : `Accélère progressivement, jusqu'à ton allure d'endurance, environ ${mv} kilomètres heure.`, tap ? upSp : null, 'up');
       if (d >= 480000) add(d - 210000, en ? (tap ? `Keep ${mvT}, lengthen your stride a little, relax shoulders and arms.` : `Running drills: 20 seconds of high knees, 20 seconds of butt kicks, then 20 seconds of side shuffles, jogging in between.`)
         : tap ? `Garde ${mvT}, allonge un peu la foulée, relâche les épaules et les bras.` : `Gammes : 20 secondes de montées de genoux, 20 secondes de talons-fesses, puis 20 secondes de pas chassés, en trottinant entre chaque.`);
       const a1 = d - (d >= 480000 ? 150000 : 120000), a2 = d - (d >= 480000 ? 100000 : 75000);
       if (tap) {
-        add(a1, en ? `Stride: go up to ${fv} now, for 15 seconds.` : `Accélération : monte à ${fv} maintenant, pendant 15 secondes.`, fast);
-        add(a1 + 15000, en ? `Stride done, back to ${mvT}.` : `Accélération terminée, redescends à ${mvT}.`, tapSp(mid));
+        add(a1, en ? `Stride: go up to ${fv} now, for 15 seconds.` : `Accélération : monte à ${fv} maintenant, pendant 15 secondes.`, fast, 'stride');
+        add(a1 + 15000, en ? `Stride done, back to ${upTxt}.` : `Accélération terminée, redescends à ${upTxt}.`, upSp, 'back');
         add(a2 - 5000, en ? `Second stride in 5 seconds.` : `Deuxième accélération dans 5 secondes.`);
-        add(a2, en ? `Go, up to ${fv} for 15 seconds.` : `C'est parti, remonte à ${fv} pendant 15 secondes.`, fast);
-        add(a2 + 15000, en ? `Second stride done, back to ${mvT}. Warm-up almost over.` : `Deuxième accélération terminée, redescends à ${mvT}. L'échauffement est bientôt fini.`, tapSp(mid));
+        add(a2, en ? `Go, up to ${fv} for 15 seconds.` : `C'est parti, remonte à ${fv} pendant 15 secondes.`, fast, 'stride');
+        add(a2 + 15000, en ? `Second stride done, back to ${upTxt}. Warm-up almost over.` : `Deuxième accélération terminée, redescends à ${upTxt}. L'échauffement est bientôt fini.`, upSp, 'back');
       } else add(a1, en ? `Strides: 2 or 3 progressive accelerations of 15 seconds up to ${fv}, the session pace, with 30 seconds easy in between.` : `Lignes droites : 2 à 3 accélérations progressives de 15 secondes jusqu'à ${fv} kilomètres heure, l'allure de la séance, en récupérant 30 secondes entre chaque.`);
       return out;
     }
@@ -4480,9 +4493,17 @@
         mic.classList.toggle('hidden', run); // plus de micro « parler au coach » pendant la séance
         const pk = document.getElementById('btnCtlPocket'); if (pk) { pk.classList.toggle('hidden', !run); if (run && stop.parentNode === pk.parentNode) pk.parentNode.insertBefore(pk, stop); }
         document.body.classList.toggle('ctl-run', run);
-        if (cr) cr.style.gridTemplateColumns = run ? '1fr .8fr 1fr' : ''; }
+        if (cr) cr.dataset.run = run ? '1' : ''; ctlGrid(); }
       refreshAllIcons();
     }
+    function ctlGrid() {
+      const cr = document.getElementById('ctlRow'), mb = document.getElementById('btnCtlMusic'); if (!cr) return;
+      const run = cr.dataset.run === '1', mOn = run && (() => { try { return spBarOn(); } catch (e) { return false; } })();
+      let pl = false; try { pl = !!sp.playing; } catch (e) { }
+      if (mb) { mb.classList.toggle('hidden', !mOn); mb.textContent = pl ? '⏭' : '▶'; mb.setAttribute('aria-label', pl ? 'Morceau suivant' : 'Lancer la musique'); }
+      cr.style.gridTemplateColumns = run ? `repeat(${mOn ? 4 : 3},minmax(0,1fr))` : '';
+    }
+    function musicBtn() { if (sp.playing) spCmd('next'); else spCmd('toggle'); }
     function mainCtlLeft() {
       const st = ctlState();
       if (st === 'stopped') {
@@ -4755,6 +4776,13 @@
       if (f.extra && f.extra.length) {
         const pt = f.extra[0];
         if (pt.kind === 'wu') {
+          if (elapsedMs >= pt.t && !pt.fixedUp) {
+            const cs = parseFloat(curStage.speed) || 0, en2 = appData.audioSettings.voiceLang === 'en';
+            if (pt.role === 'up' && pt.speed && cs >= pt.speed - 0.05) { pt.text = en2 ? `Keep ${spF(cs)}, your warm-up pace, relaxed.` : `Garde ${spF(cs)} kilomètres heure, c'est ton allure d'échauffement, bien relâché.`; pt.speed = null; }
+            if (pt.role === 'stride') f.preStride = cs;
+            if (pt.role === 'back' && f.preStride && f.preStride > (pt.speed || 0)) { pt.speed = f.preStride; pt.text = en2 ? `Stride done, back to ${spF(f.preStride)}.` : `Accélération terminée, redescends à ${spF(f.preStride)} kilomètres heure.`; }
+            pt.fixedUp = true;
+          }
           if (elapsedMs >= pt.t) {
             if (!isSpeaking() && remMs > 9500) { f.extra.shift(); lastEncouragementAt.any = Date.now(); speak([pt.text]); if (pt.speed) { curStage.speed = pt.speed; updateUIHeaderAndCircle(); } }
             else if (elapsedMs > pt.t + (pt.speed ? 6000 : 25000)) { f.extra.shift(); if (pt.speed) { curStage.speed = pt.speed; updateUIHeaderAndCircle(); } }
@@ -5188,6 +5216,9 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
         const v = String(j.verdict || '').toLowerCase();
         const mod = v.startsWith('adapt') && j.seance && Array.isArray(j.seance.segments) && j.seance.segments.length;
         if (mod) moveCheck.prop = proposalToSession(s, j.seance);
+        moveCheck.avis = String(j.avis || '');
+        // séance du jour : l'avis du coach sur le déplacement vaut aussi analyse de la séance du jour (pas 2 avis contradictoires)
+        if (s.dateISO === todayISO()) { try { appData.dayCheck = { sig: dayCheckSig(s), sid: s.id, d: todayISO(), res: { decision: 'garder', avis: `Avis du coach après le déplacement : ${moveCheck.avis}`.slice(0, 600), fromMove: true }, prop: null, done: false }; saveAppData(); } catch (e) { } }
         const V = v.startsWith('decon') || v.startsWith('décon') ? ['⚠️ Déplacement déconseillé', '#fb7185'] : mod ? ['✏️ Mieux vaut adapter la séance', '#fbbf24'] : ['✅ Ce jour convient, rien à changer', '#34d399'];
         const after = mod ? `<span class="text-[13px] font-bold text-amber-200">Proposé : ${plEsc(capFirst(describeSessionHuman(Object.assign({}, moveCheck.prop, { chauffe: 0, recup: 0 }))))} (${Math.round(computeSessionTotalMin(moveCheck.prop))} min)</span>${j.resume ? `<span class="text-[12px] text-slate-400">${plEsc(j.resume)}</span>` : ''}` : '';
         body.innerHTML = head + `<div class="pm-card" style="border-color:${V[1]}88"><span style="font-size:18px;font-weight:800;color:${V[1]}">${V[0]}</span><span class="text-[14px] text-slate-200 leading-snug">${plEsc(j.avis || '')}</span>${after}</div>`;
@@ -5211,7 +5242,9 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
       if (!s.planOriginal) { const b = JSON.parse(JSON.stringify(s)); delete b.planOriginal; delete b.adapted; s.planOriginal = b; }
       ['chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide'].forEach(k => { if (moveCheck.prop[k] !== undefined) s[k] = JSON.parse(JSON.stringify(moveCheck.prop[k])); });
       s.adapted = { at: todayISO(), resume: 'Adaptée par le coach après déplacement' };
+      const av = moveCheck.avis || '';
       closeMoveCheck(); moveRefresh(s);
+      if (s.dateISO === todayISO()) { try { appData.dayCheck = { sig: dayCheckSig(s), sid: s.id, d: todayISO(), res: { decision: 'garder', avis: `Séance adaptée par le coach après le déplacement. ${av}`.slice(0, 600), fromMove: true }, prop: null, done: 'ok' }; saveAppData(); renderHome(); } catch (e) { } }
       showSavedBig('Séance adaptée');
     }
     function undoMove() {
@@ -6753,8 +6786,22 @@ Donne 2 ou 3 axes de travail.`;
       appData.sessions = (appData.sessions || []).filter(x => isSessionDone(x));
       appData.crossPlan = (appData.crossPlan || []).filter(c => !(c.fromPlan && c.dateISO > todayISO()));
       appData.activeSessionIndex = 0; try { delete appData.dayCheck; delete appData.addSugg; } catch (e) { }
-      sanitizeData(); saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderPlanSummary(); } catch (e) { } try { renderHome(); } catch (e) { }
+      sanitizeData(); saveAppData(); try { reloadChrono(); } catch (e) { } updateHistoryTable(); try { renderPlanSummary(); } catch (e) { } try { renderMyPlan(); } catch (e) { } try { renderHome(); } catch (e) { }
       showToast(`✓ Plan supprimé (${n} séance${n > 1 ? 's' : ''})`);
+    }
+    function goalDeleteAsk() {
+      const g = appData.goal || {};
+      if (!(+g.distanceKm > 0)) { showToast('Aucun objectif défini'); return; }
+      planConfirm('🗑️ Supprimer l\'objectif', `Ta course <b>${String(g.distanceKm).replace('.', ',')} km${+g.durationMin ? ' en ' + fmtClock(+g.durationMin) : ''}</b>${g.date ? ' du ' + plEsc(g.date) : ''} sera effacée.<br><span style="color:#94a3b8;font-size:12px">Ton plan et tes séances ne changent pas.</span>`,
+        [['Annuler', 'planConfirmClose()', '#1e293b', '#e2e8f0'], ['Oui, supprimer', 'goalDeleteDo()', '#f43f5e', '#fff']]);
+    }
+    function goalDeleteDo() {
+      planConfirmClose();
+      appData.goal = { date: '', distanceKm: 0, durationMin: 0, speedKmh: 12, pente: 0, hilly: false };
+      try { delete appData.planReco; } catch (e) { }
+      saveAppData();
+      [updateGoalModalUI, renderGoalSummary, renderGoalProbability, renderMyPlan, renderHome].forEach(f => { try { f(); } catch (e) { console.warn(e); } });
+      showToast('✓ Objectif supprimé');
     }
     function planConfirmClose() { const m = document.getElementById('planConfirmModal'); if (m) m.remove(); }
     function planConfirm(title, html, btns) {
@@ -8019,7 +8066,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
           <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8"><span><b style="color:#475569">■</b> minutes faciles</span><span><b style="color:#a78bfa">■</b> minutes dures</span><span><b style="color:#7c3aed">▬</b> charge</span><span><b style="color:#34d399">▬</b> décharge</span><span><b style="color:#facc15">●</b> test</span><span><b style="color:#f43f5e">■</b> course</span><span><b style="color:#38bdf8">▢</b> cette semaine</span></div></div>
         <div class="pg-sec"><span class="pg-t">Type de séance par jour</span><div style="display:flex;gap:3px">${dayCells}</div></div>
         <div class="pg-sec"><span class="pg-t">Évolution des séances par jour (durée)</span>${evo}
-          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8">${kinds.map(([l, c]) => `<span><b style="color:${c}">■</b> ${plEsc(l.toLowerCase())}</span>`).join('')}</div></div>`;
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:#94a3b8">${kinds.map(([l, c]) => `<span><b style="color:${c}">■</b> ${plEsc(l.toLowerCase())}</span>`).join('')}</div></div>
+        <button type="button" onclick="planDeleteAsk()" style="min-height:46px;border-radius:14px;border:1px solid rgba(244,63,94,.45);background:rgba(244,63,94,.08);color:#fda4af;font-size:14px;font-weight:800">🗑️ Supprimer le plan</button>`;
     }
     // ---------- Vérification des types de séance (app, sans IA) : le type affiché correspond-il au contenu ?
     const KIND_LAB = { endu: 'Endurance', longue: 'Sortie longue', recup: 'Récupération', fractionne: 'Fractionné', pyramide: 'Pyramide', seuil: 'Seuil', cotes: 'Côtes', test: 'Test', course: 'Course' };
@@ -8346,7 +8394,57 @@ ${kept.length ? `Séances déjà prévues d'ici le début du plan (gardées, à 
         <div class="pg-sec"><span class="pg-t">Début du plan</span><input type="date" class="pg-in" min="${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return toISODateLocal(d); })()}" value="${st}" onchange="pgP('genStart',this.value)"></div>
         <div class="pg-sec"><span class="pg-t">Durée du plan</span><div class="pg-chips">${(gi && gi > st ? [['goal', `Jusqu'à mon objectif (${fmtDateShort(gi)})`]] : []).concat([4, 6, 8, 12, 16].map(n => [n, `${n} semaines`])).map(([k, l]) => chip(String(wk) === String(k), `pgP('briefWeeks','${k}')`, l)).join('')}</div><span style="font-size:11.5px;color:#64748b">du ${fmtDateShort(st)} au ${fmtDateShort(briefEndISO())}${B.length > 1 ? ` · généré en ${B.length} blocs` : ''}</span></div>
         <span style="font-size:11.5px;color:#64748b">⚡ Plan créé avec Gemini Flash · coût estimé ${pgCostTxt(cost('flash'))}</span>
-        <button type="button" onclick="generatePlanWithCoach({brief:true})" style="min-height:52px;border-radius:14px;border:none;background:#a78bfa;color:#13092b;font-size:15px;font-weight:800">🧠 Créer le plan</button>`;
+        ${briefWeekHtml()}`;
+    }
+    // ---------- Consigne : semaine type proposée par le coach, le coureur choisit le jour de chaque séance
+    function briefWeekSig() { const P = planPrefs(); return String(P.brief || '').trim() + '|' + (P.briefWeeks || ''); }
+    function briefWeek() { const W = planPrefs().briefWeek; return W && W.sig === briefWeekSig() && Array.isArray(W.items) && W.items.length ? W : null; }
+    function briefWeekHtml() {
+      const W = briefWeek(), J = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+      const btn = (fn, l, bg, c) => `<button type="button" onclick="${fn}" style="min-height:52px;border-radius:14px;border:${bg === 'none' ? '1px solid #475569' : 'none'};background:${bg === 'none' ? '#1e293b' : bg};color:${c};font-size:15px;font-weight:800">${l}</button>`;
+      if (!W) return `<span style="font-size:12px;color:#94a3b8;line-height:1.4">1. Le coach te propose une <b>semaine type</b> · 2. tu choisis le jour de chaque séance · 3. il déroule le plan complet.</span>${btn('briefWeekAsk()', '🧠 Proposer une semaine type', '#a78bfa', '#13092b')}`;
+      const used = {}; W.items.forEach((x, i) => { if (x.day >= 0) used[x.day] = i; });
+      const all = W.items.every(x => x.day >= 0);
+      const rows = W.items.map((x, i) => `<div style="display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#0b1324;border:1px solid ${x.day >= 0 ? '#334155' : 'rgba(250,204,21,.5)'}">
+          <div style="display:flex;align-items:baseline;gap:6px"><b style="flex:1;font-size:14.5px;color:#f1f5f9">${plEsc(x.titre)}</b><span style="font-size:12px;color:#94a3b8;white-space:nowrap">${x.duree ? x.duree + ' min' : ''}${x.lieu ? ' · ' + plEsc(x.lieu) : ''}</span></div>
+          ${x.pourquoi ? `<span style="font-size:12px;color:#94a3b8;line-height:1.35">${plEsc(x.pourquoi)}</span>` : ''}
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">${J.map((j, d) => { const on = x.day === d, oth = !on && used[d] !== undefined, rec = x.conseil === d;
+            return `<button type="button" onclick="briefWeekDay(${i},${d})" aria-label="${PG_J[d]}" style="height:40px;border-radius:10px;font-weight:900;font-size:14px;border:1px solid ${on ? '#a78bfa' : rec ? 'rgba(167,139,250,.6)' : '#334155'};background:${on ? '#a78bfa' : oth ? '#0f172a' : '#1e293b'};color:${on ? '#13092b' : oth ? '#475569' : '#e2e8f0'}">${j}${rec && !on ? '<span style="display:block;font-size:8px;line-height:1;color:#c4b5fd">★</span>' : ''}</button>`; }).join('')}</div></div>`).join('');
+      return `<div class="pg-sec"><span class="pg-t">Semaine type proposée par le coach</span>
+        ${W.com ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.45">${plEsc(W.com)}</span>` : ''}
+        <span style="font-size:12px;color:#94a3b8">Choisis le jour de chaque séance (★ = jour conseillé par le coach). Un jour déjà pris est grisé : le choisir échange les deux séances.</span>
+        ${rows}</div>
+        ${all ? btn('generatePlanWithCoach({brief:true})', '✓ Valider et créer le plan complet', '#a78bfa', '#13092b') : `<span style="font-size:12.5px;color:#fcd34d;text-align:center">Choisis un jour pour chaque séance pour continuer.</span>`}
+        ${btn('briefWeekAsk()', '🔄 Proposer une autre semaine type', 'none', '#e2e8f0')}`;
+    }
+    function briefWeekDay(i, d) {
+      const W = briefWeek(); if (!W) return; const x = W.items[i]; if (!x) return;
+      const o = W.items.findIndex((y, k) => k !== i && y.day === d);
+      if (x.day === d) x.day = -1; else { if (o >= 0) W.items[o].day = x.day; x.day = d; }
+      saveAppData(); renderPlanGen();
+    }
+    function briefWeekAsk() { return generatePlanWithCoach({ brief: true, week: true }); }
+    function briefWeekText() {
+      const W = briefWeek(); if (!W || !W.items.every(x => x.day >= 0)) return '';
+      return `SEMAINE TYPE VALIDÉE PAR LE COUREUR (OBLIGATOIRE : chaque semaine du plan reprend ces séances aux jours choisis ; tu fais évoluer durées, intensités et contenus selon la progression, et tu allèges les semaines de décharge ; aucune séance un autre jour) :\n${W.items.slice().sort((a, b) => a.day - b.day).map(x => `- ${PG_J[x.day]} : ${x.titre}${x.duree ? ` (~${x.duree} min)` : ''}${x.lieu ? `, ${x.lieu}` : ''}`).join('\n')}`;
+    }
+    async function briefWeekRun(ctxTxt, say) {
+      const prompt = `${ctxTxt}
+ÉTAPE 1 SUR 2 : NE GÉNÈRE PAS ENCORE LE PLAN. Propose seulement la SEMAINE TYPE qui découle de la consigne : la liste des séances d'une semaine normale (ni décharge, ni affûtage), avec pour chacune son type, une description courte du contenu, sa durée habituelle, le lieu (tapis ou extérieur) et le jour que tu conseilles. Respecte le nombre de séances et les jours demandés dans la consigne s'ils y sont. Évite deux séances dures les jours qui se suivent.
+Format JSON strict :
+{"commentaire":"2 phrases max, en tutoyant, sur l'organisation de la semaine","seances":[{"titre":"Fractionné court 10×1'","type":"fractionne|seuil|endurance|longue|cotes|recup|renfo|velo|autre","duree_min":50,"lieu":"tapis|extérieur","jour_conseille":"mardi","pourquoi":"1 phrase courte"}]}`;
+      genOvOpen(); genOvStep(0, 0.97, 25, 'Le coach prépare ta semaine type…'); let ok = false;
+      try {
+        const txt = await geminiText([{ text: prompt }], { tier: 'full', model: 'flash', json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
+        const d = parseJsonLoose(txt), L = (d && Array.isArray(d.seances) ? d.seances : []).filter(x => x && x.titre).slice(0, 14);
+        if (!L.length) throw new Error('aucune séance proposée');
+        const taken = {};
+        const items = L.map(x => { let c = PG_J.indexOf(String(x.jour_conseille || '').toLowerCase().trim()); if (c < 0 || taken[c]) c = -1; else taken[c] = 1;
+          return { titre: String(x.titre).slice(0, 80), type: String(x.type || ''), duree: Math.round(+x.duree_min) || 0, lieu: String(x.lieu || ''), pourquoi: String(x.pourquoi || '').slice(0, 200), conseil: c, day: c }; });
+        planPrefs().briefWeek = { sig: briefWeekSig(), items, com: String((d && d.commentaire) || '').slice(0, 400), at: Date.now() };
+        saveAppData(); renderPlanGen(); say('✓ Semaine type proposée : choisis le jour de chaque séance puis valide.'); ok = true;
+      } catch (e) { say(`Semaine type impossible : ${e.message || e}`, true); showToast('Semaine type impossible'); }
+      finally { genOvClose(ok); }
     }
     function planRecoD() { const R = appData.planReco; return R && R.d && R.sig === planRecoSig() ? R.d : null; }
     function renderPlanGen() {
@@ -9033,6 +9131,32 @@ Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pou
       clearTimeout(el._t); el._t = setTimeout(() => { el.innerHTML = ''; }, 1900);
     }
 
+    // Plein écran pendant la création du plan : grand anneau de progression, tout le reste masqué
+    const genOv = { t: null, base: 0, span: 0, t0: 0, est: 60, lab: '', p: 0 };
+    function genOvOpen() {
+      let m = document.getElementById('genOverlay');
+      if (!m) { m = document.createElement('div'); m.id = 'genOverlay'; document.body.appendChild(m); }
+      m.style.cssText = 'position:fixed;inset:0;z-index:300;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center';
+      m.innerHTML = `<div style="position:relative;width:min(78vw,340px);aspect-ratio:1"><svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="50" cy="50" r="44" stroke="#1e293b" stroke-width="7" fill="none"/><circle id="genOvArc" cx="50" cy="50" r="44" stroke="#a78bfa" stroke-width="7" stroke-linecap="round" fill="none" stroke-dasharray="276.46" stroke-dashoffset="276.46" style="transition:stroke-dashoffset .4s linear;filter:drop-shadow(0 0 12px rgba(167,139,250,.6))"/></svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span id="genOvPct" style="font-size:clamp(56px,18vw,88px);font-weight:900;color:#f8fafc;line-height:1;font-variant-numeric:tabular-nums">0 %</span><span style="font-size:15px;font-weight:800;color:#c4b5fd;margin-top:6px">🧠 Création du plan</span></div></div>
+        <span id="genOvLab" style="max-width:360px;font-size:15px;font-weight:700;color:#cbd5e1;line-height:1.45"></span>
+        <span style="font-size:12.5px;color:#64748b">Garde l'app ouverte, ça peut prendre quelques minutes.</span>`;
+      Object.assign(genOv, { base: 0, span: 0, p: 0 });
+      clearInterval(genOv.t); genOv.t = setInterval(genOvTick, 400); genOvTick();
+    }
+    function genOvStep(base, span, estSec, lab) { Object.assign(genOv, { base, span, est: estSec || 60, t0: Date.now() }); if (lab != null) genOv.lab = lab; genOvTick(); }
+    function genOvTick() {
+      const m = document.getElementById('genOverlay'); if (!m) { clearInterval(genOv.t); return; }
+      const t = (Date.now() - genOv.t0) / 1000, f = genOv.span ? genOv.span * 0.95 * (1 - Math.exp(-t / genOv.est * 1.6)) : 0;
+      genOv.p = Math.max(genOv.p, Math.min(0.99, genOv.base + f));
+      const a = document.getElementById('genOvArc'), pc = document.getElementById('genOvPct'), lb = document.getElementById('genOvLab');
+      if (a) a.style.strokeDashoffset = (276.46 * (1 - genOv.p)).toFixed(1); if (pc) pc.textContent = Math.round(genOv.p * 100) + ' %'; if (lb) lb.textContent = genOv.lab;
+    }
+    function genOvClose(ok) {
+      clearInterval(genOv.t); const m = document.getElementById('genOverlay'); if (!m) return;
+      if (ok) { genOv.p = 1; const a = document.getElementById('genOvArc'), pc = document.getElementById('genOvPct'); if (a) a.style.strokeDashoffset = '0'; if (pc) pc.textContent = '100 %'; setTimeout(() => m.remove(), 500); }
+      else m.remove();
+    }
     async function generatePlanWithCoach(opt = {}) {
       const st = opt.talk ? (document.getElementById('pgTalkStatus') || document.getElementById('planGenStatus')) : document.getElementById('planGenStatus');
       const say = (t, err) => { if (!st) return; st.textContent = t; st.style.color = err ? '#fb7185' : ''; };
@@ -9076,9 +9200,10 @@ ${zonesText()}
 ${coachMemoryText('', 12)}
 ${COACH_METHOD}
 ${brief ? `CONSIGNE DU COUREUR (PRIORITAIRE, à suivre fidèlement : jours, nombre de séances, lieu, types, contraintes) :
-« ${briefTxt} »` : `CONFIGURATION CHOISIE PAR LE COUREUR :
+« ${briefTxt} »${opt.week ? '' : briefWeekText() ? '\n' + briefWeekText() : ''}` : `CONFIGURATION CHOISIE PAR LE COUREUR :
 ${planSetupText()}`}`;
       if (opt.talk) return planTalkRun(ctxTxt);
+      if (opt.week) return briefWeekRun(ctxTxt, say);
       const prompt = ctxTxt + (brief ? `
 BUT : le plan le plus efficace possible pour ce que demande la consigne (progression de charge maîtrisée, une seule vraie séance dure par jour, assez de récupération, semaine plus légère toutes les 3 à 4 semaines${objTxt ? ', affûtage avant l\'objectif s\'il tombe dans le plan' : ''}) ; chaque séance doit avoir une raison d'être. Si la consigne ne précise pas les jours ou le nombre de séances, choisis-les d'après les habitudes visibles dans l'historique.
 Contraintes :` : `
@@ -9089,6 +9214,7 @@ Format JSON strict :
 {"resume":"2 phrases qui présentent le plan","chrono_jourJ_min":chrono estimé le jour J en minutes avec ce plan s'il est suivi,${mode === 'replace' ? '"comparaison":{"nouveau":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"actuel":{"avantages":["…"],"inconvenients":["…"],"chrono_jourJ_min":0},"conseil":"lequel choisir et pourquoi, en 1 phrase"},' : ''}"suggestions":["si le nombre de séances par semaine (ou les durées max) limite les chances de réussir : quelle séance ajouter, quel jour, et ce qu'elle apporterait ; [] sinon"],${brief || planDays().some(i => pgDay(i).a !== 'run') ? '"autres":[{"dateISO":"AAAA-MM-JJ","activite":"musculation|velo","duree_min":40,"titre":"titre court","detail":"contenu de la séance, une ligne par étape"}],' : ''}"sessions":[{"semaine":1,"dateISO":"AAAA-MM-JJ","type":"tapis|exterieur","pente":1,"chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"segments":[{"vitesse":12,"duree_min":3},{"vitesse":7,"duree_min":2}],"cardio":{"moy_min":165,"moy_max":175,"max":182},"notes":"objectif de la séance en une phrase"}]}
 Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet" fois ; chaque fractionné DOIT avoir sa récupération (segment lent après l'effort, ou "recupBloc" + "vitRecupBloc" entre blocs) ; "cardio" OBLIGATOIRE pour chaque séance, en bpm, calculé avec la FC max : fractionné, pyramide et côtes = uniquement "max" (FC max visée sur les fractions, moy_min et moy_max à 0) ; seuil, endurance et récup = moy_min et moy_max (cardio moyen visé) ; durée totale de chaque séance (échauffement et retour au calme compris) : jamais plus de ${longRunCap()} min, sortie longue comprise ; une course continue = un seul segment avec "repet":1 ; pour un tapis, "pente" en % (1 par défaut), 0 en extérieur ; utilise "distance_km" à la place de "duree_min" si c'est plus naturel. Réponds uniquement avec le JSON.`;
       const BL = brief ? briefBlocks() : planGenBlocks(), mdlSel = brief ? 'flash' : (planPrefs().mdlGen || 'argon1');
+      let genOk = false; genOvOpen();
       try {
         let data = null, list = [], autres = [];
         for (let bi = 0; bi < BL.length; bi++) {
@@ -9098,6 +9224,8 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
           const prev = list.length ? list.filter(x => x.dateISO).slice(-10).map(x => `${x.dateISO} ${x.type || ''} ${(x.segments || []).map(g => `${g.vitesse || g.speed || ''}km/h ${g.duree_min || ''}min`).join(' + ')}${+x.repet > 1 ? ` ×${x.repet}` : ''}${x.pente ? ` pente ${x.pente}%` : ''}`).join('\n') : '';
           const blockTxt = BL.length > 1 ? `\nGÉNÉRATION PAR BLOCS : le plan complet (${BL.flat().length} semaines ${brief ? `jusqu'au ${endISO}` : 'jusqu\'au jour J'}) est généré en ${BL.length} blocs pour ne rien oublier. CETTE RÉPONSE = BLOC ${bi + 1}/${BL.length} : génère UNIQUEMENT les séances (et "autres") des semaines ${B[0].w} à ${B[B.length - 1].w} du plan, du ${from} au ${toD} inclus, TOUTES les séances de ces semaines${brief ? '' : ', en suivant le calendrier des cycles et des tests'}.${bi > 0 ? ` Ne renvoie ni résumé, ni comparaison, ni suggestions (laisse-les vides). Continue la progression là où le bloc précédent s'est arrêté ; ses dernières séances :\n${prev}` : ' Remplis aussi résumé, chrono, comparaison et suggestions pour le plan COMPLET.'}` : '';
           const mdl = mdlSel === 'argon' || (mdlSel === 'argon1' && bi === 0) ? 'argon' : 'flash';
+          { const wOf = k => mdlSel === 'argon' || (mdlSel === 'argon1' && k === 0) ? 3 : 1, tot = BL.reduce((a, _, k) => a + wOf(k), 0) * 1.04, b0 = BL.slice(0, bi).reduce((a, _, k) => a + wOf(k), 0);
+            genOvStep(b0 / tot, wOf(bi) / tot, mdl === 'argon' ? 110 : 40, BL.length > 1 ? `Bloc ${bi + 1} sur ${BL.length} : semaines ${B[0].w} à ${B[B.length - 1].w}` : 'Le coach construit tes semaines…'); }
           const txt = await geminiText([{ text: prompt + blockTxt }], { tier: 'full', model: mdl, json: true, onWait: s2 => say(`Limite Gemini : nouvelle tentative dans ${s2} s…`) });
           const d = parseJsonLoose(txt), L2 = (Array.isArray(d) ? d : (d.sessions || [])).filter(x => !from || !x.dateISO || BL.length === 1 || (x.dateISO >= from && x.dateISO <= toD));
           if (!data) data = Array.isArray(d) ? {} : d;
@@ -9105,6 +9233,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
         }
         data.autres = autres;
         pdfImportResult = normalizeImportedSessions(list);
+        genOvStep(genOv.p, 0.99 - genOv.p, 3, 'Vérification des séances…');
         if (!pdfImportResult.length) { say("Le coach n'a proposé aucune séance, réessaie", true); return; }
         { const s0 = pgStartISO(); pdfImportResult = pdfImportResult.filter(x => !x.dateISO || x.dateISO >= s0); }
         // Absences : aucune séance pendant une période "off" ; pas de tapis pendant une période "light"
@@ -9121,10 +9250,11 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
         try { const pv = document.getElementById('pdfImportPreview'); pv.dataset.sub = 'Générer'; pmSelectSub('plan', 'Générer'); } catch (e) { }
         renderPdfImportPreview();
         say(`✓ ${pdfImportResult.length} séances proposées${nFix ? ` (${nFix} trop longue${nFix > 1 ? 's' : ''} corrigée${nFix > 1 ? 's' : ''})` : ''} : vérifie-les ci-dessous puis valide.`);
+        genOk = true;
         setTimeout(() => document.getElementById('pdfImportPreview').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       } catch (e) {
-        say(`Plan impossible : ${e.message || e}`, true);
-      }
+        say(`Plan impossible : ${e.message || e}`, true); showToast('Plan impossible : ' + String(e.message || e).slice(0, 80));
+      } finally { genOvClose(genOk); }
     }
     function generateFullPlanToGoal() {
       const selectedDays = [];
@@ -10073,7 +10203,7 @@ Réponds uniquement avec le JSON.`;
       const name = runnerFirstName();
       const out = [fresh ? (name ? t.startNamed(name) : t.start) : t.resume, st && st.isFree ? t.freeStart : stagePhrase(st, 'label')];
       const fe = lastFeeling();
-      if (fresh && t.feel[fe] && appData.audioSettings.encouragements !== false) out.push(t.feel[fe]);
+      void fe; // plus d'annonce sur le ressenti de la séance précédente
       return out;
     }
     function runnerFirstName() {
@@ -19011,7 +19141,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }, 200);
     // ---------- Texte affiché en même temps que la lecture
     const READ_KEEP = [['top', '⏱️ Chrono et infos'], ['circle', '🎯 Vitesse / cercle'], ['map', '🗺️ Carte'], ['hr', '❤️ Barre cardio']];
-    function readKeep(c) { return Object.assign({ top: true, circle: false, map: false, hr: true }, (c && c.keep) || {}); }
+    function readKeep(c) { void c; return { top: true, circle: false, map: true, hr: true }; } // seul le cercle laisse sa place au texte
     const rv = { key: '', idx: -1, sents: [], w: [], tot: 0 };
     // Début de chaque phrase dans l'audio : estimation par la longueur, recalée sur les vrais silences de la voix
     function readBounds(sec, sents) {
@@ -19041,8 +19171,9 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const on = !!(c && c.show !== false && c.started && !readDone(c) && timerState.sessionStarted && !timerState.finished);
       box.classList.toggle('on', on);
       const K = readKeep(c), B = document.body.classList;
+      if (B.contains('rv-on') !== on) setTimeout(() => { try { fitCircle(true); } catch (e) { } }, 0);
       B.toggle('rv-on', on); READ_KEEP.forEach(([k]) => B.toggle('rv-hide-' + k, !K[k]));
-      B.toggle('rv-tall', on && !K.circle && !K.map);
+      B.toggle('rv-tall', false);
       if (!on) return;
       const body = document.getElementById('readViewBody'), head = document.getElementById('readViewHead');
       body.style.fontSize = (c.fontSize || 22) + 'px';
@@ -19059,12 +19190,12 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         label = `📖 Morceau ${c.pos}/${c.chunks.length}`;
       }
       const paused = readIsAi(c) ? !rp.playing : !isSpeaking();
-      head.textContent = `${label} · ${Math.round(readProgress(c) * 100)} %${paused ? ' · ⏸ en pause' : ''}`;
+      void label; head.textContent = `📖 ${Math.round(readProgress(c) * 100)} %${paused ? ' ⏸' : ''}`;
+      { const pb = document.getElementById('rvPlayBtn'); if (pb) { pb.textContent = rp.userPause ? '▶ Reprendre' : '⏸ Pause'; pb.style.background = rp.userPause ? '#0ea5e9' : '#0f172a'; pb.style.color = rp.userPause ? '#04131f' : '#e2e8f0'; pb.setAttribute('aria-label', rp.userPause ? 'Reprendre la lecture' : 'Pause lecture'); } }
       const key = text.length + '|' + text.slice(0, 60);
       if (rv.key !== key) {
         rv.key = key; rv.idx = -1; rv.jump = true; rv.sents = readSents(text);
         rv.w = rv.sents.map(x => x.length + 10); rv.tot = rv.w.reduce((a, b) => a + b, 0) || 1;
-        body.innerHTML = rv.sents.map((x, i) => `<span data-i="${i}">${plEsc(x)} </span>`).join('');
       }
       let acc = 0, idx = 0;
       const secA = readIsAi(c) && !c.fallback ? readAudio.secs[Math.min(c.aiPos.s, c.sections.length - 1)] : null;
@@ -19072,11 +19203,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const SB = secA ? readBounds(secA, rv.sents) : null;
       if (SB) { idx = 0; for (let i = 0; i < SB.length; i++) if (SB[i] <= tA + 0.15) idx = i; }
       else { for (let i = 0; i < rv.w.length; i++) { acc += rv.w[i]; if (acc / rv.tot > f) { idx = i; break; } idx = i; } }
-      if (idx !== rv.idx) { rv.idx = idx; body.querySelectorAll('span[data-i]').forEach(sp => { const i = +sp.dataset.i; sp.className = i === idx ? 'rv-cur' : i < idx ? 'rv-past' : ''; }); }
-      const el = body.querySelector(`span[data-i="${idx}"]`);
-      if (!el || !body.clientHeight) return;
-      const vis = el.offsetTop >= body.scrollTop + 2 && el.offsetTop + Math.min(el.offsetHeight, body.clientHeight * 0.5) <= body.scrollTop + body.clientHeight * 0.75;
-      if (!vis && !rv.scrolling) { rv.scrolling = true; setTimeout(() => { rv.scrolling = false; }, 700); body.scrollTo({ top: Math.max(0, el.offsetTop - body.clientHeight * 0.3), behavior: rv.jump ? 'auto' : 'smooth' }); rv.jump = false; }
+      if (idx !== rv.idx || !body.firstChild) { rv.idx = idx; body.innerHTML = `<span class="rv-cur">${plEsc(rv.sents[idx] || '')}</span>`; body.scrollTop = 0; }
     }
     setInterval(() => { try { readViewUpdate(); } catch (e) { } }, 400);
     // Pendant la lecture, sauf si on a choisi de tout garder : seules les annonces indispensables passent
@@ -19120,9 +19247,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">
           <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Afficher le texte pendant la lecture<input type="checkbox" id="rdShow" class="sw" ${c.show !== false ? 'checked' : ''}></label>
           <label class="pm-lbl">Taille du texte<select id="rdFont" class="pm-in">${[[16, 'Petite'], [20, 'Moyenne'], [24, 'Grande'], [30, 'Très grande'], [36, 'Énorme']].map(([v, l]) => opt(String(v), l, String(c.fontSize || 24))).join('')}</select></label>
-          <span style="font-size:12px;font-weight:800;color:#cbd5e1">Garder à l'écran avec le texte</span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${READ_KEEP.map(([k, l]) => `<label style="display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;border-radius:10px;background:#0f172a;border:1px solid #1e293b;font-size:13px;font-weight:700;color:#e2e8f0"><input type="checkbox" data-rdkeep="${k}" ${readKeep(c)[k] ? 'checked' : ''} style="width:18px;height:18px">${l}</label>`).join('')}</div>
-          <span style="font-size:11.5px;color:#94a3b8;line-height:1.4">Les boutons pause / arrêt restent toujours visibles. Pendant la séance : A− / A+ pour la taille, ✕ pour masquer le texte.</span>
+          <span style="font-size:11.5px;color:#94a3b8;line-height:1.4">Le texte prend la place du cercle et n'affiche que la phrase en cours de lecture ; tout le reste de l'écran est gardé. Pendant la séance : A− / A+ pour la taille, ✕ pour masquer le texte.</span>
         </div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;color:#e2e8f0">Garder les annonces du coach<input type="checkbox" id="rdKeepAnn" class="sw" ${c.keepAnn ? 'checked' : ''}></label>
         <span style="font-size:11.5px;color:#94a3b8;margin-top:-8px;line-height:1.4">Décoché : pendant la lecture, plus d'encouragements, bilans au km, conseils d'allure, rappels boire / manger, radio… Les annonces indispensables passent toujours, même si rien d'autre n'est affiché : changement de segment (annonce du suivant puis départ), compte à rebours, guidage, alerte cardio, fin de séance. La lecture se met en pause puis reprend.</span>
@@ -19217,6 +19342,30 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       for (let i = from; i < Math.min(c.chunks.length, from + 2); i++) { const k = aiClipKey(c.chunks[i]); if (!aiClips.has(k) && !readPrefetch.busy[k]) { readPrefetch.busy[k] = 1; aiFetchClip(c.chunks[i]).then(cl => { if (cl) aiClips.set(k, cl); }).catch(() => { }).finally(() => { delete readPrefetch.busy[k]; }); } }
     }
     readPrefetch.busy = {};
+    // Boutons pendant la séance : pause / reprise et retour 15 s en arrière
+    function readPhoneSpeaking() { return isSpeaking() && Date.now() < (readTick.spkUntil || 0); }
+    function readPhoneRewind(c, n) { // voix du téléphone : on recule d'un ou plusieurs morceaux
+      const wasSpk = readPhoneSpeaking(); if (wasSpk) { try { cancelSpeech(); } catch (e) { } readTick.spkUntil = 0; }
+      const k = n + (wasSpk ? 1 : 0) - 1; // le morceau en cours de lecture est relu en entier
+      if (readIsAi(c) && c.fallback) c.fbPos = Math.max(0, (c.fbPos || 0) - Math.max(wasSpk ? 1 : 0, k));
+      else if (!readIsAi(c)) c.pos = Math.max(0, (c.pos || 0) - Math.max(wasSpk ? 1 : 0, k));
+      readTick.lastEnd = 0;
+    }
+    function readUserToggle() {
+      const c = readCfg(); if (!c) return;
+      rp.userPause = !rp.userPause;
+      if (rp.userPause) { readPause(0.5); rp.allowed = false; if (!readIsAi(c) || c.fallback) { if (readPhoneSpeaking()) readPhoneRewind(c, 1); } showToast('⏸ Lecture en pause'); }
+      else { readTick.lastEnd = 0; rp.lastAnnEnd = 0; showToast('▶ Lecture reprise'); }
+      saveAppData(); rv.idx = -1; readViewUpdate(); updateReadBtn();
+    }
+    function readBack15() {
+      const c = readCfg(); if (!c) return;
+      if (readIsAi(c) && !c.fallback) {
+        if (rp.playing && rp.el && rp.s === c.aiPos.s) { const t = Math.max(0, rp.el.currentTime - 15); try { rp.el.currentTime = t; } catch (e) { } c.aiPos.t = t; }
+        else c.aiPos.t = Math.max(0, (c.aiPos.t || 0) - 15);
+      } else readPhoneRewind(c, 1);
+      saveAppData(); rv.idx = -1; readViewUpdate(); updateReadBtn(); showToast('↺ 15 s en arrière');
+    }
     function readTick(cur, elapsedMs, remMs) {
       const c = readCfg(); if (!c || readDone(c)) { rp.allowed = false; return; }
       const el = timerState.totalSessionMs - timerState.totalRemainingMs;
@@ -19225,13 +19374,18 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (ok && c.start === 'warm' && el < warmEnd) ok = false;
       if (ok && c.start === 'min' && el < (c.min || 0) * 60000) ok = false;
       if (ok && cur.intensity === 'fast' && !c.fast && !(cur.durationSec >= 600)) ok = false;
+      // Au tout début : on attend que le coach ait fini sa présentation (au plus 40 s)
+      if (rp.lastEl == null || el < rp.lastEl - 500) { rp.introSpk = false; rp.introEnd = 0; } rp.lastEl = el;
+      if (isSpeaking()) rp.introSpk = true; else if (rp.introSpk && !rp.introEnd) rp.introEnd = Date.now();
+      if (ok && el < 40000 && !(rp.introEnd && Date.now() - rp.introEnd > 1500)) ok = false;
+      if (rp.userPause) ok = false;
       rp.allowed = ok;
       if (!ok) return;
       const rate = c.rate || 1;
       if (readIsAi(c)) {
         if (c.fallback && c.fbPos < c.fallback.length) { // partie impossible à générer : lue par la voix du téléphone
           if (isSpeaking() || Date.now() - (readTick.lastEnd || 0) < 1500) return;
-          const tx = c.fallback[c.fbPos]; logSpoken(tx); systemSpeak(tx, rate); c.fbPos++; readTick.lastEnd = Date.now(); c.started = true;
+          const tx = c.fallback[c.fbPos]; logSpoken(tx); systemSpeak(tx, rate); c.fbPos++; readTick.lastEnd = Date.now(); readTick.spkUntil = Date.now() + tx.split(/\s+/).length / 150 * 60000 / rate + 3000; c.started = true;
           if (c.fbPos >= c.fallback.length) { c.fallback = null; c.aiPos = { s: c.aiPos.s + 1, t: 0 }; }
           saveAppData(); updateReadBtn(); return;
         }
@@ -19242,7 +19396,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const txt = c.chunks[c.pos];
         const estMs = txt.split(/\s+/).length / 150 * 60000 / rate;
         if (remMs < Math.max(25000, estMs + 10000)) return;
-        logSpoken(txt); systemSpeak(txt, rate); c.pos++; readTick.lastEnd = Date.now(); c.started = true;
+        logSpoken(txt); systemSpeak(txt, rate); c.pos++; readTick.lastEnd = Date.now(); readTick.spkUntil = Date.now() + estMs + 3000; c.started = true;
       saveAppData(); updateReadBtn();
       if (readDone(c)) setTimeout(() => showToast('📖 Texte entièrement lu'), 1500);
     }
@@ -19252,7 +19406,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function spCfg() { if (!appData.spotify) appData.spotify = { resume: true, pauseLong: false }; return appData.spotify; }
     function spRedirect() { return location.origin + location.pathname; }
     function spConnected() { const c = spCfg(); return !!(c.refresh && c.clientId); }
-    function updateSpBtn() { const b = document.getElementById('spBtn'); if (b) b.textContent = spConnected() ? `🎵 Spotify ${spCfg().resume ? '✓' : ''}` : '🎵 Spotify'; }
+    function updateSpBtn() { const b = document.getElementById('spBtn'); if (b) b.textContent = spConnected() ? `🎵 Spotify ${spCfg().resume ? '✓' : ''}` : '🎵 Spotify'; const pb = document.getElementById('spPlBtn'); if (pb) pb.classList.toggle('hidden', !spConnected()); }
     function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
     async function spLogin() {
       const id = (document.getElementById('spClient') || {}).value || spCfg().clientId || '';
@@ -19292,8 +19446,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     async function spPoll() { if (!spConnected()) return; const j = await spApi('GET', '/me/player'); if (j) { sp.playing = !!j.is_playing; sp.device = (j.device && j.device.id) || sp.device; sp.at = Date.now(); if (j.device && j.device.volume_percent != null) sp.vol = j.device.volume_percent; sp.track = j.item ? `${j.item.name}${j.item.artists && j.item.artists.length ? ' · ' + j.item.artists.map(a => a.name).join(', ') : ''}` : ''; spBarRender(); } }
     function spBarOn() { return spConnected() && timerState.sessionStarted && !timerState.finished && !(typeof yt !== 'undefined' && yt.active); }
     function spBarRender() {
-      const b = document.getElementById('spBar'); if (!b) return; const on = spBarOn();
-      b.classList.toggle('hidden', !on); b.style.display = on ? 'flex' : 'none'; if (!on) return;
+      const b = document.getElementById('spBar'); try { ctlGrid(); } catch (e) { } if (!b) return; const on = false;
+      b.classList.toggle('hidden', !on); b.style.display = 'none'; if (!on) return;
       const t = document.getElementById('spTrackName'); if (t) t.textContent = sp.track || '';
       const pb = document.getElementById('spPlayBtn'); if (pb) pb.textContent = sp.playing ? '⏸' : '▶️';
     }
@@ -20359,6 +20513,7 @@ Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${ru
 ${planPrefsText()}
 ${backgroundText()}
 Récupération entre deux fractions (fractionné, pyramide, côtes) : au moins 50 % de la durée de la fraction rapide, idéalement 75 %, et jamais plus longue que la fraction rapide (ex. 2'10 rapide → récup entre 1'05 et 2'10, idéalement 1'40).
+Par défaut, GARDE la séance : la séance du plan est réfléchie. Ne propose une adaptation que pour une raison concrète et forte visible dans les données (coupure, séances manquées, fatigue ou douleur déclarée, enchaînement trop dur avec la veille ou le lendemain) ; l'absence de séance comparable dans l'historique n'est PAS une raison d'adapter ; une séance déplacée de quelques jours n'est pas une raison en soi.
 Décide si la séance prévue est adaptée à la situation RÉELLE du coureur (régularité des 3 dernières semaines, coupure, vacances, fatigue, séances manquées, enchaînement avec les prochaines séances). Exemple : après 2 semaines sans courir, on ne reprend pas par un fractionné difficile mais par une séance facile. Tu peux garder la séance, l'adapter (même type, plus facile ou plus dure) ou la REMPLACER par un autre type de séance.
 Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 à 3 phrases courtes en tutoyant, avec la raison","type_seance":"fractionne|seuil|endurance|longue|cotes|recup","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}
 "seance" seulement si decision n'est pas "garder".`;
