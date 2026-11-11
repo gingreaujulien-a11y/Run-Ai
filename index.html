@@ -145,6 +145,7 @@
     #readViewBody { position: relative; flex: 1; overflow-y: auto; line-height: 1.35; color: #f8fafc; font-weight: 700; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 2px; }
     #readViewBody span.rv-cur { color: #f8fafc; }
     #readViewBody span.rv-past { color: #475569; }
+    details > summary::-webkit-details-marker { display: none; }
     .rv-b { min-width: 40px; height: 34px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-weight: 800; font-size: 14px; }
     body.rv-on.rv-hide-top #topZone, body.rv-on.rv-hide-map #runMapBox, body.rv-on.rv-hide-hr #hrZoneBar { display: none !important; }
     .pm-subtabs { position: sticky; top: 0; z-index: 6; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 3px; padding: 4px; margin: 6px 0 2px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 -8px 0 #050a14; scrollbar-width: none; }
@@ -13776,30 +13777,27 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       return `${COACH_RECUL}
 ${tapisHrText()}
 ${weakText()}
-Va droit au but, en français, en tutoyant, avec des chiffres quand ils existent. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
+SYNTHÈSE STRICTE : seulement l'essentiel, aucune phrase de remplissage, aucune formule de politesse, aucun encouragement creux, aucune répétition entre les champs. Chaque mot doit apporter une information, avec des chiffres quand ils existent. En français, en tutoyant. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
+NE PARLE NI DU PLAN dans son ensemble NI DE LA RÉCUPÉRATION (sommeil, hydratation, alimentation) : l'app les gère ailleurs. Si une séance à venir doit changer, mets-la seulement dans « modifications », sans la commenter ailleurs.
 Réponds uniquement en JSON :
-{"verdict":"bonne|correcte|difficile","titre":"le bilan en une phrase de 12 mots maximum","points":["3 points clés de 12 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller"],"action":"LA chose à faire pour la suite, 15 mots maximum","record":"le record ou progrès du jour en une phrase avec le chiffre (d'après les records calculés par l'app ou un progrès net visible dans les données), sinon vide","alerte":"signal santé ou surmenage (douleur, cardio anormal, fatigue qui s'accumule) en une phrase, sinon vide","details":[
-{"titre":"Exécution","texte":"respect de la séance et intensité (trop douce, juste, trop forte), chiffres à l'appui, 2 phrases"},
-{"titre":"Forme et progression","texte":"forme du jour et tendance par rapport aux séances précédentes comparables, 2 phrases"},
-{"titre":"Objectif","texte":"ce que la séance dit de l'objectif, seulement si ça change quelque chose, 1 à 2 phrases"},
-{"titre":"Récupération","texte":"quoi faire dans les 24 à 48 h (sommeil, hydratation, alimentation, activité), 1 à 2 phrases"},
-{"titre":"Plan","texte":"ton avis sur la prochaine séance, sur les prochaines séances du même type que celle-ci et sur le plan dans son ensemble (charge, progression, objectif) : faut-il les adapter et pourquoi, 2 à 4 phrases"}],
+{"verdict":"bonne|correcte|difficile","note":7,"_note":"note de 0 à 10 de la séance (exécution et qualité de l'effort par rapport à ce qui était prévu)","titre":"le bilan en 8 mots maximum","intensite":"trop douce|juste|trop forte","forme":"en hausse|stable|en baisse","forme_info":"le chiffre qui montre la tendance par rapport aux séances comparables, 6 mots maximum, sinon vide","points":["2 à 3 constats de 8 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller, chacun avec un chiffre si possible"],"action":"LA chose à faire à la prochaine séance, 12 mots maximum","record":"le record ou progrès du jour avec le chiffre, 10 mots maximum, sinon vide","alerte":"signal santé ou surmenage en 12 mots maximum, sinon vide","details":[
+{"titre":"Exécution","texte":"respect de la séance et intensité, chiffres à l'appui, 2 phrases courtes maximum"},
+{"titre":"Forme","texte":"forme du jour et tendance par rapport aux séances comparables, 2 phrases courtes maximum"},
+{"titre":"Objectif","texte":"seulement si la séance change quelque chose pour l'objectif, 1 phrase, sinon vide"}],
 "modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}]}
-PRIORITÉ À LA NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y explicitement dans le bilan, donne ton avis argumenté avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
+PRIORITÉ À LA NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y dans les points ou le détail Exécution, en une phrase argumentée avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
 Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à venir doivent être adaptées (en particulier celles du même type que la séance analysée), mets-y la NOUVELLE version complète de chacune (même format que le détail JSON fourni). Le coureur pourra accepter ou refuser. Ne dis jamais « je vais adapter » sans mettre la modification ici. Si rien ne doit changer, laisse un tableau vide.`;
     }
     const ANA_STORE = {};
     function anaStore(j) { const k = 'a' + Object.keys(ANA_STORE).length; ANA_STORE[k] = j; return k; }
     function openAnalysisDetail(k) {
-      const j = ANA_STORE[k];
-      if (!j) return;
-      const esc = x => String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-      const icons = { 'Exécution': '🎯', 'Forme et progression': '📈', 'Objectif': '🏁', 'Récupération': '🛌', 'Plan': '🛠️' };
-      document.getElementById('anaBody').innerHTML = `<div class="pm-card">${analysisHtml(JSON.stringify(Object.assign({}, j, { details: [] })))}</div>`
-        + (j.details || []).filter(d => d && d.texte).map(d => `<div class="pm-card"><span style="font-size:15px;font-weight:800;color:#d8b4fe">${icons[d.titre] || '•'} ${esc(d.titre)}</span><span style="font-size:15px;line-height:1.5;color:#e2e8f0">${esc(d.texte)}</span></div>`).join('');
+      const j = ANA_STORE[k]; if (!j) return;
+      document.getElementById('anaBody').innerHTML = `<div class="pm-card">${analysisHtml(JSON.stringify(j), { open: true })}</div>`;
       document.getElementById('anaModal').classList.remove('hidden');
     }
-    function analysisHtml(raw) {
+    const ANA_SKIP = /^(plan|récup|recup)/i; // anciennes analyses : avis sur le plan et récupération ne sont plus affichés
+    function anaDetails(j) { return (Array.isArray(j.details) ? j.details : []).filter(d => d && d.texte && String(d.texte).trim() && !ANA_SKIP.test(String(d.titre || '').trim())); }
+    function analysisHtml(raw, o = {}) {
       if (!raw) return '';
       let j = null;
       try { const t = String(raw).trim(); if (t.startsWith('{')) j = parseJsonLoose(t); } catch (e) {}
@@ -13808,16 +13806,30 @@ Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à 
       const v = String(j.verdict || '').toLowerCase();
       const col = v.startsWith('bon') ? '#34d399' : v.startsWith('diff') ? '#fb7185' : '#fbbf24';
       const lbl = v.startsWith('bon') ? 'Bonne séance' : v.startsWith('diff') ? 'Séance difficile' : 'Séance correcte';
-      const pts = (Array.isArray(j.points) ? j.points : []).slice(0, 4).map(p => `<li style="margin:2px 0">${esc(p)}</li>`).join('');
-      const det = (Array.isArray(j.details) ? j.details : []).filter(d => d && d.texte).map(d => `<div style="margin-top:8px"><b style="color:#d8b4fe">${esc(d.titre)}</b><br><span style="color:#cbd5e1">${esc(d.texte)}</span></div>`).join('');
-      return `<div style="font-size:12px;font-weight:800;color:${col};text-transform:uppercase;letter-spacing:1px">${lbl}</div>
-        <div style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;margin-top:2px">${esc(j.titre)}</div>
-        ${j.record ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:linear-gradient(90deg,rgba(251,191,36,.22),rgba(251,191,36,.08));border:1px solid rgba(251,191,36,.55);color:#fde68a;font-size:13px;font-weight:800">🏆 ${esc(j.record)}</div>` : ''}
-        ${pts ? `<ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:#e2e8f0">${pts}</ul>` : ''}
-        ${j.alerte ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4);color:#fecdd3;font-size:13px;font-weight:600">🚨 ${esc(j.alerte)}</div>` : ''}
-        ${j.action ? `<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e0f2fe;font-size:13px;font-weight:700">👉 ${esc(j.action)}</div>` : ''}
+      const note = j.note !== undefined && j.note !== '' && isFinite(+j.note) ? Math.max(0, Math.min(10, +j.note)) : (v.startsWith('bon') ? null : null);
+      const C = 2 * Math.PI * 26, fr = note === null ? 0 : note / 10;
+      const ring = `<div style="position:relative;width:68px;height:68px;flex:none"><svg viewBox="0 0 64 64" width="68" height="68" style="transform:rotate(-90deg)"><circle cx="32" cy="32" r="26" stroke="#1e293b" stroke-width="7" fill="none"/>${note === null ? `<circle cx="32" cy="32" r="26" stroke="${col}" stroke-width="7" fill="none"/>` : `<circle cx="32" cy="32" r="26" stroke="${col}" stroke-width="7" stroke-linecap="round" fill="none" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - fr)).toFixed(1)}"/>`}</svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1">${note === null ? `<span style="font-size:26px">${v.startsWith('bon') ? '💪' : v.startsWith('diff') ? '🥵' : '👌'}</span>` : `<span style="font-size:22px;font-weight:900;color:#fff">${String(Math.round(note * 10) / 10).replace('.', ',')}</span><span style="font-size:9px;font-weight:800;color:#94a3b8">/10</span>`}</div></div>`;
+      const hero = `<div style="display:flex;gap:12px;align-items:center">${ring}<div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:11px;font-weight:900;color:${col};text-transform:uppercase;letter-spacing:1px">${lbl}</span><span style="font-size:17px;font-weight:900;color:#fff;line-height:1.25">${esc(j.titre)}</span></div></div>`;
+      // Jauges visuelles : intensité et forme
+      const it = String(j.intensite || '').toLowerCase(), itPos = /douce/.test(it) ? 0 : /forte/.test(it) ? 2 : /juste/.test(it) ? 1 : -1;
+      const fo = String(j.forme || '').toLowerCase(), foK = /hausse/.test(fo) ? 'up' : /baisse/.test(fo) ? 'down' : /stable/.test(fo) ? 'flat' : '';
+      const tile = (t, body) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:14px;background:rgba(15,23,42,.75);border:1px solid #1e293b"><span style="font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px">${t}</span>${body}</div>`;
+      const itTile = itPos < 0 ? '' : tile('Intensité', `<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#38bdf8 0%,#34d399 40%,#34d399 60%,#fb7185 100%)"><span style="position:absolute;top:50%;left:${[12, 50, 88][itPos]}%;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #020617;transform:translate(-50%,-50%);box-shadow:0 0 0 2px #fff"></span></div><span style="font-size:13.5px;font-weight:900;color:${['#7dd3fc', '#6ee7b7', '#fda4af'][itPos]}">${['Trop douce', 'Juste', 'Trop forte'][itPos]}</span>`);
+      const foTile = !foK ? '' : tile('Forme', `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:26px;line-height:1;color:${{ up: '#34d399', flat: '#fbbf24', down: '#fb7185' }[foK]}">${{ up: '↗', flat: '→', down: '↘' }[foK]}</span><span style="font-size:13.5px;font-weight:900;color:#f1f5f9">${{ up: 'En hausse', flat: 'Stable', down: 'En baisse' }[foK]}</span></div>${j.forme_info ? `<span style="font-size:11.5px;color:#94a3b8;line-height:1.3">${esc(j.forme_info)}</span>` : ''}`);
+      const tiles = itTile || foTile ? `<div style="display:flex;gap:8px">${itTile}${foTile}</div>` : '';
+      const pts = (Array.isArray(j.points) ? j.points : []).slice(0, 3).map(p => { const t = String(p || '').trim(), ok = /^[✔✓]/.test(t), wn = /^⚠/.test(t), tx = t.replace(/^[✔✓⚠️\s]+/, '');
+        return `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border-radius:12px;background:${wn ? 'rgba(251,191,36,.08)' : 'rgba(52,211,153,.07)'}"><span style="flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;background:${wn ? '#fbbf24' : ok ? '#34d399' : '#64748b'};color:#020617">${wn ? '!' : '✓'}</span><span style="font-size:13.5px;color:#e2e8f0;line-height:1.35;padding-top:1px">${esc(tx)}</span></div>`; }).join('');
+      const det = anaDetails(j), icons = { 'Exécution': '🎯', 'Forme': '📈', 'Forme et progression': '📈', 'Objectif': '🏁' };
+      const detHtml = det.map(d => `<div style="display:flex;gap:9px;align-items:flex-start"><span style="font-size:16px;line-height:1.2">${icons[d.titre] || '•'}</span><span style="font-size:13.5px;color:#cbd5e1;line-height:1.45"><b style="color:#e9d5ff">${esc(d.titre)}</b> · ${esc(d.texte)}</span></div>`).join('');
+      return `<div style="display:flex;flex-direction:column;gap:10px">${hero}
+        ${j.record ? `<div style="display:flex;gap:8px;align-items:center;padding:9px 11px;border-radius:12px;background:linear-gradient(90deg,rgba(251,191,36,.24),rgba(251,191,36,.06));border:1px solid rgba(251,191,36,.55)"><span style="font-size:20px">🏆</span><span style="color:#fde68a;font-size:13.5px;font-weight:800">${esc(j.record)}</span></div>` : ''}
+        ${j.alerte ? `<div style="display:flex;gap:8px;align-items:center;padding:9px 11px;border-radius:12px;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.45)"><span style="font-size:18px">🚨</span><span style="color:#fecdd3;font-size:13.5px;font-weight:700">${esc(j.alerte)}</span></div>` : ''}
+        ${tiles}
+        ${pts ? `<div style="display:flex;flex-direction:column;gap:5px">${pts}</div>` : ''}
+        ${j.action ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:14px;background:linear-gradient(90deg,rgba(56,189,248,.2),rgba(56,189,248,.06));border:1px solid rgba(56,189,248,.5)"><span style="font-size:22px">🎯</span><div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:10.5px;font-weight:800;color:#7dd3fc;text-transform:uppercase;letter-spacing:.7px">Prochaine séance</span><span style="font-size:14px;font-weight:800;color:#f0f9ff;line-height:1.3">${esc(j.action)}</span></div></div>` : ''}
         ${anaModsHtml(j)}
-        ${det ? `<button type="button" onclick="openAnalysisDetail('${anaStore(j)}')" style="margin-top:10px;width:100%;min-height:44px;border-radius:12px;border:1px solid rgba(167,139,250,.5);background:rgba(167,139,250,.12);color:#c4b5fd;font-weight:800;font-size:14px">🔎 Voir le détail</button>` : ''}`;
+        ${detHtml ? `<details ${o.open ? 'open' : ''} style="border-radius:12px;background:rgba(15,23,42,.5);border:1px solid #1e293b;padding:0 11px"><summary style="cursor:pointer;list-style:none;min-height:42px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:#c4b5fd">🔎 En détail<span style="color:#64748b">▾</span></summary><div style="display:flex;flex-direction:column;gap:8px;padding:0 0 11px">${detHtml}</div></details>` : ''}</div>`;
     }
     function speakAnalysis(raw) {
       try {
@@ -15404,8 +15416,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         let j = null; try { j = JSON.parse(item.analysis); } catch (e) { }
         const icons = { 'Exécution': '🎯', 'Forme et progression': '📈', 'Objectif': '🏁', 'Récupération': '🛌', 'Plan': '🛠️' };
         coachTab = j && typeof j === 'object'
-          ? `<div style="padding:12px;border-radius:14px;background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35)">${analysisHtml(JSON.stringify(Object.assign({}, j, { details: [] })))}</div>`
-            + (j.details || []).filter(d => d && d.texte).map(d => `<div style="display:flex;flex-direction:column;gap:4px;padding:12px;${card}"><span style="font-size:14px;font-weight:800;color:#d8b4fe">${icons[d.titre] || '•'} ${plEsc(d.titre)}</span><span style="font-size:14px;line-height:1.5;color:#e2e8f0">${plEsc(d.texte)}</span></div>`).join('')
+          ? (void icons, `<div style="padding:12px;border-radius:16px;background:linear-gradient(180deg,rgba(88,28,135,.28),rgba(15,23,42,.6));border:1px solid rgba(147,51,234,.35)">${analysisHtml(item.analysis)}</div>`)
           : `<div style="padding:12px;border-radius:14px;background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>`;
       } else coachTab = `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas encore d'analyse du coach pour cette séance.</div>`;
       coachTab += `<button onclick="openHistChat('${item.id}')" style="min-height:46px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>
