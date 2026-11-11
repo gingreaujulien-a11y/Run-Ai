@@ -1398,7 +1398,7 @@
           <input type="text" id="editHistNote" placeholder="Sensations, fatigue..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white">
         </div>
 
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-purple-500/30 space-y-2">
+        <div class="hidden">
           <span class="text-[10px] text-purple-300 uppercase font-bold block">📸 Données de la montre & analyse IA</span>
           <div id="editShots" class="flex flex-wrap gap-2"></div>
           <div class="grid grid-cols-2 gap-2">
@@ -7193,7 +7193,7 @@ Donne 2 ou 3 axes de travail.`;
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${plEsc(stats2)}</span>
             ${recs ? `<span style="font-size:12px;color:#fbbf24;font-weight:800">🏆 Record : ${plEsc(recs.join(', '))}</span>` : ''}
           </div>
-          ${plIconBtns(`editHistoryItem('${item.id}', 'validated', ${item.rawIdx})`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`, item.cross ? '' : `openCopyDone('${item.id}')`)}
+          ${plIconBtns(`histEditOpen('${item.id}')`, `deleteItem('${item.id}', 'validated', ${item.rawIdx})`, item.cross ? '' : `openCopyDone('${item.id}')`)}
         </div>
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2 text-[12px]" style="border-top:1px solid rgba(52,211,153,.25)">
           ${item.cross ? `${item.note ? `<div style="color:#94a3b8"><b style="color:#fbbf24">Note :</b> ${plEsc(item.note)}</div>` : ''}` : histRecapHtml(item, k, recs)}
@@ -7624,6 +7624,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     }
 
     function editHistoryItem(id, type, rawIdx) {
+      if (type === 'validated') return histEditOpen(id); // l'ancienne page « Modifier » n'est plus utilisée
       currentEditingHistoryId = { id, type, rawIdx };
       if (type === 'validated') {
         const h = appData.history.find(x => x.id === id);
@@ -7699,6 +7700,50 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
           ${hh.note ? `<span style="font-size:14px;line-height:1.4;color:#e2e8f0">${plEsc(hh.note)}</span>` : '<span style="font-size:12.5px;color:#64748b">Ex. récup trop courte, vitesse des fractions trop rapide, douleur au mollet… Le coach en tiendra compte.</span>'}
           <div id="${uid}" style="display:none;flex-direction:column;gap:6px"><textarea rows="3" class="pm-in" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px">${plEsc(hh.note || '')}</textarea><button type="button" onclick="setHistNote('${key}', this.previousElementSibling.value)" style="min-height:42px;border-radius:12px;border:none;background:#fbbf24;color:#1a1204;font-weight:900">💾 Enregistrer la note</button></div></div>`;
       return feel + note;
+    }
+    // Infos de la séance modifiables directement dans le Récap (remplace l'ancienne page « Modifier »)
+    function histInfoHtml(hh, item) {
+      const key = hh.id || (item.rawIdx >= 0 ? '#' + item.rawIdx : ''); if (!key) return '';
+      const uid = 'hi' + Math.random().toString(36).slice(2, 8), open = window.__histEdit && window.__histEdit === key;
+      const lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">${t}</span>`;
+      const fld = (t, h) => `<label style="display:flex;flex-direction:column;gap:4px;min-width:0">${lab(t)}${h}</label>`;
+      const inS = 'class="pm-in" style="min-height:46px;font-size:15px;width:100%;min-width:0"';
+      const cur = hh.kind || (typeof histInferKind === 'function' ? histInferKind(hh) : '') || '';
+      const fe = hh.feeling || '', FE = [['green', '😊', 'Facile'], ['yellow', '😐', 'Équilibré'], ['orange', '😤', 'Exigeant'], ['red', '😫', 'Trop dur']];
+      const tap = hh.type !== 'exterieur';
+      return `<details id="${uid}" data-hikey="${key}" ${open ? 'open' : ''} style="border-radius:14px;background:#0f172a;border:1px solid #1e293b;padding:0 12px">
+        <summary style="cursor:pointer;list-style:none;min-height:46px;display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:800;color:#e2e8f0">✏️ Modifier les infos de la séance<span style="color:#64748b">▾</span></summary>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:2px 0 12px">
+          ${fld('Titre', `<input data-f="title" type="text" ${inS} value="${plEsc(hh.sessionTitle || '')}">`)}
+          ${hh.cross ? '' : fld('Type de séance', `<select data-f="kind" ${inS}><option value="">— Non précisé —</option>${CFG_KINDS.map(([k, e, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${e} ${l}</option>`).join('')}</select>`)}
+          <div style="display:grid;grid-template-columns:${tap ? '1.5fr 1fr 1fr' : '1.5fr 1fr'};gap:8px">
+            ${fld('Date', `<input data-f="date" type="date" ${inS} value="${histISO(hh) || ''}" max="${todayISO()}">`)}
+            ${fld('Durée (min)', `<input data-f="dur" type="text" inputmode="decimal" ${inS} value="${String(Math.round((+hh.durationMin || 0) * 10) / 10).replace('.', ',')}">`)}
+            ${tap ? fld('Pente (%)', `<input data-f="pente" type="text" inputmode="decimal" ${inS} value="${String(+hh.pente || 0).replace('.', ',')}">`) : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">${lab('Ressenti')}<div data-f="feel" data-v="${fe}" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${FE.map(([k, e, l]) => `<button type="button" data-k="${k}" onclick="histInfoFeel(this)" aria-label="${l}" style="min-height:52px;border-radius:12px;font-size:22px;border:${k === fe ? '2px solid #f59e0b' : '1px solid #334155'};background:${k === fe ? 'rgba(245,158,11,.2)' : '#1e293b'}">${e}<span style="display:block;font-size:10px;font-weight:800;color:#cbd5e1">${l}</span></button>`).join('')}</div></div>
+          <button type="button" onclick="histInfoSave('${uid}')" style="min-height:48px;border-radius:12px;border:none;background:#f59e0b;color:#1a1204;font-size:15px;font-weight:900">✓ Enregistrer</button>
+        </div></details>`;
+    }
+    function histInfoFeel(btn) {
+      const g = btn.parentElement; g.dataset.v = btn.dataset.k;
+      g.querySelectorAll('button').forEach(b => { const on = b === btn; b.style.border = on ? '2px solid #f59e0b' : '1px solid #334155'; b.style.background = on ? 'rgba(245,158,11,.2)' : '#1e293b'; });
+    }
+    function histInfoSave(uid) {
+      const box = document.getElementById(uid); if (!box) return; const h = histByKey(box.dataset.hikey); if (!h) return;
+      const v = f => { const e = box.querySelector(`[data-f="${f}"]`); return e ? (e.dataset.v !== undefined && e.tagName === 'DIV' ? e.dataset.v : e.value) : null; };
+      const t = String(v('title') || '').trim(); if (t) h.sessionTitle = t;
+      const k = v('kind'); if (k !== null && !h.cross) { if (k) h.kind = k; else delete h.kind; }
+      const d = v('date'); if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d !== histISO(h)) { const [y, m, dd] = d.split('-'); h.date = `${dd}/${m}${y !== String(new Date().getFullYear()) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(String(h.date || '').trim()) ? '/' + y : ''}`; }
+      const du = parseFloat(String(v('dur') || '').replace(',', '.')); if (du > 0) h.durationMin = du;
+      const pe = v('pente'); if (pe !== null && pe !== '') { const p = parseFloat(String(pe).replace(',', '.')); if (isFinite(p)) h.pente = p; }
+      const fe = v('feel'); if (fe) h.feeling = fe;
+      window.__histEdit = ''; saveAppData(); histRefreshAll(); showToast('✓ Séance mise à jour');
+    }
+    // Bouton crayon d'une séance faite : ouvre le Récap avec les infos à modifier
+    function histEditOpen(id) {
+      const h = histByKey(id); if (!h) return; window.__histEdit = h.id || id; appData.histTab = 'recap'; histRefreshAll();
+      setTimeout(() => { const d = document.getElementById('detail_' + (h.id || id)); if (d) d.classList.remove('hidden'); const ed = document.querySelector(`details[data-hikey="${h.id || id}"]`); if (ed) { ed.open = true; ed.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 80);
     }
     function histRefreshAll() { try { updateHistoryTable(); } catch (e) { } try { const b = document.getElementById('homeLastRun'); if (b) b.dataset.k = ''; renderHomeLastRun(); } catch (e) { } }
     function setHistFeel(key, k) { const h = histByKey(key); if (!h) return; h.feeling = k; saveAppData(); histRefreshAll(); showToast('Ressenti enregistré ✓'); }
@@ -9134,14 +9179,14 @@ Règles : pour "decaler", "modifications" vide sauf retouche indispensable ; pou
 
     // Plein écran pendant la création du plan : grand anneau de progression, tout le reste masqué
     const genOv = { t: null, base: 0, span: 0, t0: 0, est: 60, lab: '', p: 0 };
-    function genOvOpen() {
+    function genOvOpen(title) {
       let m = document.getElementById('genOverlay');
       if (!m) { m = document.createElement('div'); m.id = 'genOverlay'; document.body.appendChild(m); }
       m.style.cssText = 'position:fixed;inset:0;z-index:300;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center';
       m.innerHTML = `<div style="position:relative;width:min(78vw,340px);aspect-ratio:1"><svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg)"><circle cx="50" cy="50" r="44" stroke="#1e293b" stroke-width="7" fill="none"/><circle id="genOvArc" cx="50" cy="50" r="44" stroke="#a78bfa" stroke-width="7" stroke-linecap="round" fill="none" stroke-dasharray="276.46" stroke-dashoffset="276.46" style="transition:stroke-dashoffset .4s linear;filter:drop-shadow(0 0 12px rgba(167,139,250,.6))"/></svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span id="genOvPct" style="font-size:clamp(56px,18vw,88px);font-weight:900;color:#f8fafc;line-height:1;font-variant-numeric:tabular-nums">0 %</span><span style="font-size:15px;font-weight:800;color:#c4b5fd;margin-top:6px">🧠 Création du plan</span></div></div>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span id="genOvPct" style="font-size:clamp(56px,18vw,88px);font-weight:900;color:#f8fafc;line-height:1;font-variant-numeric:tabular-nums">0 %</span><span style="font-size:15px;font-weight:800;color:#c4b5fd;margin-top:6px">${title || '🧠 Création du plan'}</span></div></div>
         <span id="genOvLab" style="max-width:360px;font-size:15px;font-weight:700;color:#cbd5e1;line-height:1.45"></span>
-        <span style="font-size:12.5px;color:#64748b">Garde l'app ouverte, ça peut prendre quelques minutes.</span>`;
+        <span style="font-size:12.5px;color:#64748b">Garde l'app ouverte${title ? '' : ', ça peut prendre quelques minutes'}.</span>`;
       Object.assign(genOv, { base: 0, span: 0, p: 0 });
       clearInterval(genOv.t); genOv.t = setInterval(genOvTick, 400); genOvTick();
     }
@@ -13750,7 +13795,7 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       if (!h || !files.length) return;
       if (!getGeminiKey()) { showToast('Clé Gemini nécessaire pour lire la capture'); return; }
       const shots = []; for (const f of files) { try { shots.push(await resizeImageFile(f)); } catch (e) { showToast(e.message); } }
-      if (shots.length) { try { delete h.hrFix; } catch (e) { } attachHrShot(h, shots); }
+      if (shots.length) { try { delete h.hrFix; } catch (e) { } await attachHrShot(h, shots); if ((h.hrShot || h.spShot) && h.id && getGeminiKey()) histReanalyze(h.id); }
     }
     async function attachHrShot(h, shots) {
       if (!h || !shots || !shots.length) return;
@@ -13896,7 +13941,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
     }
 
     // ==================== ANALYSE IA D'UNE SÉANCE DU SUIVI ====================
-    function openHistoryAnalysis(id, rawIdx) {
+    function openHistoryAnalysis(id, rawIdx) { void rawIdx; return histReanalyze(id);
       editHistoryItem(id, 'validated', rawIdx);
       setTimeout(() => { const el = document.getElementById('editAnalysis'); if (el && el.parentElement) el.parentElement.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 150);
     }
@@ -13925,30 +13970,45 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
       out.classList.toggle('hidden', !text);
       out.innerHTML = text ? analysisHtml(text) : '';
     }
-    async function analyzeHistoryEntryWithAI() {
-      const out = document.getElementById('editAnalysis');
-      if (!currentEditingHistoryId || currentEditingHistoryId.type !== 'validated') return;
-      const h = appData.history.find(x => x.id === currentEditingHistoryId.id);
-      if (!h) return;
-      if (!getGeminiKey()) { out.classList.remove('hidden'); out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'analyse.</span>'; return; }
+    function histAnaPrompt(h, feelVal, note, nShots) {
       const others = (appData.history || []).filter(x => x.id !== h.id).slice(0, 6).map(x => `- ${x.date} ${x.sessionTitle} : ${x.details || ''} ; ${(+x.durationMin || 0).toFixed(0)} min ; ressenti ${feelTxt(x.feeling)}${x.note ? ` ; note « ${x.note} »` : ''}`).join('\n') || '- aucune';
       const next = appData.sessions.slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
       const g = appData.goal || {};
-      const feelLbl = { green: 'facile', yellow: 'équilibré', orange: 'exigeant', red: 'trop dur' }[selectedEditFeelingVal] || selectedEditFeelingVal;
-      const note = document.getElementById('editHistNote').value.trim();
-      const prompt = `Tu es un coach de course à pied expert. ${coachToneText()}
-Analyse cette séance déjà réalisée${editShots.length ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
+      const feelLbl = { green: 'facile', yellow: 'équilibré', orange: 'exigeant', red: 'trop dur' }[feelVal] || feelVal;
+      return `Tu es un coach de course à pied expert. ${coachToneText()}
+Analyse cette séance déjà réalisée${nShots ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
 Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${speedLogText(h.speedChanges)}
 ${zonesText()}
-${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${trackInsights(h.track) ? `Courbes : ${trackInsights(h.track)}.\n` : ''}${trackSlicesText(h.track) ? trackSlicesText(h.track) + '\n' : ''}${recentCapacityText(histISO(h))}
+${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${(() => { const hs = h.hrShot, sp = h.spShot; if (!hs && !sp) return ''; const z = hs && Array.isArray(hs.zones_min) && hs.zones_min.some(x => x > 0) ? ` ; minutes par zone Z1→Z5 : ${hs.zones_min.join(', ')}` : ''; return `Données lues sur la capture de la montre (fiables, à utiliser) :${hs && hs.fc_moy ? ` FC moyenne ${hs.fc_moy}` : ''}${hs && hs.fc_max ? ` ; FC max ${hs.fc_max}` : ''}${z}${sp && sp.moy ? ` ; vitesse moyenne ${sp.moy} km/h` : ''}${sp && sp.km ? ` ; distance ${sp.km} km` : ''}${sp && sp.dur ? ` ; durée ${sp.dur} min` : ''}.\n`; })()}${(() => { const tk = trackWithShot(h.track, h.hrShot); return `${trackInsights(tk) ? `Courbes : ${trackInsights(tk)}.\n` : ''}${trackSlicesText(tk) ? trackSlicesText(tk) + '\n' : ''}`; })()}${recentCapacityText(histISO(h))}
 Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
 Records et progrès (calculés par l'app) : ${recordsText({ id: h.id, km: h.km, summary: h.summary, durationMin: h.durationMin, seg: h.seg }, (appData.history || []).filter(x => x.id !== h.id && (histISO(x) || '') <= (histISO(h) || '9')))}.
 Autres séances récentes :
 ${others}
 ${planAheadText('')}
 ${coachMemoryText('')}
-${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
+${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
+    }
+    async function histReanalyze(id) {
+      const h = (appData.history || []).find(x => x.id === id); if (!h) return;
+      if (!getGeminiKey()) { showToast('Renseigne ta clé Gemini (Réglages) pour l\'analyse'); return; }
+      genOvOpen('🧠 Analyse de la séance'); genOvStep(0, 0.97, 30, 'Le coach analyse ta séance…'); let ok = false;
+      try {
+        const res = tagAnalysis(await geminiText([{ text: histAnaPrompt(h, h.feeling, String(h.note || '').trim(), 0) }], { tier: 'full', json: true }));
+        h.analysis = res; try { const hs = hrShotFrom(res); if (hs) h.hrShot = hs; } catch (e) { }
+        appData.histTab = 'coach'; saveAppData(); ok = true;
+        try { updateHistoryTable(); } catch (e) { } try { renderHomeLastRun(); } catch (e) { }
+        showToast('✓ Nouvelle analyse prête');
+      } catch (e) { showToast('Analyse impossible : ' + String(e.message || e).slice(0, 80)); }
+      finally { genOvClose(ok); }
+    }
+    async function analyzeHistoryEntryWithAI() {
+      const out = document.getElementById('editAnalysis');
+      if (!currentEditingHistoryId || currentEditingHistoryId.type !== 'validated') return;
+      const h = appData.history.find(x => x.id === currentEditingHistoryId.id);
+      if (!h) return;
+      if (!getGeminiKey()) { out.classList.remove('hidden'); out.innerHTML = '<span class="text-rose-400">Renseignez votre clé Gemini (Voix & réglages) pour l\'analyse.</span>'; return; }
+      const prompt = histAnaPrompt(h, selectedEditFeelingVal, document.getElementById('editHistNote').value.trim(), editShots.length);
       out.classList.remove('hidden');
       out.innerHTML = '<div class="flex items-center gap-2 text-purple-300"><div class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-purple-400 animate-spin"></div> Le coach analyse ta séance…</div>';
       try {
@@ -15342,8 +15402,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         const tilesR = sTiles([
           [whereTile(hh), !item.live ? sTileWide(fe ? fe[0] : '🙂', `<span style="color:${feel ? feel[1] : '#94a3b8'}">${fe ? fe.slice(1).join(' ') : 'Ressenti ?'}</span>`, fe ? '' : 'non renseigné') : ''],
           [sTile(kindIcon(kS), kLab), sTile('⏱️', totTxt), sTile('📏', `${f1(km)} km`)],
-          [sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–'), sTile('', f1(bKmh), 'km/h', '#7dd3fc'), showVap ? sTile('', f1(bVap), 'VAP', '#c4b5fd') : ''],
-          [hg ? sTile('🎯', hg.kind === 'max' ? `≤ ${hg.max}` : `${hg.lo}–${hg.hi}`, '', '#fde68a', { tag: hg.kind === 'max' ? 'FC max' : 'FC moy' }) : '', bHr ? sTile('❤️', `${bHr}`, '', '#fda4af', { tag: 'Moy' }) : '', hrMaxB ? sTile('❤️', `${hrMaxB}`, '', '#fb7185', { tag: 'Max' }) : ''],
+          [fracMode && reps.length ? sTile('🔁', `${reps.length} × ${(() => { const d = reps.map(g => g.sec).sort((a, b) => a - b)[Math.floor(reps.length / 2)]; return d >= 90 ? `${Math.round(d / 60)}'` : `${Math.round(d)}"`; })()}`, '', '', { small: true }) : '', showVap ? sTileSplit(f1(bKmh), 'km/h', f1(bVap), 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', f1(bKmh), 'km/h', '#7dd3fc'), sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–')],
+          (() => { void hg; void hrMaxB; // échauffement, récup entre séries, retour au calme (mesurés)
+            const fi = G.findIndex(g => !isWarm(g)), li = G.length - 1 - G.slice().reverse().findIndex(g => !isWarm(g));
+            const wu = fi < 0 ? 0 : G.slice(0, fi).reduce((a, g) => a + g.sec, 0), cd = fi < 0 ? 0 : G.slice(li + 1).reduce((a, g) => a + g.sec, 0);
+            const rc = G.filter(isRec), rS = rc.length ? rc.reduce((a, g) => a + g.sec, 0) / rc.length : 0, rK = rc.length ? rc.reduce((a, g) => a + (g.km || 0), 0) / Math.max(1, rc.reduce((a, g) => a + g.sec, 0)) * 3600 : 0;
+            const mn = x => `${Math.round(x / 60)}'`;
+            return [wu >= 30 ? sTile('', mn(wu), 'Échauffement') : '', rS ? sTile('', `${rS >= 90 ? mn(rS) : Math.round(rS) + '"'}${rK ? ` à ${f1(rK)}` : ''}`, 'Récup série') : '', cd >= 30 ? sTile('', mn(cd), 'Retour calme') : '']; })(),
           [hh.type === 'exterieur' ? sTile('', dpm.dp != null ? dpm.dp + ' m' : '–', 'D+', '#fdba74') : '', hh.type === 'exterieur' ? sTile('', dpm.dm != null ? dpm.dm + ' m' : '–', 'D−', '#86efac') : '']
         ]);
         void nOkR;
@@ -15420,7 +15485,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
           : `<div style="padding:12px;border-radius:14px;background:rgba(88,28,135,.25);border:1px solid rgba(147,51,234,.35);color:#e2e8f0">${analysisHtml(item.analysis)}</div>`;
       } else coachTab = `<div style="font-size:13px;color:#94a3b8;padding:6px 2px">Pas encore d'analyse du coach pour cette séance.</div>`;
       coachTab += `<button onclick="openHistChat('${item.id}')" style="min-height:46px;border-radius:12px;border:none;background:#8b5cf6;color:#fff;font-weight:800;font-size:14px">💬 Discuter de cette séance avec le coach</button>
-        <button onclick="openHistoryAnalysis('${item.id}', ${item.rawIdx})" style="min-height:44px;border-radius:12px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd;font-weight:800;font-size:14px">🧠 ${item.analysis ? "Relancer l'analyse" : 'Analyse du coach'}</button>`;
+        <button onclick="histReanalyze('${item.id}')" style="min-height:44px;border-radius:12px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.5);color:#c4b5fd;font-weight:800;font-size:14px">🧠 ${item.analysis ? "Relancer l'analyse" : 'Analyser la séance'}</button>`;
       const gpsPts = item.live ? (runData.gpsPath || []) : (hh.gps || []);
       const mapTab = gpsPts.length > 5 && hh.type !== 'tapis' ? `<div data-hmap="${item.live ? 'live' : item.id}" style="display:flex;flex-direction:column;gap:8px">
           ${!item.live && !hh.routeId && !(appData.myRoutes || []).some(r => r.fromHist === item.id) ? `<button type="button" onclick="saveGpsAsRoute('${item.id}')" style="min-height:42px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:14px">💾 Enregistrer ce tracé dans mes parcours</button>` : ''}
@@ -15435,7 +15500,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(editShots.length)}`;
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (onglet ❤️ Cardio, ou ✏️ Modifier pour l'altitude) pour avoir le cardio et le profil.</div>` : '';
       void top; void spokenTab;
       if (!hrTab && !item.live && (hh.id || item.rawIdx >= 0)) hrTab = '<span style="font-size:13px;color:#94a3b8">Pas de cardio enregistré par l\'app pour cette séance.</span>' + histHrShotHtml(hh, item);
-      const tabs = [['recap', '📊', `${noData}${recLine}${stats}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Coach'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
+      const infoEd = item.live ? '' : (stats ? '' : histNoteFeelHtml(hh, item)) + histInfoHtml(hh, item);
+      const tabs = [['recap', '📊', `${noData}${recLine}${stats}${infoEd}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Analyse'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
       function cur0() { return tabs.some(t => t[0] === appData.histTab) ? appData.histTab : tabs.length ? tabs[0][0] : 'coach'; }
       const cur = tabs.some(t => t[0] === appData.histTab) ? appData.histTab : 'recap';
@@ -20449,6 +20515,10 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const head = ic ? `<span style="font-size:${o.small ? 15 : 19}px;line-height:1">${ic}</span>${o.tag ? `<span style="font-size:11px;font-weight:900;color:#93c5fd;margin-left:4px">${o.tag}</span>` : ''}` : `<span style="font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${lab}</span>`;
       return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:9px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px"><span style="height:22px;display:flex;align-items:center;justify-content:center">${head}</span><span style="font-size:${String(v).replace(/<[^>]+>/g, '').length > 10 ? 12.5 : String(v).replace(/<[^>]+>/g, '').length > 8 ? 14 : 15.5}px;font-weight:900;color:${col || '#fff'};line-height:1.15;word-break:break-word">${v}</span></div>`;
     }
+    function sTileSplit(v1, l1, v2, l2, c1, c2) { // une carte coupée en deux : vitesse à plat | VAP
+      const half = (v, l, c) => `<span style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="height:22px;display:flex;align-items:center;font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${l}</span><span style="font-size:${String(v).length > 6 ? 13 : 15.5}px;font-weight:900;color:${c || '#fff'};line-height:1.15">${v}</span></span>`;
+      return `<div style="display:flex;align-items:stretch;padding:9px 2px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px">${half(v1, l1, c1)}<span style="width:1px;background:rgba(56,189,248,.25);margin:2px 0"></span>${half(v2, l2, c2)}</div>`;
+    }
     function sTileWide(ic, txt, sub) {
       return `<div data-wide="1" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 14px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);min-width:0"><span style="font-size:24px;line-height:1">${ic}</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:900;color:#fff">${txt}</span>${sub ? `<span style="font-size:12px;font-weight:700;color:#93c5fd">${sub}</span>` : ''}</span></div>`;
     }
@@ -20464,14 +20534,15 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const r1 = [sTile(kindIcon(sess), capFirst(String(kl).toLowerCase())), sTile('⏱️', `${T} min`), sTile('📏', `${D.toFixed(1).replace('.', ',')} km`)];
       const spd = k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
-      const r2 = [G.reps > 1 || G.fast.length ? sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true }) : '', spd ? sTile('', spd, 'km/h') : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
+      const vap0 = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
+      const r2 = [G.reps > 1 || G.fast.length ? sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true }) : '', spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
       const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
       const rs = G.slow.length ? `${fmtQ(G.slow[0])} à ${fmtV(G.vmin)}` : G.recB ? fmtQ(G.recB) : '';
       const r3 = [c ? sTile('', `${c}'`, 'Échauffement') : '', rs && k !== 'pyramide' ? sTile('', rs, 'Récup série') : '', r ? sTile('', `${r}'`, 'Retour calme') : ''];
       let hr = '', hrTag = ''; try { const g = sessHrGoal(sess); if (g) { hr = g.kind === 'max' ? `≤ ${g.max}` : `${g.lo}-${g.hi}`; hrTag = g.kind === 'max' ? 'Max' : 'Moy'; } } catch (e) { }
       const vap = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
       let w = ''; try { if (fuelRemindersOn()) { const m = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (m) w = `${m[1]} ml`; } } catch (e) { }
-      const r4 = [hr ? sTile('❤️', hr, '', '', { tag: hrTag }) : '', vap ? sTile('', vap, 'VAP') : '', w ? sTile('💧', w) : ''];
+      void vap; const r4 = [hr ? sTile('❤️', hr, '', '', { tag: hrTag }) : '', w ? sTile('💧', w) : ''];
       return sTiles([whereTile(sess), r1, r2, r3, r4]);
     }
     function homeSessTilesHtmlOld(sess) {
