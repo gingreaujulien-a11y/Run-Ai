@@ -79,7 +79,7 @@
     #gHeader { position: fixed; top: 0; left: 0; right: 0; z-index: 56; background: #020617; padding-top: env(safe-area-inset-top); display: none; }
     #gHeader .gh-in { max-width: 28rem; margin: 0 auto; height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 6px; }
     body.gh-on #gHeader { display: block; }
-    body.gh-on #historyModal, body.gh-on #goalModal, body.gh-on #audioModal, body.gh-on #chkModal { top: calc(60px + env(safe-area-inset-top)) !important; }
+    body.gh-on #historyModal, body.gh-on #plOv, body.gh-on #goalModal, body.gh-on #audioModal, body.gh-on #chkModal { top: calc(60px + env(safe-area-inset-top)) !important; }
     #homeScreen { padding-top: calc(70px + env(safe-area-inset-top)) !important; }
     .hd-btn.gh-cur { background: rgba(56,189,248,.16); }
     .hm-ic { width: 32px; height: 34px !important; min-height: 0 !important; padding: 0 !important; flex-shrink: 0; border-radius: 10px; border: none !important; background: none !important; color: #bae6fd; display: flex; align-items: center; justify-content: center; }
@@ -399,6 +399,7 @@
       <div id="homeCrossToday" class="flex flex-col gap-2"></div>
       <div id="homeRestText" class="hidden text-sm text-slate-300 leading-snug">Aucune séance prévue. Profite de la récupération, ou dis au coach comment tu te sens (ci-dessus) : il te proposera repos, musculation, vélo ou course.</div>
       <div id="homeRestNext" class="hidden text-sm text-slate-200 leading-snug"></div>
+      <div id="homeRestCoach" class="flex flex-col gap-2"></div>
       <button onclick="openAddSession()" class="hidden w-full py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/50 text-emerald-200 font-bold text-xs">➕ Ajouter une séance (avis du coach)</button>
       <button id="homeRestNextBtn" onclick="launchNextAnyway()" style="display:none" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
@@ -13825,12 +13826,13 @@ ${weakText()}
 SYNTHÈSE STRICTE : seulement l'essentiel, aucune phrase de remplissage, aucune formule de politesse, aucun encouragement creux, aucune répétition entre les champs. Chaque mot doit apporter une information, avec des chiffres quand ils existent. En français, en tutoyant. N'invente aucune donnée manquante. Pas de conseil de posture ou de technique de course.
 NE PARLE NI DU PLAN dans son ensemble NI DE LA RÉCUPÉRATION (sommeil, hydratation, alimentation) : l'app les gère ailleurs. Si une séance à venir doit changer, mets-la seulement dans « modifications », sans la commenter ailleurs.
 Réponds uniquement en JSON :
-{"verdict":"bonne|correcte|difficile","note":7,"_note":"note de 0 à 10 de la séance (exécution et qualité de l'effort par rapport à ce qui était prévu)","titre":"le bilan en 8 mots maximum","intensite":"trop douce|juste|trop forte","forme":"en hausse|stable|en baisse","forme_info":"le chiffre qui montre la tendance par rapport aux séances comparables, 6 mots maximum, sinon vide","points":["2 à 3 constats de 8 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller, chacun avec un chiffre si possible"],"action":"LA chose à faire à la prochaine séance, 12 mots maximum","record":"le record ou progrès du jour avec le chiffre, 10 mots maximum, sinon vide","alerte":"signal santé ou surmenage en 12 mots maximum, sinon vide","details":[
+{"verdict":"bonne|correcte|difficile","note":7,"_note":"note de 0 à 10 de la séance (exécution et qualité de l'effort par rapport à ce qui était prévu)","titre":"le bilan en 8 mots maximum","intensite":"trop douce|juste|trop forte","forme":"en hausse|stable|en baisse","forme_info":"le chiffre qui montre la tendance par rapport aux séances comparables, 6 mots maximum, sinon vide","points":["2 à 3 constats de 8 mots maximum, commence par ✔ si positif ou ⚠ si à surveiller, chacun avec un chiffre si possible"],"action":"LA chose à faire à la prochaine séance, 12 mots maximum","record":"le record ou progrès du jour avec le chiffre, 10 mots maximum, sinon vide","alerte":"signal santé ou surmenage en 12 mots maximum, sinon vide","ressenti_vs_chiffres":"À LA FIN : compare ton analyse chiffrée avec le ressenti et la note du coureur, 1 à 2 phrases courtes. Ex. « Normal que ce soit dur : cardio à 95 % de ta FC max sur les 3 dernières. » ou « Surprenant que tu l'aies trouvée dure : cardio stable et vitesses tenues, sans doute la fatigue de la semaine. » Vide si aucun ressenti ni note","details":[
 {"titre":"Exécution","texte":"respect de la séance et intensité, chiffres à l'appui, 2 phrases courtes maximum"},
 {"titre":"Forme","texte":"forme du jour et tendance par rapport aux séances comparables, 2 phrases courtes maximum"},
 {"titre":"Objectif","texte":"seulement si la séance change quelque chose pour l'objectif, 1 phrase, sinon vide"}],
 "modifications":[{"date":"AAAA-MM-JJ d'une séance listée dans « Plan à venir »","resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0,"_regle":"fractionné et côtes : uniquement max (FC à ne pas dépasser en fin de répétition), moy à 0 ; seuil et endurance : moy_min et moy_max"}}]}
-PRIORITÉ À LA NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y dans les points ou le détail Exécution, en une phrase argumentée avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
+OBJECTIVITÉ : la note /10, le verdict, l'intensité et la forme se basent UNIQUEMENT sur les CHIFFRES (vitesses tenues par rapport aux cibles, répétitions réussies, durée réalisée par rapport à la durée prévue, cardio par rapport à la cible et à la FC max, dérive cardio, récupération cardio, comparaison avec les séances similaires), JAMAIS sur le ressenti ou la note du coureur. Une séance trouvée « trop dure » mais exécutée parfaitement avec un cardio maîtrisé reste une bonne séance ; une séance trouvée « facile » mais avec un cardio au plafond est une séance intense. Le ressenti et la note du coureur servent seulement au champ « ressenti_vs_chiffres ».
+NOTE DU COUREUR : s'il signale un problème (récup trop courte ou trop rapide, vitesse trop rapide ou trop lente, séance trop dure ou trop facile, douleur…), réponds-y dans « ressenti_vs_chiffres » en une phrase argumentée avec les données, et si tu es d'accord propose dans « modifications » l'ajustement de TOUTES les séances à venir du même type.
 Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à venir doivent être adaptées (en particulier celles du même type que la séance analysée), mets-y la NOUVELLE version complète de chacune (même format que le détail JSON fourni). Le coureur pourra accepter ou refuser. Ne dis jamais « je vais adapter » sans mettre la modification ici. Si rien ne doit changer, laisse un tableau vide.`;
     }
     const ANA_STORE = {};
@@ -13873,6 +13875,7 @@ Règle pour « modifications » : si tu estimes qu'une ou plusieurs séances à 
         ${tiles}
         ${pts ? `<div style="display:flex;flex-direction:column;gap:5px">${pts}</div>` : ''}
         ${j.action ? `<div style="display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:14px;background:linear-gradient(90deg,rgba(56,189,248,.2),rgba(56,189,248,.06));border:1px solid rgba(56,189,248,.5)"><span style="font-size:22px">🎯</span><div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:10.5px;font-weight:800;color:#7dd3fc;text-transform:uppercase;letter-spacing:.7px">Prochaine séance</span><span style="font-size:14px;font-weight:800;color:#f0f9ff;line-height:1.3">${esc(j.action)}</span></div></div>` : ''}
+        ${j.ressenti_vs_chiffres ? `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.4)"><span style="font-size:20px;line-height:1.1">🗣️</span><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:10.5px;font-weight:800;color:#c4b5fd;text-transform:uppercase;letter-spacing:.7px">Ton ressenti vs les chiffres</span><span style="font-size:13.5px;color:#ede9fe;line-height:1.4">${esc(j.ressenti_vs_chiffres)}</span></div></div>` : ''}
         ${anaModsHtml(j)}
         ${detHtml ? `<details ${o.open ? 'open' : ''} style="border-radius:12px;background:rgba(15,23,42,.5);border:1px solid #1e293b;padding:0 11px"><summary style="cursor:pointer;list-style:none;min-height:42px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:#c4b5fd">🔎 En détail<span style="color:#64748b">▾</span></summary><div style="display:flex;flex-direction:column;gap:8px;padding:0 0 11px">${detHtml}</div></details>` : ''}</div>`;
     }
@@ -20562,6 +20565,102 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       try { if (fuelRemindersOn()) { const w = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (w) L.push(t('💧', `${w[1]} ml`, 'à boire')); } } catch (e) { }
       return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${L.join('')}</div>`;
     }
+    // ---------- Jour sans séance : le coach regarde s'il peut avancer la prochaine séance, sinon propose course / renfo / vélo
+    function restCoachSig() {
+      const t = todayISO(), nx = (appData.sessions || []).filter(x => x.dateISO && x.dateISO > t && !isSessionDone(x)).slice(0, 3).map(x => x.id + x.dateISO).join(',');
+      const H = runHistory().filter(h => (h._iso || '') >= toISODateLocal(new Date(Date.now() - 7 * 864e5))).map(h => h.id).join(',');
+      const f = curDayFeel(); return [t, nx, H, f ? JSON.stringify([f.sleep, f.energy, f.soreness, f.pain]) : ''].join('|');
+    }
+    function restCoachRender(on) {
+      const box = document.getElementById('homeRestCoach'); if (!box) return;
+      if (!on) { box.innerHTML = ''; return; }
+      if (!getGeminiKey()) { box.innerHTML = ''; return; }
+      const rc = appData.restCoach, sig = restCoachSig();
+      if (!rc || rc.sig !== sig) {
+        box.innerHTML = '<div style="font-size:12.5px;color:#94a3b8;padding:8px 10px;border-radius:12px;background:#0b1324;border:1px solid #1e293b">🧠 Le coach regarde ce que tu peux faire aujourd\'hui…</div>';
+        if (restCoachRun.busy !== sig) { restCoachRun.busy = sig; restCoachRun(sig).finally(() => { restCoachRun.busy = ''; try { renderHome(); } catch (e) { } }); }
+        return;
+      }
+      if (rc.failed) { box.innerHTML = `<button type="button" onclick="appData.restCoach=null;saveAppData();renderHome()" style="min-height:40px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">🧠 Demander au coach quoi faire aujourd'hui</button>`; return; }
+      const esc = plEsc, nx = rc.adv && appData.sessions.find(x => x.id === rc.adv.sid && !isSessionDone(x) && x.dateISO > todayISO());
+      let h = '';
+      if (nx && !rc.skipAdv) {
+        const dl = capFirst(parseISODateLocal(nx.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' }));
+        h += `<div style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.45)">
+          <span style="font-size:12px;font-weight:900;color:#7dd3fc">🧠 Le coach te propose d'avancer ta séance de ${esc(dl)}</span>
+          ${rc.avis ? `<span style="font-size:13.5px;color:#e2e8f0;line-height:1.4">${esc(rc.avis)}</span>` : ''}
+          ${homeSessTilesHtml(nx)}
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button type="button" onclick="appData.restCoach.skipAdv=true;saveAppData();renderHome()" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">Autre chose</button><button type="button" onclick="restAdvance()" style="min-height:46px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">⏩ La faire aujourd'hui</button></div></div>`;
+      } else {
+        const P = rc.props || [];
+        h += `<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:900;color:#c4b5fd">🧠 ${esc(rc.why || 'Envie de bouger ? Le coach te propose :')}</span>
+          ${P.map((p, i) => { const c = { course: ['🏃', '#38bdf8'], renfo: ['🏋️', '#f472b6'], velo: ['🚴', '#a3e635'] }[p.act] || ['🏃', '#38bdf8'];
+            return `<div style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:${c[1]}12;border:1px solid ${c[1]}55">
+              <span style="font-size:26px;flex:none">${c[0]}</span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:900;color:#fff">${esc(p.titre)} · ${p.dur} min</span><span style="font-size:12.5px;color:#cbd5e1;line-height:1.35">${esc(p.detail)}</span></div>
+              <button type="button" onclick="restAddProp(${i})" aria-label="Faire aujourd'hui" style="flex:none;min-height:44px;padding:0 12px;border-radius:12px;border:none;background:${c[1]};color:#04121f;font-weight:900;font-size:13px">＋ Faire</button></div>`; }).join('')}
+          ${nx ? `<button type="button" onclick="appData.restCoach.skipAdv=false;saveAppData();renderHome()" style="min-height:38px;border-radius:12px;border:1px solid #334155;background:transparent;color:#7dd3fc;font-weight:800;font-size:12.5px">⏩ Revoir : avancer la prochaine séance</button>` : ''}</div>`;
+      }
+      box.innerHTML = h;
+    }
+    async function restCoachRun(sig) {
+      const t = todayISO(), lim = toISODateLocal(new Date(Date.now() - 21 * 864e5)), r = runnerProfile(), g = appData.goal || {};
+      const hist = runHistory().filter(h => (h._iso || '') >= lim).map(h => `- ${h._iso} · ${sessionKind(h.kind ? h : (histLinkedSession(h) || h)).label} : ${Math.round(+h.durationMin || 0)} min ; ressenti ${feelTxt(h.feeling)}`).join('\n') || '- aucune';
+      const cross = (appData.history || []).filter(h => h.cross && (histISO(h) || '') >= lim).map(h => `- ${histISO(h)} · ${h.sessionTitle || 'autre activité'} ${Math.round(+h.durationMin || 0)} min`).join('\n');
+      const NX = (appData.sessions || []).filter(x => x.dateISO && x.dateISO > t && !isSessionDone(x)).slice(0, 4);
+      const next = NX.map((x, i) => `${i}. ${x.dateISO} (${weekdayName(parseISODateLocal(x.dateISO))}) · ${sessionKind(x).label} : ${describeSessionHuman(x)} ; ${Math.round(computeSessionTotalMin(x))} min`).join('\n') || '- aucune';
+      let feel = ''; try { const f = curDayFeel(); feel = f ? feelSummary(f) : ''; } catch (e) { }
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Aujourd'hui (${t}, ${weekdayName(new Date())}) : AUCUNE séance prévue.
+Séances de course faites ces 3 dernières semaines :
+${hist}
+${cross ? `Autres activités :\n${cross}\n` : ''}Prochaines séances prévues (numérotées) :
+${next}
+${feel ? `Sensations du jour : ${feel}.` : ''}
+Profil : ${r.sex === 'F' ? 'femme' : 'homme'}, ${r.age || '?'} ans ; FC max ${runnerFcMax() || '?'} ; endurance fondamentale ${formatSpeed(runnerEF())} km/h. Objectif : ${g.distanceKm || '?'} km en ${g.durationMin || '?'} min le ${g.date || '?'}.
+${planPrefsText()}
+1) Regarde d'abord s'il est possible d'AVANCER la prochaine séance à aujourd'hui (seulement la n°0, et seulement si elle est prévue dans les 3 prochains jours) : oui seulement si cela respecte la récupération (pas deux séances dures sur deux jours qui se suivent, au moins 48 h après une séance dure, la séance d'après garde assez de récupération) et si les sensations le permettent.
+2) Propose dans tous les cas exactement 3 activités possibles pour aujourd'hui, UNE par type : une course (facile si la récupération l'impose), une séance de renforcement musculaire (utile au coureur, sans matériel ou presque), une sortie vélo. Durées raisonnables. Si le repos complet est préférable, dis-le dans "pourquoi" mais propose quand même 3 options légères.
+Réponds uniquement en JSON :
+{"avancer":true,"seance_num":0,"avis":"si avancer : 1 à 2 phrases courtes en tutoyant, avec la raison ; sinon vide","pourquoi":"1 phrase courte en tutoyant qui introduit les propositions","propositions":[
+{"activite":"course","titre":"4 mots max","duree_min":35,"detail":"1 phrase","type_seance":"endurance|recup|fractionne|seuil|cotes","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"pente":1,"segments":[{"vitesse":10,"duree_min":20}]}},
+{"activite":"renfo","titre":"4 mots max","duree_min":25,"detail":"1 phrase","exercices":[{"nom":"Squats","nom_en":"squat","dosage":"3 × 15"}]},
+{"activite":"velo","titre":"4 mots max","duree_min":45,"detail":"1 phrase avec l'intensité"}]}`;
+      try {
+        const j = parseJsonLoose(await Promise.race([geminiText([{ text: prompt }], { json: true, model: 'flash', maxTokens: 1600 }), sleep(30000).then(() => { throw new Error('délai dépassé'); })])) || {};
+        const n0 = NX[0], canAdv = !!j.avancer && n0 && +j.seance_num === 0 && (parseISODateLocal(n0.dateISO) - parseISODateLocal(t)) / 864e5 <= 3.5;
+        const props = (Array.isArray(j.propositions) ? j.propositions : []).map(p => {
+          const a = String(p.activite || '').toLowerCase(), act = a.startsWith('v') ? 'velo' : a.startsWith('r') || a.startsWith('m') ? 'renfo' : 'course';
+          return { act, titre: String(p.titre || ({ course: 'Footing', renfo: 'Renforcement', velo: 'Vélo' })[act]).slice(0, 40), dur: Math.max(10, Math.min(180, Math.round(+p.duree_min || 30))), detail: String(p.detail || '').slice(0, 220), seance: p.seance || null, kind: String(p.type_seance || ''), exos: Array.isArray(p.exercices) ? p.exercices.slice(0, 12) : [] };
+        }).filter((p, i, A) => A.findIndex(q => q.act === p.act) === i);
+        appData.restCoach = { sig, at: Date.now(), adv: canAdv ? { sid: n0.id } : null, avis: canAdv ? String(j.avis || '').slice(0, 400) : '', why: String(j.pourquoi || '').slice(0, 200), props };
+      } catch (e) { console.warn('restCoach', e); appData.restCoach = { sig, failed: String(e.message || e) }; }
+      saveAppData();
+    }
+    function restAdvance() {
+      const rc = appData.restCoach, s = rc && rc.adv && appData.sessions.find(x => x.id === rc.adv.sid); if (!s) return;
+      const from = s.dateISO, d = new Date();
+      s.movedFrom = from; s.dateISO = todayISO(); s.date = toDDMM(d); s.jour = weekdayName(d);
+      appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
+      appData.dayCheck = { sig: dayCheckSig(s), sid: s.id, d: todayISO(), res: { decision: 'garder', avis: rc.avis || 'Séance avancée sur conseil du coach.' }, prop: null, done: false, read: true };
+      homePickNext(); saveAppData(); try { reloadChrono(); } catch (e) { } try { updateHistoryTable(); } catch (e) { }
+      homeShowNextAnyway = false; renderHome();
+      showUndo('Séance avancée à aujourd\'hui', plMoveUndoId(s.id, from));
+    }
+    function restAddProp(i) {
+      const rc = appData.restCoach, p = rc && (rc.props || [])[i]; if (!p) return;
+      if (p.act === 'course') {
+        const sp = Object.assign({ type: 'exterieur', segments: [{ vitesse: runnerEF(), duree_min: Math.max(10, p.dur - 10) }] }, p.seance || {});
+        const s = buildSessionFromProposal(sp, curDayFeel() || null);
+        const kk = p.kind.toLowerCase(); if (['fractionne', 'seuil', 'longue', 'cotes', 'recup'].includes(kk)) s.kind = kk; else if (kk === 'endurance') s.kind = 'endu';
+        s.adapted = { at: todayISO(), resume: 'Proposée par le coach (jour sans séance)' };
+        insertTodaySession(s); showToast('✓ Séance ajoutée à aujourd\'hui'); return;
+      }
+      const item = { id: `cross_${Date.now()}`, type: p.act === 'velo' ? 'velo' : 'muscu', dateISO: todayISO(), dur: p.dur, intensite: 'moderee', detail: p.detail, exos: p.exos, titre: p.titre };
+      if (!Array.isArray(appData.crossPlan)) appData.crossPlan = [];
+      appData.crossPlan.push(item); saveAppData(); try { updateHistoryTable(); } catch (e) { } renderHome();
+      showToast('✓ Ajouté au planning du jour');
+    }
     function dayCheckSig(sess) {
       const t = todayISO(), lim = toISODateLocal(new Date(Date.now() - 21 * 864e5));
       const H = runHistory().filter(h => (h._iso || '') >= lim).map(h => h.id + h.durationMin + (h.feeling || '') + (h.note || '').length).join(',');
@@ -20731,6 +20830,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         const busy = timerState.sessionStarted && !timerState.finished;
         const showRest = !hasToday && !busy && !homeShowNextAnyway;
         document.getElementById('homeRest').classList.toggle('hidden', !showRest);
+        try { restCoachRender(showRest && !doneToday && !(appData.crossPlan || []).some(c => c.dateISO === t)); } catch (e) { console.warn(e); }
         el.classList.toggle('hidden', showRest);
         document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui • ${dayLong}`;
         const isNext = sess && sess.dateISO && sess.dateISO > t;
