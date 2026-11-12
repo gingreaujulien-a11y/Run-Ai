@@ -141,11 +141,14 @@
     #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
-    .prep-b { min-height: 64px; border-radius: 16px; border: 1px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 800; }
+    .prep-b { min-height: 64px; border-radius: 16px; border: 1px solid #1e293b; background: #0b1324; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 800; }
     .prep-b span { font-size: 22px; line-height: 1; }
     #topBar, #sessInfoLine { display: none !important; }
     body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
     #prepClose { display: none; }
+    #readyLbl { display: none; white-space: nowrap; font-size: 30px; font-weight: 900; color: #f8fafc; letter-spacing: -.3px; margin-bottom: 14px; }
+    body:not(.home):not(.started) #readyLbl { display: block; }
+    body:not(.started) #circleZone > svg { visibility: hidden; }
     body:not(.home):not(.started) #prepClose { display: flex; }
     body:not(.home):not(.started) #homeHrChip { display: none !important; }
     body.rv-on #readView { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: auto; max-height: none; margin: 0; z-index: 2; }
@@ -491,7 +494,8 @@
 
       <!-- CENTRE : CHIFFRE GÉANT SANS TEXTE PARASITE -->
       <div id="circleCenter" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-        <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;box-shadow:0 0 40px rgba(14,165,233,.55);color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+        <span id="readyLbl">Prêt ?</span>
+        <button id="bigPlayBtn" type="button" onclick="startWithCountdown()" aria-label="Lancer l'activité" class="pointer-events-auto hidden items-center justify-center rounded-full active:scale-95 transition" style="width:150px;height:150px;background:#0ea5e9;color:#04121f"><svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" style="margin-left:8px"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
         <div id="stageSpeedBig" title="Appui : vitesse ⇄ cardio" class="pointer-events-auto px-4 text-8xl sm:text-9xl font-black tracking-tight text-white drop-shadow-lg" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-0.02em;line-height:1">
           8
         </div>
@@ -556,11 +560,16 @@
       <div id="idleRow" class="hidden" style="display:flex;flex-direction:column;gap:.6rem">
         <div id="prepWatch"></div>
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
-          <button type="button" onclick="annOpen()" class="prep-b" style="background:rgba(168,85,247,.16);border-color:rgba(192,132,252,.55);color:#f3e8ff"><span>📣</span>Annonces</button>
-          <button type="button" onclick="openMediaModal()" class="prep-b" style="background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.5);color:#e0f2fe"><span>🎧</span>Médias</button>
-          <button type="button" id="soundTestBtn" onclick="soundTest()" class="prep-b" style="background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.45);color:#ddd6fe"><span>🔊</span>Son</button>
+          <button type="button" onclick="annOpen()" class="prep-b"><span>📣</span>Annonces</button>
+          <button type="button" onclick="openMediaModal()" class="prep-b"><span>🎧</span>Médias</button>
+          <button type="button" id="soundTestBtn" onclick="soundTest()" class="prep-b"><span>🔊</span>Son</button>
         </div>
-        <button type="button" id="spGoBtn" onclick="spGo()" class="hidden" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px"></button>
+        <button type="button" id="spGoBtn" onclick="spGo()" class="hidden" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px">▶ Lancer la playlist</button>
+        <div id="spCtl" class="hidden" style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:.5rem">
+          <button type="button" onclick="spCmd('previous')" aria-label="Morceau précédent" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏮</button>
+          <button type="button" id="spCtlPlay" onclick="spPrepToggle()" aria-label="Pause ou lecture" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏸</button>
+          <button type="button" onclick="spCmd('next')" aria-label="Morceau suivant" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏭</button>
+        </div>
         <div id="prepStatus" style="display:flex;flex-direction:column;gap:6px"></div>
         <div class="hidden"><button id="chronoScriptBtn"></button><button id="readBtn"></button><button id="spBtn"></button><button id="spPlBtn"></button><button id="ytBtn"></button></div>
       </div>
@@ -19321,7 +19330,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function openReadModal() {
       let m = document.getElementById('readModal');
       if (!m) { m = document.createElement('div'); m.id = 'readModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) readClose(); }; document.body.appendChild(m); }
-      const c = readCfg() || appData.audioSettings.readText || { text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts', tone: 'livre' };
+      const c = readCfg() || appData.audioSettings.readText || Object.assign({ text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts', tone: 'livre' }, appData.audioSettings.readPrefs || {});
       const vOpts = (cur, auto) => `<option value="">${auto}</option>` + ['H', 'F'].map(g => `<optgroup label="${g === 'H' ? 'Voix d\'homme' : 'Voix de femme'}">${AI_VOICES.filter(v => v[2] === g).map(v => `<option value="${v[0]}"${v[0] === cur ? ' selected' : ''}>${v[0]} · ${v[1]}</option>`).join('')}</optgroup>`).join('');
       const opt = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
       m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
@@ -19436,6 +19445,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const chunks = readChunks(t.trim());
         appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, t: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value, dialog: document.getElementById('rdDialog').checked, aiVoice2: document.getElementById('rdAiVoice2').value, keepAnn: document.getElementById('rdKeepAnn').checked, show: document.getElementById('rdShow').checked, fontSize: parseFloat(document.getElementById('rdFont').value) || 24, keep: Object.fromEntries([...document.querySelectorAll('[data-rdkeep]')].map(x => [x.dataset.rdkeep, x.checked])) };
         { const nc = appData.audioSettings.readText; nc.url = ((document.getElementById('rdUrl') || {}).value || '').trim();
+          appData.audioSettings.readPrefs = ['start', 'min', 'voice', 'fast', 'rate', 'model', 'aiVoice', 'tone', 'dialog', 'aiVoice2', 'keepAnn', 'show', 'fontSize'].reduce((o, k) => { if (nc[k] !== undefined) o[k] = nc[k]; return o; }, {}); // réglages gardés pour le prochain texte
           if (prev && prev.text === nc.text) { nc.pos = prev.pos || 0; nc.aiPos = prev.aiPos || nc.aiPos; nc.started = prev.started; } } // même texte : on garde l'avancement
         if (quiet) { saveAppData(); updateReadBtn(); return; }
         if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readStateRender(); readPrepareAll().then(() => readStateRender()); return; } readLoadSection(appData.audioSettings.readText, 0); }
@@ -19578,6 +19588,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (window.__spPick) { const m = document.getElementById('spPlModal'); if (m) m.remove(); showToast('🎵 Playlist choisie'); try { mediaRender(); prepRender(); } catch (e) { } return; }
       spPlayPl(p.uri);
     }
+    async function spPrepToggle() {
+      const was = sp.playing; sp.playing = !was; prepRender(); // l'icône change tout de suite
+      await spCmd(was ? 'pause' : 'play'); sp.at = Date.now(); prepRender();
+    }
     function spGo() { const c = spCfg(); if (sp.playing) { spCmd('next'); return; } if (c.pl && c.pl.uri) spPlayPl(c.pl.uri); else openSpPlaylists(true); setTimeout(() => { try { prepRender(); } catch (e) { } }, 1500); }
     // Spotify ouvert mais « inactif » : l'API répond 404 tant qu'aucun lecteur n'est actif.
     // On cherche alors le téléphone dans la liste des lecteurs et on lui transfère la lecture.
@@ -19598,6 +19612,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     async function spPlayPl(uri) {
       spApi.noDevice = false;
       const ok = await spPlayOn({ context_uri: uri });
+      if (ok != null) { sp.launched = true; sp.playing = true; try { prepRender(); } catch (e) { } }
       if (ok == null) showToast(spApi.noDevice ? "Spotify ne se signale pas comme lecteur : dans Spotify, lance n'importe quel morceau 2 secondes puis réessaie" : spApi.lastStatus === 404 ? 'Spotify ne répond pas sur ce téléphone : relance un morceau dans Spotify puis réessaie' : 'Spotify a refusé (compte Premium ?)');
       else { sp.playing = true; showToast('🎵 Playlist lancée'); const m = document.getElementById('spPlModal'); if (m) m.remove(); setTimeout(() => spPoll(), 1200); }
     }
@@ -19612,6 +19627,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const v0 = sp.vol != null ? sp.vol : 60, v = Math.max(0, Math.min(100, v0 + (c === 'volup' ? 10 : -10)));
         ok = await spApi('PUT', `/me/player/volume?volume_percent=${v}${sp.device ? `&device_id=${sp.device}` : ''}`); if (ok != null) { sp.vol = v; showToast(`🔊 Volume ${v} %`); }
       }
+      else if (c === 'pause' || c === 'play') { ok = c === 'pause' ? await spApi('PUT', '/me/player/pause' + dev) : await spPlayOn(); if (ok != null) { sp.playing = c === 'play'; sp.pausedByUs = false; } else sp.playing = c !== 'play'; }
       else { ok = sp.playing ? await spApi('PUT', '/me/player/pause' + dev) : await spPlayOn(); if (ok != null) { sp.playing = !sp.playing; sp.pausedByUs = false; } }
       if (ok == null && (spApi.lastStatus === 404 || spApi.lastStatus === 403)) showToast(spApi.lastStatus === 404 ? 'Aucune lecture Spotify active : lance la musique dans Spotify' : 'Spotify refuse la commande (compte Premium nécessaire)');
       spBarRender(); setTimeout(() => spPoll(), 900);
@@ -19684,13 +19700,27 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!m) { m = document.createElement('div'); m.id = 'ytModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
       const c = ytCfg();
       m.innerHTML = `<div style="width:100%;max-width:480px;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:18px 16px 24px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
-        <span style="font-size:18px;font-weight:900">▶️ Vidéo YouTube pendant la séance</span>
-        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Colle le lien d'une vidéo ou d'une playlist YouTube. Elle démarre avec la séance, se met en pause avec elle, et se met en pause pendant les annonces du coach. L'écran doit rester allumé (pas de mode poche), et le wifi est conseillé.</span>
+        <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:18px;font-weight:900">▶️ Vidéo YouTube pendant la séance</span><button type="button" onclick="document.getElementById('ytModal').remove()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900;font-size:17px;flex:none">✕</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button type="button" onclick="ytOpenSite()" style="min-height:52px;border-radius:14px;border:none;background:#ef4444;color:#fff;font-weight:900;font-size:13.5px">1. Ouvrir YouTube</button>
+          <button type="button" onclick="ytPaste()" style="min-height:52px;border-radius:14px;border:1px solid #ef4444;background:rgba(239,68,68,.12);color:#fecaca;font-weight:900;font-size:13.5px">2. 📋 Coller le lien</button></div>
+        <span style="font-size:12.5px;color:#94a3b8;line-height:1.4">Dans YouTube, ouvre la vidéo ou la playlist, touche <b>Partager › Copier le lien</b>, reviens ici et touche <b>Coller le lien</b>.</span>
+        <span style="font-size:13px;color:#94a3b8;line-height:1.4">Ou colle le lien d'une vidéo ou d'une playlist YouTube. Elle démarre avec la séance, se met en pause avec elle, et se met en pause pendant les annonces du coach. L'écran doit rester allumé (pas de mode poche), et le wifi est conseillé.</span>
         <input id="ytUrl" type="url" value="${String(c.url || '').replace(/"/g, '&quot;')}" placeholder="https://www.youtube.com/watch?v=…" class="pm-in" style="height:46px;font-size:14px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button type="button" onclick="ytSave(false)" style="min-height:48px;border-radius:14px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800">Sans vidéo</button>
           <button type="button" onclick="ytSave(true)" style="min-height:48px;border-radius:14px;border:none;background:#ef4444;color:#fff;font-weight:900">Activer</button></div></div>`;
     }
+    function ytOpenSite() { window.__ytWait = true; window.open('https://m.youtube.com/', '_blank'); }
+    async function ytPaste() {
+      let t = '';
+      try { t = await navigator.clipboard.readText(); } catch (e) { showToast("Le téléphone bloque la lecture du presse-papier : appuie longuement dans le champ puis « Coller »"); const i = document.getElementById('ytUrl'); if (i) i.focus(); return; }
+      t = String(t || '').trim(); const m = t.match(/https?:\/\/\S+/); if (m) t = m[0];
+      const i = document.getElementById('ytUrl'); if (i) i.value = t;
+      if (ytParse(t)) ytSave(true); else showToast('Pas de lien YouTube dans le presse-papier');
+    }
+    // De retour de YouTube avec un lien copié : on le propose tout de suite
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.__ytWait && document.getElementById('ytModal')) { window.__ytWait = false; showToast('Lien copié ? Touche « 2. Coller le lien »'); } });
     function ytSave(on) {
       const u = (document.getElementById('ytUrl') || {}).value || '';
       if (on && !ytParse(u)) { showToast('Lien YouTube non reconnu'); return; }
@@ -19777,9 +19807,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const w = document.getElementById('prepWatch'), st = document.getElementById('prepStatus'), go = document.getElementById('spGoBtn'); if (!w || !st) return;
       const se = sensors(), known = !!(se.btId || se.btName), con = btConnected() && !btStale();
       w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
-        : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:rgba(244,63,94,.14);border:1.5px solid rgba(244,63,94,.65);color:#ffe4e6;text-align:left"><span style="font-size:28px">⌚</span><span style="flex:1"></span><span style="font-size:14px;font-weight:900;padding:10px 16px;border-radius:12px;background:#f43f5e;color:#fff">Reconnecter</span></button>`
+        : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;border:none;background:#f43f5e;color:#fff;font-weight:900;font-size:15px"><span style="font-size:17px;line-height:1">⌚</span>Reconnecter la montre</button>`
         : `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#0b1324;border:1px dashed #334155;color:#94a3b8;text-align:left;font-size:13px;font-weight:700"><span style="font-size:20px">⌚</span>Connecter une montre cardio (optionnel)</button>`;
-      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl; go.classList.toggle('hidden', !on); if (on) go.textContent = sp.playing ? '⏭ Morceau suivant' : '▶ Lancer la playlist'; }
+      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl, live = on && (sp.playing || sp.launched); go.classList.toggle('hidden', !on || live); const ctl = document.getElementById('spCtl'); if (ctl) { ctl.classList.toggle('hidden', !live); ctl.style.display = live ? 'grid' : 'none'; } const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
+        if (live && Date.now() - (sp.at || 0) > 4000 && !prepRender.pl) { prepRender.pl = 1; spPoll().finally(() => { prepRender.pl = 0; }); } }
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
       if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
@@ -19795,7 +19826,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     let mediaTab = 'sp';
     function openMediaModal() {
       let m = document.getElementById('mediaModal');
-      if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
+      if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-start;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
       mediaRender();
     }
     function closeMediaModal() { const m = document.getElementById('mediaModal'); if (m) m.remove(); try { prepRender(); } catch (e) { } }
@@ -19817,11 +19848,11 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!T.some(t => t[0] === mediaTab)) mediaTab = 'sp';
       const cur = T.find(t => t[0] === mediaTab);
       const body = { sp: spBody, rd: rdBody, yt: ytBody, an: `<span style="font-size:12.5px;color:#94a3b8">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>${radioOptsHtml()}` }[mediaTab];
-      m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
+      m.innerHTML = `<div style="width:100%;max-width:480px;height:min(600px,88vh);overflow-y:auto;background:#0f172a;border:1px solid #334155;border-top:0;border-radius:0 0 20px 20px;padding:calc(16px + env(safe-area-inset-top)) 16px 20px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
         <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias pendant la séance</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
         <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, col, on]) => `<button type="button" onclick="mediaTab='${k}';mediaRender()" style="position:relative;min-height:56px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${col};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:19px;line-height:1">${ic}</span>${l}${on ? `<span style="position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:4px;background:${mediaTab === k ? '#04121f' : col}"></span>` : ''}</button>`).join('')}</div>
         ${card(cur[1], { sp: 'Playlist Spotify', rd: 'Livre audio', yt: 'Vidéo YouTube', an: 'Animations du coach' }[mediaTab], cur[3], cur[4], body)}
-        <span style="font-size:11.5px;color:#64748b;text-align:center">● = média activé</span>
+        <span style="font-size:11.5px;color:#64748b;text-align:center;margin-top:auto">● = média activé</span>
       </div>`;
     }
     function cancelBeforeStart() {
