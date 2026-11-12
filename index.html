@@ -79,7 +79,7 @@
     #gHeader { position: fixed; top: 0; left: 0; right: 0; z-index: 56; background: #020617; padding-top: env(safe-area-inset-top); display: none; }
     #gHeader .gh-in { max-width: 28rem; margin: 0 auto; height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 6px; }
     body.gh-on #gHeader { display: block; }
-    body.gh-on #historyModal, body.gh-on #plOv, body.gh-on #goalModal, body.gh-on #audioModal, body.gh-on #chkModal { top: calc(60px + env(safe-area-inset-top)) !important; }
+    body.gh-on #historyModal, body.gh-on #plOv, body.gh-on #configModal, body.gh-on #goalModal, body.gh-on #audioModal, body.gh-on #chkModal { top: calc(60px + env(safe-area-inset-top)) !important; }
     #homeScreen { padding-top: calc(70px + env(safe-area-inset-top)) !important; }
     .hd-btn.gh-cur { background: rgba(56,189,248,.16); }
     .hm-ic { width: 32px; height: 34px !important; min-height: 0 !important; padding: 0 !important; flex-shrink: 0; border-radius: 10px; border: none !important; background: none !important; color: #bae6fd; display: flex; align-items: center; justify-content: center; }
@@ -145,6 +145,7 @@
     .prep-b span { font-size: 22px; line-height: 1; }
     #topBar, #sessInfoLine { display: none !important; }
     body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
+    .cfg-tabhide { display: none !important; }
     #prepClose { display: none; }
     #readyLbl { display: none; white-space: nowrap; font-size: 30px; font-weight: 900; color: #f8fafc; letter-spacing: -.3px; margin-bottom: 14px; }
     body:not(.home):not(.started) #readyLbl { display: block; }
@@ -543,7 +544,7 @@
     </div>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="liveCtl" class="w-full max-w-xs" style="display:none;flex-direction:column;gap:8px;margin:2px 0 8px">
-      <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" style="flex:1;width:auto" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span id="lcSpdL" style="display:none"></span><button type="button" class="lc-b" style="flex:1;width:auto" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
+      <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span id="lcSpdL" class="lc-l"></span><button type="button" class="lc-b" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
       <div id="lcTime" class="lc-row"><button type="button" class="lc-b lc-t" onclick="adjStageTime(-15)" aria-label="15 secondes de moins">−15 s</button><span class="lc-l" id="lcTimeL"></span><button type="button" class="lc-b lc-t" onclick="adjStageTime(15)" aria-label="15 secondes de plus">+15 s</button></div>
     </div>
     <div id="freeSpeedCtl" class="w-full max-w-xs flex flex-col items-center gap-2 mb-1 hidden" style="display:flex;flex-direction:column;align-items:center;gap:.5rem">
@@ -606,21 +607,20 @@
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col p-4 shadow-2xl">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <span class="text-base font-bold text-white">Paramétrage de la séance</span>
-        <button onclick="closeConfigModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-          <span class="icon-slot" data-icon="x"></span>
-        </button>
+        <button onclick="closeConfigModal()" aria-label="Fermer (les changements sont enregistrés)" style="width:44px;height:44px;flex:none;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center">✕</button>
       </div>
+      <div id="cfgTabs" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin-top:10px;border-radius:14px;background:#0b1324;border:1px solid #1e293b"></div>
 
       <div class="space-y-3 overflow-y-auto custom-scroll pr-1 mt-3">
         <!-- Date de la séance -->
-        <label class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+        <label data-cfgt="gen" class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
           <span class="text-[13px] font-extrabold text-sky-200">📅 Date</span>
           <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
         </label>
-        <button type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
+        <button data-cfgt="gen" type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
         <!-- Type de séance -->
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+        <div data-cfgt="gen" class="grid grid-cols-2 gap-2">
+          <button data-cfgt="gen" type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
             🏃 Tapis
           </button>
           <button type="button" id="btnTypeExt" onclick="setSessionType('exterieur')" class="py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition">
@@ -629,12 +629,12 @@
         </div>
 
         <!-- Type de sortie -->
-        <div id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
+        <div data-cfgt="gen" id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
           <div id="cfgKindChips" class="grid grid-cols-3 gap-1.5"></div>
           <div id="cfgEstLine" class="flex items-center justify-center gap-3 pt-1 text-[15px] font-black text-white"></div>
         </div>
-        <div id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+        <div data-cfgt="gen" id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <div class="grid grid-cols-2 gap-2 text-center">
             <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Durée totale (min)</label>
               <input type="number" id="cfgSimpleDur" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()"></div>
@@ -643,7 +643,7 @@
           </div>
           <span id="cfgSimpleHint" class="text-[10px] text-slate-400 block"></span>
         </div>
-        <div id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
+        <div data-cfgt="gen" id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
           <span id="cfgTestTitle" class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
           <div id="cfgTestProto" class="flex gap-1.5 flex-wrap"></div>
           <div id="cfgVmaBox" class="space-y-2 hidden">
@@ -661,17 +661,20 @@
             <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Vitesse</label>
               <input type="number" id="cfgTestSpeed" min="4" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-1 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-fuchsia-400" oninput="onTestInput('speed')"></div>
           </div>
+          <div id="cfgTestPenteRow" class="flex items-center justify-between gap-2"><span class="text-[12px] text-slate-300">⛰️ Pente du test (%)</span>
+            <input type="text" inputmode="decimal" id="cfgTestPente" oninput="onTestPente()" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white"></div>
+          <span id="cfgTestVap" class="text-[12px] font-bold block" style="color:#c4b5fd"></span>
           <span id="cfgTestHint" class="text-[10px] text-slate-400 block"></span>
           </div>
         </div>
-        <div id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+        <div data-cfgt="gen" id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <span class="text-[12px] text-slate-300 block">🏃 Pas de durée ni d'allure imposées : tu règles tout pendant la course.</span>
           <div id="cfgLibreSpeedBox" class="flex items-center justify-between gap-2"><span class="text-[11px] text-slate-400">Vitesse de départ (km/h)</span>
             <input type="number" id="cfgLibreSpeed" min="4" step="0.5" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500"></div>
         </div>
 
         <!-- Informations générales -->
-        <div id="cfgInfoBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
+        <div data-cfgt="gen" id="cfgInfoBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div class="hidden">
               <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Semaine</label>
@@ -705,7 +708,7 @@
 
         
 
-        <div id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
+        <div data-cfgt="route" id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
           <span class="text-xs font-bold text-emerald-300 block">🗺️ Parcours GPX de la séance</span>
           <p class="text-[10px] text-slate-400">Pour une sortie extérieure : l'app vous situe sur le parcours, annonce les virages (« dans 100 mètres, tourne à droite ») et les côtes 250 m avant (« montée de 5 % sur 1 km »).</p>
           <button onclick="openRouteEditor()" class="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">🗺️ Dessiner un parcours</button>
@@ -723,7 +726,7 @@
         </div>
 
         <!-- Blocs -->
-        <div id="cfgBlocsBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
+        <div data-cfgt="struct" id="cfgBlocsBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
           <span class="text-xs font-bold text-slate-300 block text-left">Blocs</span>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -746,7 +749,7 @@
         </div>
 
         <!-- Paliers de la Pyramide -->
-        <div id="cfgSegBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+        <div data-cfgt="struct" id="cfgSegBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold text-slate-300">Segments (1 répétition)</span>
             <button onclick="addPyramidRow()" class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-1 rounded-md font-bold hover:bg-sky-500/30">
@@ -757,6 +760,10 @@
           <div id="pyramidRowsContainer" class="space-y-1.5 max-h-56 overflow-y-auto custom-scroll pr-1"></div>
         </div>
 
+      </div>
+
+      <button onclick="openScriptModal()" class="hidden"></button>
+      <div class="pt-3 mt-2 border-t border-slate-800" style="display:flex;flex-direction:column;gap:6px">
         <!-- Totaux calculés -->
         <div id="cfgTotalsBox" class="grid grid-cols-3 gap-2 text-center text-xs font-mono bg-slate-900 p-2 rounded-xl border border-slate-800">
           <div class="cfg-struct-only">
@@ -773,12 +780,7 @@
             <span id="cfgTotalDist" class="block text-[9px] text-emerald-400">≈ 0 km</span>
           </div>
         </div>
-      </div>
-
-      <button onclick="openScriptModal()" class="hidden"></button>
-      <div class="pt-3 mt-2 border-t border-slate-800 flex gap-2">
-        <button onclick="saveSessionConfig()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-xl transition shadow active:scale-95 text-sm">💾 Sauvegarder</button>
-        <button onclick="askCopyDate()" class="py-3 px-5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl transition active:scale-95 text-sm">📄 Copier</button>
+        <span style="font-size:11.5px;color:#64748b;text-align:center">✓ Enregistré automatiquement à la fermeture</span>
       </div>
     </div>
   </div>
@@ -971,6 +973,7 @@
         <!-- ===== OBJECTIF ===== -->
         <div class="pm-panel pm-off" data-p="objectif">
           <div id="goalSummary" data-sub="Objectif" class="pm-card" style="background:linear-gradient(180deg,#2a1d06 0%,#17120a 100%);border-color:#78501a"></div>
+          <button type="button" data-sub="Objectif" onclick="goalDeleteAsk()" style="min-height:46px;border-radius:14px;border:1px solid rgba(244,63,94,.45);background:rgba(244,63,94,.08);color:#fda4af;font-size:14px;font-weight:800">🗑️ Supprimer l'objectif</button>
           <div class="pm-card">
             <span class="pm-cap">Modifier</span>
             <label class="pm-lbl">Date (JJ/MM/AAAA)<input type="text" id="goalDateInput" placeholder="ex. 20/12/2026" class="pm-in" oninput="updateGoalVAPCalculation()"></label>
@@ -996,7 +999,6 @@
             <div id="goalProbBox"></div>
             <div id="goalCoachOut" class="text-[12px] text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-xl p-2.5 hidden"></div>
           </div>
-          <button type="button" onclick="goalDeleteAsk()" style="min-height:46px;border-radius:14px;border:1px solid rgba(244,63,94,.45);background:rgba(244,63,94,.08);color:#fda4af;font-size:14px;font-weight:800">🗑️ Supprimer l'objectif</button>
         </div>
 
         <!-- ===== SÉANCE ===== -->
@@ -2526,11 +2528,17 @@
         const showHr = bigDisplayMode === 'hr' && hrFresh;
         let txt = showHr ? String(runData.hr) : (curStage ? formatSpeed(curStage.speed).replace('.', ',') : '–');
         if (!showHr && curStage && (curStage.isFree || curStage.type === 'chauffe' || curStage.type === 'recup') && sess.type === 'exterieur') txt = runData.gps.speedKmh !== null ? formatSpeed(Math.round(runData.gps.speedKmh * 10) / 10).replace('.', ',') : '–';
+        // Tapis : la vitesse est entre les boutons − et + ; le cercle affiche le temps restant du segment
+        // (ou de la séance si le haut de l'écran affiche déjà le segment)
+        const spRow = tapRun && curStage && !curStage.isFree;
+        { const l = document.getElementById('lcSpdL'); if (l) { const mod = curStage && curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed; const h = `<b${mod ? ' style="color:#fcd34d"' : ''}>${txt}</b>`; if (l.innerHTML !== h) l.innerHTML = h; } }
+        if (spRow && !showHr) { const ms = displayMode === 'stage' ? timerState.totalRemainingMs : timerState.stageRemainingMs; txt = formatMMSS(Math.max(0, Math.ceil((ms || 0) / 1000))); }
+        speedBig.dataset.t = spRow && !showHr ? '1' : '';
         speedBig.textContent = txt;
         speedBig.classList.toggle('text-white', !showHr);
         speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
         if (bigSub) {
-          const pv = !showHr && tapRun && curStage && curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed ? +curStage.plannedSpeed : null;
+          const pv = null; void tapRun;
           const on = pv !== null;
           bigSub.textContent = on ? `prévu ${formatSpeed(pv).replace('.', ',')}` : '';
           bigSub.className = on ? 'font-black tracking-tight' : 'hidden';
@@ -2596,7 +2604,7 @@
       const size = Math.round(Math.max(150, Math.min(360, wAv, avail > 0 ? avail : 240)));
       svg.style.width = svg.style.height = size + 'px';
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
-      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (subOn ? 0.3 : 0.34)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
+      if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (big.dataset.t ? (len > 5 ? 0.2 : 0.25) : subOn ? 0.3 : 0.34)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
       if (sub) { sub.style.fontSize = Math.round(size * 0.09) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
       { const cc = document.getElementById('circleNav'), ccOn = cc && cc.style.display !== 'none';
         if (cc) cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bsN + 'px'; }); const rvB = document.getElementById('readView'); if (rvB) rvB.style.left = rvB.style.right = (ccOn ? bsN + 6 : 0) + 'px'; }
@@ -5022,6 +5030,9 @@
       { const tt = document.getElementById('cfgTestTitle'); if (tt) tt.textContent = k === 'course' ? '🏁 Course (compétition)' : '⏱️ Test'; }
       { const pb = document.getElementById('cfgTestProto'); if (pb) pb.classList.toggle('hidden', k !== 'test'); if (k !== 'test') { const c = document.getElementById('cfgTestChrono'), v = document.getElementById('cfgVmaBox'); if (c) c.classList.remove('hidden'); if (v) v.classList.add('hidden'); } else renderTestProto(); }
       show('cfgLibreBox', k === 'libre');
+      { const tp = document.getElementById('cfgTestPente'), pr = document.getElementById('cfgTestPenteRow'), tst = (k === 'test' || k === 'course') && !ext;
+        if (pr) pr.classList.toggle('hidden', !tst); if (tp) tp.value = String(document.getElementById('cfgPente').value || 0).replace('.', ',');
+        const pb = document.getElementById('cfgPenteBox'); if (pb) pb.style.display = tst ? 'none' : ''; try { testVapUpdate(); } catch (e) { } try { cfgTabsRender(); } catch (e) { } }
       show('cfgTotalsBox', KIND_STRUCT.includes(k));
       document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
       if (prefill && prev !== k) {
@@ -5063,7 +5074,17 @@
       const tEl = document.getElementById('cfgTestTime'), sEl = document.getElementById('cfgTestSpeed');
       if (src === 'speed') { const v = parseFloat(String(sEl.value).replace(',', '.')) || 0; if (km > 0 && v > 0) tEl.value = fmtClock(km / v * 60); }
       else { const min = parseClock(tEl.value); if (km > 0 && min > 0) sEl.value = (km / (min / 60)).toFixed(1); }
-      recalculateModalTotals();
+      recalculateModalTotals(); testVapUpdate();
+    }
+    function onTestPente() {
+      const v = parseFloat(String(document.getElementById('cfgTestPente').value).replace(',', '.'));
+      if (isFinite(v) && v >= 0 && v <= 15) document.getElementById('cfgPente').value = v;
+      testVapUpdate();
+    }
+    function testVapUpdate() {
+      const e = document.getElementById('cfgTestVap'); if (!e) return;
+      const p = parseFloat(document.getElementById('cfgPente').value) || 0, v = parseFloat(String(document.getElementById('cfgTestSpeed').value).replace(',', '.')) || 0;
+      e.textContent = p > 0 && v > 0 && !cfgTypeIsExt() ? `VAP ${formatSpeed(vapKmh(v, treadmillGrade(p))).replace('.', ',')} km/h (effort équivalent sur le plat)` : '';
     }
     function setTestKm(km) { document.getElementById('cfgTestKm').value = km; onTestInput('km'); }
     // Partie principale selon le type choisi
@@ -5117,7 +5138,7 @@
     // Sauvegarde sans charger la séance
     function saveSessionConfig() {
       const ok = saveActiveSessionConfig({ keepOpen: true });
-      if (ok) { showSavedBig('Séance enregistrée'); closeConfigModal(); try { renderHome(); } catch (e) { } }
+      if (ok) { showSavedBig('Séance enregistrée'); closeConfigModal(true); try { renderHome(); } catch (e) { } }
     }
     // ---------- Copier une séance : date puis avis du coach ----------
     let copyCheck = null;
@@ -5693,7 +5714,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       saveAppData(); reloadChrono(); updateHistoryTable();
       try { renderHome(); } catch (e) { }
       copyCheck = null;
-      closeConfigModal();
+      closeConfigModal(true);
       showSavedBig(today ? "Copie prête pour aujourd'hui" : `Copie ajoutée le ${fmtDateShort(c.dateISO)}`);
     }
 
@@ -5735,12 +5756,29 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       cfgTestProto = (sess.test && sess.test.proto) || 'chrono';
       document.getElementById('cfgVmaStart').value = sess.test && sess.test.proto === 'vmaTapis' ? sess.test.start : vmaStartDefault();
       setCfgKind(cfgKind, false);
+      cfgTab = 'gen'; cfgTabsRender();
 
       document.getElementById('configModal').classList.remove('hidden');
       refreshAllIcons();
     }
     let cfgFrom = null;
-    function closeConfigModal() {
+    let cfgTab = 'gen';
+    function cfgTabsRender() {
+      const ext = cfgTypeIsExt(), st = KIND_STRUCT.includes(cfgKind);
+      const T = [['gen', '📋', 'Séance']].concat(st ? [['struct', '🔁', 'Structure']] : []).concat(ext ? [['route', '🗺️', 'Parcours']] : []);
+      if (!T.some(t => t[0] === cfgTab)) cfgTab = 'gen';
+      const bar = document.getElementById('cfgTabs');
+      if (bar) { bar.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`; bar.style.display = T.length > 1 ? 'grid' : 'none';
+        bar.innerHTML = T.map(([k, ic, l]) => `<button type="button" onclick="cfgTab='${k}';cfgTabsRender()" style="min-height:50px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:800;${cfgTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join(''); }
+      document.querySelectorAll('#configModal [data-cfgt]').forEach(el => { el.classList.toggle('cfg-tabhide', el.dataset.cfgt !== cfgTab); });
+    }
+    function closeConfigModal(force) {
+      const m = document.getElementById('configModal');
+      if (!force && !m.classList.contains('hidden') && cfgSessId) {
+        let ok = false; try { ok = saveActiveSessionConfig({ keepOpen: true }); } catch (e) { console.warn(e); }
+        if (!ok) { if (Date.now() - (closeConfigModal.warn || 0) < 5000) { closeConfigModal.warn = 0; } else { closeConfigModal.warn = Date.now(); showToast('Séance non enregistrée : corrige-la, ou touche ✕ encore pour fermer sans enregistrer'); return; } }
+        else { showToast('✓ Séance enregistrée'); try { renderHome(); } catch (e) { } }
+      }
       document.getElementById('configModal').classList.add('hidden');
       if (cfgFrom === 'planning') { cfgFrom = null; openHistoryModal(true); }
     }
@@ -6000,7 +6038,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       if (sess.id === actId) reloadChrono();
       updateHistoryTable();
       try { renderHome(); } catch (e) { }
-      if (!opts.keepOpen) closeConfigModal();
+      if (!opts.keepOpen) closeConfigModal(true);
       const next = afterSaveAction;
       afterSaveAction = null;
       if (next) next();
@@ -17848,7 +17886,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const uid = 'gc' + Math.random().toString(36).slice(2, 8);
       window.__gch = window.__gch || {}; window.__gch[uid] = { pts: avg.map(p => ({ d: p.d, s: p.s, c: p.c, a: p.a, px: x(p.d), py: y(p.s) })), W, dist: parseFloat(appData.goal.distanceKm) || 0, grade: appData.goal.hilly ? (parseFloat(appData.goal.pente) || 0) : 0 };
       return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px"><span class="pm-cap">Évolution de l'estimation (30 jours)</span>
-        <div id="${uid}I" style="min-height:44px;padding:6px 10px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#94a3b8">👆 Glisse le doigt sur le graphique</div>
+        <div id="${uid}I" style="min-height:92px;padding:6px 10px;border-radius:12px;background:#0b1220;border:1px solid #334155;font-size:12.5px;color:#94a3b8">👆 Glisse le doigt sur le graphique</div>
         <div style="position:relative;touch-action:none" onpointerdown="gchMove(event,'${uid}')" onpointermove="gchMove(event,'${uid}')">
         <svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Évolution de l'estimation chrono">${ticks}${goalL}${line(app, '#34d399', false, 1.6)}${line(coach, '#c084fc', true)}${line(avg, '#fbbf24', false, 2.6)}${dots(coach, '#c084fc', 3.5)}
         <line id="${uid}L" x1="0" x2="0" y1="8" y2="${Hh - pad}" stroke="#fbbf24" stroke-width="1" style="display:none"></line><circle id="${uid}C" r="5" fill="#fbbf24" stroke="#fff" stroke-width="1.5" style="display:none"></circle>
@@ -17862,7 +17900,10 @@ Réponds uniquement en JSON : {"avis":"2 phrases en tutoyant","activite":"repos|
       const L = document.getElementById(uid + 'L'), C = document.getElementById(uid + 'C'), I = document.getElementById(uid + 'I');
       if (L) { L.setAttribute('x1', best.px); L.setAttribute('x2', best.px); L.style.display = ''; } if (C) { C.setAttribute('cx', best.px); C.setAttribute('cy', best.py); C.style.display = ''; }
       const v = S.dist / (best.s / 3600), f = x => formatSpeed(Math.round(x * 10) / 10).replace('.', ',');
-      if (I) I.innerHTML = `<b style="color:#e2e8f0">${capFirst(parseISODateLocal(best.d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }))}</b> · <b style="color:#fbbf24;font-size:15px">${fmtTime(Math.round(best.s))}</b> moyenne · ${f(v)} km/h · <span style="color:#c4b5fd">VAP ${f(S.grade ? vapKmh(v, S.grade) : v)}</span><br><span style="font-size:11.5px">📱 app ${fmtTime(Math.round(best.a))}${best.c ? ` · 🧠 coach ${fmtTime(Math.round(best.c))}` : ''}</span>`;
+      if (I) I.innerHTML = `<div style="display:flex;flex-direction:column;gap:2px;line-height:1.3"><b style="color:#e2e8f0">${capFirst(parseISODateLocal(best.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</b>
+        <span><b style="color:#fbbf24;font-size:16px">${fmtTime(Math.round(best.s))}</b> temps moyen</span>
+        <span>${f(v)} km/h · <span style="color:#c4b5fd">VAP ${f(S.grade ? vapKmh(v, S.grade) : v)} km/h</span></span>
+        <span style="font-size:12px">📱 app ${fmtTime(Math.round(best.a))}${best.c ? ` · 🧠 coach ${fmtTime(Math.round(best.c))}` : ' · 🧠 coach –'}</span></div>`;
     }
     function goalProbChartHtml() {
       const app = goalProbSeries(30);
@@ -19809,7 +19850,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
         : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;border:none;background:#f43f5e;color:#fff;font-weight:900;font-size:15px"><span style="font-size:17px;line-height:1">⌚</span>Reconnecter la montre</button>`
         : `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#0b1324;border:1px dashed #334155;color:#94a3b8;text-align:left;font-size:13px;font-weight:700"><span style="font-size:20px">⌚</span>Connecter une montre cardio (optionnel)</button>`;
-      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl, live = on && (sp.playing || sp.launched); go.classList.toggle('hidden', !on || live); const ctl = document.getElementById('spCtl'); if (ctl) { ctl.classList.toggle('hidden', !live); ctl.style.display = live ? 'grid' : 'none'; } const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
+      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl, live = !!(on && (sp.playing || sp.launched)); go.classList.toggle('hidden', !on || live); const ctl = document.getElementById('spCtl'); if (ctl) { ctl.classList.toggle('hidden', !live); ctl.style.display = live ? 'grid' : 'none'; } const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
         if (live && Date.now() - (sp.at || 0) > 4000 && !prepRender.pl) { prepRender.pl = 1; spPoll().finally(() => { prepRender.pl = 0; }); } }
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
@@ -20691,7 +20732,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const spd = k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
       const vap0 = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
-      const r2 = [G.reps > 1 || G.fast.length ? sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true }) : '', spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
+      const tst = sess.test && +sess.test.km > 0 ? sTile('🎯', `${String(+sess.test.km).replace('.', ',')} km${+sess.test.min > 0 ? ' en ' + fmtClock(+sess.test.min) : ''}`, '', '#f0abfc', { small: true }) : '';
+      const r2 = [tst || (G.reps > 1 || G.fast.length) ? (tst || sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true })) : '', spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
       const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
       const rs = G.slow.length ? `${fmtQ(G.slow[0])} à ${fmtV(G.vmin)}` : G.recB ? fmtQ(G.recB) : '';
       const r3 = [c ? sTile('', `${c}'`, 'Échauffement') : '', rs && k !== 'pyramide' ? sTile('', rs, 'Récup série') : '', r ? sTile('', `${r}'`, 'Retour calme') : ''];
@@ -20935,7 +20977,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         if (hb && !sess.free) hb.innerHTML = `<div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
         d.style.display = sub === 'recap' ? '' : 'none';
-        if (hg) { hg.classList.toggle('hidden', sub === 'recap' || sess.free); }
+        if (hg) { hg.classList.toggle('hidden', !!(sub === 'recap' || sess.free)); }
         if (hb) hb.querySelectorAll('[data-hsp]').forEach(e => { e.style.display = e.dataset.hsp === sub ? 'flex' : 'none'; e.style.flexDirection = 'column'; });
       } catch (e) { console.warn('subs', e); }
       ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel', 'homeSessTitle'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
