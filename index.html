@@ -125,7 +125,8 @@
     .pm-hrrow > span small { font-size: 11px; font-weight: 600; color: #94a3b8; }
     .pm-hrin { width: 96px !important; height: 44px !important; flex: none; }
     .pm-hrro { display: flex; align-items: center; justify-content: center; color: #94a3b8; background: #0b1220 !important; }
-    .pm-tabs6 .pm-tab { font-size: 13px !important; padding-left: 0 !important; padding-right: 0 !important; text-align: center; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+    .pm-tabs6 .pm-tab { font-size: 12px !important; padding-left: 0 !important; padding-right: 0 !important; text-align: center; display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; white-space: nowrap; height: 54px !important; }
+    .pm-tab .ti { font-size: 19px; line-height: 1; }
     .pm-autosave { flex: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); text-align: center; font-size: 12px; font-weight: 700; color: #64748b; transition: color .3s; }
     .pm-autosave.on { color: #34d399; }
     .val-t2 { display: none; }
@@ -140,6 +141,13 @@
     #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
+    .prep-b { min-height: 64px; border-radius: 16px; border: 1px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 800; }
+    .prep-b span { font-size: 22px; line-height: 1; }
+    #topBar, #sessInfoLine { display: none !important; }
+    body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
+    #prepClose { display: none; }
+    body:not(.home):not(.started) #prepClose { display: flex; }
+    body:not(.home):not(.started) #homeHrChip { display: none !important; }
     body.rv-on #readView { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: auto; max-height: none; margin: 0; z-index: 2; }
     body.rv-on #circleZone > svg, body.rv-on #circleCenter { visibility: hidden; }
     #readViewBody { position: relative; flex: 1; overflow-y: auto; line-height: 1.35; color: #f8fafc; font-weight: 700; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px 2px; }
@@ -371,7 +379,7 @@
 
   <!-- ==================== ÉCRAN D'ACCUEIL ==================== -->
     <header id="gHeader"><div class="gh-in">
-      <button type="button" id="ghHome" onclick="navGo('home')" aria-label="Accueil" class="hd-btn" style="color:#7dd3fc;margin-left:-8px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></button><div class="runai-wordmark text-2xl" onclick="navGo('home')" style="cursor:pointer">Run <span>Ai</span></div>
+      <button type="button" id="ghHome" onclick="navGo('home')" aria-label="Accueil" class="hd-btn" style="color:#fff;margin-left:-8px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></button><div class="runai-wordmark text-2xl" onclick="navGo('home')" style="cursor:pointer">Run <span>Ai</span></div>
       <div class="ml-auto flex items-center" style="gap:0;margin-right:-6px">
         <button id="homeChatTop" onclick="navGo('chat')" title="Discuter avec le coach" aria-label="Discuter avec le coach" class="hd-btn" style="color:#c4b5fd"><span class="icon-slot" data-icon="chat"></span></button>
         <button id="homePlanBtn" onclick="navGo('plan')" title="Planning & suivi" aria-label="Planning & suivi" class="hd-btn" style="color:#6ee7b7"><span class="icon-slot" data-icon="calendar"></span></button>
@@ -448,6 +456,7 @@
   </section>
 
   <!-- ==================== ZONE CENTRALE : CHRONOMÈTRE CIRCULAIRE ÉPURÉ ==================== -->
+  <button type="button" id="prepClose" onclick="cancelBeforeStart()" aria-label="Fermer et revenir à l'accueil" style="position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:45;width:46px;height:46px;border-radius:23px;border:1px solid #334155;background:rgba(15,23,42,.9);color:#e2e8f0;font-size:20px;font-weight:900;align-items:center;justify-content:center">✕</button>
   <main id="mainArea" class="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-md mx-auto w-full min-w-0" style="min-width:0">
     
     <div id="ytBox" class="hidden" style="width:100%;position:relative;border-radius:14px;overflow:hidden;background:#000;margin-bottom:8px;aspect-ratio:16/9">
@@ -544,16 +553,16 @@
 
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
-      <div id="idleRow" class="grid grid-cols-3 gap-3 hidden" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
-        <button onclick="cancelBeforeStart()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:#1e293b;border:1px solid #475569;color:#e2e8f0">✕ Annuler</button>
-        <button id="chronoScriptBtn" onclick="openScriptModal()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(168,85,247,.18);border:1px solid rgba(192,132,252,.6);color:#f3e8ff">📜 Script</button>
-        <button id="soundTestBtn" onclick="soundTest()" class="py-4 rounded-2xl font-black text-[15px] active:scale-95" style="min-height:56px;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.6);color:#ddd6fe">🔊 Son</button>
-        <div id="idleExtras" style="grid-column:1 / -1;display:flex;gap:.5rem">
-          <button id="readBtn" onclick="openReadModal()" class="rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.45);color:#bae6fd">📖 Texte à écouter</button>
-          <button id="spBtn" onclick="openSpotifyModal()" class="rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:rgba(30,215,96,.1);border:1px solid rgba(30,215,96,.5);color:#bbf7d0">🎵 Spotify</button>
-          <button id="spPlBtn" onclick="openSpPlaylists()" class="hidden rounded-2xl font-bold text-[13px] active:scale-95" style="flex:1;min-height:46px;background:#1ed760;border:none;color:#04140a">🎶 Playlist</button>
+      <div id="idleRow" class="hidden" style="display:flex;flex-direction:column;gap:.6rem">
+        <div id="prepWatch"></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+          <button type="button" onclick="annOpen()" class="prep-b" style="background:rgba(168,85,247,.16);border-color:rgba(192,132,252,.55);color:#f3e8ff"><span>📣</span>Annonces</button>
+          <button type="button" onclick="openMediaModal()" class="prep-b" style="background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.5);color:#e0f2fe"><span>🎧</span>Médias</button>
+          <button type="button" id="soundTestBtn" onclick="soundTest()" class="prep-b" style="background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.45);color:#ddd6fe"><span>🔊</span>Son</button>
         </div>
-        <button id="ytBtn" onclick="openYtModal()" class="hidden rounded-2xl font-bold text-[14px] active:scale-95" style="grid-column:1 / -1;min-height:46px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);color:#fecaca">▶️ Vidéo YouTube : aucune</button>
+        <button type="button" id="spGoBtn" onclick="spGo()" class="hidden" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px"></button>
+        <div id="prepStatus" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div class="hidden"><button id="chronoScriptBtn"></button><button id="readBtn"></button><button id="spBtn"></button><button id="spPlBtn"></button><button id="ytBtn"></button></div>
       </div>
       <div id="spBar" class="hidden" style="display:none;flex-direction:column;gap:6px;padding:0;border:none;background:none">
         <div style="display:grid;grid-template-columns:1fr .8fr 1fr;gap:.75rem">
@@ -909,11 +918,11 @@
         <button onclick="closeGoalModal()" aria-label="Fermer" class="pm-x"><span class="icon-slot" data-icon="x"></span></button>
       </div>
       <div class="pm-tabs pm-tabs6" style="grid-template-columns:repeat(5,minmax(0,1fr))">
-        <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')">Moi</button>
-        <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')">Objectif</button>
-        <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')">Séance</button>
-        <button type="button" class="pm-tab" data-t="stats" onclick="setPmTab('goalModal','stats')">Stats</button>
-        <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')">Plan</button>
+        <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')"><span class="ti">👤</span>Moi</button>
+        <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')"><span class="ti">🏁</span>Objectif</button>
+        <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')"><span class="ti">👟</span>Séance</button>
+        <button type="button" class="pm-tab" data-t="stats" onclick="setPmTab('goalModal','stats')"><span class="ti">📊</span>Stats</button>
+        <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')"><span class="ti">🗓️</span>Plan</button>
       </div>
       <div class="pm-body custom-scroll">
 
@@ -1461,16 +1470,17 @@
       <p class="text-[11px] text-slate-500 -mt-1">Les indications GPS, les bilans de km et le décompte 3, 2, 1 ne sont pas listés mais seront bien dits pendant la séance.</p>
       <p class="text-[10px] text-slate-400 hidden">Heure de chaque annonce depuis le départ (et position simulée sur le parcours à la vitesse prévue, en vert). Les conseils d'allure « accélère / ralentis » et les alertes cardio n'apparaissent qu'en vrai, selon vos capteurs.</p>
       <div id="scriptList" class="flex-1 overflow-y-auto custom-scroll pr-1 min-h-0"></div>
-      <div id="scriptOptsWrap" class="hidden fixed inset-0 z-[80] flex flex-col" style="background:#050a16">
-        <div class="flex items-center justify-between gap-3" style="padding:20px 18px 10px">
-          <span class="text-[22px] font-extrabold text-white">⚙️ Modifier les annonces</span>
-          <button onclick="applyScriptToggles(); saveAppData(); document.getElementById('scriptOptsWrap').classList.add('hidden')" aria-label="Fermer" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8"><span class="icon-slot" data-icon="x"></span></button>
-        </div>
-        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:4px 18px 24px"><span class="text-[12px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Annonces à inclure</span><div id="scriptOpts"></div></div>
-      </div>
       <div id="scriptFoot" class="flex flex-col gap-2"></div>
     </div>
   </div>
+
+      <div id="scriptOptsWrap" class="hidden fixed inset-0 z-[85] flex flex-col" style="background:#050a16">
+        <div class="flex items-center justify-between gap-3" style="padding:20px 18px 10px">
+          <span class="text-[22px] font-extrabold text-white">📣 Annonces du coach</span>
+          <button onclick="annClose()" aria-label="Fermer" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8"><span class="icon-slot" data-icon="x"></span></button>
+        </div>
+        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:4px 18px 24px"><div id="scriptOpts"></div></div>
+      </div>
 
   <div id="installModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[60] flex items-center justify-center p-3 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-4 shadow-2xl space-y-3 text-xs">
@@ -1584,6 +1594,9 @@
             <label class="pm-lbl">Langue des annonces
               <select id="voiceLangSelect" onchange="onVoiceLangChange()" class="pm-in"><option value="fr">Français</option><option value="en">English</option></select>
             </label>
+          </div>
+          <div class="pm-card" style="border-color:rgba(30,215,96,.4)">
+            <div class="pm-row" style="border-top:0"><div class="pm-rt">🎵 Spotify<small id="setSpState">Musique relancée après les annonces du coach</small></div><button type="button" onclick="openSpotifyModal()" style="min-height:42px;padding:0 14px;border-radius:12px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:13px">Paramétrer</button></div>
           </div>
         </div>
 
@@ -4456,7 +4469,7 @@
         if (ir) ir.classList.toggle('hidden', st !== 'idle'); if (cr) cr.classList.toggle('hidden', st === 'idle');
         { try { updateReadBtn(); updateSpBtn(); } catch (e) { } }
         { const yb = document.getElementById('ytBtn'); if (yb) { const tap = (getActiveSession() || {}).type === 'tapis'; yb.classList.toggle('hidden', !tap); yb.textContent = '▶️ Vidéo YouTube : ' + (ytCfg().on && ytCfg().url ? (ytCfg().title || 'activée') : 'aucune'); } }
-        { let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { } const sb = document.getElementById('chronoScriptBtn'); if (sb) sb.classList.toggle('hidden', fr); if (ir) ir.style.gridTemplateColumns = fr ? '1fr 1fr' : '1fr 1fr 1fr'; } }
+        { let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { } void fr; } try { prepRender(); } catch (e) { } }
       if (st === 'idle') {
         txt.classList.remove('hidden');
         txt.textContent = 'DÉMARRER';
@@ -7902,6 +7915,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
       const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel', 'Personnalité du coach': 'Personnalité', 'Pendant la séance': 'Pendant la séance' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
+    const PM_SUB_ICONS = { 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Km / semaine': '📏', 'Analyse': '🧭' };
     function applySubTabs(panel) {
       if (!panel) return;
       let bar = panel.querySelector(':scope > .pm-subtabs');
@@ -7914,7 +7928,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const key = panel.dataset.p || panel.id;
       let sel = pmSubSel[key]; if (!uniq.includes(sel)) sel = uniq[0];
       if (!bar) { bar = document.createElement('div'); bar.className = 'pm-subtabs'; panel.prepend(bar); }
-      bar.innerHTML = uniq.map(u => `<button type="button" class="${u === sel ? 'on' : ''}" data-u="${plEsc(u).replace(/"/g, '&quot;')}">${plEsc(u)}</button>`).join('');
+      bar.innerHTML = uniq.map(u => `<button type="button" class="${u === sel ? 'on' : ''}" data-u="${plEsc(u).replace(/"/g, '&quot;')}">${PM_SUB_ICONS[u] ? PM_SUB_ICONS[u] + ' ' : ''}${plEsc(u)}</button>`).join('');
       bar.onclick = e => { const b = e.target.closest('button'); if (!b) return; pmSubSel[key] = b.dataset.u; applySubTabs(panel); const body = panel.closest('.pm-body'); if (body) body.scrollTop = 0; };
       blocks.forEach((b, i) => b.classList.toggle('pm-subhide', labs[i] !== sel));
     }
@@ -13445,6 +13459,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       requestFullscreenSafe(); aiUnlock(); getAudioContext();
       btAutoReconnect();
       try { ytStart(); } catch (e) { }
+      try { const c = spCfg(); if (spConnected() && c.pl && c.pl.uri && c.plStart === 'go' && !sp.playing) spPlayPl(c.pl.uri); } catch (e) { }
       if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
       const viaAi = aiPlayCountdown(3);
       if (!viaAi) speak([VT().count[3]]);
@@ -16047,12 +16062,14 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       ['turns', '🧭 Indications de direction GPS (tourner à gauche…)', () => navTurnsOn(), v => { sensors().navTurns = v; }]
     ];
     let scriptDl = null;
+    let annTab = 'ann', annDirty = false;
+    const ANN_TABS = [['ann', '📢', 'Annonces'], ['bilan', '📍', 'Bilans'], ['enc', '💬', 'Encourag.'], ['ton', '🎙️', 'Ton']];
     function renderScriptOptions() {
       const box = document.getElementById('scriptOpts');
       if (!box) return;
       const fq = String(encFreq()), fc = encFocus();
-      box.innerHTML = `<div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>
-        ${(() => { const ch = (on, l, js) => `<button type="button" onclick="applyScriptToggles(); ${js}; saveAppData(); renderScriptOptions()" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`;
+      const tabs = `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b;margin-bottom:10px;position:sticky;top:0;z-index:2">${ANN_TABS.map(([k, ic, l]) => `<button type="button" onclick="annTab='${k}';renderScriptOptions()" style="min-height:52px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11.5px;font-weight:800;${annTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join('')}</div>`;
+      const body = annTab === 'bilan' ? `        ${(() => { const ch = (on, l, js) => `<button type="button" onclick="applyScriptToggles(); ${js}; saveAppData(); renderScriptOptions()" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`;
           const lm = String(sensors().lapM || 1000), he = String(hrEveryMin()), de = String(drinkEvery());
           return `<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">📍 Bilan vitesse (distance)</span>
           <div class="grid grid-cols-5 gap-1.5 mt-1">${[['off', 'Jamais'], ['500', '500 m'], ['1000', '1 km'], ['2000', '2 km'], ['5000', '5 km']].map(([v, l]) => ch(lm === v, l, `sensors().lapM='${v}'`)).join('')}</div>
@@ -16060,34 +16077,44 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
           <div class="grid grid-cols-4 gap-1.5 mt-1">${[['0', 'Jamais'], ['2', '2 min'], ['5', '5 min'], ['10', '10 min']].map(([v, l]) => ch(he === v, l, `appData.audioSettings.hrEvery=${v}`)).join('')}</div>
           <span class="text-[11px] text-slate-500 block mt-1">En plus, le coach te dit de ralentir si ton cardio dépasse la cible de plus de 5 pendant 30 s, ou d'accélérer s'il reste 8 sous la cible pendant 1 min (pas sur les fractions courtes).</span>
           <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">💧 Rappel boire</span>
-          <div class="grid grid-cols-5 gap-1.5 mt-1">${[['km', 'Au bilan'], ['10', '10 min'], ['15', '15 min'], ['20', '20 min'], ['30', '30 min']].map(([v, l]) => ch(de === v, l, `appData.audioSettings.drinkEvery=${v === 'km' ? "'km'" : v}`)).join('')}</div>`; })()}
-        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Fréquence des encouragements</span>
+          <div class="grid grid-cols-5 gap-1.5 mt-1">${[['km', 'Au bilan'], ['10', '10 min'], ['15', '15 min'], ['20', '20 min'], ['30', '30 min']].map(([v, l]) => ch(de === v, l, `appData.audioSettings.drinkEvery=${v === 'km' ? "'km'" : v}`)).join('')}</div>`; })()}`
+        : annTab === 'enc' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Fréquence des encouragements</span>
         <div class="grid grid-cols-4 gap-1.5 mt-1">${[['moins', 'Moins'], ['auto', 'Auto'], ['15', '15 s'], ['30', '30 s'], ['45', '45 s'], ['60', '1 min'], ['90', '1 min 30'], ['120', '2 min']].map(([v, l]) => `<button type="button" data-encf="${v}" onclick="scriptPickFreq('${v}')" class="rounded-lg border py-2 text-[12px] font-bold ${fq === v ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
         <span class="text-[11px] text-slate-500 block mt-1">« Moins » garde seulement les moments clés. Les annonces trop rapprochées sont décalées ou sautées automatiquement.</span>
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Insister sur</span>
-        <div class="flex flex-wrap gap-1.5 mt-1">${ENC_FOCUS.map(([k, l]) => `<button type="button" data-encfocus="${k}" onclick="scriptToggleFocus('${k}')" class="rounded-full border px-3 py-1.5 text-[12px] font-bold ${fc.includes(k) ? 'bg-amber-500/25 border-amber-400 text-amber-100' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
-        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
+        <div class="flex flex-wrap gap-1.5 mt-1">${ENC_FOCUS.map(([k, l]) => `<button type="button" data-encfocus="${k}" onclick="scriptToggleFocus('${k}')" class="rounded-full border px-3 py-1.5 text-[12px] font-bold ${fc.includes(k) ? 'bg-amber-500/25 border-amber-400 text-amber-100' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>`
+        : annTab === 'ton' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
-        <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
-        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">🎧 Animations pendant la séance</span>
-        <span class="text-[11px] text-slate-500 block mt-0.5">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>
-        ${(() => { const c = radioCfg(), ch = (on, txt, js) => `<button type="button" onclick="${js}" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${txt}</button>`;
+        <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>`
+        : `<div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>`;
+      box.innerHTML = tabs + body.replace(/onclick="applyScriptToggles\(\); /g, 'onclick="applyScriptToggles(); annDirty=true; ')
+        + `<span style="display:block;font-size:12px;color:#64748b;text-align:center;margin-top:14px">✓ Enregistré automatiquement · le script se met à jour à la fermeture</span>
+        <button type="button" onclick="annClose(); openScriptModal()" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#c4b5fd;font-weight:800;font-size:13px">📜 Voir le script complet</button>`;
+      box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); }; });
+      const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
+    }
+    function radioOptsHtml() {
+      return (() => { const c = radioCfg(), ch = (on, txt, js) => `<button type="button" onclick="${js}" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${txt}</button>`;
           return `<div class="grid grid-cols-3 gap-1.5 mt-1">${ch(c.mode === 'off', '🔇 Aucune', "setRadio({mode:'off'})")}${ch(c.mode === 'news', '📰 Actualité', "setRadio({mode:'news'})")}${ch(c.mode === 'topic', '💡 Thèmes', "setRadio({mode:'topic'})")}</div>`
             + (c.mode === 'topic' ? `<span class="text-[11px] text-slate-400 block mt-2">Choisis un ou plusieurs thèmes (les chroniques alternent entre eux) :</span>
               <div class="flex flex-wrap gap-1.5 mt-1">${radioThemes().map(t => { const on = c.themes.includes(t), a = JSON.stringify(t).replace(/"/g, '&quot;'); return `<span style="display:inline-flex;align-items:center" class="inline-flex items-center rounded-full border text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><button type="button" onclick="radioToggleTheme(${a})" class="pl-3 pr-1.5" style="min-height:34px">${on ? '✓ ' : ''}${plEsc(t)}</button><button type="button" onclick="radioDelTheme(${a})" aria-label="Supprimer ce thème" class="pr-2.5 pl-1 text-slate-500" style="min-height:34px">✕</button></span>`; }).join('')}</div>
               <div class="flex gap-1.5 mt-1.5"><input id="radioNewTheme" type="text" maxlength="80" placeholder="Nouveau thème : ex. actu du foot, cinéma…" class="pm-in flex-1" style="height:40px;font-size:14px" onkeydown="if(event.key==='Enter')radioAddTheme()"><button type="button" onclick="radioAddTheme()" class="rounded-lg px-3 text-[13px] font-bold" style="background:#38bdf8;color:#04121f">+ Ajouter</button></div>
               ${c.themes.length ? '' : '<span class="text-[11px] text-amber-300 block mt-1">Sélectionne au moins un thème.</span>'}` : '')
-            + (c.mode !== 'off' ? `<div class="grid grid-cols-3 gap-1.5 mt-1.5">${[5, 10, 15].map(m => ch(c.every === m, `${m} min`, `setRadio({every:${m}})`)).join('')}</div><span class="text-[11px] text-slate-500 block mt-1">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</span>` : ''); })()}
-        <button onclick="regenScript()" class="w-full mt-4 py-4 rounded-2xl font-black text-[16px]" style="background:#a78bfa;color:#13092b">🔄 Relancer le script</button>`;
-      const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
+            + (c.mode !== 'off' ? `<div class="grid grid-cols-3 gap-1.5 mt-1.5">${[5, 10, 15].map(m => ch(c.every === m, `${m} min`, `setRadio({every:${m}})`)).join('')}</div><span class="text-[11px] text-slate-500 block mt-1">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</span>` : ''); })();
+    }
+    function annOpen() { annDirty = false; const w = document.getElementById('scriptOptsWrap'); if (!w) return; w.classList.remove('hidden'); renderScriptOptions(); refreshAllIcons(); }
+    function annClose() {
+      applyScriptToggles(); saveAppData(); const w = document.getElementById('scriptOptsWrap'); if (w) w.classList.add('hidden');
+      if (annDirty) { annDirty = false; Object.keys(_vtCache).forEach(k => delete _vtCache[k]); if (!(timerState.sessionStarted && !timerState.finished)) reloadChrono(); showToast('✓ Script mis à jour'); }
+      try { prepRender(); } catch (e) { }
     }
     function applyScriptToggles() { document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); }); }
-    function scriptPickFreq(v) { applyScriptToggles(); appData.audioSettings.encFreq = v; if (v !== 'moins') appData.audioSettings.encouragements = true; saveAppData(); renderScriptOptions(); }
-    function scriptToggleFocus(k) { applyScriptToggles(); const f = encFocus().slice(); const i = f.indexOf(k); if (i >= 0) f.splice(i, 1); else f.push(k); appData.audioSettings.encFocus = f; saveAppData(); renderScriptOptions(); }
+    function scriptPickFreq(v) { annDirty = true; applyScriptToggles(); appData.audioSettings.encFreq = v; if (v !== 'moins') appData.audioSettings.encouragements = true; saveAppData(); renderScriptOptions(); }
+    function scriptToggleFocus(k) { annDirty = true; applyScriptToggles(); const f = encFocus().slice(); const i = f.indexOf(k); if (i >= 0) f.splice(i, 1); else f.push(k); appData.audioSettings.encFocus = f; saveAppData(); renderScriptOptions(); }
     function scriptPickTone(id) {
       if (!COACH_PROFILES[id]) return;
       if (id === 'competition' && coachProfileId() !== 'competition' && !confirm(COMPETITION_WARNING)) return;
-      appData.audioSettings.coachProfile = id;
+      appData.audioSettings.coachProfile = id; annDirty = true;
       saveAppData();
       Object.keys(_vtCache).forEach(k => delete _vtCache[k]);
       renderScriptOptions();
@@ -16121,7 +16148,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       }
       f.innerHTML = `<div class="grid grid-cols-2 gap-2">
           <button id="scriptPlayBtn" onclick="playAllScript()" class="py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs">▶ Tout écouter</button>
-          <button onclick="document.getElementById('scriptOptsWrap').classList.remove('hidden'); renderScriptOptions(); refreshAllIcons()" class="py-2.5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl text-xs">⚙️ Modifier les annonces</button>
+          <button onclick="annOpen()" class="py-2.5 bg-slate-800 border border-slate-600 text-slate-100 font-bold rounded-xl text-xs">⚙️ Modifier les annonces</button>
         </div>
         <button onclick="scriptValidate()" class="w-full py-3 rounded-xl font-black text-[14px]" style="background:#34d399;color:#04140d">💾 Valider ${aiVoiceActive() ? 'et télécharger les voix' : 'le script'}</button>`;
     }
@@ -19027,7 +19054,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every }; saveAppData();
       radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
       if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
-      renderScriptOptions();
+      try { renderScriptOptions(); } catch (e) { } try { mediaRender(); } catch (e) { } try { prepRender(); } catch (e) { }
     }
     function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
     async function radioPrepare() {
@@ -19486,7 +19513,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function spCfg() { if (!appData.spotify) appData.spotify = { resume: true, pauseLong: false }; return appData.spotify; }
     function spRedirect() { return location.origin + location.pathname; }
     function spConnected() { const c = spCfg(); return !!(c.refresh && c.clientId); }
-    function updateSpBtn() { const b = document.getElementById('spBtn'); if (b) b.textContent = spConnected() ? `🎵 Spotify ${spCfg().resume ? '✓' : ''}` : '🎵 Spotify'; const pb = document.getElementById('spPlBtn'); if (pb) pb.classList.toggle('hidden', !spConnected()); }
+    function updateSpBtn() { try { setSpStateTxt(); } catch (e) { } const b = document.getElementById('spBtn'); if (b) b.textContent = spConnected() ? `🎵 Spotify ${spCfg().resume ? '✓' : ''}` : '🎵 Spotify'; const pb = document.getElementById('spPlBtn'); if (pb) pb.classList.toggle('hidden', !spConnected()); }
     function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
     async function spLogin() {
       const id = (document.getElementById('spClient') || {}).value || spCfg().clientId || '';
@@ -19532,7 +19559,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const pb = document.getElementById('spPlayBtn'); if (pb) pb.textContent = sp.playing ? '⏸' : '▶️';
     }
     // Fenêtre des playlists : changer de musique pendant la séance
-    async function openSpPlaylists() {
+    async function openSpPlaylists(pick) {
+      window.__spPick = !!pick;
       if (!spConnected()) { openSpotifyModal(); return; }
       let m = document.getElementById('spPlModal');
       if (!m) { m = document.createElement('div'); m.id = 'spPlModal'; m.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(2,6,23,.88);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
@@ -19542,8 +19570,15 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!j || !Array.isArray(j.items)) {
         m.innerHTML = shell(`<span style="font-size:14px;color:#cbd5e1;line-height:1.5">${spApi.lastStatus === 401 || spApi.lastStatus === 403 ? "Pour voir tes playlists, l'app a besoin d'une autorisation de plus : reconnecte Spotify une fois." : 'Playlists indisponibles pour le moment.'}</span><button type="button" onclick="spLogin()" style="min-height:48px;border-radius:14px;border:none;background:#1ed760;color:#04140a;font-weight:900">Reconnecter Spotify</button>`); return;
       }
-      m.innerHTML = shell(j.items.filter(Boolean).map(p => `<button type="button" onclick="spPlayPl('${p.uri}')" style="display:flex;align-items:center;gap:10px;text-align:left;min-height:56px;padding:6px 8px;border-radius:12px;border:1px solid #1e293b;background:#0b1324;color:#f1f5f9">${p.images && p.images[0] ? `<img src="${p.images[p.images.length - 1].url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover" alt="">` : '<span style="width:44px;text-align:center;font-size:22px">🎵</span>'}<span style="flex:1;min-width:0"><span style="display:block;font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plEsc(p.name || '')}</span><span style="font-size:12px;color:#94a3b8">${(p.tracks && p.tracks.total) || ''} titres</span></span></button>`).join('') || '<span style="color:#94a3b8">Aucune playlist</span>');
+      window.__spPls = j.items.filter(Boolean); m.innerHTML = shell(window.__spPls.map((p, pi) => `<button type="button" onclick="spPlChoose(${pi})" style="display:flex;align-items:center;gap:10px;text-align:left;min-height:56px;padding:6px 8px;border-radius:12px;border:1px solid #1e293b;background:#0b1324;color:#f1f5f9">${p.images && p.images[0] ? `<img src="${p.images[p.images.length - 1].url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover" alt="">` : '<span style="width:44px;text-align:center;font-size:22px">🎵</span>'}<span style="flex:1;min-width:0"><span style="display:block;font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plEsc(p.name || '')}</span><span style="font-size:12px;color:#94a3b8">${(p.tracks && p.tracks.total) || ''} titres</span></span></button>`).join('') || '<span style="color:#94a3b8">Aucune playlist</span>');
     }
+    function spPlChoose(i) {
+      const p = (window.__spPls || [])[i]; if (!p) return;
+      spCfg().pl = { uri: p.uri, name: String(p.name || 'Playlist').slice(0, 60) }; if (!spCfg().plStart) spCfg().plStart = 'manual'; saveAppData();
+      if (window.__spPick) { const m = document.getElementById('spPlModal'); if (m) m.remove(); showToast('🎵 Playlist choisie'); try { mediaRender(); prepRender(); } catch (e) { } return; }
+      spPlayPl(p.uri);
+    }
+    function spGo() { const c = spCfg(); if (sp.playing) { spCmd('next'); return; } if (c.pl && c.pl.uri) spPlayPl(c.pl.uri); else openSpPlaylists(true); setTimeout(() => { try { prepRender(); } catch (e) { } }, 1500); }
     async function spPlayPl(uri) {
       const dev = sp.device ? `?device_id=${sp.device}` : '';
       const ok = await spApi('PUT', '/me/player/play' + dev, { context_uri: uri });
@@ -19588,6 +19623,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         } finally { sp.busy = false; }
       }, 1200);
     }
+    function setSpStateTxt() { const e = document.getElementById('setSpState'); if (e) e.textContent = spConnected() ? `✓ Connecté${spCfg().pl ? ` · playlist « ${spCfg().pl.name} »` : ''}` : 'Non connecté · musique relancée après les annonces'; }
     function openSpotifyModal() {
       let m = document.getElementById('spModal');
       if (!m) { m = document.createElement('div'); m.id = 'spModal'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
@@ -19643,7 +19679,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const u = (document.getElementById('ytUrl') || {}).value || '';
       if (on && !ytParse(u)) { showToast('Lien YouTube non reconnu'); return; }
       appData.audioSettings.youtube = on ? { on: true, url: u.trim(), title: ytParse(u).list && !ytParse(u).vid ? 'playlist' : 'activée', sid: (getActiveSession() || {}).id || '' } : null;
-      saveAppData(); const m = document.getElementById('ytModal'); if (m) m.remove(); setMainButton(); showToast(on ? '▶️ La vidéo démarrera avec la séance' : 'Vidéo désactivée');
+      saveAppData(); const m = document.getElementById('ytModal'); if (m) m.remove(); setMainButton(); try { prepRender(); } catch (e) { } showToast(on ? '▶️ La vidéo démarrera avec la séance' : 'Vidéo désactivée');
     }
     function ytLoadApi() {
       if (window.YT && window.YT.Player) return Promise.resolve();
@@ -19702,6 +19738,72 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         else if (!talk && timerState.isRunning && yt.autoPaused) { yt.player.playVideo(); yt.autoPaused = false; }
       } catch (e) { }
     }, 300);
+    // ---------- Page avant la séance : montre, état du script, médias
+    function readSecsReady(c) { try { const RA = readAudioFor(c); return (c.sections || []).filter((_, i) => RA.secs[i]).length; } catch (e) { return 0; } }
+    function scriptVoiceState() {
+      if (!aiVoiceActive()) return { ok: true, txt: 'voix du téléphone' };
+      const t = Date.now(); if (scriptVoiceState.c && t - scriptVoiceState.c.t < 1500) return scriptVoiceState.c.v;
+      let miss = 0, tot = 0; try { const pr = aiProfile(), P = aiAllPiecesForSession(pr); tot = P.length; miss = P.filter(x => !aiClips.has(aiClipKey(x, pr))).length; } catch (e) { }
+      const v = !miss ? { ok: true, txt: 'voix IA chargées' } : aiPrep.running ? { busy: true, txt: `voix IA en préparation ${aiPrep.total ? `${aiPrep.done}/${aiPrep.total}` : '…'}` } : { warn: true, txt: `${miss} annonce${miss > 1 ? 's' : ''} sans voix IA (voix du téléphone)` };
+      scriptVoiceState.c = { t, v }; return v;
+    }
+    function mediaList() {
+      const L = [], c = spCfg(), sess = getActiveSession() || {}, rc = readCfg(), yc = ytCfg(), ra = radioCfg();
+      const rStart = x => x.start === 'warm' ? "après l'échauffement" : x.start === 'min' ? `à la minute ${x.min || 0}` : 'dès le départ';
+      if (spConnected() && c.pl) L.push({ ic: '🎵', t: `Spotify « ${c.pl.name} »`, w: c.plStart === 'go' ? 'démarre avec la séance' : 'à lancer avec le bouton vert' });
+      if (rc) L.push({ ic: '📖', t: 'Livre audio', w: `démarre ${rStart(rc)}${rc.fast ? '' : ', en pause pendant les efforts rapides'}` });
+      if (yc.on && sess.type === 'tapis') L.push({ ic: '▶️', t: `YouTube ${yc.title && yc.title !== 'activée' ? '(' + yc.title + ')' : ''}`, w: 'démarre avec la séance' });
+      if (ra.mode !== 'off') L.push({ ic: '🎙️', t: `Animations ${ra.mode === 'news' ? 'actualité' : 'thèmes'}`, w: `toutes les ${ra.every} min, jamais pendant un effort rapide` });
+      return L;
+    }
+    function prepRender() {
+      if (document.body.classList.contains('started')) return;
+      const w = document.getElementById('prepWatch'), st = document.getElementById('prepStatus'), go = document.getElementById('spGoBtn'); if (!w || !st) return;
+      const se = sensors(), known = !!(se.btId || se.btName), con = btConnected() && !btStale();
+      w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
+        : known ? `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:rgba(244,63,94,.14);border:1.5px solid rgba(244,63,94,.65);color:#ffe4e6;text-align:left"><span style="font-size:28px">⌚</span><span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">Montre déconnectée</b><span style="font-size:12.5px;color:#fecdd3">Touche pour reconnecter ${plEsc(se.btName || 'ta montre')}</span></span><span style="font-size:13px;font-weight:900;padding:8px 12px;border-radius:12px;background:#f43f5e;color:#fff">Reconnecter</span></button>`
+        : `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#0b1324;border:1px dashed #334155;color:#94a3b8;text-align:left;font-size:13px;font-weight:700"><span style="font-size:20px">⌚</span>Connecter une montre cardio (optionnel)</button>`;
+      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl; go.classList.toggle('hidden', !on); if (on) go.textContent = sp.playing ? '🎵 En lecture · ⏭ morceau suivant' : `▶ Lancer la playlist « ${c.pl.name} »`; }
+      const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
+      const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
+      if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
+      const rc = readCfg();
+      if (rc) { if (readIsAi(rc)) { const n = (rc.sections || []).length, k = readSecsReady(rc); if (k < n && !prepRender.rd) { prepRender.rd = 1; readPrepareAll().finally(() => { prepRender.rd = 0; }); }
+          out.push(line(k >= n ? '✅' : '⏳', `Livre audio ${k >= n ? 'chargé' : 'en chargement'}`, `${k}/${n} partie${n > 1 ? 's' : ''} prête${k > 1 ? 's' : ''} · voix IA`, k >= n ? '#a7f3d0' : '#fde68a')); }
+        else out.push(line('✅', 'Livre audio chargé', 'voix du téléphone, lecture immédiate', '#a7f3d0')); }
+      const M = mediaList();
+      out.push(M.length ? `<div style="display:flex;flex-direction:column;gap:4px;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:11px;font-weight:800;color:#7dd3fc;text-transform:uppercase;letter-spacing:.6px">Médias activés</span>${M.map(m => `<span style="font-size:13px;color:#e2e8f0;line-height:1.35">${m.ic} <b>${plEsc(m.t)}</b> <span style="color:#94a3b8">· ${m.w}</span></span>`).join('')}</div>` : line('🔈', 'Aucun média activé', 'Touche « Médias » pour ajouter musique, livre audio, vidéo…', '#94a3b8'));
+      st.innerHTML = out.join('');
+    }
+    setInterval(() => { try { if (!document.body.classList.contains('home') && !document.body.classList.contains('started')) prepRender(); } catch (e) { } }, 1500);
+    function openMediaModal() {
+      let m = document.getElementById('mediaModal');
+      if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
+      mediaRender();
+    }
+    function closeMediaModal() { const m = document.getElementById('mediaModal'); if (m) m.remove(); try { prepRender(); } catch (e) { } }
+    function mediaRender() {
+      const m = document.getElementById('mediaModal'); if (!m) return;
+      const c = spCfg(), rc = readCfg(), yc = ytCfg(), tap = (getActiveSession() || {}).type === 'tapis';
+      const card = (ic, t, col, on, body) => `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:${on ? col + '14' : '#0b1324'};border:1px solid ${on ? col + '88' : '#1e293b'}"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${ic}</span><b style="flex:1;font-size:15px">${t}</b>${on ? `<span style="font-size:11px;font-weight:900;padding:3px 8px;border-radius:99px;background:${col};color:#04121f">ACTIVÉ</span>` : ''}</div>${body}</div>`;
+      const btn = (js, l, bg, fg) => `<button type="button" onclick="${js}" style="min-height:44px;padding:0 12px;border-radius:12px;border:${bg ? 'none' : '1px solid #475569'};background:${bg || '#1e293b'};color:${fg || '#e2e8f0'};font-weight:800;font-size:13px">${l}</button>`;
+      const chip = (on, js, l) => `<button type="button" onclick="${js}" style="min-height:40px;border-radius:10px;font-size:12.5px;font-weight:800;${on ? 'background:#1ed760;color:#04140a;border:none' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
+      const spBody = !spConnected() ? `<span style="font-size:12.5px;color:#94a3b8">Spotify n'est pas connecté. Le paramétrage se fait dans Réglages › Voix.</span>${btn("closeMediaModal();navGo('settings')", '⚙️ Ouvrir les réglages')}`
+        : `<span style="font-size:13px;color:#cbd5e1">${c.pl ? `Playlist : <b>${plEsc(c.pl.name)}</b>` : 'Aucune playlist choisie'}</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${chip(c.plStart === 'go', "spCfg().plStart='go';saveAppData();mediaRender()", '▶ Au départ de la séance')}${chip(c.plStart !== 'go', "spCfg().plStart='manual';saveAppData();mediaRender()", '👆 Avec le bouton')}</div>
+          <div style="display:grid;grid-template-columns:${c.pl ? '2fr 1fr' : '1fr'};gap:6px">${btn('openSpPlaylists(true)', c.pl ? '🎶 Changer de playlist' : '🎶 Choisir une playlist', '#1ed760', '#04140a')}${c.pl ? btn("delete spCfg().pl;saveAppData();mediaRender()", 'Retirer') : ''}</div>`;
+      const rdBody = `<span style="font-size:13px;color:#cbd5e1">${rc ? `${rc.chunks.length} morceaux · ${readIsAi(rc) ? 'voix IA' : 'voix du téléphone'} · démarre ${rc.start === 'warm' ? "après l'échauffement" : rc.start === 'min' ? 'à la minute ' + (rc.min || 0) : 'dès le départ'}` : 'Un texte, un article ou un chapitre lu pendant la séance.'}</span>
+        <div style="display:grid;grid-template-columns:${rc ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openReadModal()", rc ? '✏️ Modifier' : '📖 Choisir un texte', '#38bdf8', '#04121f')}${rc ? btn("appData.audioSettings.readText=null;saveAppData();updateReadBtn();mediaRender()", 'Retirer') : ''}</div>`;
+      const ytBody = `<span style="font-size:13px;color:#cbd5e1">${yc.on ? 'Vidéo prête, démarre avec la séance (écran allumé).' : 'Une vidéo ou une playlist YouTube à regarder sur le tapis.'}</span>
+        <div style="display:grid;grid-template-columns:${yc.on ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openYtModal()", yc.on ? '✏️ Changer de vidéo' : '▶️ Choisir une vidéo', '#ef4444', '#fff')}${yc.on ? btn("appData.audioSettings.youtube=null;saveAppData();mediaRender()", 'Retirer') : ''}</div>`;
+      m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
+        <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias pendant la séance</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
+        ${card('🎵', 'Playlist Spotify', '#1ed760', spConnected() && !!c.pl, spBody)}
+        ${card('📖', 'Livre audio', '#38bdf8', !!rc, rdBody)}
+        ${tap ? card('▶️', 'Vidéo YouTube', '#ef4444', !!yc.on, ytBody) : ''}
+        ${card('🎙️', 'Animations du coach', '#a78bfa', radioCfg().mode !== 'off', `<span style="font-size:12.5px;color:#94a3b8">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>${radioOptsHtml()}`)}
+      </div>`;
+    }
     function cancelBeforeStart() {
       try { ytStop(); } catch (e) { }
       cancelPreStartCountdown();
