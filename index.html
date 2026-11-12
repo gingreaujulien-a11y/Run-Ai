@@ -3240,12 +3240,15 @@
       let start = 0;
       const frame = Math.round(sr * 0.02);
       while (pcm.length - start > maxSamples) {
-        const lo = start + Math.round(maxSamples * 0.55), hi = start + maxSamples - frame;
+        // On cherche la pause la plus longue (fenêtre de 160 ms), pas un simple creux de 20 ms
+        // qui peut tomber au milieu d'un mot (« candi | dat »)
+        const W = 8, lo = start + Math.round(maxSamples * 0.4), hi = start + maxSamples - frame * W;
+        const fe = []; for (let i = lo; i < hi + frame * W; i += frame) { let e = 0; for (let j = i; j < Math.min(pcm.length, i + frame); j++) e += Math.abs(pcm[j]); fe.push(e); }
         let best = hi, bestE = Infinity;
-        for (let i = lo; i < hi; i += frame) {
-          let e = 0;
-          for (let j = i; j < i + frame; j++) e += Math.abs(pcm[j]);
-          if (e < bestE) { bestE = e; best = i + (frame >> 1); }
+        for (let k = 0; k + W <= fe.length; k++) {
+          let e = 0; for (let q = k; q < k + W; q++) e += fe[q];
+          e *= 1 + 0.15 * (1 - k / fe.length); // à pause égale, on préfère couper tard (morceaux plus longs)
+          if (e < bestE) { bestE = e; best = lo + (k + (W >> 1)) * frame; }
         }
         out.push(pcm.slice(start, best));
         start = best;
@@ -3253,14 +3256,14 @@
       out.push(pcm.slice(start));
       return out;
     }
-    function aiPlayClips(clips, cacheKey, rateOv) {
-      cacheKey = `${cacheKey}|g${aiGain()}${rateOv ? '|r' + rateOv : ''}`;
+    function aiPlayClips(clips, cacheKey, rateOv, whole) {
+      cacheKey = `${cacheKey}|g${aiGain()}${rateOv ? '|r' + rateOv : ''}${whole ? '|w' : ''}`;
       let urls = aiMergedUrls.get(cacheKey);
       if (!urls) {
         const sr = clips[0].sr;
         const rate = rateOv || Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
         // Durée du fichier ET durée de lecture sous 4,2 s (silence d'attaque compris), même si la voix est accélérée
-        const maxSamples = Math.floor((AI_MAX_CHUNK_SEC - 0.5) * sr * Math.min(1, rate));
+        const maxSamples = whole ? Infinity : Math.floor((AI_MAX_CHUNK_SEC - 0.5) * sr * Math.min(1, rate));
         const gap = Math.round(sr * 0.12);
         const parts = [];
         clips.map(c => resamplePcm(c.pcm, c.sr, sr)).forEach(p => {
@@ -19118,12 +19121,12 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       const en = appData.audioSettings.voiceLang === 'en', lang = en ? 'en anglais' : 'en français';
       const already = radio.key === radioKey(c) ? radio.items.slice(-6).map(x => '- ' + x.slice(0, 80)).join('\n') : '';
       const prompt = c.mode === 'news'
-        ? `Nous sommes le ${todayISO()}. Utilise la recherche Google pour trouver l'actualité du jour (France et monde, plus un peu de sport, de science ou de culture). Écris ${n} brèves radio ${lang}, une par sujet différent, chacune de 2 à 3 phrases (40 à 60 mots), claires à l'oral, ton neutre et factuel, sans chiffres compliqués, sans détails morbides. Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
+        ? `Nous sommes le ${todayISO()}. Utilise la recherche Google pour trouver l'actualité du jour (France et monde, plus un peu de sport, de science ou de culture). Écris ${n} brèves radio ${lang}, une par sujet différent, chacune de 4 à 5 phrases (70 à 100 mots) : le fait, son contexte et un détail concret ou une conséquence, claires à l'oral, ton neutre et factuel, sans chiffres compliqués, sans détails morbides. Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
 Réponds uniquement avec un tableau JSON de chaînes de caractères.`
-        : `Écris ${n} courtes chroniques radio ${lang} ${c.themes && c.themes.length > 1 ? `sur ces thèmes, en alternant de l'un à l'autre : ${c.themes.map(t => `« ${t} »`).join(', ')}` : `sur le thème « ${c.topic} »`}, pour accompagner un coureur pendant son footing. Chaque chronique : 2 à 4 phrases (40 à 70 mots), un fait, une anecdote ou une info différente, vivante et facile à suivre à l'oral, sans liste ni chiffres compliqués. Si le sujet porte sur l'actualité, utilise la recherche Google pour des infos récentes et exactes (nous sommes le ${todayISO()}). Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
+        : `Écris ${n} courtes chroniques radio ${lang} ${c.themes && c.themes.length > 1 ? `sur ces thèmes, en alternant de l'un à l'autre : ${c.themes.map(t => `« ${t} »`).join(', ')}` : `sur le thème « ${c.topic} »`}, pour accompagner un coureur pendant son footing. Chaque chronique : 4 à 6 phrases (70 à 110 mots), un fait, une anecdote ou une info différente, vivante et facile à suivre à l'oral, sans liste ni chiffres compliqués. Si le sujet porte sur l'actualité, utilise la recherche Google pour des infos récentes et exactes (nous sommes le ${todayISO()}). Pas de « Bonjour », pas de numérotation, pas de liens.${already ? `\nDéjà lues (ne pas répéter) :\n${already}` : ''}
 Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       try {
-        const txt = await geminiText([{ text: prompt }], { search: true, maxTokens: 4000 });
+        const txt = await geminiText([{ text: prompt }], { search: true, maxTokens: 7000 });
         const a = txt.indexOf('['), b = txt.lastIndexOf(']');
         let arr = []; try { arr = JSON.parse(txt.slice(a, b + 1)); } catch (e) { }
         arr = (Array.isArray(arr) ? arr : []).map(x => String(x || '').replace(/\[\d+(,\s*\d+)*\]/g, '').replace(/[*_#]/g, '').trim()).filter(x => x.length > 15);
@@ -19139,6 +19142,18 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       radio.items.slice(radio.idx, radio.idx + 2).forEach(t => { const tx = radioSpoken(t), k = aiClipKey(tx); if (!aiClips.has(k)) aiFetchClip(tx, undefined, 'lo').then(cl => { if (cl) aiClips.set(k, cl); }).catch(() => { }); });
     }
     function radioSpoken(t) { return t; }
+    // Une chronique se lit d'un seul tenant (fluide). Avec Spotify connecté, on met la musique en pause
+    // pendant la chronique puis on la relance ; sinon on découpe aux vraies pauses (sans couper l'autre appli).
+    async function radioPlay(t) {
+      if (!aiVoiceActive()) { speakLive(t); return; }
+      const k = aiClipKey(t);
+      if (!aiClips.has(k)) { try { const cl = await Promise.race([aiFetchClip(t), sleep(9000).then(() => null)]); if (cl) aiClips.set(k, cl); } catch (e) { } }
+      const cl = aiClips.get(k); if (!cl || tl.active) { speakLive(t); return; }
+      try { logSpoken(t); } catch (e) { }
+      const whole = spConnected() && timerState.sessionStarted;
+      if (whole && sp.playing) { sp.pausedByUs = true; try { await spApi('PUT', '/me/player/pause'); sp.playing = false; } catch (e) { } }
+      aiPlayClips([cl], k, null, whole);
+    }
     function radioTick(cur, stageElMs, remMs) {
       const c = radioCfg();
       if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
@@ -19150,7 +19165,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
       const t = radioSpoken(radio.items[radio.idx++]);
       radio.lastAt = el; radio.said++;
-      speakLive(t);
+      radioPlay(t);
       if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
     }
     // ==================== TEXTE À ÉCOUTER PENDANT LA SÉANCE ====================
