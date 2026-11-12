@@ -19579,10 +19579,26 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       spPlayPl(p.uri);
     }
     function spGo() { const c = spCfg(); if (sp.playing) { spCmd('next'); return; } if (c.pl && c.pl.uri) spPlayPl(c.pl.uri); else openSpPlaylists(true); setTimeout(() => { try { prepRender(); } catch (e) { } }, 1500); }
+    // Spotify ouvert mais « inactif » : l'API répond 404 tant qu'aucun lecteur n'est actif.
+    // On cherche alors le téléphone dans la liste des lecteurs et on lui transfère la lecture.
+    async function spPickDevice() {
+      const j = await spApi('GET', '/me/player/devices'); const D = (j && Array.isArray(j.devices) ? j.devices : []).filter(d => d && d.id && !d.is_restricted);
+      const d = D.find(x => x.is_active) || D.find(x => /smartphone/i.test(x.type)) || D[0];
+      if (d) sp.device = d.id; return d ? d.id : '';
+    }
+    async function spPlayOn(body) {
+      let ok = await spApi('PUT', '/me/player/play' + (sp.device ? `?device_id=${sp.device}` : ''), body);
+      if (ok == null && (spApi.lastStatus === 404 || spApi.lastStatus === 502)) {
+        const id = await spPickDevice();
+        if (id) { await spApi('PUT', '/me/player', { device_ids: [id], play: false }); await sleep(600); ok = await spApi('PUT', `/me/player/play?device_id=${id}`, body); }
+        else spApi.noDevice = true;
+      }
+      return ok;
+    }
     async function spPlayPl(uri) {
-      const dev = sp.device ? `?device_id=${sp.device}` : '';
-      const ok = await spApi('PUT', '/me/player/play' + dev, { context_uri: uri });
-      if (ok == null) showToast(spApi.lastStatus === 404 ? 'Ouvre Spotify sur ton téléphone puis réessaie' : 'Spotify a refusé (compte Premium ?)');
+      spApi.noDevice = false;
+      const ok = await spPlayOn({ context_uri: uri });
+      if (ok == null) showToast(spApi.noDevice ? "Spotify ne se signale pas comme lecteur : dans Spotify, lance n'importe quel morceau 2 secondes puis réessaie" : spApi.lastStatus === 404 ? 'Spotify ne répond pas sur ce téléphone : relance un morceau dans Spotify puis réessaie' : 'Spotify a refusé (compte Premium ?)');
       else { sp.playing = true; showToast('🎵 Playlist lancée'); const m = document.getElementById('spPlModal'); if (m) m.remove(); setTimeout(() => spPoll(), 1200); }
     }
     async function spCmd(c) {
@@ -19596,7 +19612,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const v0 = sp.vol != null ? sp.vol : 60, v = Math.max(0, Math.min(100, v0 + (c === 'volup' ? 10 : -10)));
         ok = await spApi('PUT', `/me/player/volume?volume_percent=${v}${sp.device ? `&device_id=${sp.device}` : ''}`); if (ok != null) { sp.vol = v; showToast(`🔊 Volume ${v} %`); }
       }
-      else { ok = await spApi('PUT', `/me/player/${sp.playing ? 'pause' : 'play'}` + dev); if (ok != null) { sp.playing = !sp.playing; sp.pausedByUs = false; } }
+      else { ok = sp.playing ? await spApi('PUT', '/me/player/pause' + dev) : await spPlayOn(); if (ok != null) { sp.playing = !sp.playing; sp.pausedByUs = false; } }
       if (ok == null && (spApi.lastStatus === 404 || spApi.lastStatus === 403)) showToast(spApi.lastStatus === 404 ? 'Aucune lecture Spotify active : lance la musique dans Spotify' : 'Spotify refuse la commande (compte Premium nécessaire)');
       spBarRender(); setTimeout(() => spPoll(), 900);
     }
@@ -19761,9 +19777,9 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const w = document.getElementById('prepWatch'), st = document.getElementById('prepStatus'), go = document.getElementById('spGoBtn'); if (!w || !st) return;
       const se = sensors(), known = !!(se.btId || se.btName), con = btConnected() && !btStale();
       w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
-        : known ? `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:rgba(244,63,94,.14);border:1.5px solid rgba(244,63,94,.65);color:#ffe4e6;text-align:left"><span style="font-size:28px">⌚</span><span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">Montre déconnectée</b><span style="font-size:12.5px;color:#fecdd3">Touche pour reconnecter ${plEsc(se.btName || 'ta montre')}</span></span><span style="font-size:13px;font-weight:900;padding:8px 12px;border-radius:12px;background:#f43f5e;color:#fff">Reconnecter</span></button>`
+        : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:rgba(244,63,94,.14);border:1.5px solid rgba(244,63,94,.65);color:#ffe4e6;text-align:left"><span style="font-size:28px">⌚</span><span style="flex:1"></span><span style="font-size:14px;font-weight:900;padding:10px 16px;border-radius:12px;background:#f43f5e;color:#fff">Reconnecter</span></button>`
         : `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#0b1324;border:1px dashed #334155;color:#94a3b8;text-align:left;font-size:13px;font-weight:700"><span style="font-size:20px">⌚</span>Connecter une montre cardio (optionnel)</button>`;
-      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl; go.classList.toggle('hidden', !on); if (on) go.textContent = sp.playing ? '🎵 En lecture · ⏭ morceau suivant' : `▶ Lancer la playlist « ${c.pl.name} »`; }
+      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl; go.classList.toggle('hidden', !on); if (on) go.textContent = sp.playing ? '⏭ Morceau suivant' : '▶ Lancer la playlist'; }
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
       if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
@@ -19776,6 +19792,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       st.innerHTML = out.join('');
     }
     setInterval(() => { try { if (!document.body.classList.contains('home') && !document.body.classList.contains('started')) prepRender(); } catch (e) { } }, 1500);
+    let mediaTab = 'sp';
     function openMediaModal() {
       let m = document.getElementById('mediaModal');
       if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
@@ -19796,12 +19813,15 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <div style="display:grid;grid-template-columns:${rc ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openReadModal()", rc ? '✏️ Modifier' : '📖 Choisir un texte', '#38bdf8', '#04121f')}${rc ? btn("appData.audioSettings.readText=null;saveAppData();updateReadBtn();mediaRender()", 'Retirer') : ''}</div>`;
       const ytBody = `<span style="font-size:13px;color:#cbd5e1">${yc.on ? 'Vidéo prête, démarre avec la séance (écran allumé).' : 'Une vidéo ou une playlist YouTube à regarder sur le tapis.'}</span>
         <div style="display:grid;grid-template-columns:${yc.on ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openYtModal()", yc.on ? '✏️ Changer de vidéo' : '▶️ Choisir une vidéo', '#ef4444', '#fff')}${yc.on ? btn("appData.audioSettings.youtube=null;saveAppData();mediaRender()", 'Retirer') : ''}</div>`;
+      const T = [['sp', '🎵', 'Spotify', '#1ed760', spConnected() && !!c.pl], ['rd', '📖', 'Livre audio', '#38bdf8', !!rc]].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444', !!yc.on]] : []).concat([['an', '🎙️', 'Animations', '#a78bfa', radioCfg().mode !== 'off']]);
+      if (!T.some(t => t[0] === mediaTab)) mediaTab = 'sp';
+      const cur = T.find(t => t[0] === mediaTab);
+      const body = { sp: spBody, rd: rdBody, yt: ytBody, an: `<span style="font-size:12.5px;color:#94a3b8">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>${radioOptsHtml()}` }[mediaTab];
       m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
         <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias pendant la séance</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
-        ${card('🎵', 'Playlist Spotify', '#1ed760', spConnected() && !!c.pl, spBody)}
-        ${card('📖', 'Livre audio', '#38bdf8', !!rc, rdBody)}
-        ${tap ? card('▶️', 'Vidéo YouTube', '#ef4444', !!yc.on, ytBody) : ''}
-        ${card('🎙️', 'Animations du coach', '#a78bfa', radioCfg().mode !== 'off', `<span style="font-size:12.5px;color:#94a3b8">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>${radioOptsHtml()}`)}
+        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, col, on]) => `<button type="button" onclick="mediaTab='${k}';mediaRender()" style="position:relative;min-height:56px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${col};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:19px;line-height:1">${ic}</span>${l}${on ? `<span style="position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:4px;background:${mediaTab === k ? '#04121f' : col}"></span>` : ''}</button>`).join('')}</div>
+        ${card(cur[1], { sp: 'Playlist Spotify', rd: 'Livre audio', yt: 'Vidéo YouTube', an: 'Animations du coach' }[mediaTab], cur[3], cur[4], body)}
+        <span style="font-size:11.5px;color:#64748b;text-align:center">● = média activé</span>
       </div>`;
     }
     function cancelBeforeStart() {
