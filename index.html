@@ -448,6 +448,7 @@
 
       </div>
     </div>
+    <div id="homeTodayMore" style="display:flex;flex-direction:column;gap:8px"></div>
 
     <div id="homeActBar" class="flex items-center justify-end gap-2" style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:auto;padding-top:.5rem">
       <button id="homeNutBtn" onclick="openNutrition()" aria-label="Mes repas du jour" class="hidden" style="display:none">🍽️</button>
@@ -16184,6 +16185,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); }; });
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
     }
+    function radioWhen(k) { const c = radioCfg(), w = c.when.includes(k) ? c.when.filter(x => x !== k) : c.when.concat(k); if (!w.length) { showToast('Garde au moins un moment'); return; } setRadio({ when: w }); }
+    function radioWhenTxt(c) { const L = { warm: 'échauffement', main: 'séance', cool: 'retour au calme' }; return c.when.map(k => L[k]).join(' + '); }
     function radioStartTxt(c) { return c.start === 'warm' ? "la fin de l'échauffement" : /^\d+$/.test(String(c.start)) && +c.start > 0 ? `la ${c.start}e minute` : 'le départ'; }
     function radioOptsHtml() {
       const c = radioCfg(), seg = (on, txt, js) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:#a78bfa;color:#160b2e;border:none' : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${txt}</button>`;
@@ -16194,7 +16197,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
         ${m === 'topic' ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${radioThemes().map(t => { const on = c.themes.includes(t), a = JSON.stringify(t).replace(/"/g, '&quot;'); return `<button type="button" onclick="radioToggleTheme(${a})" style="min-height:38px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:800;${on ? 'background:rgba(167,139,250,.25);border:1px solid #a78bfa;color:#fff' : 'background:#0f172a;border:1px solid #334155;color:#94a3b8'}">${on ? '✓ ' : ''}${plEsc(t)}</button>`; }).join('')}</div>
           <div style="display:flex;gap:6px"><input id="radioNewTheme" type="text" maxlength="80" placeholder="＋ Nouveau thème" class="pm-in" style="flex:1;height:44px;font-size:14px" onkeydown="if(event.key==='Enter')radioAddTheme()"><button type="button" onclick="radioAddTheme()" style="width:48px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:20px">＋</button></div>` : ''}
         ${lab('Fréquence')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${[5, 10, 15].map(x => seg(c.every === x, `${x} min`, `setRadio({every:${x}})`)).join('')}${seg(!c.every, '♾️ Continu', 'setRadio({every:0})')}</div>
-        ${lab('Début')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${seg(c.start === 'now' || !c.start, '🏁 Départ', "setRadio({start:'now'})")}${seg(c.start === 'warm', '🔥 Après échauff.', "setRadio({start:'warm'})")}${[10, 20].map(x => seg(String(c.start) === String(x), `⏱️ ${x}'`, `setRadio({start:${x}})`)).join('')}</div>
+        ${lab('Quand')}<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['warm', '🔥 Échauffement'], ['main', '🏃 Séance'], ['cool', '🧊 Retour au calme']].map(([k, l]) => seg(c.when.includes(k), (c.when.includes(k) ? '✓ ' : '') + l, `radioWhen('${k}')`)).join('')}</div>
+        <span style="font-size:11.5px;color:#64748b">Sortie longue : tout du long. Jamais pendant un effort rapide.</span>
       </div>`;
     }
     function annOpen() { annDirty = false; const w = document.getElementById('scriptOptsWrap'); if (!w) return; w.classList.remove('hidden'); renderScriptOptions(); refreshAllIcons(); }
@@ -19105,7 +19109,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     let radioDraft = null;
     function radioThemes() { const a = appData.audioSettings; if (!Array.isArray(a.radioThemes)) a.radioThemes = ['Histoire de la course à pied', 'Astronomie', 'Nature et animaux']; return a.radioThemes; }
     function radioCfg() {
-      const c = Object.assign({ mode: 'off', topic: '', every: 5, start: 'now', lastMode: 'news' }, appData.audioSettings.radio || {});
+      const c = Object.assign({ mode: 'off', topic: '', every: 5, start: 'now', lastMode: 'news', when: ['main'] }, appData.audioSettings.radio || {}); if (!Array.isArray(c.when) || !c.when.length) c.when = ['main'];
       if (!Array.isArray(c.themes)) { c.themes = c.topic ? [c.topic] : []; if (c.topic && !radioThemes().includes(c.topic)) radioThemes().push(c.topic); }
       c.themes = c.themes.filter(t => radioThemes().includes(t));
       c.topic = c.themes.join(', ');
@@ -19120,7 +19124,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     }
     function radioDelTheme(t) { const a = appData.audioSettings; a.radioThemes = radioThemes().filter(x => x !== t); const c = radioCfg(); setRadio({ themes: c.themes.filter(x => x !== t) }); }
     function radioLabel(c) { c = c || radioCfg(); return c.mode === 'news' ? `📰 Actu toutes les ${c.every} min` : c.mode === 'topic' && c.topic ? `💡 « ${c.topic.length > 22 ? c.topic.slice(0, 21) + '…' : c.topic} » / ${c.every} min` : 'aucune'; }
-    function updateRadioBtn() { const b = document.getElementById('radioBtn'); if (b) b.textContent = '🎧 Animations : ' + radioLabel(); }
+    function updateRadioBtn() { const b = document.getElementById('radioBtn'); if (b) b.textContent = '📰 News : ' + radioLabel(); }
     function openRadioModal() {
       radioDraft = radioCfg();
       document.getElementById('radioTopic').value = radioDraft.topic || '';
@@ -19150,8 +19154,8 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       if (c.mode !== 'off' && !getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
       c.topic = (c.themes || []).join(', ');
       if (c.mode !== 'off') c.lastMode = c.mode;
-      appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every, start: c.start, lastMode: c.lastMode }; saveAppData();
-      if (!('every' in ch || 'start' in ch || 'lastMode' in ch) || Object.keys(ch).some(k => !['every', 'start', 'lastMode'].includes(k))) radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+      appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every, start: c.start, lastMode: c.lastMode, when: c.when }; saveAppData();
+      if (!('every' in ch || 'start' in ch || 'lastMode' in ch || 'when' in ch) || Object.keys(ch).some(k => !['every', 'start', 'lastMode', 'when'].includes(k))) radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
       if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
       try { renderScriptOptions(); } catch (e) { } try { mediaRender(); } catch (e) { } try { prepRender(); } catch (e) { }
     }
@@ -19205,14 +19209,15 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
       const el = (timerState.totalSessionMs || 0) - (timerState.totalRemainingMs || 0);
       // Début choisi : départ, fin de l'échauffement ou minute donnée ; puis toutes les N min, ou en continu
-      let st0 = 20000;
-      if (c.start === 'warm') { let w = 0; for (const s0 of (timerState.stages || [])) { if (s0.type === 'chauffe') w += (s0.durationSec || 0) * 1000; else break; } st0 = Math.max(st0, w + 15000); }
-      else if (/^\d+$/.test(String(c.start)) && +c.start > 0) st0 = +c.start * 60000;
-      if (el < st0) return;
+      // Moments choisis : échauffement, corps de séance, retour au calme (sortie longue : tout du long)
+      const longRun = (() => { try { return guideKind(getActiveSession() || {}) === 'longue'; } catch (e) { return false; } })();
+      const ph = cur.type === 'chauffe' ? 'warm' : cur.type === 'recup' ? 'cool' : 'main';
+      if (!longRun && !c.when.includes(ph)) return;
+      if (el < 20000) return;
       if (!radio.lastAt) radio.lastAt = 1;
       if (radio.lastAt !== 1 && el - radio.lastAt < (c.every ? c.every * 60000 : 25000)) return;
       if (radio.idx >= radio.items.length) { if (radio.items.length - radio.idx < 2) radioPrepare(); return; }
-      if (cur.intensity === 'fast' || remMs < 50000 || stageElMs < 15000) return;
+      if (cur.intensity === 'fast' || (!longRun && (remMs < 50000 || stageElMs < 15000))) return;
       if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
       const t = radioSpoken(radio.items[radio.idx++]);
       radio.lastAt = el; radio.said++;
@@ -19491,6 +19496,53 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       el.innerHTML = `<div style="display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.5)"><span style="font-weight:900;color:#6ee7b7">✓ Texte chargé · ${words} mots${c.url ? ' · depuis le lien' : ''}</span>${ready != null ? `<span style="font-size:13px;font-weight:700;color:${ready >= c.sections.length ? '#6ee7b7' : '#fcd34d'}">${ready >= c.sections.length ? '✓ Voix IA prête' : `🎙️ Voix IA : ${ready}/${c.sections.length} parties prêtes`}</span>` : '<span style="font-size:13px;color:#a7f3d0">Voix du téléphone : rien à préparer</span>'}${readProgress(c) > 0 ? `<span style="font-size:12.5px;color:#cbd5e1">Déjà lu : ${Math.round(readProgress(c) * 100)} %</span>` : ''}</div>`;
     }
     // Fermer (✕) : tout ce qui est saisi est gardé
+    // ---------- Livre audio directement dans l'onglet Médias (même présentation que News)
+    function readTabHtml() {
+      const c = (appData.audioSettings.readText && (appData.audioSettings.readText.text || appData.audioSettings.readText.chunks)) ? appData.audioSettings.readText : Object.assign({ text: '', start: 'warm', min: 10, voice: aiVoiceActive() ? 'ai' : 'phone', rate: 1, model: 'gemini-3.8-flash-lite-tts', tone: 'livre' }, appData.audioSettings.readPrefs || {});
+      const col = '#38bdf8', lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:4px">${t}</span>`;
+      const seg = (id, v, cur, l) => `<button type="button" onclick="readSet('${id}','${v}')" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${String(cur) === String(v) ? `background:${col};color:#04121f;border:none` : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${l}</button>`;
+      const grid = (n, h) => `<div style="display:grid;grid-template-columns:repeat(${n},minmax(0,1fr));gap:6px">${h}</div>`;
+      const hid = (id, v) => `<input type="hidden" id="${id}" value="${plEsc(String(v))}">`;
+      const sw = (id, on, l) => `<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;font-weight:700;font-size:14px;color:#e2e8f0">${l}<input type="checkbox" id="${id}" class="sw" ${on ? 'checked' : ''} onchange="readAutoSave(true)"></label>`;
+      const vOpts = (cur, auto) => `<option value="">${auto}</option>` + ['H', 'F'].map(g => `<optgroup label="${g === 'H' ? 'Homme' : 'Femme'}">${AI_VOICES.filter(v => v[2] === g).map(v => `<option value="${v[0]}"${v[0] === cur ? ' selected' : ''}>${v[0]} · ${v[1]}</option>`).join('')}</optgroup>`).join('');
+      const ai = c.voice === 'ai', words = (String(c.text || '').match(/\S+/g) || []).length;
+      return `${hid('rdStart', c.start || 'warm')}${hid('rdVoice', c.voice || 'phone')}${hid('rdRate', c.rate || 1)}${hid('rdModel', c.model || 'gemini-3.8-flash-lite-tts')}${hid('rdTone', c.tone || 'livre')}${hid('rdFont', c.fontSize || 24)}
+        ${lab('Texte')}
+        <div style="display:flex;gap:6px"><input id="rdUrl" class="pm-in" value="${plEsc(c.url || '')}" placeholder="🔗 Lien d'une page ou d'un Google Doc" style="flex:1;height:44px;font-size:13px"><button type="button" onclick="readImportUrl()" aria-label="Importer" style="width:50px;border-radius:12px;border:none;background:${col};color:#04121f;font-weight:900;font-size:18px">⬇️</button></div>
+        <textarea id="rdText" rows="5" class="pm-in" oninput="readEstimate()" onchange="readAutoSave(true)" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="…ou colle ton texte ici">${plEsc(c.text || '')}</textarea>
+        <div id="rdEst" style="font-size:12px;color:#94a3b8;line-height:1.4"></div>
+        ${lab('Début')}${grid(3, seg('rdStart', 'begin', c.start, '🏁 Départ') + seg('rdStart', 'warm', c.start, '🔥 Après échauff.') + seg('rdStart', 'min', c.start, '⏱️ Minute…'))}
+        ${c.start === 'min' ? `<div id="rdMinRow" style="display:flex;align-items:center;gap:8px;font-weight:800;color:#cbd5e1">À la minute <input id="rdMin" type="number" min="0" max="300" value="${c.min || 10}" class="pm-in c" style="width:90px" onchange="readAutoSave(true)"></div>` : `<input type="hidden" id="rdMin" value="${c.min || 10}">`}
+        ${lab('Voix')}${grid(2, seg('rdVoice', 'ai', c.voice, '🤖 Voix IA') + seg('rdVoice', 'phone', c.voice, '📱 Téléphone'))}
+        ${lab('Vitesse')}${grid(5, [0.9, 1, 1.1, 1.2, 1.3].map(v => seg('rdRate', v, c.rate || 1, '×' + String(v).replace('.', ','))).join(''))}
+        ${ai ? `${lab('Qualité IA')}${grid(2, seg('rdModel', 'gemini-3.8-flash-lite-tts', c.model, '💶 Éco') + seg('rdModel', 'gemini-3.8-flash-tts', c.model, '✨ Expressive'))}
+          ${lab('Ton')}${grid(3, Object.entries(READ_TONES).slice(0, 6).map(([k, v]) => seg('rdTone', k, c.tone || 'livre', v[0])).join(''))}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><select id="rdAiVoice" class="pm-in" style="height:46px;font-size:13px" onchange="readAutoSave(true)">${vOpts(c.aiVoice || '', '🎙️ Voix du coach')}</select><button type="button" id="rdPrevBtn" onclick="readPreview()" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13px">🔊 Extrait</button></div>
+          ${sw('rdDialog', c.dialog, '🎭 Voix différentes pour les dialogues')}
+          <div id="rdV2Row" style="display:${c.dialog ? 'flex' : 'none'}"><select id="rdAiVoice2" class="pm-in" style="height:46px;font-size:13px;width:100%" onchange="readAutoSave(true)">${vOpts(c.aiVoice2 || '', '🎙️ 2ᵉ voix automatique')}</select></div>`
+        : `<input type="hidden" id="rdAiVoice" value="${plEsc(c.aiVoice || '')}"><input type="hidden" id="rdAiVoice2" value="${plEsc(c.aiVoice2 || '')}"><input type="checkbox" id="rdDialog" style="display:none" ${c.dialog ? 'checked' : ''}>`}
+        ${lab('Pendant la lecture')}
+        ${sw('rdShow', c.show !== false, '👁️ Afficher le texte')}
+        ${grid(5, [[16, 'XS'], [20, 'S'], [24, 'M'], [30, 'L'], [36, 'XL']].map(([v, l]) => seg('rdFont', v, c.fontSize || 24, l)).join(''))}
+        ${sw('rdKeepAnn', c.keepAnn, '📣 Garder toutes les annonces du coach')}
+        ${sw('rdFast', c.fast, '⚡ Lire pendant les fractions rapides')}
+        ${ai && words ? `<button type="button" id="rdPrep" onclick="readSave(true, true)" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900">⬇️ Préparer la voix IA maintenant</button><div id="rdPrepMsg" style="font-size:13px;color:#7dd3fc;font-weight:700"></div>` : '<div id="rdPrepMsg"></div>'}
+        <div id="rdState"></div>
+        ${words ? `<button type="button" onclick="if(confirm('Retirer le texte ?')){readSave(false);mediaRender()}" style="min-height:40px;border:none;background:none;color:#94a3b8;font-size:13px;font-weight:700">🗑 Retirer le texte</button>` : ''}`;
+    }
+    function readSet(id, v) {
+      const e = document.getElementById(id); if (e) e.value = v;
+      readAutoSave(false); mediaRender();
+    }
+    function readAutoSave(soft) {
+      const t = ((document.getElementById('rdText') || {}).value || '').trim();
+      if (t.length >= 3) { readSave(true, false, true); }
+      else { const g = id => document.getElementById(id), P = appData.audioSettings.readPrefs = appData.audioSettings.readPrefs || {};
+        ['start', 'voice', 'rate', 'model', 'tone'].forEach(k => { const e = g('rd' + k[0].toUpperCase() + k.slice(1)); if (e) P[k] = /rate/.test(k) ? parseFloat(e.value) || 1 : e.value; });
+        const f = g('rdFont'); if (f) P.fontSize = +f.value || 24; ['show', 'keepAnn', 'fast', 'dialog'].forEach(k => { const e = g('rd' + k[0].toUpperCase() + k.slice(1)); if (e && e.type === 'checkbox') P[k] = e.checked; });
+        saveAppData(); }
+      if (soft) { const d = document.getElementById('rdDialog'), r2 = document.getElementById('rdV2Row'); if (d && r2) r2.style.display = d.checked ? 'flex' : 'none'; try { prepRender(); } catch (e) { } }
+    }
     function readClose() {
       const t = ((document.getElementById('rdText') || {}).value || '').trim();
       if (t.length >= 3) readSave(true, false, true);
@@ -19530,7 +19582,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       }
       text = String(text || '').replace(/\n{3,}/g, '\n\n').trim();
       if (text.length < 40) { if (msg) msg.textContent = '⚠ Texte introuvable : la page doit être publique (pour un Google Doc : Partager › Tous les utilisateurs disposant du lien).'; return; }
-      document.getElementById('rdText').value = text.slice(0, 40000); readEstimate();
+      document.getElementById('rdText').value = text.slice(0, 40000); readEstimate(); readAutoSave();
     }
     async function readPrepareAll() {
       const c = readCfg(); if (!readIsAi(c)) return;
@@ -19553,6 +19605,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         appData.audioSettings.readText = { sid: (getActiveSession() || {}).id || '', text: t.trim().slice(0, 40000), chunks, sections: readChunks(t.trim(), READ_SEC, READ_SEC + 200), pos: 0, aiPos: { s: 0, t: 0 }, start: document.getElementById('rdStart').value, min: parseFloat(document.getElementById('rdMin').value) || 0, voice: document.getElementById('rdVoice').value, fast: document.getElementById('rdFast').checked, rate: parseFloat(document.getElementById('rdRate').value) || 1, model: document.getElementById('rdModel').value, aiVoice: document.getElementById('rdAiVoice').value, tone: document.getElementById('rdTone').value, dialog: document.getElementById('rdDialog').checked, aiVoice2: document.getElementById('rdAiVoice2').value, keepAnn: document.getElementById('rdKeepAnn').checked, show: document.getElementById('rdShow').checked, fontSize: parseFloat(document.getElementById('rdFont').value) || 24, keep: Object.fromEntries([...document.querySelectorAll('[data-rdkeep]')].map(x => [x.dataset.rdkeep, x.checked])) };
         { const nc = appData.audioSettings.readText; nc.url = ((document.getElementById('rdUrl') || {}).value || '').trim();
           appData.audioSettings.readPrefs = ['start', 'min', 'voice', 'fast', 'rate', 'model', 'aiVoice', 'tone', 'dialog', 'aiVoice2', 'keepAnn', 'show', 'fontSize'].reduce((o, k) => { if (nc[k] !== undefined) o[k] = nc[k]; return o; }, {}); // réglages gardés pour le prochain texte
+          if (prev && prev.off) nc.off = true;
           if (prev && prev.text === nc.text) { nc.pos = prev.pos || 0; nc.aiPos = prev.aiPos || nc.aiPos; nc.started = prev.started; } } // même texte : on garde l'avancement
         if (quiet) { saveAppData(); updateReadBtn(); return; }
         if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readStateRender(); readPrepareAll().then(() => readStateRender()); return; } readLoadSection(appData.audioSettings.readText, 0); }
@@ -19907,7 +19960,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (spConnected() && c.pl && !c.off) L.push({ ic: '🎵', t: `Spotify « ${c.pl.name} »`, w: c.plStart === 'go' ? 'démarre avec la séance' : 'à lancer avec le bouton vert' });
       if (rc) L.push({ ic: '📖', t: 'Livre audio', w: `démarre ${rStart(rc)}${rc.fast ? '' : ', en pause pendant les efforts rapides'}` });
       if (yc.on && sess.type === 'tapis') L.push({ ic: '▶️', t: `YouTube ${yc.title && yc.title !== 'activée' ? '(' + yc.title + ')' : ''}`, w: 'démarre avec la séance' });
-      if (ra.mode !== 'off') L.push({ ic: '🎙️', t: `Animations ${ra.mode === 'news' ? 'actualité' : 'thèmes'}`, w: `${ra.every ? `toutes les ${ra.every} min` : 'en continu'}, dès ${radioStartTxt(ra)}, jamais pendant un effort rapide` });
+      if (ra.mode !== 'off') L.push({ ic: '📰', t: `News ${ra.mode === 'news' ? 'actualité' : 'thèmes'}`, w: `${ra.every ? `toutes les ${ra.every} min` : 'en continu'} · ${(() => { try { return guideKind(sess) === 'longue'; } catch (e) { return false; } })() ? 'toute la sortie longue' : radioWhenTxt(ra)}` });
       return L;
     }
     function prepRender() {
@@ -19953,7 +20006,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function mediaToggle(k) {
       const on = mediaOn(k);
       if (k === 'sp') { if (!spConnected()) { closeMediaModal(); navGo('settings'); return; } const c = spCfg(); if (!on && !c.pl) { openSpPlaylists(true); return; } c.off = on; saveAppData(); }
-      else if (k === 'rd') { const c = appData.audioSettings.readText; if (!on && !(c && (c.text || c.chunks))) { openReadModal(); return; } if (c) { c.off = on; if (!on) c.sid = (getActiveSession() || {}).id || c.sid; } saveAppData(); try { updateReadBtn(); } catch (e) { } }
+      else if (k === 'rd') { const c = appData.audioSettings.readText; if (!on && !(c && (c.text || c.chunks))) { mediaTab = 'rd'; mediaRender(); const ta = document.getElementById('rdText'); if (ta) ta.focus(); showToast('Colle un texte pour activer le livre audio'); return; } if (c) { c.off = on; if (!on) c.sid = (getActiveSession() || {}).id || c.sid; } saveAppData(); try { updateReadBtn(); } catch (e) { } }
       else if (k === 'yt') { const c = appData.audioSettings.youtube; if (!on && !(c && c.url)) { openYtModal(); return; } appData.audioSettings.youtube = Object.assign({}, c, { on: !on, sid: (getActiveSession() || {}).id || '' }); saveAppData(); }
       else { const c = radioCfg(); if (on) setRadio({ mode: 'off' }); else setRadio({ mode: c.lastMode || 'news' }); }
       mediaRender(); try { prepRender(); } catch (e) { }
@@ -19961,7 +20014,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function mediaRender() {
       const m = document.getElementById('mediaModal'); if (!m) return;
       const c = spCfg(), rc = appData.audioSettings.readText, yc = appData.audioSettings.youtube || {}, tap = (getActiveSession() || {}).type === 'tapis';
-      const T = [['sp', '🎵', 'Spotify', '#1ed760'], ['rd', '📖', 'Livre audio', '#38bdf8']].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444']] : []).concat([['an', '🎙️', 'Animations', '#a78bfa']]);
+      const T = [['sp', '🎵', 'Spotify', '#1ed760'], ['rd', '📖', 'Livre audio', '#38bdf8']].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444']] : []).concat([['an', '📰', 'News', '#a78bfa']]);
       if (!T.some(t => t[0] === mediaTab)) mediaTab = 'sp';
       const cur = T.find(t => t[0] === mediaTab), on = mediaOn(mediaTab), col = cur[3];
       const big = (js, l, bg, fg) => `<button type="button" onclick="${js}" style="min-height:50px;border-radius:14px;border:${bg ? 'none' : '1px solid #475569'};background:${bg || '#1e293b'};color:${fg || '#e2e8f0'};font-weight:900;font-size:14px">${l}</button>`;
@@ -19975,6 +20028,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
           : `${c.pl ? `<button type="button" onclick="openSpPlaylists(true)" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:16px;border:1px solid #1e293b;background:#0b1324;color:#f1f5f9;text-align:left">${c.pl.img ? `<img src="${plEsc(c.pl.img)}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex:none">` : '<span style="width:64px;height:64px;border-radius:10px;background:#1ed76022;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none">🎶</span>'}<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(c.pl.name)}</b><span style="font-size:12.5px;color:#86efac;font-weight:800">Changer ›</span></span></button>` : big('openSpPlaylists(true)', '🎶 Choisir une playlist', '#1ed760', '#04140a')}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${seg(c.plStart === 'go', "spCfg().plStart='go';saveAppData();mediaRender()", '🏁 Au départ')}${seg(c.plStart !== 'go', "spCfg().plStart='manual';saveAppData();mediaRender()", '👆 Au bouton')}</div>`;
       } else if (mediaTab === 'rd') {
+        body = readTabHtml();
+      } else if (mediaTab === 'rdOld') {
         const has = rc && (rc.text || rc.chunks);
         body = has ? `<div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:30px">📖</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(String(rc.text || (rc.chunks || []).join(' ')).slice(0, 60))}…</b><span style="font-size:12px;color:#7dd3fc;font-weight:800">${readIsAi(rc) ? '🤖 Voix IA' : '📱 Voix du téléphone'} · ${rc.start === 'warm' ? '🔥 après échauff.' : rc.start === 'min' ? `⏱️ ${rc.min || 0}'` : '🏁 départ'}</span></span></div>${big('openReadModal()', '⚙️ Paramétrer', '#38bdf8', '#04121f')}`
           : big('openReadModal()', '📖 Ajouter un texte', '#38bdf8', '#04121f');
@@ -19985,10 +20040,12 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       } else body = radioOptsHtml();
       m.innerHTML = `<div style="width:100%;max-width:480px;height:min(640px,90vh);overflow-y:auto;background:#0f172a;border:1px solid #334155;border-top:0;border-radius:0 0 20px 20px;padding:calc(14px + env(safe-area-inset-top)) 14px 18px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
         <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
-        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTab='${k}';mediaRender();${k === 'rd' ? 'openReadModal()' : ''}" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTab='${k}';mediaRender()" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
         ${sw}
         <div style="display:flex;flex-direction:column;gap:8px;${on || mediaTab === 'sp' || mediaTab === 'yt' || mediaTab === 'rd' ? '' : 'opacity:.55'}">${body}</div>
       </div>`;
+      if (mediaTab === 'rd') { try { readEstimate(); readStateRender(); } catch (e) { } }
+      { const sc = m.firstElementChild; if (sc && mediaRender.tab === mediaTab) sc.scrollTop = mediaRender.top || 0; mediaRender.tab = mediaTab; if (sc) sc.onscroll = () => { mediaRender.top = sc.scrollTop; }; }
     }
     async function mediaYtPaste() {
       let t = ''; try { t = await navigator.clipboard.readText(); } catch (e) { openYtModal(); return; }
@@ -20670,6 +20727,27 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       if (appData.sessions.length < n) { homePickNext(); saveAppData(); }
       try { reloadChrono(); renderHome(); } catch (e) { }
     }
+    // Deux séances (ou plus) le même jour : les autres s'affichent aussi dans « Aujourd'hui »
+    function homeTodayMoreRender(busy) {
+      const box = document.getElementById('homeTodayMore'); if (!box) return;
+      if (busy) { box.innerHTML = ''; return; }
+      const t = todayISO(), act = getActiveSession();
+      const todo = appData.sessions.map((s, i) => [s, i]).filter(([s]) => s.dateISO === t && !isSessionDone(s) && s !== act);
+      const lastH = (appData.history || []).find(x => x && !x.cross && x.endAt);
+      const done = (appData.history || []).filter(h => h && !h.cross && h.endAt && toISODateLocal(new Date(h.endAt)) === t && h !== lastH);
+      const lastToday = lastH && toISODateLocal(new Date(lastH.endAt)) === t;
+      const hasAct = act && act.dateISO === t && !isSessionDone(act);
+      let h = '';
+      if (todo.length) h += todo.map(([s, i]) => { const k = sessionKind(s); return `<div style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35)">
+          <span style="width:6px;align-self:stretch;border-radius:3px;background:${k.color}"></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:900;color:${k.color};letter-spacing:.6px">${hasAct || lastToday ? 'AUSSI AUJOURD\'HUI · ' : ''}${plEsc(k.label)}</span><span style="font-size:14px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(describeSessionHuman(s))}</span><span style="font-size:12px;color:#94a3b8">${Math.round(computeSessionTotalMin(s))} min · ${s.type === 'tapis' ? 'tapis' : 'extérieur'}</span></div>
+          <button type="button" onclick="homeChooseToday(${i})" style="flex:none;min-height:44px;padding:0 14px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:13px">▶ Choisir</button></div>`; }).join('');
+      if (done.length) h += done.map(x => { const k = sessionKind(x.kind ? x : (histLinkedSession(x) || x)); return `<button type="button" onclick="homeOpenDone('${x.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);color:#e2e8f0;text-align:left">
+          <span style="font-size:20px">✅</span><span style="flex:1;min-width:0;font-size:13.5px;font-weight:800">${new Date(x.endAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${plEsc(k.label.toLowerCase())} · ${Math.round(+x.durationMin || 0)} min${histKm(x) > 0 ? ` · ${histKm(x).toFixed(1).replace('.', ',')} km` : ''}</span><span style="color:#6ee7b7;font-weight:900">›</span></button>`; }).join('');
+      box.innerHTML = h; box.style.display = h ? 'flex' : 'none';
+    }
+    function homeChooseToday(i) { if (!appData.sessions[i]) return; appData.activeSessionIndex = i; saveAppData(); try { reloadChrono(); } catch (e) { } homeShowNextAnyway = false; renderHome(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function homeOpenDone(id) { openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }, 250); }
     function homePickNext() { const t = todayISO(); const k = appData.sessions.findIndex(x => x.dateISO && x.dateISO >= t && !isSessionDone(x)); appData.activeSessionIndex = Math.max(0, k); }
     function todayDoneHist() { const t = todayISO(); return (appData.history || []).filter(h => h && !h.cross && histISO(h) === t)[0] || null; }
     function openTodayResults() { const h = todayDoneHist(); if (!h) return; openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + h.id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start' }); } }, 60); }
@@ -20766,7 +20844,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
-    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest']], ['last', '✅ Précédente', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
+    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest', 'homeTodayMore']], ['last', '✅ Précédente', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
     let _autoSugg = '';
@@ -21129,6 +21207,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         const busy = timerState.sessionStarted && !timerState.finished;
         const showRest = !hasToday && !busy && !homeShowNextAnyway;
         document.getElementById('homeRest').classList.toggle('hidden', !showRest);
+        try { homeTodayMoreRender(busy); } catch (e) { console.warn(e); }
         try { restCoachRender(showRest && !doneToday && !(appData.crossPlan || []).some(c => c.dateISO === t)); } catch (e) { console.warn(e); }
         el.classList.toggle('hidden', showRest);
         document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui • ${dayLong}`;
