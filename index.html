@@ -141,7 +141,7 @@
     #validationModal.val-min button[onclick="confirmValidation()"] { font-size: 17px; padding: 16px 0; }
     #readView { width: 100%; display: none; flex-direction: column; gap: 6px; margin: 4px 0 6px; padding: 10px 12px; border-radius: 16px; background: #0b1324; border: 1px solid #1e3a5f; max-height: 42vh; min-height: 0; }
     #readView.on { display: flex; }
-    .prep-b { min-height: 64px; border-radius: 16px; border: 1px solid #1e293b; background: #0b1324; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 800; }
+    .prep-b { min-height: 64px; border-radius: 16px; border: 1px solid #475569; background: #334155; color: #f8fafc; box-shadow: 0 2px 0 rgba(0,0,0,.35); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 800; }
     .prep-b span { font-size: 22px; line-height: 1; }
     #topBar, #sessInfoLine { display: none !important; }
     body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
@@ -393,6 +393,7 @@
   <section id="homeScreen" class="flex-1 flex-col w-full max-w-md mx-auto px-4 py-6 gap-4">
     </div>
 
+    <div id="homeDateBar" style="position:relative;z-index:26;font-size:20px;line-height:1.2;font-weight:900;color:#f8fafc;letter-spacing:-.2px;padding:4px 2px 2px;background:#020617"></div>
     <div id="homeTabs" style="display:flex;gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b"></div>
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
     <div id="homeGreeting" class="hidden"></div>
@@ -416,6 +417,7 @@
       <button id="homeRestNextBtn" onclick="launchNextAnyway()" style="display:none" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px]">Voir la prochaine séance</button>
     </div>
 
+    <div id="homeTodayTop" style="display:none;flex-direction:column;gap:8px"></div>
     <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
@@ -429,6 +431,7 @@
       <button id="homeDelBtn" onclick="homeDeleteSession()" title="Supprimer la séance" aria-label="Supprimer la séance" class="hm-ic hm-del" style="min-height:58px;font-size:22px">🗑</button>
         </div>
       </div>
+      <button type="button" id="homeActBtn" onclick="homeActivateRun()" style="display:none;min-height:44px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">▶ Activer cette séance</button>
       <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
       <div id="homeSessStats" class="text-[15px] font-bold text-sky-200"></div>
       <button type="button" id="homeMoreBtn" onclick="toggleHomeMore()" class="w-full rounded-xl text-[13px] font-extrabold text-sky-100" style="min-height:40px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.35)">▾ Voir plus</button>
@@ -543,6 +546,7 @@
       <div style="font-size:14px;font-weight:800;color:#d1fae5;text-align:center;margin-bottom:8px">Encore de l'énergie ? Une série de plus avant le retour au calme</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"><button type="button" onclick="cdAddAnswer(false)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:28px;background:#334155;color:#fff">✕</button><button type="button" onclick="cdAddAnswer(true)" class="rounded-2xl font-black active:scale-95" style="min-height:72px;font-size:34px;background:#34d399;color:#04140d">+1</button></div>
     </div>
+    <button type="button" id="readGoBtn" onclick="readManualGo()" style="display:none;width:100%;max-width:20rem;min-height:48px;margin-bottom:8px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">📖 Lancer le livre audio</button>
     <div id="hrZoneBar" class="w-full max-w-xs mb-2 hidden"></div>
     <div id="liveCtl" class="w-full max-w-xs" style="display:none;flex-direction:column;gap:8px;margin:2px 0 8px">
       <div id="lcSpd" class="lc-row"><button type="button" class="lc-b" onclick="adjustFreeSpeed(-0.5)" aria-label="Vitesse moins">−</button><span id="lcSpdL" class="lc-l"></span><button type="button" class="lc-b" onclick="adjustFreeSpeed(0.5)" aria-label="Vitesse plus">+</button></div>
@@ -560,7 +564,6 @@
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
       <div id="idleRow" class="hidden" style="display:flex;flex-direction:column;gap:.6rem">
-        <div id="prepWatch"></div>
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
           <button type="button" onclick="annOpen()" class="prep-b"><span>📣</span>Annonces</button>
           <button type="button" onclick="openMediaModal()" class="prep-b"><span>🎧</span>Médias</button>
@@ -573,7 +576,7 @@
           <button type="button" id="spCtlPlay" onclick="spPrepToggle()" aria-label="Pause ou lecture" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏸</button>
           <button type="button" onclick="spCmd('next').then(()=>{sp.at=0;setTimeout(prepRender,700)})" aria-label="Morceau suivant" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏭</button>
         </div>
-        <div id="prepStatus" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div id="prepWatch"></div>
         <div class="hidden"><button id="chronoScriptBtn"></button><button id="readBtn"></button><button id="spBtn"></button><button id="spPlBtn"></button><button id="ytBtn"></button></div>
       </div>
       <div id="spBar" class="hidden" style="display:none;flex-direction:column;gap:6px;padding:0;border:none;background:none">
@@ -19155,15 +19158,21 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       c.topic = (c.themes || []).join(', ');
       if (c.mode !== 'off') c.lastMode = c.mode;
       appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every, start: c.start, lastMode: c.lastMode, when: c.when }; saveAppData();
-      if (!('every' in ch || 'start' in ch || 'lastMode' in ch || 'when' in ch) || Object.keys(ch).some(k => !['every', 'start', 'lastMode', 'when'].includes(k))) radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+      if (!('every' in ch || 'start' in ch || 'lastMode' in ch || 'when' in ch) || Object.keys(ch).some(k => !['every', 'start', 'lastMode', 'when'].includes(k))) {
+        if (radio.key && radio.items.length > radio.idx) radioCache[radio.key] = { items: radio.items, idx: radio.idx };
+        const k2 = radioKey(c), old = radioCache[k2];
+        radio = old ? { items: old.items, idx: old.idx, lastAt: radio.lastAt, loading: false, key: k2, said: radio.said } : { items: [], idx: 0, lastAt: radio.lastAt || 0, loading: false, key: '', said: radio.said || 0 };
+      }
       if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
       try { renderScriptOptions(); } catch (e) { } try { mediaRender(); } catch (e) { } try { prepRender(); } catch (e) { }
     }
+    const radioCache = {};
     function radioKey(c) { return `${c.mode}|${c.topic}|${todayISO()}`; }
     async function radioPrepare() {
       const c = radioCfg();
       if (readMute()) return;
       if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !getGeminiKey() || radio.loading) return;
+      if (!timerState.sessionStarted) return; // les news ne sont téléchargées qu'au départ de la séance (et complétées au fil de l'eau)
       if (radio.key === radioKey(c) && radio.items.length - radio.idx >= 2) return;
       radio.loading = true;
       const total = Math.max(20, (timerState.totalSessionMs || 0) / 60000 || 45);
@@ -19189,12 +19198,16 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     function radioPrefetch() {
       if (!aiVoiceActive()) return;
-      radio.items.slice(radio.idx, radio.idx + 2).forEach(t => { const tx = radioSpoken(t), k = aiClipKey(tx); if (!aiClips.has(k)) aiFetchClip(tx, undefined, 'lo').then(cl => { if (cl) aiClips.set(k, cl); }).catch(() => { }); });
+      // une seule voix d'avance : pas de voix payée pour une news jamais écoutée
+      radio.items.slice(radio.idx, radio.idx + 1).forEach(t => { const tx = radioSpoken(t), k = aiClipKey(tx); if (!aiClips.has(k)) aiFetchClip(tx, undefined, 'lo').then(cl => { if (cl) aiClips.set(k, cl); }).catch(() => { }); });
     }
     function radioSpoken(t) { return t; }
     // Une chronique se lit d'un seul tenant (fluide). Avec Spotify connecté, on met la musique en pause
     // pendant la chronique puis on la relance ; sinon on découpe aux vraies pauses (sans couper l'autre appli).
     async function radioPlay(t) {
+      radio.fetching = true; try { await radioPlay0(t); } finally { setTimeout(() => { radio.fetching = false; }, 600); }
+    }
+    async function radioPlay0(t) {
       if (!aiVoiceActive()) { speakLive(t); return; }
       const k = aiClipKey(t);
       if (!aiClips.has(k)) { try { const cl = await Promise.race([aiFetchClip(t), sleep(9000).then(() => null)]); if (cl) aiClips.set(k, cl); } catch (e) { } }
@@ -19215,12 +19228,14 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!longRun && !c.when.includes(ph)) return;
       if (el < 20000) return;
       if (!radio.lastAt) radio.lastAt = 1;
-      if (radio.lastAt !== 1 && el - radio.lastAt < (c.every ? c.every * 60000 : 25000)) return;
+      if (radio.playing && !radio.fetching && !isSpeaking()) { radio.playing = false; radio.endAt = Date.now(); }
+      if (radio.playing) return;
+      if (radio.lastAt !== 1 && (c.every ? el - radio.lastAt < c.every * 60000 : Date.now() - (radio.endAt || 0) < 10000)) return;
       if (radio.idx >= radio.items.length) { if (radio.items.length - radio.idx < 2) radioPrepare(); return; }
       if (cur.intensity === 'fast' || (!longRun && (remMs < 50000 || stageElMs < 15000))) return;
       if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
       const t = radioSpoken(radio.items[radio.idx++]);
-      radio.lastAt = el; radio.said++;
+      radio.lastAt = el; radio.said++; radio.playing = true; radio.endAt = 0;
       radioPlay(t);
       if (radio.items.length - radio.idx < 2) radioPrepare(); else radioPrefetch();
     }
@@ -19511,8 +19526,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <div style="display:flex;gap:6px"><input id="rdUrl" class="pm-in" value="${plEsc(c.url || '')}" placeholder="🔗 Lien d'une page ou d'un Google Doc" style="flex:1;height:44px;font-size:13px"><button type="button" onclick="readImportUrl()" aria-label="Importer" style="width:50px;border-radius:12px;border:none;background:${col};color:#04121f;font-weight:900;font-size:18px">⬇️</button></div>
         <textarea id="rdText" rows="5" class="pm-in" oninput="readEstimate()" onchange="readAutoSave(true)" style="height:auto;padding:10px 12px;font-weight:500;font-size:14px" placeholder="…ou colle ton texte ici">${plEsc(c.text || '')}</textarea>
         <div id="rdEst" style="font-size:12px;color:#94a3b8;line-height:1.4"></div>
-        ${lab('Début')}${grid(3, seg('rdStart', 'begin', c.start, '🏁 Départ') + seg('rdStart', 'warm', c.start, '🔥 Après échauff.') + seg('rdStart', 'min', c.start, '⏱️ Minute…'))}
-        ${c.start === 'min' ? `<div id="rdMinRow" style="display:flex;align-items:center;gap:8px;font-weight:800;color:#cbd5e1">À la minute <input id="rdMin" type="number" min="0" max="300" value="${c.min || 10}" class="pm-in c" style="width:90px" onchange="readAutoSave(true)"></div>` : `<input type="hidden" id="rdMin" value="${c.min || 10}">`}
+        ${lab('Début')}${grid(2, seg('rdStart', 'begin', c.start === 'manual' ? 'manual' : 'begin', '🏁 Au départ') + seg('rdStart', 'manual', c.start === 'manual' ? 'manual' : 'begin', '👆 Au bouton'))}
+        <input type="hidden" id="rdMin" value="${c.min || 10}">
         ${lab('Voix')}${grid(2, seg('rdVoice', 'ai', c.voice, '🤖 Voix IA') + seg('rdVoice', 'phone', c.voice, '📱 Téléphone'))}
         ${lab('Vitesse')}${grid(5, [0.9, 1, 1.1, 1.2, 1.3].map(v => seg('rdRate', v, c.rate || 1, '×' + String(v).replace('.', ','))).join(''))}
         ${ai ? `${lab('Qualité IA')}${grid(2, seg('rdModel', 'gemini-3.8-flash-lite-tts', c.model, '💶 Éco') + seg('rdModel', 'gemini-3.8-flash-tts', c.model, '✨ Expressive'))}
@@ -19530,6 +19545,9 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <div id="rdState"></div>
         ${words ? `<button type="button" onclick="if(confirm('Retirer le texte ?')){readSave(false);mediaRender()}" style="min-height:40px;border:none;background:none;color:#94a3b8;font-size:13px;font-weight:700">🗑 Retirer le texte</button>` : ''}`;
     }
+    function readManualGo() { const c = readCfg(); if (!c) return; rp.go = true; rp.userPause = false; readTick.lastEnd = 0; rp.lastAnnEnd = 0; rp.introEnd = Date.now() - 5000; rp.introSpk = true; showToast('📖 Lecture lancée'); readGoBtnSync(); }
+    function readGoBtnSync() { const b = document.getElementById('readGoBtn'); if (!b) return; const c = readCfg(); const on = !!(c && c.start === 'manual' && !c.started && !rp.go && timerState.sessionStarted && !timerState.finished); b.style.display = on ? 'block' : 'none'; }
+    setInterval(() => { try { readGoBtnSync(); } catch (e) { } }, 1000);
     function readSet(id, v) {
       const e = document.getElementById(id); if (e) e.value = v;
       readAutoSave(false); mediaRender();
@@ -19650,6 +19668,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       let ok = !!cur && timerState.isRunning && !timerState.finished && !tl.active && !preCd;
       if (ok && c.start === 'warm' && el < warmEnd) ok = false;
       if (ok && c.start === 'min' && el < (c.min || 0) * 60000) ok = false;
+      if (ok && c.start === 'manual' && !c.started && !rp.go) ok = false;
       if (ok && cur.intensity === 'fast' && !c.fast && !(cur.durationSec >= 600)) ok = false;
       // Au tout début : on attend que le coach ait fini sa présentation (au plus 40 s)
       if (rp.lastEl == null || el < rp.lastEl - 500) { rp.introSpk = false; rp.introEnd = 0; } rp.lastEl = el;
@@ -19951,12 +19970,12 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!aiVoiceActive()) return { ok: true, txt: 'voix du téléphone' };
       const t = Date.now(); if (scriptVoiceState.c && t - scriptVoiceState.c.t < 1500) return scriptVoiceState.c.v;
       let miss = 0, tot = 0; try { const pr = aiProfile(), P = aiAllPiecesForSession(pr); tot = P.length; miss = P.filter(x => !aiClips.has(aiClipKey(x, pr))).length; } catch (e) { }
-      const v = !miss ? { ok: true, txt: 'voix IA chargées' } : aiPrep.running ? { busy: true, txt: `voix IA en préparation ${aiPrep.total ? `${aiPrep.done}/${aiPrep.total}` : '…'}` } : { warn: true, txt: `${miss} annonce${miss > 1 ? 's' : ''} sans voix IA (voix du téléphone)` };
-      scriptVoiceState.c = { t, v }; return v;
+      const v0 = !miss ? { ok: true, txt: 'voix IA chargées' } : aiPrep.running ? { busy: true, txt: `voix IA en préparation ${aiPrep.total ? `${aiPrep.done}/${aiPrep.total}` : '…'}` } : { warn: true, txt: `${miss} annonce${miss > 1 ? 's' : ''} sans voix IA (voix du téléphone)` };
+      const v = Object.assign(v0, { done: tot - miss, tot }); scriptVoiceState.c = { t, v }; return v;
     }
     function mediaList() {
       const L = [], c = spCfg(), sess = getActiveSession() || {}, rc = readCfg(), yc = ytCfg(), ra = radioCfg();
-      const rStart = x => x.start === 'warm' ? "après l'échauffement" : x.start === 'min' ? `à la minute ${x.min || 0}` : 'dès le départ';
+      const rStart = x => x.start === 'manual' ? 'au bouton 📖 pendant la séance' : 'dès le départ';
       if (spConnected() && c.pl && !c.off) L.push({ ic: '🎵', t: `Spotify « ${c.pl.name} »`, w: c.plStart === 'go' ? 'démarre avec la séance' : 'à lancer avec le bouton vert' });
       if (rc) L.push({ ic: '📖', t: 'Livre audio', w: `démarre ${rStart(rc)}${rc.fast ? '' : ', en pause pendant les efforts rapides'}` });
       if (yc.on && sess.type === 'tapis') L.push({ ic: '▶️', t: `YouTube ${yc.title && yc.title !== 'activée' ? '(' + yc.title + ')' : ''}`, w: 'démarre avec la séance' });
@@ -19965,7 +19984,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     function prepRender() {
       if (document.body.classList.contains('started')) return;
-      const w = document.getElementById('prepWatch'), st = document.getElementById('prepStatus'), go = document.getElementById('spGoBtn'); if (!w || !st) return;
+      const w = document.getElementById('prepWatch'), go = document.getElementById('spGoBtn'); if (!w) return;
       const se = sensors(), known = !!(se.btId || se.btName), con = btConnected() && !btStale();
       w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
         : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;border:none;background:#f43f5e;color:#fff;font-weight:900;font-size:15px"><span style="font-size:17px;line-height:1">⌚</span>Reconnecter la montre</button>`
@@ -19978,6 +19997,12 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const tn = document.getElementById('spNow'); if (tn) { const on = live && !!sp.track; tn.style.display = on ? 'block' : 'none'; if (on) tn.textContent = `🎵 ${sp.track}`; }
         const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
         if (con && Date.now() - (sp.at || 0) > 4000 && !prepRender.pl) { prepRender.pl = 1; spPoll().finally(() => { prepRender.pl = 0; }); } }
+      try { mediaStatusHtml(); } catch (e) { } // lance le chargement du livre audio si besoin
+    }
+    setInterval(() => { try { if (!document.body.classList.contains('home') && !document.body.classList.contains('started')) prepRender(); } catch (e) { } }, 1500);
+    let mediaTab = 'sp';
+    // État du script et des médias : affiché sur l'accueil (Aujourd'hui › Médias)
+    function mediaStatusHtml() {
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
       if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
@@ -19985,12 +20010,48 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (rc) { if (readIsAi(rc)) { const n = (rc.sections || []).length, k = readSecsReady(rc); if (k < n && !prepRender.rd) { prepRender.rd = 1; readPrepareAll().finally(() => { prepRender.rd = 0; }); }
           out.push(line(k >= n ? '✅' : '⏳', `Livre audio ${k >= n ? 'chargé' : 'en chargement'}`, `${k}/${n} partie${n > 1 ? 's' : ''} prête${k > 1 ? 's' : ''} · voix IA`, k >= n ? '#a7f3d0' : '#fde68a')); }
         else out.push(line('✅', 'Livre audio chargé', 'voix du téléphone, lecture immédiate', '#a7f3d0')); }
+      { const ra = radioCfg(); if (ra.mode !== 'off') { const n = Math.max(0, radio.items.length - radio.idx), rdy = radio.items.slice(radio.idx, radio.idx + 1).filter(t => aiClips.has(aiClipKey(radioSpoken(t)))).length;
+        out.push(line('📰', n ? `News : ${n} prête${n > 1 ? 's' : ''}` : 'News', n ? (aiVoiceActive() ? (rdy ? 'voix de la prochaine prête' : 'voix préparée juste avant écoute') : 'voix du téléphone') : 'téléchargées au départ de la séance', '#c4b5fd')); } }
       const M = mediaList();
       out.push(M.length ? `<div style="display:flex;flex-direction:column;gap:4px;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:11px;font-weight:800;color:#7dd3fc;text-transform:uppercase;letter-spacing:.6px">Médias activés</span>${M.map(m => `<span style="font-size:13px;color:#e2e8f0;line-height:1.35">${m.ic} <b>${plEsc(m.t)}</b> <span style="color:#94a3b8">· ${m.w}</span></span>`).join('')}</div>` : line('🔈', 'Aucun média activé', 'Touche « Médias » pour ajouter musique, livre audio, vidéo…', '#94a3b8'));
-      st.innerHTML = out.join('');
+      return out.join('');
     }
-    setInterval(() => { try { if (!document.body.classList.contains('home') && !document.body.classList.contains('started')) prepRender(); } catch (e) { } }, 1500);
-    let mediaTab = 'sp';
+    // Anneaux de progression du chargement des voix (script, livre audio, news)
+    function loadRing(pct, size, col, inner) {
+      const r = size / 2 - 6, C = 2 * Math.PI * r, p = Math.max(0, Math.min(1, pct));
+      return `<div style="position:relative;width:${size}px;height:${size}px;flex:none"><svg width="${size}" height="${size}" style="transform:rotate(-90deg)"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="#1e293b" stroke-width="${size > 80 ? 10 : 6}" fill="none"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${col}" stroke-width="${size > 80 ? 10 : 6}" stroke-linecap="round" fill="none" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - p)).toFixed(1)}" style="transition:stroke-dashoffset .5s"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">${inner}</div></div>`;
+    }
+    function mediaLoadParts() {
+      const P = []; let fr = false; try { fr = !!(getActiveSession() || {}).free; } catch (e) { }
+      if (!fr && aiVoiceActive()) { const v = scriptVoiceState(); if (v.tot) P.push({ ic: '📣', l: 'Annonces', d: v.done, t: v.tot, col: '#a78bfa' }); }
+      const rc = readCfg(); if (rc && readIsAi(rc)) { const n = (rc.sections || []).length; if (n) P.push({ ic: '📖', l: 'Livre audio', d: readSecsReady(rc), t: n, col: '#38bdf8' }); }
+      const ra = radioCfg(); if (ra.mode !== 'off' && aiVoiceActive() && radio.items.length > radio.idx) { const nx = radio.items.slice(radio.idx, radio.idx + 1); P.push({ ic: '📰', l: 'News', d: nx.filter(x => aiClips.has(aiClipKey(radioSpoken(x)))).length, t: nx.length, col: '#f472b6' }); }
+      return P;
+    }
+    function mediaLoadHtml() {
+      const P = mediaLoadParts(); if (!P.length) return '';
+      const d = P.reduce((a, x) => a + x.d, 0), t = P.reduce((a, x) => a + x.t, 0), pct = t ? d / t : 1, ok = d >= t;
+      return `<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:#0b1324;border:1px solid ${ok ? 'rgba(52,211,153,.5)' : '#1e293b'}">
+        ${loadRing(pct, 104, ok ? '#34d399' : '#38bdf8', `<span style="font-size:${ok ? 30 : 26}px;font-weight:900;color:#fff">${ok ? '✓' : Math.floor(pct * 100) + '%'}</span><span style="font-size:10px;font-weight:800;color:#94a3b8;margin-top:3px">${ok ? 'PRÊT' : 'VOIX'}</span>`)}
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">${P.map(x => `<div style="display:flex;align-items:center;gap:8px">${loadRing(x.t ? x.d / x.t : 1, 34, x.d >= x.t ? '#34d399' : x.col, `<span style="font-size:13px">${x.ic}</span>`)}<div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:13px;font-weight:800;color:#e2e8f0">${x.l}</span><span style="font-size:11.5px;color:#94a3b8">${x.d >= x.t ? 'prêt' : `${x.d}/${x.t} · ${Math.floor(x.d / x.t * 100)} %`}</span></div></div>`).join('')}</div></div>`;
+    }
+    // Alerte sur le Récap tant que toutes les voix ne sont pas chargées
+    function homeLoadAlertSync() {
+      const d = document.getElementById('homeSessDesc'), sess = getActiveSession(); if (!d) return;
+      let el = document.getElementById('homeLoadAlert');
+      const P = sess && sess.dateISO === todayISO() && !(timerState.sessionStarted && !timerState.finished) ? mediaLoadParts() : [];
+      const dn = P.reduce((a, x) => a + x.d, 0), tt = P.reduce((a, x) => a + x.t, 0), show = tt > 0 && dn < tt;
+      if (!show) { if (el) el.remove(); return; }
+      if (!el || el.parentNode !== d) { if (el) el.remove(); el = document.createElement('button'); el.type = 'button'; el.id = 'homeLoadAlert'; el.onclick = () => { homeSessSub = 'media'; homeSessTilesApply(); }; el.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.55);color:#fde68a;text-align:left'; d.insertBefore(el, d.firstChild); }
+      const pct = Math.floor(dn / tt * 100), h = `${loadRing(dn / tt, 40, '#fbbf24', `<span style="font-size:10.5px;font-weight:900;color:#fff">${pct}%</span>`)}<span style="flex:1;display:flex;flex-direction:column;gap:1px"><b style="font-size:13.5px">Voix en cours de chargement</b><span style="font-size:12px;color:#fcd34d">${P.filter(x => x.d < x.t).map(x => x.l.toLowerCase()).join(', ')} : attends avant de lancer, sinon voix du téléphone</span></span><span style="font-weight:900">›</span>`;
+      if (el.innerHTML !== h) el.innerHTML = h;
+    }
+    setInterval(() => { try { if (document.body.classList.contains('home')) homeLoadAlertSync(); } catch (e) { } }, 2000);
+    function homeMediaPaneHtml() {
+      return `<div style="display:flex;flex-direction:column;gap:8px">${mediaLoadHtml()}${mediaStatusHtml()}
+        <button type="button" onclick="openMediaModal()" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">🎧 Gérer les médias</button></div>`;
+    }
+    setInterval(() => { try { if (document.body.classList.contains('home') && homeSessSub === 'media') { const e = document.getElementById('homeMediaPane'); if (e) e.innerHTML = homeMediaPaneHtml(); } } catch (e) { } }, 2000);
     function openMediaModal() {
       let m = document.getElementById('mediaModal');
       if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-start;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
@@ -20693,6 +20754,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       renderHrChip();
     }
     function launchFromHome() {
+      { const ac = homeActiveCross(); if (ac && document.body.classList.contains('home')) { appData.activeCross = null; startCrossActivity(ac.id); return; } }
       showChrono();
       try { getSoundTestClip(false); } catch (e) { }
       if (timerState.finished) buildCurrentSessionStages();
@@ -20728,25 +20790,46 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       try { reloadChrono(); renderHome(); } catch (e) { }
     }
     // Deux séances (ou plus) le même jour : les autres s'affichent aussi dans « Aujourd'hui »
+    function homeActiveCross() { const a = appData.activeCross, t = todayISO(); if (!a || a.d !== t) return null; return (appData.crossPlan || []).find(c => c.id === a.id && c.dateISO === t) || null; }
+    function homeCrossBlock(c, active) {
+      const T = ACT_TYPES[c.type] || {}, col = T.color || '#f472b6';
+      const ex = (c.exos || []).slice(0, 8).map(e => `<span style="font-size:12.5px;color:#cbd5e1">• ${plEsc(e.nom || e.name || e)}${e.dosage ? ` <span style="color:#94a3b8">${plEsc(e.dosage)}</span>` : ''}</span>`).join('');
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:30px">${T.icon || '🏋️'}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:11px;font-weight:900;color:${col};letter-spacing:.6px">${active ? '● ACTIVE · ' : ''}${plEsc((T.label || 'Activité').toUpperCase())}</span><span style="font-size:17px;font-weight:900;color:#fff">${plEsc(c.titre || T.label || 'Activité')}</span><span style="font-size:13px;color:#94a3b8">${c.dur || '?'} min${c.intensite ? ' · ' + plEsc(c.intensite) : ''}</span></div></div>
+        ${c.detail ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(c.detail)}</span>` : ''}${ex ? `<div style="display:flex;flex-direction:column;gap:2px">${ex}</div>` : ''}
+        ${active ? `<button type="button" onclick="startCrossActivity('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Lancer</button>` : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:46px;border-radius:14px;border:1px solid ${col};background:transparent;color:#fff;font-weight:900;font-size:14px">▶ Activer</button>`}</div>`;
+    }
+    // Toutes les séances du jour (course, renfo, vélo…) : la séance active est en haut et mise en évidence
     function homeTodayMoreRender(busy) {
-      const box = document.getElementById('homeTodayMore'); if (!box) return;
-      if (busy) { box.innerHTML = ''; return; }
-      const t = todayISO(), act = getActiveSession();
+      const box = document.getElementById('homeTodayMore'), top = document.getElementById('homeTodayTop'), card = document.getElementById('homeSessCard'); if (!box) return;
+      if (busy) { box.innerHTML = ''; if (top) { top.innerHTML = ''; top.style.display = 'none'; } return; }
+      const t = todayISO(), act = getActiveSession(), ac = homeActiveCross();
+      { const db = document.getElementById('homeDateBar'); if (db) db.textContent = capFirst(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); }
+      const runToday = act && act.dateISO === t && !isSessionDone(act) && card && !card.classList.contains('hidden');
       const todo = appData.sessions.map((s, i) => [s, i]).filter(([s]) => s.dateISO === t && !isSessionDone(s) && s !== act);
+      const crosses = runToday ? (appData.crossPlan || []).filter(c => c.dateISO === t) : [];
+      const n = (runToday ? 1 : 0) + todo.length + crosses.length;
+      if (top) { top.innerHTML = ac && runToday ? homeCrossBlock(ac, true) : ''; top.style.display = ac && runToday ? 'flex' : 'none'; }
+      if (card) { const hl = runToday && n > 1 && !ac; card.style.boxShadow = hl ? '0 0 0 2px #38bdf8, 0 0 24px rgba(56,189,248,.35)' : ''; const ab = document.getElementById('homeActBtn'); if (ab) ab.style.display = runToday && ac ? 'block' : 'none'; card.style.opacity = runToday && ac ? '.9' : ''; }
+      let h = todo.map(([s, i]) => { const k = sessionKind(s); return `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(79,70,229,.1));border:1px solid rgba(56,189,248,.35)">
+          <span style="font-size:11px;font-weight:900;color:${k.color};letter-spacing:.6px">${plEsc(k.label)}</span>
+          <span style="font-size:17px;font-weight:900;color:#fff;line-height:1.3">${plEsc(describeSessionHuman(s))}</span>
+          ${homeSessTilesHtml(s)}
+          <button type="button" onclick="homeChooseToday(${i})" style="min-height:46px;border-radius:14px;border:1px solid #38bdf8;background:transparent;color:#fff;font-weight:900;font-size:14px">▶ Activer</button></div>`; }).join('');
+      h += crosses.filter(c => !ac || c.id !== ac.id).map(c => homeCrossBlock(c, false)).join('');
       const lastH = (appData.history || []).find(x => x && !x.cross && x.endAt);
-      const done = (appData.history || []).filter(h => h && !h.cross && h.endAt && toISODateLocal(new Date(h.endAt)) === t && h !== lastH);
-      const lastToday = lastH && toISODateLocal(new Date(lastH.endAt)) === t;
-      const hasAct = act && act.dateISO === t && !isSessionDone(act);
-      let h = '';
-      if (todo.length) h += todo.map(([s, i]) => { const k = sessionKind(s); return `<div style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.35)">
-          <span style="width:6px;align-self:stretch;border-radius:3px;background:${k.color}"></span>
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:900;color:${k.color};letter-spacing:.6px">${hasAct || lastToday ? 'AUSSI AUJOURD\'HUI · ' : ''}${plEsc(k.label)}</span><span style="font-size:14px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(describeSessionHuman(s))}</span><span style="font-size:12px;color:#94a3b8">${Math.round(computeSessionTotalMin(s))} min · ${s.type === 'tapis' ? 'tapis' : 'extérieur'}</span></div>
-          <button type="button" onclick="homeChooseToday(${i})" style="flex:none;min-height:44px;padding:0 14px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:13px">▶ Choisir</button></div>`; }).join('');
-      if (done.length) h += done.map(x => { const k = sessionKind(x.kind ? x : (histLinkedSession(x) || x)); return `<button type="button" onclick="homeOpenDone('${x.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);color:#e2e8f0;text-align:left">
+      const done = (appData.history || []).filter(x => x && !x.cross && x.endAt && toISODateLocal(new Date(x.endAt)) === t && x !== lastH);
+      h += done.map(x => { const k = sessionKind(x.kind ? x : (histLinkedSession(x) || x)); return `<button type="button" onclick="homeOpenDone('${x.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);color:#e2e8f0;text-align:left">
           <span style="font-size:20px">✅</span><span style="flex:1;min-width:0;font-size:13.5px;font-weight:800">${new Date(x.endAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${plEsc(k.label.toLowerCase())} · ${Math.round(+x.durationMin || 0)} min${histKm(x) > 0 ? ` · ${histKm(x).toFixed(1).replace('.', ',')} km` : ''}</span><span style="color:#6ee7b7;font-weight:900">›</span></button>`; }).join('');
       box.innerHTML = h; box.style.display = h ? 'flex' : 'none';
     }
-    function homeChooseToday(i) { if (!appData.sessions[i]) return; appData.activeSessionIndex = i; saveAppData(); try { reloadChrono(); } catch (e) { } homeShowNextAnyway = false; renderHome(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function homeMarkChecked(s) { // séance activée à la main : pas de nouvel avis du coach
+      const t = todayISO(); if (appData.dayCheck && appData.dayCheck.sid === s.id && appData.dayCheck.d === t) return;
+      appData.dayCheck = { sig: dayCheckSig(s), sid: s.id, d: t, res: { decision: 'garder', avis: 'Séance activée : elle se lance avec le bouton ▶.' }, prop: null, done: 'ok', read: true };
+    }
+    function homeChooseToday(i) { const s = appData.sessions[i]; if (!s) return; appData.activeSessionIndex = i; appData.activeCross = null; homeMarkChecked(s); saveAppData(); try { reloadChrono(); } catch (e) { } homeShowNextAnyway = false; renderHome(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function homeActivateCross(id) { appData.activeCross = { id, d: todayISO() }; saveAppData(); renderHome(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function homeActivateRun() { appData.activeCross = null; saveAppData(); renderHome(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function homeOpenDone(id) { openHistoryModal(); plSelDay = ''; plDayClick(todayISO()); setTimeout(() => { const d = document.getElementById('detail_' + id); if (d) { d.classList.remove('hidden'); d.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }, 250); }
     function homePickNext() { const t = todayISO(); const k = appData.sessions.findIndex(x => x.dateISO && x.dateISO >= t && !isSessionDone(x)); appData.activeSessionIndex = Math.max(0, k); }
     function todayDoneHist() { const t = todayISO(); return (appData.history || []).filter(h => h && !h.cross && histISO(h) === t)[0] || null; }
@@ -20844,7 +20927,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     setInterval(() => { try { renderHomeLastRun(); } catch (e) { } }, 60000);
     // Accueil en onglets : un bloc à la fois (séance du jour, dernière séance, sensations, récup)
-    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest', 'homeTodayMore']], ['last', '✅ Précédente', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
+    const HOME_TABS = [['sess', "📅 Aujourd'hui", ['homeSessCard', 'homeRest', 'homeTodayMore', 'homeTodayTop']], ['last', '✅ Précédente', ['homeLastRun', 'homeProfUpd', 'homeResultsBtn']], ['feel', '🙂 Sensations', ['homeFeelHost']], ['recup', '💤 Récup', ['homeRecovery']]];
     let homeTab = 'sess';
     function homeTabAvail(ids) { return ids.some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.style.display !== 'none' && (id !== 'homeFeelHost' || e.children.length); }); }
     let _autoSugg = '';
@@ -21130,6 +21213,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
     function homeSessTilesApply() {
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
+      setTimeout(() => { try { homeLoadAlertSync(); } catch (e) { } }, 0);
       { const dc = dcFor(sess);
         const okCard = dc && !dc.prop && dc.res && !dc.res.failed && dc.res.avis && !dc.read ? `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.4)"><span style="font-size:12px;font-weight:900;color:#6ee7b7">🧠 Le coach valide la séance prévue</span><span style="font-size:13.5px;color:#e2e8f0;line-height:1.4">${plEsc(dc.res.avis)}</span><button type="button" onclick="appData.dayCheck.read=true;saveAppData();homeSessTilesApply()" style="align-self:flex-end;min-height:38px;padding:0 18px;border-radius:10px;border:none;background:#34d399;color:#04140d;font-weight:900">✓ Lu</button></div>` : '';
         d.innerHTML = dc && dc.prop && !dc.done ? dcPropCard(dc, `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="dayCheckApply(false)" style="min-height:46px;border-radius:12px;border:none;background:#e11d48;color:#fff;font-weight:900;font-size:14px">✕ Refuser</button><button type="button" onclick="dayCheckApply(true)" style="min-height:46px;border-radius:12px;border:none;background:#10b981;color:#04140d;font-weight:900;font-size:14px">✓ Accepter</button></div>`) + dcLabel('Séance prévue initialement', '#94a3b8') + h : okCard ? `<div style="display:flex;flex-direction:column;gap:8px">${okCard}${h}</div>` : h; }
@@ -21154,9 +21238,9 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
         const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
         bar.style.display = inProg ? 'none' : 'flex';
-        bar.innerHTML = [['recap', '📊 Récap'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()">${l}${k === 'adapt' ? badge : ''}</button>`).join('');
+        bar.innerHTML = [['recap', '📊 Récap'], ['media', '🎧 Médias'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()">${l}${k === 'adapt' ? badge : ''}</button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
-        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
+        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
         d.style.display = sub === 'recap' ? '' : 'none';
         if (hg) { hg.classList.toggle('hidden', !!(sub === 'recap' || sess.free)); }
@@ -21210,13 +21294,14 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         try { homeTodayMoreRender(busy); } catch (e) { console.warn(e); }
         try { restCoachRender(showRest && !doneToday && !(appData.crossPlan || []).some(c => c.dateISO === t)); } catch (e) { console.warn(e); }
         el.classList.toggle('hidden', showRest);
-        document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui • ${dayLong}`;
+        document.getElementById('homeRestDay').textContent = `📅 Aujourd'hui`;
         const isNext = sess && sess.dateISO && sess.dateISO > t;
         document.getElementById('homeRestNext').textContent = isNext ? `Prochaine séance : ${capFirst(parseISODateLocal(sess.dateISO).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))} — ${describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))}` : '';
         document.getElementById('homeRestNextBtn').classList.toggle('hidden', !sess);
         document.getElementById('homeRestNextBtn').textContent = isNext ? 'Voir la prochaine séance' : 'Voir la séance chargée';
         const sd = parseISODateLocal(sess.dateISO);
-        document.getElementById('homeCardLabel').textContent = sd ? capFirst(sd.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : 'Séance chargée';
+        { const lbl = document.getElementById('homeCardLabel'), today = sess.dateISO === t; lbl.textContent = today ? '' : sd ? capFirst(sd.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : 'Séance chargée'; lbl.style.display = today ? 'none' : ''; }
+        { const db = document.getElementById('homeDateBar'); if (db) db.textContent = dayLong; }
         homeCardPrefix = sess.dateISO === t ? '' : (isNext ? 'PROCHAINE SÉANCE · ' : '');
       }
       const total = Math.round(computeSessionTotalMin(sess));
