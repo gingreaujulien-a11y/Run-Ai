@@ -566,10 +566,11 @@
           <button type="button" id="soundTestBtn" onclick="soundTest()" class="prep-b"><span>🔊</span>Son</button>
         </div>
         <button type="button" id="spGoBtn" onclick="spGo()" class="hidden" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px">▶ Lancer la playlist</button>
+        <span id="spNow" style="display:none;font-size:12.5px;font-weight:700;color:#86efac;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
         <div id="spCtl" class="hidden" style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:.5rem">
-          <button type="button" onclick="spCmd('previous')" aria-label="Morceau précédent" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏮</button>
+          <button type="button" onclick="spCmd('previous').then(()=>{sp.at=0;setTimeout(prepRender,700)})" aria-label="Morceau précédent" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏮</button>
           <button type="button" id="spCtlPlay" onclick="spPrepToggle()" aria-label="Pause ou lecture" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏸</button>
-          <button type="button" onclick="spCmd('next')" aria-label="Morceau suivant" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏭</button>
+          <button type="button" onclick="spCmd('next').then(()=>{sp.at=0;setTimeout(prepRender,700)})" aria-label="Morceau suivant" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏭</button>
         </div>
         <div id="prepStatus" style="display:flex;flex-direction:column;gap:6px"></div>
         <div class="hidden"><button id="chronoScriptBtn"></button><button id="readBtn"></button><button id="spBtn"></button><button id="spPlBtn"></button><button id="ytBtn"></button></div>
@@ -1328,6 +1329,18 @@
         </div>
       </div>
 
+      <div id="valPain" class="hidden" style="display:flex;flex-direction:column;gap:8px">
+        <span class="val-lbl" style="font-size:12px;font-weight:800;color:#cbd5e1;text-align:center;text-transform:uppercase;letter-spacing:.6px">Une douleur ?</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button type="button" id="valPainNo" onclick="valPainSet(false)" style="min-height:54px;border-radius:14px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:15px;font-weight:900">👍 Non</button>
+          <button type="button" id="valPainYes" onclick="valPainSet(true)" style="min-height:54px;border-radius:14px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:15px;font-weight:900">🤕 Oui</button>
+        </div>
+        <div id="valPainBox" style="display:none;flex-direction:column;gap:8px">
+          <div id="valPainZones" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"></div>
+          <textarea id="valPainNote" rows="2" placeholder="Précise si besoin : côté, type de douleur, quand elle est apparue…" style="width:100%;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;padding:10px;font-size:14px"></textarea>
+          <button type="button" onclick="confirmValidation()" style="min-height:52px;border-radius:14px;border:none;background:#0d9488;color:#fff;font-size:15px;font-weight:900">✅ Valider</button>
+        </div>
+      </div>
       <button type="button" id="valSpokenBtn" onclick="openSpokenLog()" class="val-x w-full py-2.5 rounded-xl text-[13px] font-bold" style="background:rgba(168,85,247,.14);border:1px solid rgba(192,132,252,.5);color:#e9d5ff">📜 Script de la séance et ce qui a été dit</button>
       <div class="val-x">
         <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Note personnelle (facultatif)</label>
@@ -6150,6 +6163,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
 
       if (document.getElementById('validationModal').classList.contains('val-min')) { selectedValidationFeeling = ''; ['Green', 'Yellow', 'Orange', 'Red'].forEach(c => { const b = document.getElementById('feel' + c); if (b) b.className = 'p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-center transition active:scale-95'; }); }
       else selectFeeling('green');
+      valPainReset(); if (!document.getElementById('validationModal').classList.contains('val-min')) valPainShow();
       document.getElementById('validationModal').classList.remove('hidden');
       refreshAllIcons();
     }
@@ -6158,9 +6172,35 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       document.getElementById('validationModal').classList.add('hidden');
     }
 
+    const PAIN_ZONES = ['Pied', 'Cheville', 'Tendon d\'Achille', 'Mollet', 'Tibia', 'Genou', 'Ischios', 'Quadriceps', 'Hanche', 'Fessier', 'Dos', 'Autre'];
+    let valPain = null;
+    function valPainReset() {
+      valPain = null; const p = document.getElementById('valPain'); if (p) { p.classList.add('hidden'); p.style.display = 'none'; }
+      const b = document.getElementById('valPainBox'); if (b) b.style.display = 'none'; const n = document.getElementById('valPainNote'); if (n) n.value = '';
+      ['valPainNo', 'valPainYes'].forEach(id => { const e = document.getElementById(id); if (e) { e.style.background = '#1e293b'; e.style.borderColor = '#334155'; } });
+    }
+    function valPainShow() { const p = document.getElementById('valPain'); if (p) { p.classList.remove('hidden'); p.style.display = 'flex'; } }
+    function valPainSet(yes) {
+      valPain = yes ? { on: true, where: (valPain && valPain.where) || [] } : { on: false };
+      const y = document.getElementById('valPainYes'), n = document.getElementById('valPainNo');
+      if (y) { y.style.background = yes ? 'rgba(244,63,94,.2)' : '#1e293b'; y.style.borderColor = yes ? '#f43f5e' : '#334155'; }
+      if (n) { n.style.background = !yes ? 'rgba(16,185,129,.2)' : '#1e293b'; n.style.borderColor = !yes ? '#10b981' : '#334155'; }
+      const b = document.getElementById('valPainBox'); if (b) b.style.display = yes ? 'flex' : 'none';
+      if (yes) valPainZones(); else if (document.getElementById('validationModal').classList.contains('val-min')) setTimeout(() => confirmValidation(), 150);
+    }
+    function valPainZones() {
+      const z = document.getElementById('valPainZones'); if (!z || !valPain) return;
+      z.innerHTML = PAIN_ZONES.map(w => { const on = valPain.where.includes(w); return `<button type="button" onclick="valPainZone(${JSON.stringify(w).replace(/"/g, '&quot;')})" style="min-height:44px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:rgba(244,63,94,.25);border:1px solid #f43f5e;color:#fff' : 'background:#0f172a;border:1px solid #334155;color:#cbd5e1'}">${on ? '✓ ' : ''}${w}</button>`; }).join('');
+    }
+    function valPainZone(w) { if (!valPain) return; const i = valPain.where.indexOf(w); if (i >= 0) valPain.where.splice(i, 1); else valPain.where.push(w); valPainZones(); }
+    function valPainText() {
+      if (!valPain || !valPain.on) return '';
+      const nt = ((document.getElementById('valPainNote') || {}).value || '').trim();
+      return `Douleur${valPain.where.length ? ' : ' + valPain.where.join(', ').toLowerCase() : ''}${nt ? ' — ' + nt : ''}`;
+    }
     function selectFeeling(color) {
       selectedValidationFeeling = color;
-      if (color && document.getElementById('validationModal').classList.contains('val-min')) { setTimeout(() => confirmValidation(), 120); }
+      if (color) valPainShow();
       ['green', 'yellow', 'orange', 'red'].forEach(c => {
         const btn = document.getElementById(`feel${c.charAt(0).toUpperCase() + c.slice(1)}`);
         if (c === color) {
@@ -6189,7 +6229,8 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
         durationMin: totalMin,
         pente: sess.pente || 0,
         feeling: selectedValidationFeeling || '',
-        note: document.getElementById('valNoteInput').value.trim() || 'Séance complétée',
+        note: [document.getElementById('valNoteInput').value.trim(), valPainText()].filter(Boolean).join(' · ') || 'Séance complétée',
+        pain: valPain && valPain.on ? { where: valPain.where.slice(), note: ((document.getElementById('valPainNote') || {}).value || '').trim() } : undefined,
         isVal: true,
         details: detailStr,
         plannedMin: Math.round(plannedMin * 10) / 10,
@@ -13509,7 +13550,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       requestFullscreenSafe(); aiUnlock(); getAudioContext();
       btAutoReconnect();
       try { ytStart(); } catch (e) { }
-      try { const c = spCfg(); if (spConnected() && c.pl && c.pl.uri && c.plStart === 'go' && !sp.playing) spPlayPl(c.pl.uri); } catch (e) { }
+      try { const c = spCfg(); if (spConnected() && c.pl && c.pl.uri && !c.off && c.plStart === 'go' && !sp.playing) spPlayPl(c.pl.uri); } catch (e) { }
       if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
       const viaAi = aiPlayCountdown(3);
       if (!viaAi) speak([VT().count[3]]);
@@ -16143,14 +16184,18 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); }; });
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
     }
+    function radioStartTxt(c) { return c.start === 'warm' ? "la fin de l'échauffement" : /^\d+$/.test(String(c.start)) && +c.start > 0 ? `la ${c.start}e minute` : 'le départ'; }
     function radioOptsHtml() {
-      return (() => { const c = radioCfg(), ch = (on, txt, js) => `<button type="button" onclick="${js}" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${txt}</button>`;
-          return `<div class="grid grid-cols-3 gap-1.5 mt-1">${ch(c.mode === 'off', '🔇 Aucune', "setRadio({mode:'off'})")}${ch(c.mode === 'news', '📰 Actualité', "setRadio({mode:'news'})")}${ch(c.mode === 'topic', '💡 Thèmes', "setRadio({mode:'topic'})")}</div>`
-            + (c.mode === 'topic' ? `<span class="text-[11px] text-slate-400 block mt-2">Choisis un ou plusieurs thèmes (les chroniques alternent entre eux) :</span>
-              <div class="flex flex-wrap gap-1.5 mt-1">${radioThemes().map(t => { const on = c.themes.includes(t), a = JSON.stringify(t).replace(/"/g, '&quot;'); return `<span style="display:inline-flex;align-items:center" class="inline-flex items-center rounded-full border text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><button type="button" onclick="radioToggleTheme(${a})" class="pl-3 pr-1.5" style="min-height:34px">${on ? '✓ ' : ''}${plEsc(t)}</button><button type="button" onclick="radioDelTheme(${a})" aria-label="Supprimer ce thème" class="pr-2.5 pl-1 text-slate-500" style="min-height:34px">✕</button></span>`; }).join('')}</div>
-              <div class="flex gap-1.5 mt-1.5"><input id="radioNewTheme" type="text" maxlength="80" placeholder="Nouveau thème : ex. actu du foot, cinéma…" class="pm-in flex-1" style="height:40px;font-size:14px" onkeydown="if(event.key==='Enter')radioAddTheme()"><button type="button" onclick="radioAddTheme()" class="rounded-lg px-3 text-[13px] font-bold" style="background:#38bdf8;color:#04121f">+ Ajouter</button></div>
-              ${c.themes.length ? '' : '<span class="text-[11px] text-amber-300 block mt-1">Sélectionne au moins un thème.</span>'}` : '')
-            + (c.mode !== 'off' ? `<div class="grid grid-cols-3 gap-1.5 mt-1.5">${[5, 10, 15].map(m => ch(c.every === m, `${m} min`, `setRadio({every:${m}})`)).join('')}</div><span class="text-[11px] text-slate-500 block mt-1">Utilise ta clé Gemini (recherche web + voix) : quelques centimes au plus par séance.</span>` : ''); })();
+      const c = radioCfg(), seg = (on, txt, js) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:#a78bfa;color:#160b2e;border:none' : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${txt}</button>`;
+      const lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:4px">${t}</span>`;
+      const m = c.mode === 'off' ? (c.lastMode || 'news') : c.mode, setM = k => c.mode === 'off' ? `setRadio({lastMode:'${k}'})` : `setRadio({mode:'${k}'})`;
+      return `<div style="display:flex;flex-direction:column;gap:6px">
+        ${lab('Contenu')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${seg(m === 'news', '📰 Actualité', setM('news'))}${seg(m === 'topic', '💡 Thèmes', setM('topic'))}</div>
+        ${m === 'topic' ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${radioThemes().map(t => { const on = c.themes.includes(t), a = JSON.stringify(t).replace(/"/g, '&quot;'); return `<button type="button" onclick="radioToggleTheme(${a})" style="min-height:38px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:800;${on ? 'background:rgba(167,139,250,.25);border:1px solid #a78bfa;color:#fff' : 'background:#0f172a;border:1px solid #334155;color:#94a3b8'}">${on ? '✓ ' : ''}${plEsc(t)}</button>`; }).join('')}</div>
+          <div style="display:flex;gap:6px"><input id="radioNewTheme" type="text" maxlength="80" placeholder="＋ Nouveau thème" class="pm-in" style="flex:1;height:44px;font-size:14px" onkeydown="if(event.key==='Enter')radioAddTheme()"><button type="button" onclick="radioAddTheme()" style="width:48px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:20px">＋</button></div>` : ''}
+        ${lab('Fréquence')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${[5, 10, 15].map(x => seg(c.every === x, `${x} min`, `setRadio({every:${x}})`)).join('')}${seg(!c.every, '♾️ Continu', 'setRadio({every:0})')}</div>
+        ${lab('Début')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${seg(c.start === 'now' || !c.start, '🏁 Départ', "setRadio({start:'now'})")}${seg(c.start === 'warm', '🔥 Après échauff.', "setRadio({start:'warm'})")}${[10, 20].map(x => seg(String(c.start) === String(x), `⏱️ ${x}'`, `setRadio({start:${x}})`)).join('')}</div>
+      </div>`;
     }
     function annOpen() { annDirty = false; const w = document.getElementById('scriptOptsWrap'); if (!w) return; w.classList.remove('hidden'); renderScriptOptions(); refreshAllIcons(); }
     function annClose() {
@@ -19060,7 +19105,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
     let radioDraft = null;
     function radioThemes() { const a = appData.audioSettings; if (!Array.isArray(a.radioThemes)) a.radioThemes = ['Histoire de la course à pied', 'Astronomie', 'Nature et animaux']; return a.radioThemes; }
     function radioCfg() {
-      const c = Object.assign({ mode: 'off', topic: '', every: 5 }, appData.audioSettings.radio || {});
+      const c = Object.assign({ mode: 'off', topic: '', every: 5, start: 'now', lastMode: 'news' }, appData.audioSettings.radio || {});
       if (!Array.isArray(c.themes)) { c.themes = c.topic ? [c.topic] : []; if (c.topic && !radioThemes().includes(c.topic)) radioThemes().push(c.topic); }
       c.themes = c.themes.filter(t => radioThemes().includes(t));
       c.topic = c.themes.join(', ');
@@ -19104,8 +19149,9 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       Object.assign(c, ch);
       if (c.mode !== 'off' && !getGeminiKey()) { showToast('Clé Gemini nécessaire (Voix & réglages)'); return; }
       c.topic = (c.themes || []).join(', ');
-      appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every }; saveAppData();
-      radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
+      if (c.mode !== 'off') c.lastMode = c.mode;
+      appData.audioSettings.radio = { mode: c.mode, themes: c.themes || [], topic: c.topic, every: c.every, start: c.start, lastMode: c.lastMode }; saveAppData();
+      if (!('every' in ch || 'start' in ch || 'lastMode' in ch) || Object.keys(ch).some(k => !['every', 'start', 'lastMode'].includes(k))) radio = { items: [], idx: 0, lastAt: 0, loading: false, key: '', said: 0 };
       if (c.mode !== 'off' && (c.mode !== 'topic' || c.topic)) radioPrepare();
       try { renderScriptOptions(); } catch (e) { } try { mediaRender(); } catch (e) { } try { prepRender(); } catch (e) { }
     }
@@ -19117,7 +19163,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       if (radio.key === radioKey(c) && radio.items.length - radio.idx >= 2) return;
       radio.loading = true;
       const total = Math.max(20, (timerState.totalSessionMs || 0) / 60000 || 45);
-      const n = Math.max(3, Math.min(14, Math.ceil(total / c.every) + 1));
+      const n = c.every ? Math.max(3, Math.min(14, Math.ceil(total / c.every) + 1)) : 8;
       const en = appData.audioSettings.voiceLang === 'en', lang = en ? 'en anglais' : 'en français';
       const already = radio.key === radioKey(c) ? radio.items.slice(-6).map(x => '- ' + x.slice(0, 80)).join('\n') : '';
       const prompt = c.mode === 'news'
@@ -19158,8 +19204,13 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const c = radioCfg();
       if (c.mode === 'off' || (c.mode === 'topic' && !c.topic) || !timerState.isRunning || !cur || cur.isFree === undefined && false) return;
       const el = (timerState.totalSessionMs || 0) - (timerState.totalRemainingMs || 0);
-      if (!radio.lastAt) radio.lastAt = 1; // premier passage : on compte depuis le début
-      if (el - (radio.lastAt === 1 ? 0 : radio.lastAt) < c.every * 60000) return;
+      // Début choisi : départ, fin de l'échauffement ou minute donnée ; puis toutes les N min, ou en continu
+      let st0 = 20000;
+      if (c.start === 'warm') { let w = 0; for (const s0 of (timerState.stages || [])) { if (s0.type === 'chauffe') w += (s0.durationSec || 0) * 1000; else break; } st0 = Math.max(st0, w + 15000); }
+      else if (/^\d+$/.test(String(c.start)) && +c.start > 0) st0 = +c.start * 60000;
+      if (el < st0) return;
+      if (!radio.lastAt) radio.lastAt = 1;
+      if (radio.lastAt !== 1 && el - radio.lastAt < (c.every ? c.every * 60000 : 25000)) return;
       if (radio.idx >= radio.items.length) { if (radio.items.length - radio.idx < 2) radioPrepare(); return; }
       if (cur.intensity === 'fast' || remMs < 50000 || stageElMs < 15000) return;
       if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
@@ -19170,7 +19221,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     // ==================== TEXTE À ÉCOUTER PENDANT LA SÉANCE ====================
     function readCfg() { { const c0 = appData.audioSettings.readText, sid0 = (getActiveSession() || {}).id || ''; if (c0 && c0.sid !== sid0 && !c0.started && !(c0.pos > 0) && !(c0.aiPos && (c0.aiPos.s > 0 || c0.aiPos.t > 0)) && !(timerState.sessionStarted && !timerState.finished)) c0.sid = sid0; }
-      const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; if (!(c && c.sid === sid && (c.text || c.chunks))) return null; if (!c.sections) c.sections = readChunks(c.text || c.chunks.join(' '), READ_SEC, READ_SEC + 200); if (!c.aiPos) c.aiPos = { s: 0, t: 0 }; if (c.aiPos.t == null) c.aiPos.t = (c.aiPos.p || 0) * 20; if (!c.model) c.model = 'gemini-3.8-flash-lite-tts'; return c; }
+      const c = appData.audioSettings.readText || null, sid = (getActiveSession() || {}).id || ''; if (!(c && c.sid === sid && (c.text || c.chunks)) || c.off) return null; if (!c.sections) c.sections = readChunks(c.text || c.chunks.join(' '), READ_SEC, READ_SEC + 200); if (!c.aiPos) c.aiPos = { s: 0, t: 0 }; if (c.aiPos.t == null) c.aiPos.t = (c.aiPos.p || 0) * 20; if (!c.model) c.model = 'gemini-3.8-flash-lite-tts'; return c; }
     function readChunks(text, max = 450, hard = 520) {
       const sents = String(text).replace(/\r/g, '').replace(/[ \t]+/g, ' ').split(/(?<=[.!?…])\s+|\n{1,}/).map(x => x.trim()).filter(Boolean);
       const out = []; let cur = '';
@@ -19443,7 +19494,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function readClose() {
       const t = ((document.getElementById('rdText') || {}).value || '').trim();
       if (t.length >= 3) readSave(true, false, true);
-      const m = document.getElementById('readModal'); if (m) m.remove(); updateReadBtn();
+      const m = document.getElementById('readModal'); if (m) m.remove(); updateReadBtn(); try { mediaRender(); prepRender(); } catch (e) { }
     }
     // Durée d'écoute et coût estimés (≈ 150 mots par minute, 25 jetons audio par seconde)
     function readEstimate() {
@@ -19507,7 +19558,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         if (appData.audioSettings.readText.voice === 'ai' && aiVoiceActive()) { if (prep) { saveAppData(); updateReadBtn(); readStateRender(); readPrepareAll().then(() => readStateRender()); return; } readLoadSection(appData.audioSettings.readText, 0); }
         else if (prep) showToast('Voix du téléphone : rien à préparer, la lecture est immédiate');
       }
-      saveAppData(); const m = document.getElementById('readModal'); if (m) m.remove(); updateReadBtn();
+      saveAppData(); const m = document.getElementById('readModal'); if (m) m.remove(); updateReadBtn(); try { mediaRender(); prepRender(); } catch (e) { }
       showToast(on ? `📖 ${appData.audioSettings.readText.chunks.length} morceaux à lire pendant la séance` : 'Texte retiré');
     }
     function readPrefetch(from) {
@@ -19632,7 +19683,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!m) { m = document.createElement('div'); m.id = 'spPlModal'; m.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(2,6,23,.88);display:flex;align-items:flex-end;justify-content:center'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
       const shell = inner => `<div style="width:100%;max-width:480px;max-height:80vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:16px 16px 24px;display:flex;flex-direction:column;gap:8px;color:#f1f5f9"><div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:18px;font-weight:900">🎵 Mes playlists</span><button type="button" onclick="document.getElementById('spPlModal').remove()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">✕</button></div>${inner}</div>`;
       m.innerHTML = shell('<span style="color:#94a3b8">Chargement…</span>');
-      const j = await spApi('GET', '/me/playlists?limit=50');
+      let j = await spApi('GET', '/me/playlists?limit=50');
+      if (j && Array.isArray(j.items)) { let nx = j.next, k = 0; while (nx && k++ < 5) { const q = await spApi('GET', nx.replace(/^https:\/\/api\.spotify\.com\/v1/, '')); if (!q || !Array.isArray(q.items)) break; j.items.push(...q.items); nx = q.next; } }
       if (!j || !Array.isArray(j.items)) {
         m.innerHTML = shell(`<span style="font-size:14px;color:#cbd5e1;line-height:1.5">${spApi.lastStatus === 401 || spApi.lastStatus === 403 ? "Pour voir tes playlists, l'app a besoin d'une autorisation de plus : reconnecte Spotify une fois." : 'Playlists indisponibles pour le moment.'}</span><button type="button" onclick="spLogin()" style="min-height:48px;border-radius:14px;border:none;background:#1ed760;color:#04140a;font-weight:900">Reconnecter Spotify</button>`); return;
       }
@@ -19640,7 +19692,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     function spPlChoose(i) {
       const p = (window.__spPls || [])[i]; if (!p) return;
-      spCfg().pl = { uri: p.uri, name: String(p.name || 'Playlist').slice(0, 60) }; if (!spCfg().plStart) spCfg().plStart = 'manual'; saveAppData();
+      spCfg().pl = { uri: p.uri, name: String(p.name || 'Playlist').slice(0, 60), img: (p.images && p.images[0] && p.images[0].url) || '' }; spCfg().off = false; if (!spCfg().plStart) spCfg().plStart = 'manual'; saveAppData();
       if (window.__spPick) { const m = document.getElementById('spPlModal'); if (m) m.remove(); showToast('🎵 Playlist choisie'); try { mediaRender(); prepRender(); } catch (e) { } return; }
       spPlayPl(p.uri);
     }
@@ -19780,7 +19832,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function ytSave(on) {
       const u = (document.getElementById('ytUrl') || {}).value || '';
       if (on && !ytParse(u)) { showToast('Lien YouTube non reconnu'); return; }
-      appData.audioSettings.youtube = on ? { on: true, url: u.trim(), title: ytParse(u).list && !ytParse(u).vid ? 'playlist' : 'activée', sid: (getActiveSession() || {}).id || '' } : null;
+      appData.audioSettings.youtube = on ? { on: true, url: u.trim(), title: ytParse(u).list && !ytParse(u).vid ? 'playlist' : 'activée', sid: (getActiveSession() || {}).id || '' } : Object.assign({}, appData.audioSettings.youtube || {}, { on: false });
       saveAppData(); const m = document.getElementById('ytModal'); if (m) m.remove(); setMainButton(); try { prepRender(); } catch (e) { } showToast(on ? '▶️ La vidéo démarrera avec la séance' : 'Vidéo désactivée');
     }
     function ytLoadApi() {
@@ -19852,10 +19904,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function mediaList() {
       const L = [], c = spCfg(), sess = getActiveSession() || {}, rc = readCfg(), yc = ytCfg(), ra = radioCfg();
       const rStart = x => x.start === 'warm' ? "après l'échauffement" : x.start === 'min' ? `à la minute ${x.min || 0}` : 'dès le départ';
-      if (spConnected() && c.pl) L.push({ ic: '🎵', t: `Spotify « ${c.pl.name} »`, w: c.plStart === 'go' ? 'démarre avec la séance' : 'à lancer avec le bouton vert' });
+      if (spConnected() && c.pl && !c.off) L.push({ ic: '🎵', t: `Spotify « ${c.pl.name} »`, w: c.plStart === 'go' ? 'démarre avec la séance' : 'à lancer avec le bouton vert' });
       if (rc) L.push({ ic: '📖', t: 'Livre audio', w: `démarre ${rStart(rc)}${rc.fast ? '' : ', en pause pendant les efforts rapides'}` });
       if (yc.on && sess.type === 'tapis') L.push({ ic: '▶️', t: `YouTube ${yc.title && yc.title !== 'activée' ? '(' + yc.title + ')' : ''}`, w: 'démarre avec la séance' });
-      if (ra.mode !== 'off') L.push({ ic: '🎙️', t: `Animations ${ra.mode === 'news' ? 'actualité' : 'thèmes'}`, w: `toutes les ${ra.every} min, jamais pendant un effort rapide` });
+      if (ra.mode !== 'off') L.push({ ic: '🎙️', t: `Animations ${ra.mode === 'news' ? 'actualité' : 'thèmes'}`, w: `${ra.every ? `toutes les ${ra.every} min` : 'en continu'}, dès ${radioStartTxt(ra)}, jamais pendant un effort rapide` });
       return L;
     }
     function prepRender() {
@@ -19865,8 +19917,14 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       w.innerHTML = con ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.5)"><span style="font-size:22px">❤️</span><span style="flex:1;font-size:14px;font-weight:800;color:#a7f3d0">${plEsc(btDevice && btDevice.name || 'Montre')} connectée${runData.hr ? ` · ${runData.hr} bpm` : ''}</span><span style="font-size:18px;color:#34d399">✓</span></div>`
         : known ? `<button type="button" onclick="quickHeartRate()" aria-label="Reconnecter ${plEsc(se.btName || 'la montre')}" style="width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;border:none;background:#f43f5e;color:#fff;font-weight:900;font-size:15px"><span style="font-size:17px;line-height:1">⌚</span>Reconnecter la montre</button>`
         : `<button type="button" onclick="quickHeartRate()" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#0b1324;border:1px dashed #334155;color:#94a3b8;text-align:left;font-size:13px;font-weight:700"><span style="font-size:20px">⌚</span>Connecter une montre cardio (optionnel)</button>`;
-      const c = spCfg(); if (go) { const on = spConnected() && !!c.pl, live = !!(on && (sp.playing || sp.launched)); go.classList.toggle('hidden', !on || live); const ctl = document.getElementById('spCtl'); if (ctl) { ctl.classList.toggle('hidden', !live); ctl.style.display = live ? 'grid' : 'none'; } const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
-        if (live && Date.now() - (sp.at || 0) > 4000 && !prepRender.pl) { prepRender.pl = 1; spPoll().finally(() => { prepRender.pl = 0; }); } }
+      const c = spCfg(); if (go) {
+        // Musique déjà lancée depuis Spotify (ou depuis l'app) : on affiche les commandes et le titre en cours
+        const con = spConnected(), live = !!(con && (sp.playing || sp.launched || sp.track));
+        go.classList.toggle('hidden', !(con && c.pl && !c.off) || live);
+        const ctl = document.getElementById('spCtl'); if (ctl) { ctl.classList.toggle('hidden', !live); ctl.style.display = live ? 'grid' : 'none'; }
+        const tn = document.getElementById('spNow'); if (tn) { const on = live && !!sp.track; tn.style.display = on ? 'block' : 'none'; if (on) tn.textContent = `🎵 ${sp.track}`; }
+        const pb = document.getElementById('spCtlPlay'); if (pb) { const k = sp.playing ? 'pause' : 'play'; if (pb.dataset.k !== k) { pb.dataset.k = k; pb.innerHTML = sp.playing ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px"><polygon points="6 4 20 12 6 20"/></svg>'; } pb.setAttribute('aria-label', sp.playing ? 'Pause' : 'Lecture'); }
+        if (con && Date.now() - (sp.at || 0) > 4000 && !prepRender.pl) { prepRender.pl = 1; spPoll().finally(() => { prepRender.pl = 0; }); } }
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
       if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
@@ -19886,30 +19944,58 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       mediaRender();
     }
     function closeMediaModal() { const m = document.getElementById('mediaModal'); if (m) m.remove(); try { prepRender(); } catch (e) { } }
+    function mediaOn(k) {
+      if (k === 'sp') { const c = spCfg(); return spConnected() && !!c.pl && !c.off; }
+      if (k === 'rd') return !!readCfg();
+      if (k === 'yt') return !!ytCfg().on;
+      return radioCfg().mode !== 'off';
+    }
+    function mediaToggle(k) {
+      const on = mediaOn(k);
+      if (k === 'sp') { if (!spConnected()) { closeMediaModal(); navGo('settings'); return; } const c = spCfg(); if (!on && !c.pl) { openSpPlaylists(true); return; } c.off = on; saveAppData(); }
+      else if (k === 'rd') { const c = appData.audioSettings.readText; if (!on && !(c && (c.text || c.chunks))) { openReadModal(); return; } if (c) { c.off = on; if (!on) c.sid = (getActiveSession() || {}).id || c.sid; } saveAppData(); try { updateReadBtn(); } catch (e) { } }
+      else if (k === 'yt') { const c = appData.audioSettings.youtube; if (!on && !(c && c.url)) { openYtModal(); return; } appData.audioSettings.youtube = Object.assign({}, c, { on: !on, sid: (getActiveSession() || {}).id || '' }); saveAppData(); }
+      else { const c = radioCfg(); if (on) setRadio({ mode: 'off' }); else setRadio({ mode: c.lastMode || 'news' }); }
+      mediaRender(); try { prepRender(); } catch (e) { }
+    }
     function mediaRender() {
       const m = document.getElementById('mediaModal'); if (!m) return;
-      const c = spCfg(), rc = readCfg(), yc = ytCfg(), tap = (getActiveSession() || {}).type === 'tapis';
-      const card = (ic, t, col, on, body) => `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:${on ? col + '14' : '#0b1324'};border:1px solid ${on ? col + '88' : '#1e293b'}"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">${ic}</span><b style="flex:1;font-size:15px">${t}</b>${on ? `<span style="font-size:11px;font-weight:900;padding:3px 8px;border-radius:99px;background:${col};color:#04121f">ACTIVÉ</span>` : ''}</div>${body}</div>`;
-      const btn = (js, l, bg, fg) => `<button type="button" onclick="${js}" style="min-height:44px;padding:0 12px;border-radius:12px;border:${bg ? 'none' : '1px solid #475569'};background:${bg || '#1e293b'};color:${fg || '#e2e8f0'};font-weight:800;font-size:13px">${l}</button>`;
-      const chip = (on, js, l) => `<button type="button" onclick="${js}" style="min-height:40px;border-radius:10px;font-size:12.5px;font-weight:800;${on ? 'background:#1ed760;color:#04140a;border:none' : 'background:#0f172a;color:#94a3b8;border:1px solid #334155'}">${l}</button>`;
-      const spBody = !spConnected() ? `<span style="font-size:12.5px;color:#94a3b8">Spotify n'est pas connecté. Le paramétrage se fait dans Réglages › Voix.</span>${btn("closeMediaModal();navGo('settings')", '⚙️ Ouvrir les réglages')}`
-        : `<span style="font-size:13px;color:#cbd5e1">${c.pl ? `Playlist : <b>${plEsc(c.pl.name)}</b>` : 'Aucune playlist choisie'}</span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${chip(c.plStart === 'go', "spCfg().plStart='go';saveAppData();mediaRender()", '▶ Au départ de la séance')}${chip(c.plStart !== 'go', "spCfg().plStart='manual';saveAppData();mediaRender()", '👆 Avec le bouton')}</div>
-          <div style="display:grid;grid-template-columns:${c.pl ? '2fr 1fr' : '1fr'};gap:6px">${btn('openSpPlaylists(true)', c.pl ? '🎶 Changer de playlist' : '🎶 Choisir une playlist', '#1ed760', '#04140a')}${c.pl ? btn("delete spCfg().pl;saveAppData();mediaRender()", 'Retirer') : ''}</div>`;
-      const rdBody = `<span style="font-size:13px;color:#cbd5e1">${rc ? `${rc.chunks.length} morceaux · ${readIsAi(rc) ? 'voix IA' : 'voix du téléphone'} · démarre ${rc.start === 'warm' ? "après l'échauffement" : rc.start === 'min' ? 'à la minute ' + (rc.min || 0) : 'dès le départ'}` : 'Un texte, un article ou un chapitre lu pendant la séance.'}</span>
-        <div style="display:grid;grid-template-columns:${rc ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openReadModal()", rc ? '✏️ Modifier' : '📖 Choisir un texte', '#38bdf8', '#04121f')}${rc ? btn("appData.audioSettings.readText=null;saveAppData();updateReadBtn();mediaRender()", 'Retirer') : ''}</div>`;
-      const ytBody = `<span style="font-size:13px;color:#cbd5e1">${yc.on ? 'Vidéo prête, démarre avec la séance (écran allumé).' : 'Une vidéo ou une playlist YouTube à regarder sur le tapis.'}</span>
-        <div style="display:grid;grid-template-columns:${yc.on ? '2fr 1fr' : '1fr'};gap:6px">${btn("closeMediaModal();openYtModal()", yc.on ? '✏️ Changer de vidéo' : '▶️ Choisir une vidéo', '#ef4444', '#fff')}${yc.on ? btn("appData.audioSettings.youtube=null;saveAppData();mediaRender()", 'Retirer') : ''}</div>`;
-      const T = [['sp', '🎵', 'Spotify', '#1ed760', spConnected() && !!c.pl], ['rd', '📖', 'Livre audio', '#38bdf8', !!rc]].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444', !!yc.on]] : []).concat([['an', '🎙️', 'Animations', '#a78bfa', radioCfg().mode !== 'off']]);
+      const c = spCfg(), rc = appData.audioSettings.readText, yc = appData.audioSettings.youtube || {}, tap = (getActiveSession() || {}).type === 'tapis';
+      const T = [['sp', '🎵', 'Spotify', '#1ed760'], ['rd', '📖', 'Livre audio', '#38bdf8']].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444']] : []).concat([['an', '🎙️', 'Animations', '#a78bfa']]);
       if (!T.some(t => t[0] === mediaTab)) mediaTab = 'sp';
-      const cur = T.find(t => t[0] === mediaTab);
-      const body = { sp: spBody, rd: rdBody, yt: ytBody, an: `<span style="font-size:12.5px;color:#94a3b8">Courtes chroniques lues par le coach pour faire passer le temps, jamais pendant un effort rapide.</span>${radioOptsHtml()}` }[mediaTab];
-      m.innerHTML = `<div style="width:100%;max-width:480px;height:min(600px,88vh);overflow-y:auto;background:#0f172a;border:1px solid #334155;border-top:0;border-radius:0 0 20px 20px;padding:calc(16px + env(safe-area-inset-top)) 16px 20px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
-        <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias pendant la séance</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
-        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, col, on]) => `<button type="button" onclick="mediaTab='${k}';mediaRender()" style="position:relative;min-height:56px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${col};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:19px;line-height:1">${ic}</span>${l}${on ? `<span style="position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:4px;background:${mediaTab === k ? '#04121f' : col}"></span>` : ''}</button>`).join('')}</div>
-        ${card(cur[1], { sp: 'Playlist Spotify', rd: 'Livre audio', yt: 'Vidéo YouTube', an: 'Animations du coach' }[mediaTab], cur[3], cur[4], body)}
-        <span style="font-size:11.5px;color:#64748b;text-align:center;margin-top:auto">● = média activé</span>
+      const cur = T.find(t => t[0] === mediaTab), on = mediaOn(mediaTab), col = cur[3];
+      const big = (js, l, bg, fg) => `<button type="button" onclick="${js}" style="min-height:50px;border-radius:14px;border:${bg ? 'none' : '1px solid #475569'};background:${bg || '#1e293b'};color:${fg || '#e2e8f0'};font-weight:900;font-size:14px">${l}</button>`;
+      const seg = (o, js, l) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${o ? `background:${col};color:#04121f;border:none` : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${l}</button>`;
+      const sw = `<button type="button" onclick="mediaToggle('${mediaTab}')" role="switch" aria-checked="${on}" aria-label="${on ? 'Désactiver' : 'Activer'}" style="display:flex;align-items:center;gap:10px;width:100%;min-height:58px;padding:0 14px;border-radius:16px;border:1px solid ${on ? col : '#334155'};background:${on ? col + '1f' : '#0b1324'};color:#f1f5f9">
+          <span style="font-size:26px">${cur[1]}</span><b style="flex:1;text-align:left;font-size:16px">${on ? 'Activé' : 'Désactivé'}</b>
+          <span style="position:relative;width:54px;height:30px;border-radius:15px;background:${on ? col : '#334155'};flex:none"><span style="position:absolute;top:3px;left:${on ? 27 : 3}px;width:24px;height:24px;border-radius:12px;background:#fff;transition:left .15s"></span></span></button>`;
+      let body = '';
+      if (mediaTab === 'sp') {
+        body = !spConnected() ? big("closeMediaModal();navGo('settings')", '⚙️ Connecter Spotify (Réglages)')
+          : `${c.pl ? `<button type="button" onclick="openSpPlaylists(true)" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:16px;border:1px solid #1e293b;background:#0b1324;color:#f1f5f9;text-align:left">${c.pl.img ? `<img src="${plEsc(c.pl.img)}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex:none">` : '<span style="width:64px;height:64px;border-radius:10px;background:#1ed76022;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none">🎶</span>'}<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(c.pl.name)}</b><span style="font-size:12.5px;color:#86efac;font-weight:800">Changer ›</span></span></button>` : big('openSpPlaylists(true)', '🎶 Choisir une playlist', '#1ed760', '#04140a')}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${seg(c.plStart === 'go', "spCfg().plStart='go';saveAppData();mediaRender()", '🏁 Au départ')}${seg(c.plStart !== 'go', "spCfg().plStart='manual';saveAppData();mediaRender()", '👆 Au bouton')}</div>`;
+      } else if (mediaTab === 'rd') {
+        const has = rc && (rc.text || rc.chunks);
+        body = has ? `<div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:30px">📖</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(String(rc.text || (rc.chunks || []).join(' ')).slice(0, 60))}…</b><span style="font-size:12px;color:#7dd3fc;font-weight:800">${readIsAi(rc) ? '🤖 Voix IA' : '📱 Voix du téléphone'} · ${rc.start === 'warm' ? '🔥 après échauff.' : rc.start === 'min' ? `⏱️ ${rc.min || 0}'` : '🏁 départ'}</span></span></div>${big('openReadModal()', '⚙️ Paramétrer', '#38bdf8', '#04121f')}`
+          : big('openReadModal()', '📖 Ajouter un texte', '#38bdf8', '#04121f');
+      } else if (mediaTab === 'yt') {
+        const P = yc.url ? ytParse(yc.url) : null, vid = P && P.vid;
+        body = `${yc.url ? `<div style="position:relative;border-radius:16px;overflow:hidden;border:1px solid #1e293b;background:#000;aspect-ratio:16/9">${vid ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(vid)}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.85">` : '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px">📃</span>'}<span style="position:absolute;left:8px;bottom:8px;padding:3px 8px;border-radius:8px;background:rgba(0,0,0,.7);font-size:12px;font-weight:800">${vid ? '▶️ Vidéo' : '📃 Playlist'}</span></div>` : ''}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${big('ytOpenSite()', '↗ YouTube', '#ef4444', '#fff')}${big('mediaYtPaste()', '📋 Coller le lien')}</div>`;
+      } else body = radioOptsHtml();
+      m.innerHTML = `<div style="width:100%;max-width:480px;height:min(640px,90vh);overflow-y:auto;background:#0f172a;border:1px solid #334155;border-top:0;border-radius:0 0 20px 20px;padding:calc(14px + env(safe-area-inset-top)) 14px 18px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
+        <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
+        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTab='${k}';mediaRender();${k === 'rd' ? 'openReadModal()' : ''}" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
+        ${sw}
+        <div style="display:flex;flex-direction:column;gap:8px;${on || mediaTab === 'sp' || mediaTab === 'yt' || mediaTab === 'rd' ? '' : 'opacity:.55'}">${body}</div>
       </div>`;
+    }
+    async function mediaYtPaste() {
+      let t = ''; try { t = await navigator.clipboard.readText(); } catch (e) { openYtModal(); return; }
+      t = String(t || '').trim(); const mm = t.match(/https?:\/\/\S+/); if (mm) t = mm[0];
+      if (!ytParse(t)) { showToast('Pas de lien YouTube copié'); return; }
+      appData.audioSettings.youtube = { on: true, url: t, title: ytParse(t).list && !ytParse(t).vid ? 'playlist' : 'activée', sid: (getActiveSession() || {}).id || '' };
+      saveAppData(); mediaRender(); try { prepRender(); } catch (e) { } showToast('▶️ Vidéo ajoutée');
     }
     function cancelBeforeStart() {
       try { ytStop(); } catch (e) { }
@@ -20707,9 +20793,12 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         if (need && !hi) { hi = document.createElement('button'); hi.id = 'homeFeelHint'; hi.type = 'button'; hi.onclick = () => { homeTab = 'feel'; homeTabsSync(); }; hi.style.cssText = 'width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(251,191,36,.55);background:rgba(251,191,36,.08);color:#fde68a;font-size:13.5px;font-weight:700;line-height:1.35'; hi.innerHTML = "🙂 Renseigne tes sensations du jour : le coach te fera sa suggestion pour aujourd'hui. <b>Remplir ›</b>"; host.appendChild(hi); }
         if (hi) hi.style.display = need ? 'block' : 'none'; } } catch (e) { }
       const bar = document.getElementById('homeTabs'); if (!bar) return;
-      const av = HOME_TABS.filter(t => homeTabAvail(t[2]));
+      const lh = (appData.history || []).find(x => x && !x.cross && x.endAt), lastToday = !!(lh && toISODateLocal(new Date(lh.endAt)) === todayISO());
+      const TABS = lastToday ? HOME_TABS.filter(t => t[0] !== 'last').map(t => t[0] === 'sess' ? [t[0], t[1], t[2].concat(HOME_TABS.find(x => x[0] === 'last')[2])] : t) : HOME_TABS;
+      if (lastToday && homeTab === 'last') homeTab = 'sess';
+      const av = TABS.filter(t => homeTabAvail(t[2]));
       if (!av.some(t => t[0] === homeTab)) homeTab = av.some(t => t[0] === 'sess') ? 'sess' : av.length ? av[0][0] : 'sess';
-      HOME_TABS.forEach(([k, , ids]) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.classList.toggle('htab-off', k !== homeTab); }));
+      TABS.forEach(([k, , ids]) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.classList.toggle('htab-off', k !== homeTab); }));
       bar.style.display = av.length > 1 ? 'flex' : 'none';
       { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = !card.classList.contains('hidden') ? 'flex' : 'none';
         const bar2 = document.getElementById('homeActBar'); if (bar2) bar2.classList.toggle('hab-off', homeTab !== 'sess'); }
