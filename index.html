@@ -98,7 +98,8 @@
     body.home-wait #homeScreen > :not(#homeDayWaitFull) { display: none !important; }
     #homeDayWaitFull { display: none; }
     body.home-wait #homeDayWaitFull { display: flex !important; }
-    #homeTabs { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -12px 0 12px #020617; }
+    #homeDateBar { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 26; text-align: center; box-shadow: 0 -12px 0 12px #020617; }
+    #homeTabs { position: sticky; top: calc(94px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -8px 0 8px #020617; }
     .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
     .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
     .hsub button.on { background: #38bdf8; color: #04121f; }
@@ -396,7 +397,7 @@
   <section id="homeScreen" class="flex-1 flex-col w-full max-w-md mx-auto px-4 py-6 gap-4">
     </div>
 
-    <div id="homeDateBar" style="position:relative;z-index:26;font-size:20px;line-height:1.2;font-weight:900;color:#f8fafc;letter-spacing:-.2px;padding:4px 2px 2px;background:#020617"></div>
+    <div id="homeDateBar" style="font-size:20px;line-height:1.2;font-weight:900;color:#f8fafc;letter-spacing:-.2px;padding:4px 2px 4px;background:#020617"></div>
     <div id="homeTabs" style="display:flex;gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b"></div>
     <div id="homeGoalProb" onclick="openGoalModal()" class="text-[11px] font-semibold text-slate-300 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 hidden"></div>
     <div id="homeGreeting" class="hidden"></div>
@@ -421,9 +422,9 @@
     </div>
 
     <div id="homeTodayTop" style="display:none;flex-direction:column;gap:8px"></div>
-    <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
+    <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl" style="padding-top:10px">
       <button type="button" id="homeActBtn" onclick="homeActivateRun()" style="display:none;width:100%;min-height:48px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">▶ Activer cette séance</button>
-      <div class="flex items-start justify-between gap-2">
+      <div id="homeCardHead" class="flex items-start justify-between gap-2">
         <div class="min-w-0">
           <div id="homeCardLabel" class="text-2xl font-black text-white leading-tight">Séance du jour</div>
           <div id="homeSessTitle" class="text-[11px] font-extrabold tracking-wider mt-1"></div>
@@ -626,6 +627,7 @@
           <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
         </label>
         <div data-cfgt="coach" id="cfgCoachBox" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div data-cfgt="coach" id="cfgRouteCoach" style="display:flex;flex-direction:column;gap:8px"></div>
         <button data-cfgt="coach" type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
         <!-- Type de séance -->
         <div data-cfgt="recap" class="grid grid-cols-2 gap-2">
@@ -717,7 +719,7 @@
 
         
 
-        <div data-cfgt="recap" id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
+        <div data-cfgt="route" id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
           <span class="text-xs font-bold text-emerald-300 block">🗺️ Parcours GPX de la séance</span>
           <p class="text-[10px] text-slate-400">Pour une sortie extérieure : l'app vous situe sur le parcours, annonce les virages (« dans 100 mètres, tourne à droite ») et les côtes 250 m avant (« montée de 5 % sur 1 km »).</p>
           <button onclick="openRouteEditor()" class="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">🗺️ Dessiner un parcours</button>
@@ -5795,11 +5797,43 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       const b = document.getElementById('cfgCoachBox'); if (!b) return; const s = cfgSess();
       if (!(cfgKind === 'course' || cfgKind === 'test')) { b.innerHTML = '<span style="font-size:13px;color:#94a3b8;text-align:center">Le coach peut te conseiller sur cette séance.</span>'; return; }
       const km = parseFloat(String((document.getElementById('cfgTestKm') || {}).value || '').replace(',', '.')) || 0, P = s && s.coachPred && Math.abs((+s.coachPred.km || 0) - km) < 0.01 ? s.coachPred : null;
+      if (km && !P && getGeminiKey() && cfgCoachPredict.busyKm !== km) { cfgCoachPredict.busyKm = km; setTimeout(() => cfgCoachPredict(), 400); }
       b.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.45)">
         <span style="font-size:12px;font-weight:900;color:#c4b5fd;letter-spacing:.5px">🧠 PRÉDICTION DU COACH${km ? ` · ${String(km).replace('.', ',')} KM` : ''}</span>
         ${P ? `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:34px;color:#fff;font-variant-numeric:tabular-nums">${fmtTime(Math.round(P.min * 60))}</b><span style="font-size:15px;font-weight:800;color:#c4b5fd">${formatSpeed(P.kmh).replace('.', ',')} km/h</span></div>${P.txt ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.45">${plEsc(P.txt)}</span>` : ''}` : `<span style="font-size:13px;color:#cbd5e1">${km ? 'Le coach estime ton chrono à partir de tes dernières séances et de ta forme.' : 'Renseigne la distance dans l\'onglet Séance.'}</span>`}
-        ${km ? `<button type="button" onclick="cfgCoachPredict()" style="min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:14px">${P ? '🔄 Refaire la prédiction' : '🧠 Prédire mon chrono'}</button>` : ''}
+        ${P ? `<button type="button" onclick="cfgCoachPredict()" style="min-height:40px;border-radius:12px;border:1px solid #a78bfa;background:transparent;color:#ddd6fe;font-weight:800;font-size:13px">🔄 Refaire l'estimation</button>` : km ? '<span style="font-size:13px;color:#c4b5fd">⏳ Le coach estime ton chrono…</span>' : ''}
         <span id="cfgCoachMsg" style="font-size:12px;color:#94a3b8"></span></div>`;
+    }
+    function cfgRouteCoachRender() {
+      const b = document.getElementById('cfgRouteCoach'); if (!b) return;
+      b.innerHTML = cfgTypeIsExt() && modalRoute ? `<span style="font-size:12px;font-weight:900;color:#6ee7b7;letter-spacing:.5px">🗺️ AVIS SUR LE PARCOURS « ${plEsc(modalRoute.name || '')} »</span>${routeReviewHtml(modalRoute)}` : '';
+    }
+    // Course / test sur un parcours chargé : distance du parcours, temps et vitesse estimés par le coach
+    function cfgTestRouteSync() {
+      const on = (cfgKind === 'test' || cfgKind === 'course') && cfgTypeIsExt() && !!modalRoute && +modalRoute.totalKm > 0;
+      const kmI = document.getElementById('cfgTestKm'), tI = document.getElementById('cfgTestTime'), vI = document.getElementById('cfgTestSpeed'); if (!kmI) return;
+      const chips = kmI.closest('#cfgTestChrono') && kmI.closest('#cfgTestChrono').firstElementChild;
+      if (chips) chips.style.display = on ? 'none' : '';
+      [tI, vI].forEach(e => { if (e && e.parentElement) e.parentElement.style.display = on ? 'none' : ''; });
+      const th = document.getElementById('cfgTestHint'); if (th) th.style.display = on ? 'none' : '';
+      kmI.readOnly = on; if (kmI.parentElement && kmI.parentElement.parentElement) kmI.parentElement.parentElement.style.gridTemplateColumns = on ? '1fr' : '';
+      let note = document.getElementById('cfgTestRouteNote');
+      if (on) {
+        const km = Math.round(+modalRoute.totalKm * 100) / 100; if (parseFloat(kmI.value) !== km) kmI.value = km;
+        const s = cfgSess(), P = s && s.coachPred && Math.abs(+s.coachPred.km - km) < 0.01 ? s.coachPred : null;
+        const kmh = P ? P.kmh : (modalRoute.review && parseFloat(modalRoute.review.kmh)) || runnerEF();
+        if (vI) vI.value = (Math.round(kmh * 10) / 10).toFixed(1); if (tI) tI.value = fmtClock(km / kmh * 60);
+        if (!note) { note = document.createElement('span'); note.id = 'cfgTestRouteNote'; note.style.cssText = 'display:block;font-size:12.5px;font-weight:700;color:#6ee7b7'; kmI.closest('#cfgTestChrono').appendChild(note); }
+        note.textContent = `📏 Distance du parcours « ${modalRoute.name || ''} ». Temps et vitesse : estimation du coach (onglet Coach, affichée sur le récap).`;
+        if (!P && getGeminiKey() && cfgCoachPredict.busyKm !== km) { cfgCoachPredict.busyKm = km; setTimeout(() => cfgCoachPredict(), 400); }
+      } else if (note) note.remove();
+    }
+    // Séance course/test avec parcours enregistré : le chrono du coach devient la cible (temps + vitesse)
+    function coachPredApply(s) {
+      const P = s && s.coachPred, k = s && s.kind; if (!P || !s.route || !(k === 'course' || k === 'test')) return;
+      if (Math.abs(+P.km - +s.route.totalKm) > 0.05) return;
+      const T = k === 'course' ? (s.race = s.race || {}) : (s.test = s.test || {}); T.km = P.km; T.min = P.min;
+      const p0 = (s.pyramide || [])[0]; if (p0) { p0.distance = P.km; p0.duration = P.min; p0.speed = P.kmh; }
     }
     async function cfgCoachPredict() {
       const s = cfgSess(), km = parseFloat(String((document.getElementById('cfgTestKm') || {}).value || '').replace(',', '.')) || 0; if (!s || !km) return;
@@ -5820,13 +5854,14 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
         const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, model: 'flash', maxTokens: 600 })) || {};
         const min = +j.minutes; if (!(min > 1)) throw new Error('réponse invalide');
         s.coachPred = { km, min, kmh: Math.round(km / (min / 60) * 10) / 10, txt: String(j.explication || '').slice(0, 300), at: todayISO() };
-        saveAppData(); cfgCoachRender(); try { renderHome(); } catch (e) { }
-      } catch (e) { if (msg) msg.textContent = 'Prédiction impossible : ' + (e.message || e); }
+        coachPredApply(s);
+        cfgCoachPredict.busyKm = 0; saveAppData(); cfgCoachRender(); cfgTestRouteSync(); try { renderHome(); } catch (e) { }
+      } catch (e) { cfgCoachPredict.busyKm = 0; if (msg) msg.textContent = 'Estimation impossible : ' + (e.message || e); }
     }
     function cfgTabsRender() {
-      const T = [['recap', '📋', 'Récap'], ['seance', '🏃', 'Séance'], ['coach', '🧠', 'Coach']];
+      const T = [['recap', '📋', 'Récap'], ['seance', '🏃', 'Séance']].concat(cfgTypeIsExt() ? [['route', '🗺️', 'Parcours']] : []).concat([['coach', '🧠', 'Coach']]);
       if (!T.some(t => t[0] === cfgTab)) cfgTab = 'recap';
-      if (cfgTab === 'coach') { try { cfgCoachRender(); } catch (e) { } }
+      try { cfgCoachRender(); } catch (e) { } try { cfgTestRouteSync(); cfgRouteCoachRender(); } catch (e) { }
       const bar = document.getElementById('cfgTabs');
       if (bar) { bar.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`; bar.style.display = T.length > 1 ? 'grid' : 'none';
         bar.innerHTML = T.map(([k, ic, l]) => `<button type="button" onclick="cfgTab='${k}';cfgTabsRender()" style="min-height:50px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:800;${cfgTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join(''); }
@@ -6060,6 +6095,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
       if (cfgKind === 'test' && cfgTestProto !== 'chrono') { sess.test = { proto: cfgTestProto, start: pyr[0].speed }; sess.notes = cfgTestProto === 'vmaTapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)'; if (cfgTestProto === 'vmaTapis') sess.pente = 1; }
       else if (cfgKind === 'test') { sess.test = { km: pyr[0].distance, min: pyr[0].duration }; if (!/test/i.test(sess.notes || '') || /Test VMA/.test(sess.notes || '')) sess.notes = `Test ${formatSpeed(pyr[0].distance)} km`; }
       else delete sess.test;
+      if ((cfgKind === 'course' || cfgKind === 'test') && sess.coachPred && sess.route && Math.abs(+sess.coachPred.km - +pyr[0].distance) < 0.01) { pyr[0].duration = sess.coachPred.min; pyr[0].speed = sess.coachPred.kmh; }
       if (cfgKind === 'course') { sess.race = { km: pyr[0].distance, min: pyr[0].duration }; if (!/course/i.test(sess.notes || '')) sess.notes = `Course ${formatSpeed(pyr[0].distance)} km${sess.notes ? ' — ' + sess.notes : ''}`; }
       else delete sess.race;
     }
@@ -7288,7 +7324,7 @@ Donne 2 ou 3 axes de travail.`;
             <span class="pl-clamp" style="font-size:15px;font-weight:800;line-height:1.25">${plEsc(title)}</span>
             <span style="font-size:12px;color:#94a3b8;font-weight:600">${c.dur || '?'} min</span>
           </div>
-          ${plIconBtns('', `deleteCrossPlan('${c.id}')`)}
+          ${plIconBtns(`crossEditAsk('${c.id}')`, `deleteCrossPlan('${c.id}')`, '', `crossMoveAsk('${c.id}')`)}
         </div>
         <div id="detail_${c.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
           ${c.detail ? `<div style="font-size:12px;color:#94a3b8">${plEsc(c.detail)}</div>` : ''}
@@ -12219,6 +12255,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       return r;
     }
     function renderRouteInfo() {
+      try { cfgRouteCoachRender(); cfgTestRouteSync(); } catch (e) { }
       const box = document.getElementById('routeInfo');
       if (!box) return;
       const r = fixClimbs(modalRoute);
@@ -12242,7 +12279,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
         <div class="text-[12px] text-slate-300 space-y-0.5">${ups.length ? ups.map(c =>
           `<div>⛰️ <b>Montée au km ${c.startKm.toFixed(1).replace('.', ',')}</b> : ${dist(c.lenKm)} à ${String(c.grade).replace('.', ',')} % (D+ ${c.gainM ?? Math.round(c.lenKm * c.grade * 10)} m)</div>`).join('')
           : (r.hasEle ? '<div class="text-slate-500">Aucune montée significative (≥ 500 m).</div>' : '')}</div>
-        ${routeReviewHtml(r)}`;
+        `;
     }
 
 
@@ -20824,14 +20861,47 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     // Deux séances (ou plus) le même jour : les autres s'affichent aussi dans « Aujourd'hui »
     function homeActiveCross() { const a = appData.activeCross, t = todayISO(); if (!a || a.d !== t) return null; return (appData.crossPlan || []).find(c => c.id === a.id && c.dateISO === t) || null; }
+    function crossActsHtml(id) { return `<div class="hm-acts"><button type="button" class="hm-act" onclick="crossMoveAsk('${id}')">${PL_ICON_MOVE}<span>Déplacer</span></button><button type="button" class="hm-act" onclick="crossEditAsk('${id}')">${PL_ICON_EDIT}<span>Modifier</span></button><button type="button" class="hm-act hm-del" onclick="deleteCrossPlan('${id}');renderHome()">${PL_ICON_DEL}<span>Supprimer</span></button></div>`; }
+    function crossExosHtml(c, col) {
+      const ex = (c.exos || []).slice(0, 12); if (!ex.length) return '';
+      return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${ex.map(e => `<div style="display:flex;flex-direction:column;gap:1px;padding:7px 9px;border-radius:12px;background:rgba(2,6,23,.45);border:1px solid ${col}33;min-width:0"><b style="font-size:12.5px;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(e.nom || e.name || e)}</b>${e.dosage ? `<span style="font-size:11.5px;color:${col};font-weight:800">${plEsc(e.dosage)}</span>` : ''}</div>`).join('')}</div>`;
+    }
     function homeCrossBlock(c, active) {
       const T = ACT_TYPES[c.type] || {}, col = T.color || '#f472b6';
-      const ex = (c.exos || []).slice(0, 8).map(e => `<span style="font-size:12.5px;color:#cbd5e1">• ${plEsc(e.nom || e.name || e)}${e.dosage ? ` <span style="color:#94a3b8">${plEsc(e.dosage)}</span>` : ''}</span>`).join('');
-      return `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
         ${active ? '' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Activer</button>`}
-        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:30px">${T.icon || '🏋️'}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:11px;font-weight:900;color:${col};letter-spacing:.6px">${active ? '● ACTIVE · ' : ''}${plEsc((T.label || 'Activité').toUpperCase())}</span><span style="font-size:17px;font-weight:900;color:#fff">${plEsc(c.titre || T.label || 'Activité')}</span><span style="font-size:13px;color:#94a3b8">${c.dur || '?'} min${c.intensite ? ' · ' + plEsc(c.intensite) : ''}</span></div></div>
-        ${c.detail ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(c.detail)}</span>` : ''}${ex ? `<div style="display:flex;flex-direction:column;gap:2px">${ex}</div>` : ''}
+        ${crossActsHtml(c.id)}
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${sTile(T.icon || '🏋️', T.label || 'Activité', '', '', { small: true })}${sTile('⏱️', `${c.dur || '?'} min`)}${sTile('🔥', ({ facile: 'Facile', moderee: 'Modérée', soutenue: 'Soutenue' })[c.intensite] || 'Modérée', '', '', { small: true })}</div>
+        ${c.titre ? `<b style="font-size:15px;color:#fff;text-align:center">${plEsc(c.titre)}</b>` : ''}
+        ${crossExosHtml(c, col)}
+        ${c.detail ? `<span style="font-size:12.5px;color:#94a3b8;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${plEsc(c.detail)}</span>` : ''}
         ${active ? `<button type="button" onclick="startCrossActivity('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Lancer</button>` : ''}</div>`;
+    }
+    function crossItem(id) { return (appData.crossPlan || []).find(x => x.id === id); }
+    function crossSheet(title, body, okJs) {
+      let m = document.getElementById('crossSheet'); if (m) m.remove();
+      m = document.createElement('div'); m.id = 'crossSheet'; m.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.85);display:flex;align-items:flex-end;justify-content:center';
+      m.onclick = e => { if (e.target === m) m.remove(); };
+      m.innerHTML = `<div style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:#0f172a;border:1px solid #334155;border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
+        <div style="display:flex;align-items:center;gap:8px"><b style="flex:1;font-size:18px">${title}</b><button type="button" onclick="document.getElementById('crossSheet').remove()" aria-label="Fermer" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#fff;font-weight:900">✕</button></div>
+        ${body}<button type="button" onclick="${okJs}" style="min-height:50px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">✓ Enregistrer</button></div>`;
+      document.body.appendChild(m);
+    }
+    function crossMoveAsk(id) { const c = crossItem(id); if (!c) return; crossSheet('📅 Déplacer l\'activité', `<input type="date" id="csDate" class="pm-in" value="${c.dateISO}" min="${todayISO()}" style="height:50px;font-size:16px;color-scheme:dark">`, `crossMoveDo('${id}')`); }
+    function crossMoveDo(id) { const c = crossItem(id), d = (document.getElementById('csDate') || {}).value; if (!c || !d) return; c.dateISO = d; saveAppData(); document.getElementById('crossSheet').remove(); try { updateHistoryTable(); } catch (e) { } renderHome(); showToast('✓ Activité déplacée'); }
+    function crossEditAsk(id) {
+      const c = crossItem(id); if (!c) return; const lab = t => `<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">${t}</span>`;
+      crossSheet('✏️ Modifier l\'activité', `${lab('Type')}<select id="csType" class="pm-in" style="height:48px">${Object.entries(ACT_TYPES).filter(([k]) => k === 'velo' || k === 'muscu').map(([k, t]) => `<option value="${k}"${k === c.type ? ' selected' : ''}>${t.icon || ''} ${t.label}</option>`).join('')}</select>
+        ${lab('Titre')}<input id="csTitle" class="pm-in" value="${plEsc(c.titre || '')}" style="height:48px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="display:flex;flex-direction:column;gap:4px">${lab('Date')}<input type="date" id="csDate" class="pm-in" value="${c.dateISO}" style="height:48px;color-scheme:dark"></div><div style="display:flex;flex-direction:column;gap:4px">${lab('Durée (min)')}<input type="number" id="csDur" class="pm-in" value="${c.dur || 30}" style="height:48px"></div></div>
+        ${lab('Exercices (un par ligne : nom — dosage)')}<textarea id="csExos" rows="6" class="pm-in" style="height:auto;padding:10px;font-size:14px">${plEsc((c.exos || []).map(e => (e.nom || e.name || e) + (e.dosage ? ' — ' + e.dosage : '')).join('\n'))}</textarea>
+        ${lab('Détail')}<textarea id="csDetail" rows="2" class="pm-in" style="height:auto;padding:10px;font-size:14px">${plEsc(c.detail || '')}</textarea>`, `crossEditDo('${id}')`);
+    }
+    function crossEditDo(id) {
+      const c = crossItem(id); if (!c) return; const g = k => (document.getElementById(k) || {}).value || '';
+      c.type = g('csType') || c.type; c.titre = g('csTitle').trim(); if (g('csDate')) c.dateISO = g('csDate'); c.dur = Math.max(5, Math.round(+g('csDur') || c.dur || 30)); c.detail = g('csDetail').trim();
+      const old = c.exos || []; c.exos = g('csExos').split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [n, d] = l.split(/\s+[—–-]\s+/); const o = old.find(e => (e.nom || e.name) === n.trim()) || {}; return Object.assign({}, o, { nom: n.trim(), dosage: (d || '').trim() }); });
+      saveAppData(); document.getElementById('crossSheet').remove(); try { updateHistoryTable(); } catch (e) { } renderHome(); showToast('✓ Activité modifiée');
     }
     // Toutes les séances du jour (course, renfo, vélo…) : la séance active est en haut et mise en évidence
     function homeTodayMoreRender(busy) {
@@ -21028,10 +21098,11 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       if (!sess || sess.free) return '';
       const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess), main = G.segs[0], kl = sessionKind(sess).label;
       const r1 = [sTile(kindIcon(sess), capFirst(String(kl).toLowerCase())), sTile('⏱️', `${T} min`), sTile('📏', `${D.toFixed(1).replace('.', ',')} km`)];
-      const spd = k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
+      const TG0 = sess.kind === 'course' ? sess.race : sess.test, rCo = sess.type !== 'tapis' && sess.route && sess.coachPred && TG0 && Math.abs(+sess.coachPred.km - +TG0.km) < 0.01;
+      const spd = rCo ? '' : k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
       const vap0 = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
-      const TG = sess.kind === 'course' ? sess.race : sess.test, tst = TG && +TG.km > 0 ? sTile('🎯', `${String(+TG.km).replace('.', ',')} km${+TG.min > 0 ? ' en ' + fmtClock(+TG.min) : ''}`, '', '#f0abfc', { small: true }) : '';
+      const TG = sess.kind === 'course' ? sess.race : sess.test, tst = TG && +TG.km > 0 ? sTile('🎯', `${String(+TG.km).replace('.', ',')} km${+TG.min > 0 && !rCo ? ' en ' + fmtClock(+TG.min) : ''}`, '', '#f0abfc', { small: true }) : '';
       const body1 = !tst && !(G.reps > 1 || G.fast.length) && main && (Math.round(+sess.chauffe || 0) || Math.round(+sess.recup || 0)) ? sTile('🏃', fmtQ(main), '', '', { small: true }) : '';
       const r2 = [body1 || (tst || (G.reps > 1 || G.fast.length) ? (tst || sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true })) : ''), spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : sess.route && +sess.route.totalKm > 0 ? sTile('⛰️', `${(Math.round((+sess.route.gainM || 0) / (+sess.route.totalKm * 1000) * 1000) / 10).toFixed(1).replace('.', ',')} %`) : '',
         (sess.kind === 'course' || sess.kind === 'test') && sess.coachPred && TG && Math.abs(+sess.coachPred.km - +TG.km) < 0.01 ? sTileSplit(fmtTime(Math.round(sess.coachPred.min * 60)), '🧠 Coach', formatSpeed(sess.coachPred.kmh).replace('.', ','), 'km/h', '#c4b5fd', '#c4b5fd') : ''];
@@ -21275,7 +21346,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
         const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
         bar.style.display = inProg ? 'none' : 'flex';
-        bar.innerHTML = [['recap', '📊', 'Récap'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:54px"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
+        bar.innerHTML = [['recap', '📊', 'Récap'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 0"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
         if (hb && !sess.free) hb.innerHTML = `<div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
@@ -21337,7 +21408,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         document.getElementById('homeRestNextBtn').classList.toggle('hidden', !sess);
         document.getElementById('homeRestNextBtn').textContent = isNext ? 'Voir la prochaine séance' : 'Voir la séance chargée';
         const sd = parseISODateLocal(sess.dateISO);
-        { const lbl = document.getElementById('homeCardLabel'), today = sess.dateISO === t; lbl.textContent = today ? '' : sd ? capFirst(sd.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : 'Séance chargée'; lbl.style.display = today ? 'none' : ''; }
+        { const lbl = document.getElementById('homeCardLabel'), today = sess.dateISO === t; lbl.textContent = today ? '' : sd ? capFirst(sd.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : 'Séance chargée'; lbl.style.display = today ? 'none' : ''; const hd = document.getElementById('homeCardHead'), ad = document.getElementById('homeAdapted'); if (hd) hd.style.display = today && (!ad || ad.classList.contains('hidden')) ? 'none' : ''; }
         { const db = document.getElementById('homeDateBar'); if (db) db.textContent = dayLong; }
         homeCardPrefix = sess.dateISO === t ? '' : (isNext ? 'PROCHAINE SÉANCE · ' : '');
       }
