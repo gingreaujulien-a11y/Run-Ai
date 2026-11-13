@@ -146,6 +146,9 @@
     #topBar, #sessInfoLine { display: none !important; }
     body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
     .cfg-tabhide { display: none !important; }
+    .hm-acts { display: flex; justify-content: center; gap: 6px; }
+    .hm-act { flex: 1; max-width: 110px; min-height: 52px; border-radius: 12px; border: 1px solid #334155; background: rgba(2,6,23,.45); color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 800; }
+    .hm-act svg { width: 22px; height: 22px; }
     #prepClose { display: none; }
     #readyLbl { display: none; white-space: nowrap; font-size: 30px; font-weight: 900; color: #f8fafc; letter-spacing: -.3px; margin-bottom: 14px; }
     body:not(.home):not(.started) #readyLbl { display: block; }
@@ -419,19 +422,19 @@
 
     <div id="homeTodayTop" style="display:none;flex-direction:column;gap:8px"></div>
     <div id="homeSessCard" class="bg-gradient-to-br from-sky-500/20 to-indigo-600/20 border border-sky-500/40 rounded-3xl p-4 space-y-2 shadow-xl">
+      <button type="button" id="homeActBtn" onclick="homeActivateRun()" style="display:none;width:100%;min-height:48px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">▶ Activer cette séance</button>
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
           <div id="homeCardLabel" class="text-2xl font-black text-white leading-tight">Séance du jour</div>
           <div id="homeSessTitle" class="text-[11px] font-extrabold tracking-wider mt-1"></div>
           <div id="homeAdapted" class="text-[11px] font-bold text-amber-300 mt-0.5 hidden"></div>
         </div>
-        <div class="shrink-0 flex" style="gap:0;margin-right:-8px;margin-top:-2px">
-      <button id="homeMoveBtn" onclick="homeMoveSession()" title="Déplacer la séance" aria-label="Déplacer la séance" class="hm-ic"></button>
-      <button id="homeCfgBtn" onclick="openConfigModal()" title="Modifier la séance" aria-label="Modifier la séance" class="hm-ic" style="min-height:58px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
-      <button id="homeDelBtn" onclick="homeDeleteSession()" title="Supprimer la séance" aria-label="Supprimer la séance" class="hm-ic hm-del" style="min-height:58px;font-size:22px">🗑</button>
-        </div>
       </div>
-      <button type="button" id="homeActBtn" onclick="homeActivateRun()" style="display:none;min-height:44px;border-radius:12px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">▶ Activer cette séance</button>
+      <div class="hm-acts">
+      <button id="homeMoveBtn" onclick="homeMoveSession()" aria-label="Déplacer la séance" class="hm-act"></button>
+      <button id="homeCfgBtn" onclick="openConfigModal()" aria-label="Modifier la séance" class="hm-act"></button>
+      <button id="homeDelBtn" onclick="homeDeleteSession()" aria-label="Supprimer la séance" class="hm-act hm-del"></button>
+      </div>
       <div id="homeSessDesc" class="text-[17px] font-extrabold text-white leading-snug"></div>
       <div id="homeSessStats" class="text-[15px] font-bold text-sky-200"></div>
       <button type="button" id="homeMoreBtn" onclick="toggleHomeMore()" class="w-full rounded-xl text-[13px] font-extrabold text-sky-100" style="min-height:40px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.35)">▾ Voir plus</button>
@@ -618,14 +621,15 @@
 
       <div class="space-y-3 overflow-y-auto custom-scroll pr-1 mt-3">
         <!-- Date de la séance -->
-        <label data-cfgt="gen" class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+        <label data-cfgt="recap" class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
           <span class="text-[13px] font-extrabold text-sky-200">📅 Date</span>
           <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
         </label>
-        <button data-cfgt="gen" type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
+        <div data-cfgt="coach" id="cfgCoachBox" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button data-cfgt="coach" type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
         <!-- Type de séance -->
-        <div data-cfgt="gen" class="grid grid-cols-2 gap-2">
-          <button data-cfgt="gen" type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+        <div data-cfgt="recap" class="grid grid-cols-2 gap-2">
+          <button type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
             🏃 Tapis
           </button>
           <button type="button" id="btnTypeExt" onclick="setSessionType('exterieur')" class="py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition">
@@ -634,12 +638,12 @@
         </div>
 
         <!-- Type de sortie -->
-        <div data-cfgt="gen" id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
+        <div data-cfgt="recap" id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
           <div id="cfgKindChips" class="grid grid-cols-3 gap-1.5"></div>
           <div id="cfgEstLine" class="flex items-center justify-center gap-3 pt-1 text-[15px] font-black text-white"></div>
         </div>
-        <div data-cfgt="gen" id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+        <div data-cfgt="seance" id="cfgSimpleBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <div class="grid grid-cols-2 gap-2 text-center">
             <div><label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Durée totale (min)</label>
               <input type="number" id="cfgSimpleDur" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-base focus:outline-none focus:border-sky-500" oninput="recalculateModalTotals()"></div>
@@ -648,7 +652,7 @@
           </div>
           <span id="cfgSimpleHint" class="text-[10px] text-slate-400 block"></span>
         </div>
-        <div data-cfgt="gen" id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
+        <div data-cfgt="seance" id="cfgTestBox" class="bg-slate-950 p-2.5 rounded-2xl border border-fuchsia-500/40 space-y-2 hidden">
           <span id="cfgTestTitle" class="text-xs font-bold text-fuchsia-300 block">⏱️ Test</span>
           <div id="cfgTestProto" class="flex gap-1.5 flex-wrap"></div>
           <div id="cfgVmaBox" class="space-y-2 hidden">
@@ -672,14 +676,14 @@
           <span id="cfgTestHint" class="text-[10px] text-slate-400 block"></span>
           </div>
         </div>
-        <div data-cfgt="gen" id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
+        <div data-cfgt="seance" id="cfgLibreBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2 hidden">
           <span class="text-[12px] text-slate-300 block">🏃 Pas de durée ni d'allure imposées : tu règles tout pendant la course.</span>
           <div id="cfgLibreSpeedBox" class="flex items-center justify-between gap-2"><span class="text-[11px] text-slate-400">Vitesse de départ (km/h)</span>
             <input type="number" id="cfgLibreSpeed" min="4" step="0.5" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-bold text-white focus:outline-none focus:border-sky-500"></div>
         </div>
 
         <!-- Informations générales -->
-        <div data-cfgt="gen" id="cfgInfoBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
+        <div data-cfgt="seance" id="cfgInfoBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div class="hidden">
               <label class="text-[9px] text-slate-400 uppercase font-semibold block mb-1">Semaine</label>
@@ -713,7 +717,7 @@
 
         
 
-        <div data-cfgt="route" id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
+        <div data-cfgt="recap" id="cfgGpxBox" class="bg-slate-950 p-2.5 rounded-2xl border border-emerald-500/30 space-y-2">
           <span class="text-xs font-bold text-emerald-300 block">🗺️ Parcours GPX de la séance</span>
           <p class="text-[10px] text-slate-400">Pour une sortie extérieure : l'app vous situe sur le parcours, annonce les virages (« dans 100 mètres, tourne à droite ») et les côtes 250 m avant (« montée de 5 % sur 1 km »).</p>
           <button onclick="openRouteEditor()" class="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[13px]">🗺️ Dessiner un parcours</button>
@@ -731,7 +735,7 @@
         </div>
 
         <!-- Blocs -->
-        <div data-cfgt="struct" id="cfgBlocsBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
+        <div data-cfgt="seance" id="cfgBlocsBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-center space-y-2">
           <span class="text-xs font-bold text-slate-300 block text-left">Blocs</span>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -754,7 +758,7 @@
         </div>
 
         <!-- Paliers de la Pyramide -->
-        <div data-cfgt="struct" id="cfgSegBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+        <div data-cfgt="seance" id="cfgSegBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold text-slate-300">Segments (1 répétition)</span>
             <button onclick="addPyramidRow()" class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-1 rounded-md font-bold hover:bg-sky-500/30">
@@ -936,9 +940,9 @@
       <div class="pm-tabs pm-tabs6" style="grid-template-columns:repeat(5,minmax(0,1fr))">
         <button type="button" class="pm-tab on" data-t="moi" onclick="setPmTab('goalModal','moi')"><span class="ti">👤</span>Moi</button>
         <button type="button" class="pm-tab" data-t="objectif" onclick="setPmTab('goalModal','objectif')"><span class="ti">🏁</span>Objectif</button>
-        <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')"><span class="ti">👟</span>Séance</button>
         <button type="button" class="pm-tab" data-t="stats" onclick="setPmTab('goalModal','stats')"><span class="ti">📊</span>Stats</button>
         <button type="button" class="pm-tab" data-t="plan" onclick="setPmTab('goalModal','plan')"><span class="ti">🗓️</span>Plan</button>
+        <button type="button" class="pm-tab" data-t="seance" onclick="setPmTab('goalModal','seance')"><span class="ti">👟</span>Séance</button>
       </div>
       <div class="pm-body custom-scroll">
 
@@ -1931,6 +1935,7 @@
           }
         });
         if (typeof s.chauffe !== 'number') s.chauffe = 10;
+        if (['test', 'course', 'prerace'].includes(s.kind)) { s.chauffe = 0; s.recup = 0; }
         if (typeof s.vitChauffe !== 'number' || s.vitChauffe <= 0) s.vitChauffe = 6;
         if (typeof s.vitRecup !== 'number' || s.vitRecup <= 0) s.vitRecup = 5;
         if (typeof s.repet !== 'number') s.repet = 2;
@@ -4998,8 +5003,8 @@
     let modalPyramid = [];
 
     // ==================== TYPE DE SORTIE (paramétrage) ====================
-    const CFG_KINDS = [['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '💤', 'Récup'], ['test', '⏱️', 'Test'], ['course', '🏁', 'Course'], ['libre', '🏃', 'Libre']];
-    const KIND_CONT = ['endu', 'longue', 'recup'], KIND_STRUCT = ['fractionne', 'seuil', 'cotes'];
+    const CFG_KINDS = [['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '💤', 'Récup'], ['test', '⏱️', 'Test'], ['course', '🏁', 'Course'], ['prerace', '🔥', 'Échauff. course'], ['libre', '🏃', 'Libre']];
+    const KIND_CONT = ['endu', 'longue', 'recup'], KIND_STRUCT = ['fractionne', 'seuil', 'cotes', 'prerace'], KIND_NOWARM = ['test', 'course', 'prerace'];
     let cfgKind = 'longue', cfgSessId = null;
     function cfgSess() { return (appData.sessions || []).find(s => s.id === cfgSessId) || getActiveSession(); }
     function inferKind(s) {
@@ -5034,7 +5039,9 @@
       const T = {
         fractionne: { repet: 6, segs: [{ speed: r5(vma * 0.92), duration: 2, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] },
         seuil: { repet: 3, segs: [{ speed: r5(vma * 0.85), duration: 8, unit: 'min' }, { speed: rec, duration: 2, unit: 'min' }] },
-        cotes: { repet: 8, segs: [{ speed: r5(ef + 0.5), duration: 1, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] }
+        cotes: { repet: 8, segs: [{ speed: r5(ef + 0.5), duration: 1, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] },
+        // Échauffement d'avant course : footing progressif puis quelques accélérations à l'allure course
+        prerace: (() => { const g = appData.goal || {}, vr = +g.speedKmh > 5 ? +g.speedKmh : r5(vma * 0.85); return { repet: 3, segs: [{ speed: r5(ef - 0.5), duration: 8, unit: 'min' }, { speed: r5(ef + 0.5), duration: 4, unit: 'min' }, { speed: r5(vr), duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: rec, duration: 0.67, unit: 'min' }] }; })()
       }[k];
       return T;
     }
@@ -5052,7 +5059,7 @@
       show('cfgLibreBox', k === 'libre');
       { const tp = document.getElementById('cfgTestPente'), pr = document.getElementById('cfgTestPenteRow'), tst = (k === 'test' || k === 'course') && !ext;
         if (pr) pr.classList.toggle('hidden', !tst); if (tp) tp.value = String(document.getElementById('cfgPente').value || 0).replace('.', ',');
-        const pb = document.getElementById('cfgPenteBox'); if (pb) pb.style.display = tst ? 'none' : ''; try { testVapUpdate(); } catch (e) { } try { cfgTabsRender(); } catch (e) { } }
+        const pb = document.getElementById('cfgPenteBox'); if (pb) pb.style.display = tst ? 'none' : ''; try { testVapUpdate(); } catch (e) { } try { cfgTabsRender(); } catch (e) { } try { cfgCoachRender(); } catch (e) { } }
       show('cfgTotalsBox', KIND_STRUCT.includes(k));
       document.querySelectorAll('.cfg-struct-only').forEach(el => { el.style.visibility = KIND_STRUCT.includes(k) ? '' : 'hidden'; });
       if (prefill && prev !== k) {
@@ -5776,17 +5783,50 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       cfgTestProto = (sess.test && sess.test.proto) || 'chrono';
       document.getElementById('cfgVmaStart').value = sess.test && sess.test.proto === 'vmaTapis' ? sess.test.start : vmaStartDefault();
       setCfgKind(cfgKind, false);
-      cfgTab = 'gen'; cfgTabsRender();
+      cfgTab = 'recap'; cfgTabsRender();
 
       document.getElementById('configModal').classList.remove('hidden');
       refreshAllIcons();
     }
     let cfgFrom = null;
-    let cfgTab = 'gen';
+    let cfgTab = 'recap';
+    // ---------- Onglet Coach : avis + prédiction de chrono pour une course ou un test
+    function cfgCoachRender() {
+      const b = document.getElementById('cfgCoachBox'); if (!b) return; const s = cfgSess();
+      if (!(cfgKind === 'course' || cfgKind === 'test')) { b.innerHTML = '<span style="font-size:13px;color:#94a3b8;text-align:center">Le coach peut te conseiller sur cette séance.</span>'; return; }
+      const km = parseFloat(String((document.getElementById('cfgTestKm') || {}).value || '').replace(',', '.')) || 0, P = s && s.coachPred && Math.abs((+s.coachPred.km || 0) - km) < 0.01 ? s.coachPred : null;
+      b.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.45)">
+        <span style="font-size:12px;font-weight:900;color:#c4b5fd;letter-spacing:.5px">🧠 PRÉDICTION DU COACH${km ? ` · ${String(km).replace('.', ',')} KM` : ''}</span>
+        ${P ? `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:34px;color:#fff;font-variant-numeric:tabular-nums">${fmtTime(Math.round(P.min * 60))}</b><span style="font-size:15px;font-weight:800;color:#c4b5fd">${formatSpeed(P.kmh).replace('.', ',')} km/h</span></div>${P.txt ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.45">${plEsc(P.txt)}</span>` : ''}` : `<span style="font-size:13px;color:#cbd5e1">${km ? 'Le coach estime ton chrono à partir de tes dernières séances et de ta forme.' : 'Renseigne la distance dans l\'onglet Séance.'}</span>`}
+        ${km ? `<button type="button" onclick="cfgCoachPredict()" style="min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:14px">${P ? '🔄 Refaire la prédiction' : '🧠 Prédire mon chrono'}</button>` : ''}
+        <span id="cfgCoachMsg" style="font-size:12px;color:#94a3b8"></span></div>`;
+    }
+    async function cfgCoachPredict() {
+      const s = cfgSess(), km = parseFloat(String((document.getElementById('cfgTestKm') || {}).value || '').replace(',', '.')) || 0; if (!s || !km) return;
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire (Réglages)'); return; }
+      const msg = document.getElementById('cfgCoachMsg'); if (msg) msg.textContent = '⏳ Le coach calcule…';
+      const ext = cfgTypeIsExt(), pente = ext ? 0 : parseFloat(document.getElementById('cfgPente').value) || 0;
+      const hist = runHistory().slice(0, 15).map(h => `- ${h._iso} · ${sessionKind(h.kind ? h : (histLinkedSession(h) || h)).label} · ${Math.round(+h.durationMin || 0)} min · ${(histKm(h) || 0).toFixed(1)} km${h.feeling ? ' · ressenti ' + feelTxt(h.feeling) : ''}`).join('\n') || '- aucune';
+      let app = ''; try { const e = estimateVma(); if (e && e.vma) app = `VMA estimée par l'app : ${formatSpeed(e.vma)} km/h.`; } catch (e) { }
+      const route = ext && modalRoute ? `Parcours « ${modalRoute.name || ''} » : D+ ${Math.round(modalRoute.gainM || 0)} m.` : '';
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Il va faire ${cfgKind === 'course' ? 'une COURSE (compétition)' : 'un TEST'} de ${km} km, ${ext ? 'en extérieur' : `sur tapis à ${pente} % de pente`}, le ${(document.getElementById('cfgDate') || {}).value || s.dateISO}. ${route}
+${app} FC max ${runnerFcMax() || '?'}. Endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Séances récentes :
+${hist}
+Prédis son chrono le plus probable (réaliste, ni prudent ni optimiste), en t'appuyant sur les chiffres.
+Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes en tutoyant : sur quoi tu te bases et la stratégie d'allure"}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, model: 'flash', maxTokens: 600 })) || {};
+        const min = +j.minutes; if (!(min > 1)) throw new Error('réponse invalide');
+        s.coachPred = { km, min, kmh: Math.round(km / (min / 60) * 10) / 10, txt: String(j.explication || '').slice(0, 300), at: todayISO() };
+        saveAppData(); cfgCoachRender(); try { renderHome(); } catch (e) { }
+      } catch (e) { if (msg) msg.textContent = 'Prédiction impossible : ' + (e.message || e); }
+    }
     function cfgTabsRender() {
-      const ext = cfgTypeIsExt(), st = KIND_STRUCT.includes(cfgKind);
-      const T = [['gen', '📋', 'Séance']].concat(st ? [['struct', '🔁', 'Structure']] : []).concat(ext ? [['route', '🗺️', 'Parcours']] : []);
-      if (!T.some(t => t[0] === cfgTab)) cfgTab = 'gen';
+      const T = [['recap', '📋', 'Récap'], ['seance', '🏃', 'Séance'], ['coach', '🧠', 'Coach']];
+      if (!T.some(t => t[0] === cfgTab)) cfgTab = 'recap';
+      if (cfgTab === 'coach') { try { cfgCoachRender(); } catch (e) { } }
       const bar = document.getElementById('cfgTabs');
       if (bar) { bar.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`; bar.style.display = T.length > 1 ? 'grid' : 'none';
         bar.innerHTML = T.map(([k, ic, l]) => `<button type="button" onclick="cfgTab='${k}';cfgTabsRender()" style="min-height:50px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:800;${cfgTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join(''); }
@@ -6003,6 +6043,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       const pente = parseFloat(document.getElementById('cfgPente').value);
       sess.pente = sess.type === 'exterieur' ? 0 : (isNaN(pente) ? 1 : pente);
       sess.chauffe = v.chauffe;
+      if (KIND_NOWARM.includes(cfgKind)) { v.chauffe = 0; v.recup = 0; sess.chauffe = 0; }
       sess.repet = v.repet;
       sess.nbBlocs = v.nbBlocs;
       sess.recupBloc = v.recupBloc;
@@ -6317,6 +6358,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
       if (!s) return { label: 'SÉANCE', color: '#94a3b8' };
       if (s.cross) return /vélo/i.test(s.sessionTitle || '') ? { label: 'VÉLO', color: '#2dd4bf' } : { label: 'MUSCULATION', color: '#f472b6' };
       if (s.kind === 'course') return { label: 'COURSE', color: '#facc15' };
+      if (s.kind === 'prerace') return { label: 'ÉCHAUFFEMENT COURSE', color: '#fb7185' };
       if (s.kind === 'test' || (!s.kind && (s.pyramide || []).length <= 1 && ((/\btest\b|\bvma\b|cooper/i.test(s.notes || '') && !/%\s*(de\s*)?(la\s*|ta\s*)?vma|vma\s*(courte|longue)/i.test(s.notes || '')) || /^test /i.test(s.details || '')))) return { label: 'TEST', color: '#e879f9' };
       if (s.kind === 'endu') return { label: 'ENDURANCE', color: '#60a5fa' };
       if (s.kind === 'longue') return { label: 'SORTIE LONGUE', color: '#a78bfa' };
@@ -6793,14 +6835,16 @@ Donne 2 ou 3 axes de travail.`;
       if (st && box) {
         const bar = (sub, v, name, opts) => `<div class="pm-card" data-sub="${sub}" style="padding:4px"><div class="hsub" style="margin:0">${opts.map(([k, l]) => `<button type="button" class="${v === k ? 'on' : ''}" onclick="${name}='${k}';renderProgress()">${l}</button>`).join('')}</div></div>`;
         const cmp = `<div class="pm-card" data-sub="Progrès" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span><span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span><button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer mes séances</button></div>`;
+        if (statProg === 'rec') statProg = 'chr';
         st.innerHTML = bar('Périodique', statPer, 'statPer', [['m', '📅 Mois'], ['w', '🗓️ Semaine']]) + (statPer === 'w' ? weekRecapHtml() : monthRecapHtml())
           + bar('Forme', statForme, 'statForme', [['sens', '🙂 Sensations'], ['sleep', '😴 Sommeil']]) + (statForme === 'sleep' ? sleepCardHtml() : feelLogCardHtml())
-          + bar('Progrès', statProg, 'statProg', [['rec', '🏆 Records'], ['chr', '⏱️ Chronos'], ['cmp', '📈 Comparer']]);
+          + bar('Progrès', statProg, 'statProg', [['chr', '⏱️ Chronos'], ['cmp', '📈 Comparer']]);
         [...st.children].forEach(el => { const k = el.dataset.sub; if (k === 'Sensations' || k === 'Sommeil') el.dataset.sub = 'Forme'; });
         const kids = [...box.children], rec = kids.find(e => e.dataset.sub === 'Records'), km = kids.find(e => e.dataset.sub === 'Km / semaine'), others = kids.filter(e => e !== rec && e !== km);
         const chr = others.find(e => /Chronos/.test(e.textContent.slice(0, 80))), rest = others.filter(e => e !== chr);
         if (km && statPer === 'w') { km.dataset.sub = 'Périodique'; const fb = [...st.children].find(e => e.dataset.sub === 'Forme'); st.insertBefore(km, fb || null); }
-        const P = statProg === 'rec' ? [rec] : statProg === 'chr' ? [chr, ...rest] : [];
+        if (rec) { rec.dataset.sub = 'Records'; st.insertBefore(rec, st.firstChild); }
+        const P = statProg === 'chr' ? [chr, ...rest] : [];
         P.filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
         if (statProg === 'cmp') st.insertAdjacentHTML('beforeend', cmp);
         applySubTabs(st);
@@ -7183,9 +7227,9 @@ Donne 2 ou 3 axes de travail.`;
     const PL_ICON_DEL = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.2" width="6" height="3.2" rx="1.2" fill="none" stroke="#fb7185" stroke-width="1.7"/><rect x="3.5" y="4.8" width="17" height="2.8" rx="1.2" fill="#fb7185"/><path d="M5.6 8.6h12.8l-1.1 12.2a1.6 1.6 0 0 1-1.6 1.5H8.3a1.6 1.6 0 0 1-1.6-1.5Z" fill="#fda4af"/><path d="M10 11v8M14 11v8" stroke="#e11d48" stroke-width="1.6" stroke-linecap="round"/></svg>';
     const PL_ICON_MOVE = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="2.6" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1.5"/><rect x="3" y="4.5" width="18" height="4.6" rx="2" fill="#38bdf8"/><path d="M8 2.6v4M16 2.6v4" stroke="#0369a1" stroke-width="1.8" stroke-linecap="round"/><path d="M8 15h7.5M13 12.4l2.6 2.6-2.6 2.6" fill="none" stroke="#0284c7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const PL_ICON_COPY = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="1.8" width="13" height="16" rx="2.2" fill="#3b82f6"/><path d="M5.5 6h7M5.5 9h7M5.5 12h4.5" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round"/><rect x="8.5" y="6.2" width="13" height="16" rx="2.2" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.4"/><path d="M11.5 10.5h7M11.5 13.5h7M11.5 16.5h4.5" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"/></svg>';
-    function plIconBtns(editJs, delJs, copyJs) {
+    function plIconBtns(editJs, delJs, copyJs, moveJs) {
       const b = 'width:36px;height:32px;border:none;background:transparent;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;';
-      return `<div class="shrink-0 flex flex-col items-center" style="gap:2px;margin-right:-6px">${copyJs ? `<button onclick="${copyJs}" aria-label="Refaire cette séance" title="Refaire cette séance" class="active:scale-90" style="${b}">${PL_ICON_COPY}</button>` : ''}${editJs ? `<button onclick="${editJs}" aria-label="Modifier" title="Modifier" class="active:scale-90" style="${b}">${PL_ICON_EDIT}</button>` : ''}${delJs ? `<button onclick="${delJs}" aria-label="Supprimer" title="Supprimer" class="active:scale-90" style="${b}">${PL_ICON_DEL}</button>` : ''}</div>`;
+      return `<div class="shrink-0 flex flex-col items-center" style="gap:2px;margin-right:-6px">${moveJs ? `<button onclick="${moveJs}" aria-label="Déplacer" title="Déplacer" class="active:scale-90" style="${b}">${PL_ICON_MOVE}</button>` : ''}${copyJs ? `<button onclick="${copyJs}" aria-label="Refaire cette séance" title="Refaire cette séance" class="active:scale-90" style="${b}">${PL_ICON_COPY}</button>` : ''}${editJs ? `<button onclick="${editJs}" aria-label="Modifier" title="Modifier" class="active:scale-90" style="${b}">${PL_ICON_EDIT}</button>` : ''}${delJs ? `<button onclick="${delJs}" aria-label="Supprimer" title="Supprimer" class="active:scale-90" style="${b}">${PL_ICON_DEL}</button>` : ''}</div>`;
     }
     function plPlannedCard(item, isToday) {
       const s = appData.sessions[item.rawIdx];
@@ -7196,7 +7240,7 @@ Donne 2 ou 3 axes de travail.`;
       const past = item.iso && item.iso < todayISO();
       const tag = `<span style="align-self:flex-start;font-size:${isToday ? 11 : 10}px;font-weight:800;color:${k.color};${isToday ? `background:${k.color}24;padding:3px 8px;border-radius:8px;` : 'letter-spacing:.6px;'}">${k.label}${s.semaine ? ` · S${s.semaine}` : ''}${past ? ' · <span style="color:#fb7185">MANQUÉE</span>' : ''}${s.adapted ? ' · ADAPTÉE' : ''}</span>`;
       const body = `<div class="flex-1 flex flex-col gap-1 min-w-0">${tag}<span class="pl-clamp" style="${isToday ? '-webkit-line-clamp:3;' : ''}font-size:${isToday ? 16 : 15}px;font-weight:800;line-height:1.25">${plEsc(item.details)}</span><span style="font-size:12px;color:#94a3b8;font-weight:600">${stats}</span></div>`;
-      const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`);
+      const more = plIconBtns(`editHistoryItem('${item.id}', 'planned', ${item.rawIdx})`, `deleteItem('${item.id}', 'planned', ${item.rawIdx})`, '', `homeMoveSession('${s.id}')`);
       const actions = `
         <div id="detail_${item.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
           ${plSessViewHtml(s, item.rawIdx)}
@@ -8010,7 +8054,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
       const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel', 'Personnalité du coach': 'Personnalité', 'Pendant la séance': 'Pendant la séance' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
-    const PM_SUB_ICONS = { 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Km / semaine': '📏', 'Analyse': '🧭' };
+    const PM_SUB_ICONS = { 'Records': '🏆', 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Km / semaine': '📏', 'Analyse': '🧭' };
     function applySubTabs(panel) {
       if (!panel) return;
       let bar = panel.querySelector(':scope > .pm-subtabs');
@@ -17187,6 +17231,7 @@ Réponds uniquement en JSON : {"verdict":"maintenue|modifiee|annulee","resume":"
       const r = runnerProfile(), t = todayISO();
       (list || appData.sessions).forEach(s => {
         if (!s || s.free || s.adapted || (s.dateISO && s.dateISO < t) || (isLongRunSess(s) && s.wcIn)) return;
+        if (KIND_NOWARM.includes(s.kind)) { s.chauffe = 0; s.recup = 0; return; }
         if (typeof r.warmMin === 'number') s.chauffe = r.warmMin;
         if (typeof r.coolMin === 'number') s.recup = r.coolMin;
       });
@@ -20030,23 +20075,9 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     function mediaLoadHtml() {
       const P = mediaLoadParts(); if (!P.length) return '';
-      const d = P.reduce((a, x) => a + x.d, 0), t = P.reduce((a, x) => a + x.t, 0), pct = t ? d / t : 1, ok = d >= t;
-      return `<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:#0b1324;border:1px solid ${ok ? 'rgba(52,211,153,.5)' : '#1e293b'}">
-        ${loadRing(pct, 104, ok ? '#34d399' : '#38bdf8', `<span style="font-size:${ok ? 30 : 26}px;font-weight:900;color:#fff">${ok ? '✓' : Math.floor(pct * 100) + '%'}</span><span style="font-size:10px;font-weight:800;color:#94a3b8;margin-top:3px">${ok ? 'PRÊT' : 'VOIX'}</span>`)}
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">${P.map(x => `<div style="display:flex;align-items:center;gap:8px">${loadRing(x.t ? x.d / x.t : 1, 34, x.d >= x.t ? '#34d399' : x.col, `<span style="font-size:13px">${x.ic}</span>`)}<div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:13px;font-weight:800;color:#e2e8f0">${x.l}</span><span style="font-size:11.5px;color:#94a3b8">${x.d >= x.t ? 'prêt' : `${x.d}/${x.t} · ${Math.floor(x.d / x.t * 100)} %`}</span></div></div>`).join('')}</div></div>`;
+      return `<div style="display:grid;grid-template-columns:repeat(${Math.min(3, P.length)},minmax(0,1fr));gap:8px;padding:12px;border-radius:18px;background:#0b1324;border:1px solid #1e293b">${P.map(x => { const ok = x.d >= x.t, pct = x.t ? x.d / x.t : 1;
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${loadRing(pct, 96, ok ? '#34d399' : x.col, `<span style="font-size:${ok ? 28 : 22}px;font-weight:900;color:#fff">${ok ? '✓' : Math.floor(pct * 100) + '%'}</span><span style="font-size:15px;margin-top:2px">${x.ic}</span>`)}<span style="font-size:13px;font-weight:800;color:#e2e8f0">${x.l}</span><span style="font-size:11.5px;color:#94a3b8">${ok ? 'prêt' : `${x.d}/${x.t}`}</span></div>`; }).join('')}</div>`;
     }
-    // Alerte sur le Récap tant que toutes les voix ne sont pas chargées
-    function homeLoadAlertSync() {
-      const d = document.getElementById('homeSessDesc'), sess = getActiveSession(); if (!d) return;
-      let el = document.getElementById('homeLoadAlert');
-      const P = sess && sess.dateISO === todayISO() && !(timerState.sessionStarted && !timerState.finished) ? mediaLoadParts() : [];
-      const dn = P.reduce((a, x) => a + x.d, 0), tt = P.reduce((a, x) => a + x.t, 0), show = tt > 0 && dn < tt;
-      if (!show) { if (el) el.remove(); return; }
-      if (!el || el.parentNode !== d) { if (el) el.remove(); el = document.createElement('button'); el.type = 'button'; el.id = 'homeLoadAlert'; el.onclick = () => { homeSessSub = 'media'; homeSessTilesApply(); }; el.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.55);color:#fde68a;text-align:left'; d.insertBefore(el, d.firstChild); }
-      const pct = Math.floor(dn / tt * 100), h = `${loadRing(dn / tt, 40, '#fbbf24', `<span style="font-size:10.5px;font-weight:900;color:#fff">${pct}%</span>`)}<span style="flex:1;display:flex;flex-direction:column;gap:1px"><b style="font-size:13.5px">Voix en cours de chargement</b><span style="font-size:12px;color:#fcd34d">${P.filter(x => x.d < x.t).map(x => x.l.toLowerCase()).join(', ')} : attends avant de lancer, sinon voix du téléphone</span></span><span style="font-weight:900">›</span>`;
-      if (el.innerHTML !== h) el.innerHTML = h;
-    }
-    setInterval(() => { try { if (document.body.classList.contains('home')) homeLoadAlertSync(); } catch (e) { } }, 2000);
     function homeMediaPaneHtml() {
       return `<div style="display:flex;flex-direction:column;gap:8px">${mediaLoadHtml()}${mediaStatusHtml()}
         <button type="button" onclick="openMediaModal()" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">🎧 Gérer les médias</button></div>`;
@@ -20762,8 +20793,9 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       btAutoReconnect(); // la montre se reconnecte seule si elle a déjà été autorisée
     }
     let homeCardPrefix = '';
-    function homeMoveSession() {
-      const s = getActiveSession(); if (!s || s.free) return;
+    let homeMoveId = '';
+    function homeMoveSession(id) {
+      const s = id ? appData.sessions.find(x => x.id === id) : getActiveSession(); if (!s || s.free) return; homeMoveId = s.id;
       let m = document.getElementById('homeMoveModal');
       if (!m) { m = document.createElement('div'); m.id = 'homeMoveModal'; m.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(2,6,23,.8);display:flex;align-items:center;justify-content:center;padding:16px'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
       m.innerHTML = `<div style="width:100%;max-width:360px;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;color:#f1f5f9">
@@ -20773,7 +20805,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
           <button type="button" onclick="homeMoveApply()" style="min-height:46px;border-radius:12px;border:none;background:#f59e0b;color:#1c1003;font-weight:900">Déplacer</button></div></div>`;
     }
     function homeMoveApply() {
-      const s = getActiveSession(), iso = document.getElementById('homeMoveDate').value; if (!s || !iso) return;
+      const s = appData.sessions.find(x => x.id === homeMoveId) || getActiveSession(), iso = document.getElementById('homeMoveDate').value; if (!s || !iso) return;
       const from = s.dateISO; if (iso === from) { document.getElementById('homeMoveModal').remove(); return; }
       const d = parseISODateLocal(iso); s.dateISO = iso; s.date = toDDMM(d); s.jour = weekdayName(d);
       appData.sessions.sort((a, b) => (a.dateISO || '9999').localeCompare(b.dateISO || '9999'));
@@ -20782,6 +20814,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       try { reloadChrono(); updateHistoryTable(); renderHome(); } catch (e) { }
       openMoveCheck(s.id, from);
     }
+    function homeDeleteSessionIdx(i) { const s = appData.sessions[i]; if (!s) return; const n = appData.sessions.length; deleteItem(s.id, 'planned', i); if (appData.sessions.length < n) { homePickNext(); saveAppData(); } try { renderHome(); } catch (e) { } }
     function homeDeleteSession() {
       const s = getActiveSession(); if (!s || s.free) return;
       const i = appData.sessions.indexOf(s); if (i < 0) return;
@@ -20795,9 +20828,10 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const T = ACT_TYPES[c.type] || {}, col = T.color || '#f472b6';
       const ex = (c.exos || []).slice(0, 8).map(e => `<span style="font-size:12.5px;color:#cbd5e1">• ${plEsc(e.nom || e.name || e)}${e.dosage ? ` <span style="color:#94a3b8">${plEsc(e.dosage)}</span>` : ''}</span>`).join('');
       return `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
+        ${active ? '' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Activer</button>`}
         <div style="display:flex;align-items:center;gap:10px"><span style="font-size:30px">${T.icon || '🏋️'}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:11px;font-weight:900;color:${col};letter-spacing:.6px">${active ? '● ACTIVE · ' : ''}${plEsc((T.label || 'Activité').toUpperCase())}</span><span style="font-size:17px;font-weight:900;color:#fff">${plEsc(c.titre || T.label || 'Activité')}</span><span style="font-size:13px;color:#94a3b8">${c.dur || '?'} min${c.intensite ? ' · ' + plEsc(c.intensite) : ''}</span></div></div>
         ${c.detail ? `<span style="font-size:13px;color:#e2e8f0;line-height:1.4">${plEsc(c.detail)}</span>` : ''}${ex ? `<div style="display:flex;flex-direction:column;gap:2px">${ex}</div>` : ''}
-        ${active ? `<button type="button" onclick="startCrossActivity('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Lancer</button>` : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:46px;border-radius:14px;border:1px solid ${col};background:transparent;color:#fff;font-weight:900;font-size:14px">▶ Activer</button>`}</div>`;
+        ${active ? `<button type="button" onclick="startCrossActivity('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Lancer</button>` : ''}</div>`;
     }
     // Toutes les séances du jour (course, renfo, vélo…) : la séance active est en haut et mise en évidence
     function homeTodayMoreRender(busy) {
@@ -20811,11 +20845,11 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const n = (runToday ? 1 : 0) + todo.length + crosses.length;
       if (top) { top.innerHTML = ac && runToday ? homeCrossBlock(ac, true) : ''; top.style.display = ac && runToday ? 'flex' : 'none'; }
       if (card) { const hl = runToday && n > 1 && !ac; card.style.boxShadow = hl ? '0 0 0 2px #38bdf8, 0 0 24px rgba(56,189,248,.35)' : ''; const ab = document.getElementById('homeActBtn'); if (ab) ab.style.display = runToday && ac ? 'block' : 'none'; card.style.opacity = runToday && ac ? '.9' : ''; }
-      let h = todo.map(([s, i]) => { const k = sessionKind(s); return `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(79,70,229,.1));border:1px solid rgba(56,189,248,.35)">
-          <span style="font-size:11px;font-weight:900;color:${k.color};letter-spacing:.6px">${plEsc(k.label)}</span>
-          <span style="font-size:17px;font-weight:900;color:#fff;line-height:1.3">${plEsc(describeSessionHuman(s))}</span>
-          ${homeSessTilesHtml(s)}
-          <button type="button" onclick="homeChooseToday(${i})" style="min-height:46px;border-radius:14px;border:1px solid #38bdf8;background:transparent;color:#fff;font-weight:900;font-size:14px">▶ Activer</button></div>`; }).join('');
+      const actRow = (i, id) => `<div class="hm-acts"><button type="button" class="hm-act" onclick="homeMoveSession('${id}')">${PL_ICON_MOVE}<span>Déplacer</span></button><button type="button" class="hm-act" onclick="openConfigModal(${i})">${PL_ICON_EDIT}<span>Modifier</span></button><button type="button" class="hm-act hm-del" onclick="if(confirm('Supprimer cette séance ?'))homeDeleteSessionIdx(${i})">${PL_ICON_DEL}<span>Supprimer</span></button></div>`;
+      let h = todo.map(([s, i]) => `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(79,70,229,.1));border:1px solid rgba(56,189,248,.35)">
+          <button type="button" onclick="homeChooseToday(${i})" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">▶ Activer cette séance</button>
+          ${actRow(i, s.id)}
+          ${homeSessTilesHtml(s)}</div>`).join('');
       h += crosses.filter(c => !ac || c.id !== ac.id).map(c => homeCrossBlock(c, false)).join('');
       const lastH = (appData.history || []).find(x => x && !x.cross && x.endAt);
       const done = (appData.history || []).filter(x => x && !x.cross && x.endAt && toISODateLocal(new Date(x.endAt)) === t && x !== lastH);
@@ -20971,7 +21005,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       try { homeDayCheck(); } catch (e) { }
       try { renderHome0(); } finally { try { homeSessTilesApply(); } catch (e) { console.warn(e); } try { homeTabsSync(); } catch (e) { } }
     }
-    const KIND_IC = { fractionne: '⚡', pyramide: '🔺', seuil: '🎯', longue: '🛣️', cotes: '⛰️', recup: '💤', endu: '🏃', test: '🧪', course: '🏁', libre: '🏃' };
+    const KIND_IC = { prerace: '🔥', fractionne: '⚡', pyramide: '🔺', seuil: '🎯', longue: '🛣️', cotes: '⛰️', recup: '💤', endu: '🏃', test: '🧪', course: '🏁', libre: '🏃' };
     function kindIcon(s) { const k = guideKind(s); if (k === 'fractionne') { const f = gSegs(s).fast[0]; if (f && f.unit !== 'km' && f.duration >= 3) return '🔥'; } return KIND_IC[k] || '🏃'; }
     function sTile(ic, v, lab, col, o = {}) {
       const head = ic ? `<span style="font-size:${o.small ? 15 : 19}px;line-height:1">${ic}</span>${o.tag ? `<span style="font-size:11px;font-weight:900;color:#93c5fd;margin-left:4px">${o.tag}</span>` : ''}` : `<span style="font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${lab}</span>`;
@@ -20986,7 +21020,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     function whereTile(x, h) {
       const tap = (x || {}).type === 'tapis';
-      const rt = !tap && x && x.route ? `parcours ${(+x.route.totalKm || 0).toFixed(1).replace('.', ',')} km` : '';
+      const rt = !tap && x && x.route ? `🗺️ ${x.route.name || 'parcours'}` : '';
       return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
     }
     function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : r.length === 2 && r.some(x => String(x).startsWith('<div data-wide')) ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${r.join('')}</div>` : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
@@ -20997,8 +21031,11 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const spd = k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
       const vap0 = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
-      const tst = sess.test && +sess.test.km > 0 ? sTile('🎯', `${String(+sess.test.km).replace('.', ',')} km${+sess.test.min > 0 ? ' en ' + fmtClock(+sess.test.min) : ''}`, '', '#f0abfc', { small: true }) : '';
-      const r2 = [tst || (G.reps > 1 || G.fast.length) ? (tst || sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true })) : '', spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : ri ? sTile('⛰️', `${Math.round((sess.route && sess.route.gainM) || 0)} m`) : ''];
+      const TG = sess.kind === 'course' ? sess.race : sess.test, tst = TG && +TG.km > 0 ? sTile('🎯', `${String(+TG.km).replace('.', ',')} km${+TG.min > 0 ? ' en ' + fmtClock(+TG.min) : ''}`, '', '#f0abfc', { small: true }) : '';
+      const body1 = !tst && !(G.reps > 1 || G.fast.length) && main && (Math.round(+sess.chauffe || 0) || Math.round(+sess.recup || 0)) ? sTile('🏃', fmtQ(main), '', '', { small: true }) : '';
+      const r2 = [body1 || (tst || (G.reps > 1 || G.fast.length) ? (tst || sTile('🔁', k === 'pyramide' ? `${G.reps} × pyr.` : `${G.reps} × ${G.fast[0] ? fmtQ(G.fast[0]) : main ? fmtQ(main) : ''}`, '', '', { small: true })) : ''), spd ? (vap0 && k !== 'pyramide' ? sTileSplit(spd, 'km/h', vap0, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', spd, 'km/h')) : '', sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : sess.route && +sess.route.totalKm > 0 ? sTile('⛰️', `${(Math.round((+sess.route.gainM || 0) / (+sess.route.totalKm * 1000) * 1000) / 10).toFixed(1).replace('.', ',')} %`) : '',
+        (sess.kind === 'course' || sess.kind === 'test') && sess.coachPred && TG && Math.abs(+sess.coachPred.km - +TG.km) < 0.01 ? sTileSplit(fmtTime(Math.round(sess.coachPred.min * 60)), '🧠 Coach', formatSpeed(sess.coachPred.kmh).replace('.', ','), 'km/h', '#c4b5fd', '#c4b5fd') : ''];
+      if (tst) { r1[2] = tst; r2[0] = ''; } // course / test : objectif à la place de la distance, prédiction du coach sur la ligne pente
       const c = Math.round(+sess.chauffe || 0), r = Math.round(+sess.recup || 0);
       const rs = G.slow.length ? `${fmtQ(G.slow[0])} à ${fmtV(G.vmin)}` : G.recB ? fmtQ(G.recB) : '';
       const r3 = [c ? sTile('', `${c}'`, 'Échauffement') : '', rs && k !== 'pyramide' ? sTile('', rs, 'Récup série') : '', r ? sTile('', `${r}'`, 'Retour calme') : ''];
@@ -21238,7 +21275,7 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
         const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
         bar.style.display = inProg ? 'none' : 'flex';
-        bar.innerHTML = [['recap', '📊 Récap'], ['media', '🎧 Médias'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()">${l}${k === 'adapt' ? badge : ''}</button>`).join('');
+        bar.innerHTML = [['recap', '📊', 'Récap'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:54px"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
         if (hb && !sess.free) hb.innerHTML = `<div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
@@ -21249,8 +21286,8 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
       ['homeSessRec', 'homeSessStats', 'homeSessStats2', 'homeHr', 'homeFuel', 'homeSessTitle'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
     }
     function renderHome0() {
-      { const e0 = document.getElementById('homeMoveBtn'); if (e0 && !e0.dataset.pl) { e0.innerHTML = PL_ICON_MOVE; e0.dataset.pl = 1; } }
-      { const e1 = document.getElementById('homeCfgBtn'), e2 = document.getElementById('homeDelBtn'); if (e1 && !e1.dataset.pl) { e1.innerHTML = PL_ICON_EDIT; e1.dataset.pl = 1; } if (e2 && !e2.dataset.pl) { e2.innerHTML = PL_ICON_DEL; e2.dataset.pl = 1; } }
+      { const e0 = document.getElementById('homeMoveBtn'); if (e0 && !e0.dataset.pl) { e0.innerHTML = PL_ICON_MOVE + '<span>Déplacer</span>'; e0.dataset.pl = 1; } }
+      { const e1 = document.getElementById('homeCfgBtn'), e2 = document.getElementById('homeDelBtn'); if (e1 && !e1.dataset.pl) { e1.innerHTML = PL_ICON_EDIT + '<span>Modifier</span>'; e1.dataset.pl = 1; } if (e2 && !e2.dataset.pl) { e2.innerHTML = PL_ICON_DEL + '<span>Supprimer</span>'; e2.dataset.pl = 1; } }
       renderHrChip();
       try { renderHomeLastRun(); } catch (e) { }
       {
