@@ -99,6 +99,18 @@
     #homeDayWaitFull { display: none; }
     body.home-wait #homeDayWaitFull { display: flex !important; }
     #homeDateBar { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 26; text-align: center; box-shadow: 0 -12px 0 12px #020617; }
+    #configModal { align-items: flex-start !important; padding: 0 !important; }
+    #cfgPanel { width: 100%; max-width: 480px !important; height: min(780px, 94dvh); max-height: none !important; border-top: 0 !important; border-radius: 0 0 22px 22px !important; padding: calc(12px + env(safe-area-inset-top)) 14px 14px !important; gap: 0; }
+    #cfgScroll { flex: 1; min-height: 0; overscroll-behavior: contain; padding-bottom: 10px; }
+    #cfgScroll > * + * { margin-top: 10px !important; }
+    #configModal [data-cfgt].bg-slate-950 { background: #0b1324 !important; border: 1px solid #1e293b !important; border-radius: 18px !important; padding: 14px !important; }
+    #configModal [data-cfgt].bg-slate-950 > span.text-xs:first-child, #configModal .cfg-h { display: block; font-size: 12px !important; font-weight: 900 !important; letter-spacing: .7px; text-transform: uppercase; color: #94a3b8 !important; margin-bottom: 4px; }
+    #configModal label.text-\[9px\] { font-size: 11px !important; font-weight: 800 !important; letter-spacing: .5px; color: #94a3b8 !important; margin-bottom: 6px !important; }
+    #configModal [data-cfgt]:not(#cfgSegBox) input[type=number], #configModal [data-cfgt]:not(#cfgSegBox) input[type=text], #configModal input[type=date] { height: 50px; font-size: 18px !important; font-weight: 900 !important; border-radius: 14px !important; background: #0f172a !important; border: 1px solid #334155 !important; color: #fff; }
+    #configModal #btnTypeTapis, #configModal #btnTypeExt { min-height: 62px; font-size: 15px !important; font-weight: 900 !important; border-radius: 16px !important; }
+    #configModal #cfgTestProto button, #configModal #cfgTestChrono > div:first-child button { min-height: 42px; font-size: 13px !important; padding: 0 12px !important; border-radius: 12px !important; }
+    #configModal #cfgDateRow { background: #0b1324 !important; border: 1px solid #1e293b !important; border-radius: 18px !important; padding: 10px 14px !important; }
+    #cfgKindChips { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; }
     #homeTabs { position: sticky; top: calc(94px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -8px 0 8px #020617; }
     .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
     .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
@@ -613,23 +625,24 @@
 
   <!-- ==================== MODALE 1 : PARAMÉTRAGE DE LA SÉANCE ==================== -->
   <div id="configModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col p-4 shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-        <span class="text-base font-bold text-white">Paramétrage de la séance</span>
+    <div id="cfgPanel" class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col p-4 shadow-2xl">
+      <div class="flex items-center justify-between" style="gap:8px">
+        <span style="flex:1;font-size:19px;font-weight:900;color:#fff">⚙️ Paramétrage</span>
         <button onclick="closeConfigModal()" aria-label="Fermer (les changements sont enregistrés)" style="width:44px;height:44px;flex:none;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center">✕</button>
       </div>
       <div id="cfgTabs" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin-top:10px;border-radius:14px;background:#0b1324;border:1px solid #1e293b"></div>
 
-      <div class="space-y-3 overflow-y-auto custom-scroll pr-1 mt-3">
+      <div id="cfgScroll" class="space-y-3 overflow-y-auto custom-scroll pr-1 mt-3">
         <!-- Date de la séance -->
-        <label data-cfgt="recap" class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
-          <span class="text-[13px] font-extrabold text-sky-200">📅 Date</span>
+        <label data-cfgt="recap" id="cfgDateRow" class="flex items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-sky-500/40" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+          <span class="cfg-h" style="margin:0">📅 Date</span>
           <input type="date" id="cfgDate" onchange="onCfgDateChange()" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-center font-bold text-white text-[14px] focus:outline-none focus:border-sky-500" style="color-scheme:dark;max-width:12rem">
         </label>
         <div data-cfgt="coach" id="cfgCoachBox" style="display:flex;flex-direction:column;gap:8px"></div>
         <div data-cfgt="coach" id="cfgRouteCoach" style="display:flex;flex-direction:column;gap:8px"></div>
         <button data-cfgt="coach" type="button" onclick="openAskCoachSess()" class="w-full py-2.5 rounded-2xl font-extrabold text-[13px]" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">🧠 Demander conseil au coach</button>
         <!-- Type de séance -->
+        <span data-cfgt="recap" class="cfg-h" style="margin:4px 0 -2px">📍 Où</span>
         <div data-cfgt="recap" class="grid grid-cols-2 gap-2">
           <button type="button" id="btnTypeTapis" onclick="setSessionType('tapis')" class="py-2 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center gap-2 transition">
             🏃 Tapis
@@ -641,7 +654,7 @@
 
         <!-- Type de sortie -->
         <div data-cfgt="recap" id="cfgKindBox" class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 space-y-2">
-          <span class="text-xs font-bold text-slate-300 block">Type de sortie</span>
+          <span class="text-xs font-bold text-slate-300 block">🏃 Type de séance</span>
           <div id="cfgKindChips" class="grid grid-cols-3 gap-1.5"></div>
           <div id="cfgEstLine" class="flex items-center justify-center gap-3 pt-1 text-[15px] font-black text-white"></div>
         </div>
@@ -1030,6 +1043,7 @@
               <label class="pm-lbl">Côtes dehors ?<select id="ppCotes" onchange="readPlanPrefs()" class="pm-in"><option value="">—</option><option value="oui">Oui</option><option value="non">Non</option></select></label>
             </div>
           </div>
+          <div class="pm-card" data-sub="Comparer" style="border-color:rgba(56,189,248,.45)"><span class="pm-cap" style="color:#7dd3fc">📈 Comparer mes séances</span><span class="text-[13px] text-slate-300">Compare tes séances d'un même type (vitesse, cardio, VAP, ressenti) pour voir ta progression.</span><button type="button" onclick="openEvo('')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:15px;background:rgba(56,189,248,.12);color:#bae6fd;border:1px solid rgba(56,189,248,.5)">📈 Comparer mes séances</button></div>
         </div>
 
         <!-- ===== STATS ===== -->
@@ -5007,6 +5021,14 @@
     // ==================== TYPE DE SORTIE (paramétrage) ====================
     const CFG_KINDS = [['longue', '🛣️', 'Sortie longue'], ['fractionne', '⚡', 'Fractionné'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '💤', 'Récup'], ['test', '⏱️', 'Test'], ['course', '🏁', 'Course'], ['prerace', '🔥', 'Échauff. course'], ['libre', '🏃', 'Libre']];
     const KIND_CONT = ['endu', 'longue', 'recup'], KIND_STRUCT = ['fractionne', 'seuil', 'cotes', 'prerace'], KIND_NOWARM = ['test', 'course', 'prerace'];
+    const CFG_KINDS_UI = [['longue', '🛣️', 'Longue'], ['fractionne', '⚡', 'Fraction.'], ['seuil', '🎯', 'Seuil'], ['cotes', '⛰️', 'Côtes'], ['recup', '💤', 'Récup'], ['test', '⏱️', 'Test chrono'], ['testvma', '📈', 'Test VMA'], ['course', '🏁', 'Course'], ['prerace', '🔥', 'Échauff. course'], ['libre', '🏃', 'Libre']];
+    function cfgPickKind(k) {
+      if (k === 'testvma') { setCfgKind('test'); setTestProto(cfgTypeIsExt() ? 'vma6' : 'vmaTapis'); }
+      else if (k === 'test') { setCfgKind('test'); setTestProto('chrono'); }
+      else setCfgKind(k);
+      renderKindChips();
+    }
+    function cfgKindOn(k) { return k === 'testvma' ? cfgKind === 'test' && cfgTestProto !== 'chrono' : k === 'test' ? cfgKind === 'test' && cfgTestProto === 'chrono' : k === cfgKind; }
     let cfgKind = 'longue', cfgSessId = null;
     function cfgSess() { return (appData.sessions || []).find(s => s.id === cfgSessId) || getActiveSession(); }
     function inferKind(s) {
@@ -5032,7 +5054,7 @@
     function renderKindChips() {
       const box = document.getElementById('cfgKindChips');
       if (!box) return;
-      box.innerHTML = CFG_KINDS.map(([k, ic, l]) => `<button type="button" onclick="setCfgKind('${k}')" class="flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-[11px] font-bold transition active:scale-95" style="${k === cfgKind ? 'background:rgba(56,189,248,.18);border:2px solid #38bdf8;color:#e0f2fe' : 'background:#0f172a;border:1px solid #334155;color:#94a3b8'}"><span class="text-[17px] leading-none">${ic}</span>${l}</button>`).join('');
+      box.innerHTML = CFG_KINDS_UI.map(([k, ic, l]) => `<button type="button" onclick="cfgPickKind('${k}')" class="flex flex-col items-center justify-center rounded-xl transition active:scale-95" style="min-height:66px;gap:4px;padding:6px 2px;font-size:10.5px;font-weight:800;line-height:1.15;text-align:center;border-radius:14px;${cfgKindOn(k) ? 'background:rgba(56,189,248,.18);border:2px solid #38bdf8;color:#e0f2fe' : 'background:#0f172a;border:1px solid #334155;color:#94a3b8'}"><span style="font-size:22px;line-height:1">${ic}</span>${l}</button>`).join('');
     }
     function cfgTypeIsExt() { return !document.getElementById('btnTypeTapis').classList.contains('border-2'); }
     function cfgStructTemplate(k) {
@@ -5095,6 +5117,7 @@
         }
       }
       const lsp = document.getElementById('cfgLibreSpeedBox'); if (lsp) lsp.classList.toggle('hidden', ext);
+      try { renderTestProto(); } catch (e) { }
       renderKindChips();
       recalculateModalTotals();
     }
@@ -5864,7 +5887,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
       try { cfgCoachRender(); } catch (e) { } try { cfgTestRouteSync(); cfgRouteCoachRender(); } catch (e) { }
       const bar = document.getElementById('cfgTabs');
       if (bar) { bar.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`; bar.style.display = T.length > 1 ? 'grid' : 'none';
-        bar.innerHTML = T.map(([k, ic, l]) => `<button type="button" onclick="cfgTab='${k}';cfgTabsRender()" style="min-height:50px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:800;${cfgTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join(''); }
+        bar.innerHTML = T.map(([k, ic, l]) => `<button type="button" onclick="cfgTab='${k}';cfgTabsRender();{const sc=document.getElementById('cfgScroll');if(sc)sc.scrollTop=0}" style="min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12.5px;font-weight:900;${cfgTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:21px;line-height:1">${ic}</span>${l}</button>`).join(''); }
       document.querySelectorAll('#configModal [data-cfgt]').forEach(el => { el.classList.toggle('cfg-tabhide', el.dataset.cfgt !== cfgTab); });
     }
     function closeConfigModal(force) {
@@ -6865,6 +6888,7 @@ Donne 2 ou 3 axes de travail.`;
       w.added = fmtDateShort(iso); saveAppData(); try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { }
       renderProgress(); showToast(`➕ Séance ajoutée le ${fmtDateShort(iso)}`);
     }
+    var statRec = 'rec';
     function renderProgress() {
       renderProgressInner();
       const box = document.getElementById('progressPanel'), st = document.getElementById('statsPanel');
@@ -6874,15 +6898,15 @@ Donne 2 ou 3 axes de travail.`;
         if (statProg === 'rec') statProg = 'chr';
         st.innerHTML = bar('Périodique', statPer, 'statPer', [['m', '📅 Mois'], ['w', '🗓️ Semaine']]) + (statPer === 'w' ? weekRecapHtml() : monthRecapHtml())
           + bar('Forme', statForme, 'statForme', [['sens', '🙂 Sensations'], ['sleep', '😴 Sommeil']]) + (statForme === 'sleep' ? sleepCardHtml() : feelLogCardHtml())
-          + bar('Progrès', statProg, 'statProg', [['chr', '⏱️ Chronos'], ['cmp', '📈 Comparer']]);
+          + bar('Records', statRec, 'statRec', [['rec', '🏆 Mes records'], ['chr', '⏱️ Chronos']]);
         [...st.children].forEach(el => { const k = el.dataset.sub; if (k === 'Sensations' || k === 'Sommeil') el.dataset.sub = 'Forme'; });
         const kids = [...box.children], rec = kids.find(e => e.dataset.sub === 'Records'), km = kids.find(e => e.dataset.sub === 'Km / semaine'), others = kids.filter(e => e !== rec && e !== km);
         const chr = others.find(e => /Chronos/.test(e.textContent.slice(0, 80))), rest = others.filter(e => e !== chr);
         if (km && statPer === 'w') { km.dataset.sub = 'Périodique'; const fb = [...st.children].find(e => e.dataset.sub === 'Forme'); st.insertBefore(km, fb || null); }
-        if (rec) { rec.dataset.sub = 'Records'; st.insertBefore(rec, st.firstChild); }
-        const P = statProg === 'chr' ? [chr, ...rest] : [];
-        P.filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
-        if (statProg === 'cmp') st.insertAdjacentHTML('beforeend', cmp);
+        void cmp; const rb = [...st.children].find(e => e.dataset.sub === 'Records'); if (rb) st.insertBefore(rb, st.firstChild);
+        const afterBar = x => { if (x) { x.dataset.sub = 'Records'; st.insertBefore(x, rb ? rb.nextSibling : st.firstChild); } };
+        if (statRec === 'chr') afterBar(chr); else afterBar(rec);
+        rest.filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
         applySubTabs(st);
       }
       try { renderLikes(); } catch (e) { }
@@ -7327,7 +7351,7 @@ Donne 2 ou 3 axes de travail.`;
           ${plIconBtns(`crossEditAsk('${c.id}')`, `deleteCrossPlan('${c.id}')`, '', `crossMoveAsk('${c.id}')`)}
         </div>
         <div id="detail_${c.id}" class="hidden mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid #1e293b">
-          ${c.detail ? `<div style="font-size:12px;color:#94a3b8">${plEsc(c.detail)}</div>` : ''}
+          ${crossExosHtml(c, T.color || '#f472b6')}${crossExList(c).length ? crossConsignesHtml(c) : c.detail ? `<div style="font-size:12px;color:#94a3b8">${plEsc(c.detail)}</div>` : ''}
           <button onclick="startCrossActivity('${c.id}')" class="py-2.5 rounded-xl font-extrabold text-[13px]" style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.45);color:#5eead4">▶ Lancer</button>
         </div>
       </div>`;
@@ -8090,7 +8114,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
       const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel', 'Personnalité du coach': 'Personnalité', 'Pendant la séance': 'Pendant la séance' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
-    const PM_SUB_ICONS = { 'Records': '🏆', 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Km / semaine': '📏', 'Analyse': '🧭' };
+    const PM_SUB_ICONS = { 'Records': '🏆', 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Comparer': '📈', 'Km / semaine': '📏', 'Analyse': '🧭' };
     function applySubTabs(panel) {
       if (!panel) return;
       let bar = panel.querySelector(':scope > .pm-subtabs');
@@ -13627,8 +13651,51 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
     }
 
     // ==================== FIN ANTICIPÉE ====================
-    var preCd = null;
+    var preCd = null, mvArm = null;
+    // Test chrono / VMA et course : pas de compte à rebours, le chrono part quand tu commences vraiment à courir
+    function moveStartWanted() { const s = getActiveSession(); return !!(s && !freeSession && (s.kind === 'test' || s.kind === 'course') && !timerState.sessionStarted && timerState.currentStageIndex === 0); }
+    function moveArm() {
+      const s = getActiveSession(), ext = s && s.type !== 'tapis';
+      mvArm = { hits: [], fix: 0, ext };
+      try { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission().catch(() => { }); } catch (e) { }
+      window.addEventListener('devicemotion', moveOnMotion);
+      if (ext && navigator.geolocation) { try { mvArm.gw = navigator.geolocation.watchPosition(moveOnGps, () => { }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }); } catch (e) { } }
+      let o = document.getElementById('moveArmOv'); if (!o) { o = document.createElement('div'); o.id = 'moveArmOv'; document.body.appendChild(o); }
+      o.style.cssText = 'position:fixed;inset:0;z-index:176;background:rgba(2,6,23,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;color:#f1f5f9';
+      o.innerHTML = `<div style="width:150px;height:150px;border-radius:75px;border:4px solid #38bdf8;display:flex;align-items:center;justify-content:center;font-size:64px;animation:mvPulse 1.4s ease-in-out infinite">🏃</div>
+        <b style="font-size:24px">Prêt ?</b><span style="font-size:16px;color:#cbd5e1;max-width:320px;line-height:1.45">Le chrono démarre tout seul dès que tu te mets à courir${ext ? '' : ' (garde ton téléphone sur toi)'}. Marcher ne le déclenche pas.</span>
+        <span id="moveArmSt" style="font-size:13px;font-weight:800;color:#7dd3fc">📡 En attente du départ…</span>
+        <button type="button" onclick="moveGo()" style="width:100%;max-width:340px;min-height:58px;border-radius:16px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:17px">▶ Partir maintenant</button>
+        <button type="button" onclick="moveCancel()" style="width:100%;max-width:340px;min-height:48px;border-radius:14px;border:1px solid #475569;background:transparent;color:#e2e8f0;font-weight:800;font-size:15px">Annuler</button>
+        <style>@keyframes mvPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(56,189,248,.5)}50%{transform:scale(1.06);box-shadow:0 0 0 18px rgba(56,189,248,0)}}</style>`;
+      try { speakLive('Prêt. Le chrono démarre dès que tu cours.'); } catch (e) { }
+    }
+    function moveOnMotion(e) {
+      if (!mvArm) return; const g = e.accelerationIncludingGravity, a = e.acceleration;
+      let dev = 0; if (g && g.x != null) dev = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81); else if (a && a.x != null) dev = Math.hypot(a.x, a.y, a.z); else return;
+      const now = Date.now(); // impact de foulée en course : > ~2 g (la marche reste bien en dessous)
+      if (dev > 11 && (!mvArm.last || now - mvArm.last > 220)) { mvArm.last = now; mvArm.hits.push(now); }
+      mvArm.hits = mvArm.hits.filter(t => now - t < 3000);
+      if (mvArm.hits.length >= 6) moveGo();
+    }
+    function moveOnGps(pos) {
+      if (!mvArm) return; const c = pos.coords, st = document.getElementById('moveArmSt');
+      if (st) st.textContent = c.accuracy > 30 ? `📡 GPS : précision ${Math.round(c.accuracy)} m…` : '📡 GPS prêt, en attente du départ…';
+      if (c.accuracy <= 30 && c.speed != null && c.speed >= 2.2) { mvArm.fix++; if (mvArm.fix >= 2) moveGo(); } else mvArm.fix = 0;
+    }
+    function moveStop() {
+      window.removeEventListener('devicemotion', moveOnMotion);
+      if (mvArm && mvArm.gw != null) { try { navigator.geolocation.clearWatch(mvArm.gw); } catch (e) { } }
+      mvArm = null; const o = document.getElementById('moveArmOv'); if (o) o.remove();
+    }
+    function moveCancel() { moveStop(); }
+    function moveGo() {
+      if (!mvArm) return; moveStop();
+      if ('vibrate' in navigator) navigator.vibrate([90, 60, 90]);
+      startTimer({ skipCountdown: true, afterCountdown: true });
+    }
     function startWithCountdown() {
+      if (mvArm) { moveGo(); return; }
       if (preCd) { cancelPreStartCountdown(); return; }
       if (timerState.finished) buildCurrentSessionStages();
       if (!timerState.stages[timerState.currentStageIndex]) { showToast("Séance vide : ajoutez au moins un segment"); return; }
@@ -13636,6 +13703,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       btAutoReconnect();
       try { ytStart(); } catch (e) { }
       try { const c = spCfg(); if (spConnected() && c.pl && c.pl.uri && !c.off && c.plStart === 'go' && !sp.playing) spPlayPl(c.pl.uri); } catch (e) { }
+      if (moveStartWanted()) { moveArm(); return; }
       if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
       const viaAi = aiPlayCountdown(3);
       if (!viaAi) speak([VT().count[3]]);
@@ -18965,7 +19033,7 @@ Réponds uniquement en JSON : {"verdict":"ok|attention|deconseille","avis":"1 à
       document.getElementById('crossTitle').textContent = `${T.icon} ${item.titre || T.label}`;
       const f = item;
       document.getElementById('crossContent').innerHTML = item.type === 'muscu'
-        ? `${f.detail ? `<div class="text-[14px] text-slate-300 leading-snug">${mdLite(f.detail)}</div>` : ''}${exercisesHtml(f.exos)}`
+        ? ((f.exos || []).length ? `${exercisesHtml(f.exos)}${crossConsignesHtml(f)}` : crossExList(f).length ? `${crossExosHtml(f, '#f472b6')}${crossConsignesHtml(f)}` : `${f.detail ? `<div class="text-[14px] text-slate-300 leading-snug">${mdLite(f.detail)}</div>` : ''}`)
         : `<div class="text-[13px] font-bold text-teal-300">${f.dur} min · intensité ${({ facile: 'facile', moderee: 'modérée', soutenue: 'soutenue' })[f.intensite] || 'modérée'}</div>${f.detail ? `<div class="text-[14px] text-slate-300 leading-relaxed">${mdLite(f.detail)}</div>` : ''}`;
       document.getElementById('crossFinish').classList.add('hidden');
       document.getElementById('crossRun').classList.remove('hidden');
@@ -20184,6 +20252,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       saveAppData(); mediaRender(); try { prepRender(); } catch (e) { } showToast('▶️ Vidéo ajoutée');
     }
     function cancelBeforeStart() {
+      try { moveStop(); } catch (e) { }
       try { ytStop(); } catch (e) { }
       cancelPreStartCountdown();
       cancelSpeech();
@@ -20278,12 +20347,14 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       cfgTestProto = pr;
       if (pr === 'vmaTapis' && cfgTypeIsExt()) setSessionType('tapis');
       if (pr === 'vma6' && !cfgTypeIsExt()) setSessionType('exterieur');
-      renderTestProto();
+      renderTestProto(); try { renderKindChips(); } catch (e) { }
     }
     function renderTestProto() {
       const box = document.getElementById('cfgTestProto'); if (!box) return;
-      box.innerHTML = [['chrono', '⏱️ Distance / chrono'], ['vmaTapis', '📈 VMA tapis'], ['vma6', '🏃 VMA 6 min']].map(([k, l]) => `<button type="button" onclick="setTestProto('${k}')" class="px-2.5 py-1.5 rounded-lg text-[12px] font-bold" style="${k === cfgTestProto ? 'background:rgba(232,121,249,.2);border:2px solid #e879f9;color:#fae8ff' : 'background:#1e293b;border:1px solid #334155;color:#cbd5e1'}">${l}</button>`).join('');
-      const vm = cfgTestProto !== 'chrono';
+      box.classList.toggle('hidden', cfgKind !== 'test' || cfgTestProto === 'chrono');
+      { const tt = document.getElementById('cfgTestTitle'); if (tt && cfgKind === 'test') tt.textContent = cfgTestProto === 'chrono' ? '⏱️ Test chrono' : '📈 Test VMA'; }
+      box.innerHTML = [['vmaTapis', '🏠 Paliers sur tapis'], ['vma6', '🌳 6 min dehors']].map(([k, l]) => `<button type="button" onclick="setTestProto('${k}')" class="px-2.5 py-1.5 rounded-lg text-[12px] font-bold" style="${k === cfgTestProto ? 'background:rgba(232,121,249,.2);border:2px solid #e879f9;color:#fae8ff' : 'background:#1e293b;border:1px solid #334155;color:#cbd5e1'}">${l}</button>`).join('');
+      const vm = cfgKind === 'test' && cfgTestProto !== 'chrono';
       const show = (id, on) => { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', !on); };
       show('cfgTestChrono', !vm); show('cfgVmaBox', vm);
       const st = document.getElementById('cfgVmaStartRow'); if (st) st.classList.toggle('hidden', cfgTestProto !== 'vmaTapis');
@@ -20862,19 +20933,37 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     // Deux séances (ou plus) le même jour : les autres s'affichent aussi dans « Aujourd'hui »
     function homeActiveCross() { const a = appData.activeCross, t = todayISO(); if (!a || a.d !== t) return null; return (appData.crossPlan || []).find(c => c.id === a.id && c.dateISO === t) || null; }
     function crossActsHtml(id) { return `<div class="hm-acts"><button type="button" class="hm-act" onclick="crossMoveAsk('${id}')">${PL_ICON_MOVE}<span>Déplacer</span></button><button type="button" class="hm-act" onclick="crossEditAsk('${id}')">${PL_ICON_EDIT}<span>Modifier</span></button><button type="button" class="hm-act hm-del" onclick="deleteCrossPlan('${id}');renderHome()">${PL_ICON_DEL}<span>Supprimer</span></button></div>`; }
+    // Exercices d'une séance renfo : liste fournie, sinon déduite du texte détaillé (une ligne par exercice)
+    function crossExList(c) {
+      const dos = e => e.dosage || [e.series ? e.series + ' ×' : '', e.reps || e.repetitions || '', e.duree || ''].filter(Boolean).join(' ');
+      if (c && Array.isArray(c.exos) && c.exos.length) return c.exos.map(e => typeof e === 'string' ? { nom: e } : { nom: e.nom || e.name || '', dosage: dos(e) }).filter(e => e.nom);
+      const out = []; String((c && c.detail) || '').split(/\n|•|;|\s\|\s/).forEach(l => {
+        let t = l.replace(/[*_#>`]/g, '').replace(/^\s*(?:[-–—]|\d+[.)])\s*/, '').trim(); if (t.length < 3) return;
+        if (/^(échauffement|retour au calme|étirements?|récup|repos|circuit|consignes?)\b[^:]*:?$/i.test(t)) return;
+        let nom = t, dosage = '';
+        const m = t.match(/^(.{2,60}?)\s*[:–—]\s*(.+)$/) || t.match(/^(.{2,60}?)\s*[-(]\s*(\d.*?)\)?$/);
+        if (m) { nom = m[1]; dosage = m[2]; } else { const d = t.match(/(\d+\s*(?:[x×]\s*\d+[^,]*|tours?|s\b|sec\w*|min\w*|rép\w*|répétitions?))/i); if (d) { dosage = d[1]; nom = t.replace(d[1], '').replace(/[,:\s–-]+$/, '').trim() || t; } }
+        out.push({ nom: nom.slice(0, 48), dosage: dosage.slice(0, 40) });
+      });
+      return out.length >= 2 ? out.slice(0, 14) : [];
+    }
+    function crossConsignesHtml(c) {
+      if (!c || !c.detail) return '';
+      return `<details style="border-radius:12px;background:rgba(2,6,23,.35);border:1px solid #1e293b;padding:8px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#94a3b8">📋 Consignes détaillées</summary><div style="margin-top:6px;font-size:13px;color:#cbd5e1;line-height:1.45">${typeof mdLite === 'function' ? mdLite(c.detail) : plEsc(c.detail)}</div></details>`;
+    }
     function crossExosHtml(c, col) {
-      const ex = (c.exos || []).slice(0, 12); if (!ex.length) return '';
+      const ex = crossExList(c).slice(0, 14); if (!ex.length) return '';
       return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${ex.map(e => `<div style="display:flex;flex-direction:column;gap:1px;padding:7px 9px;border-radius:12px;background:rgba(2,6,23,.45);border:1px solid ${col}33;min-width:0"><b style="font-size:12.5px;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plEsc(e.nom || e.name || e)}</b>${e.dosage ? `<span style="font-size:11.5px;color:${col};font-weight:800">${plEsc(e.dosage)}</span>` : ''}</div>`).join('')}</div>`;
     }
     function homeCrossBlock(c, active) {
       const T = ACT_TYPES[c.type] || {}, col = T.color || '#f472b6';
       return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
-        ${active ? '' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Activer</button>`}
+        ${active ? '<div style="display:flex;justify-content:center"><div style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;background:rgba(16,185,129,.16);border:1.5px solid #34d399;color:#a7f3d0;font-weight:900;font-size:13.5px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div></div>' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Activer</button>`}
         ${crossActsHtml(c.id)}
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${sTile(T.icon || '🏋️', T.label || 'Activité', '', '', { small: true })}${sTile('⏱️', `${c.dur || '?'} min`)}${sTile('🔥', ({ facile: 'Facile', moderee: 'Modérée', soutenue: 'Soutenue' })[c.intensite] || 'Modérée', '', '', { small: true })}</div>
         ${c.titre ? `<b style="font-size:15px;color:#fff;text-align:center">${plEsc(c.titre)}</b>` : ''}
         ${crossExosHtml(c, col)}
-        ${c.detail ? `<span style="font-size:12.5px;color:#94a3b8;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${plEsc(c.detail)}</span>` : ''}
+        ${crossExList(c).length ? crossConsignesHtml(c) : c.detail ? `<span style="font-size:12.5px;color:#94a3b8;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${plEsc(c.detail)}</span>` : ''}
         ${active ? `<button type="button" onclick="startCrossActivity('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Lancer</button>` : ''}</div>`;
     }
     function crossItem(id) { return (appData.crossPlan || []).find(x => x.id === id); }
@@ -20914,6 +21003,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const crosses = runToday ? (appData.crossPlan || []).filter(c => c.dateISO === t) : [];
       const n = (runToday ? 1 : 0) + todo.length + crosses.length;
       if (top) { top.innerHTML = ac && runToday ? homeCrossBlock(ac, true) : ''; top.style.display = ac && runToday ? 'flex' : 'none'; }
+      const ACTB = '<div class="hm-active-badge" style="align-self:center;display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;background:rgba(16,185,129,.16);border:1.5px solid #34d399;color:#a7f3d0;font-weight:900;font-size:13.5px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div>';
+      if (card) { let bd = document.getElementById('homeActBadge'); if (!bd) { bd = document.createElement('div'); bd.id = 'homeActBadge'; bd.style.cssText = 'display:flex;justify-content:center;margin-bottom:8px'; card.insertBefore(bd, card.firstChild); } bd.innerHTML = runToday && n > 1 && !ac ? ACTB : ''; bd.style.display = runToday && n > 1 && !ac ? 'flex' : 'none'; }
       if (card) { const hl = runToday && n > 1 && !ac; card.style.boxShadow = hl ? '0 0 0 2px #38bdf8, 0 0 24px rgba(56,189,248,.35)' : ''; const ab = document.getElementById('homeActBtn'); if (ab) ab.style.display = runToday && ac ? 'block' : 'none'; card.style.opacity = runToday && ac ? '.9' : ''; }
       const actRow = (i, id) => `<div class="hm-acts"><button type="button" class="hm-act" onclick="homeMoveSession('${id}')">${PL_ICON_MOVE}<span>Déplacer</span></button><button type="button" class="hm-act" onclick="openConfigModal(${i})">${PL_ICON_EDIT}<span>Modifier</span></button><button type="button" class="hm-act hm-del" onclick="if(confirm('Supprimer cette séance ?'))homeDeleteSessionIdx(${i})">${PL_ICON_DEL}<span>Supprimer</span></button></div>`;
       let h = todo.map(([s, i]) => `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(79,70,229,.1));border:1px solid rgba(56,189,248,.35)">
@@ -21073,10 +21164,12 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     setInterval(() => { try { if (document.body.classList.contains('home')) homeTabsSync(); } catch (e) { } }, 1500);
     function renderHome() {
       try { homeDayCheck(); } catch (e) { }
-      try { renderHome0(); } finally { try { homeSessTilesApply(); } catch (e) { console.warn(e); } try { homeTabsSync(); } catch (e) { } }
+      try { renderHome0(); } finally { try { homeSessTilesApply(); } catch (e) { console.warn(e); } try { if (document.body.classList.contains('home') || document.getElementById('homeTodayMore')) homeTodayMoreRender(timerState.sessionStarted && !timerState.finished); } catch (e) { } try { homeTabsSync(); } catch (e) { } }
     }
-    const KIND_IC = { prerace: '🔥', fractionne: '⚡', pyramide: '🔺', seuil: '🎯', longue: '🛣️', cotes: '⛰️', recup: '💤', endu: '🏃', test: '🧪', course: '🏁', libre: '🏃' };
-    function kindIcon(s) { const k = guideKind(s); if (k === 'fractionne') { const f = gSegs(s).fast[0]; if (f && f.unit !== 'km' && f.duration >= 3) return '🔥'; } return KIND_IC[k] || '🏃'; }
+    const KIND_IC = { prerace: '🔥', fractionne: '⚡', pyramide: '🔺', seuil: '🎯', longue: '🛣️', cotes: '⛰️', recup: '💤', endu: '🏃', test: '⏱️', course: '🏁', libre: '🏃' };
+    function testIsVma(s) { return !!(s && s.kind === 'test' && s.test && s.test.proto && s.test.proto !== 'chrono'); }
+    function kindLabelShort(s) { return testIsVma(s) ? 'Test VMA' : s && s.kind === 'test' ? 'Test chrono' : capFirst(String(sessionKind(s).label).toLowerCase()); }
+    function kindIcon(s) { if (testIsVma(s)) return '📈'; const k = guideKind(s); if (k === 'fractionne') { const f = gSegs(s).fast[0]; if (f && f.unit !== 'km' && f.duration >= 3) return '🔥'; } return KIND_IC[k] || '🏃'; }
     function sTile(ic, v, lab, col, o = {}) {
       const head = ic ? `<span style="font-size:${o.small ? 15 : 19}px;line-height:1">${ic}</span>${o.tag ? `<span style="font-size:11px;font-weight:900;color:#93c5fd;margin-left:4px">${o.tag}</span>` : ''}` : `<span style="font-size:10.5px;font-weight:800;color:#93c5fd;line-height:1.1">${lab}</span>`;
       return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:9px 4px;border-radius:14px;background:rgba(2,6,23,.45);border:1px solid rgba(56,189,248,.22);text-align:center;min-width:0;min-height:64px"><span style="height:22px;display:flex;align-items:center;justify-content:center">${head}</span><span style="font-size:${String(v).replace(/<[^>]+>/g, '').length > 10 ? 12.5 : String(v).replace(/<[^>]+>/g, '').length > 8 ? 14 : 15.5}px;font-weight:900;color:${col || '#fff'};line-height:1.15;word-break:break-word">${v}</span></div>`;
@@ -21094,10 +21187,40 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
     }
     function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : r.length === 2 && r.some(x => String(x).startsWith('<div data-wide')) ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${r.join('')}</div>` : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
+    function preraceBtnHtml(sess) {
+      if (!sess || !(sess.kind === 'course' || (sess.kind === 'test' && !testIsVma(sess))) || isSessionDone(sess) || !sess.dateISO || sess.dateISO < todayISO()) return '';
+      const has = (appData.sessions || []).some(x => x.kind === 'prerace' && x.dateISO === sess.dateISO);
+      return has ? `<div style="margin-top:6px;text-align:center;font-size:13px;font-weight:800;color:#fda4af">🔥 Échauffement course prévu le même jour</div>`
+        : `<button type="button" onclick="event.stopPropagation();preraceCreate('${sess.id}')" style="width:100%;margin-top:8px;min-height:50px;border-radius:14px;border:1px solid #fb7185;background:rgba(251,113,133,.14);color:#fecdd3;font-weight:900;font-size:14.5px">🔥 Créer l'échauffement course</button>`;
+    }
+    function preraceCreate(id) {
+      const s = (appData.sessions || []).find(x => x.id === id); if (!s) return;
+      if ((appData.sessions || []).some(x => x.kind === 'prerace' && x.dateISO === s.dateISO)) { showToast('Échauffement déjà prévu ce jour-là'); return; }
+      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, TG = s.kind === 'course' ? s.race : s.test;
+      const P = s.coachPred && TG && Math.abs(+s.coachPred.km - +TG.km) < 0.01 ? s.coachPred : null;
+      const vr = r5(P ? +P.kmh : TG && +TG.min > 0 ? TG.km / (TG.min / 60) : ((s.pyramide || [])[0] || {}).speed || ef + 2.5), rec = Math.max(6, r5(ef - 1));
+      const pyr = [{ speed: r5(ef - 0.5), duration: 10, unit: 'min' }, { speed: r5(ef + 0.5), duration: 4, unit: 'min' }];
+      for (let k = 0; k < 3; k++) pyr.push({ speed: vr, duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: rec, duration: 0.67, unit: 'min' });
+      const d = parseISODateLocal(s.dateISO);
+      const n = { id: `sess_${Date.now()}`, dateISO: s.dateISO, date: s.date || toDDMM(d), jour: s.jour || weekdayName(d), semaine: s.semaine, type: s.type, kind: 'prerace', pente: s.type === 'tapis' ? 1 : 0, chauffe: 0, recup: 0, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: rec, pyramide: pyr, notes: `Échauffement avant ${s.kind === 'course' ? 'la course' : 'le test'} : footing, accélérations, 3 lignes droites à l'allure cible.` };
+      appData.sessions.splice(appData.sessions.indexOf(s), 0, n);
+      saveAppData(); try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { }
+      showToast("🔥 Échauffement course ajouté (avant la séance)");
+    }
     function homeSessTilesHtml(sess) {
       if (!sess || sess.free) return '';
       const G = gSegs(sess), k = guideKind(sess), T = Math.round(computeSessionTotalMin(sess)), D = computeSessionDistanceKm(sess), main = G.segs[0], kl = sessionKind(sess).label;
-      const r1 = [sTile(kindIcon(sess), capFirst(String(kl).toLowerCase())), sTile('⏱️', `${T} min`), sTile('📏', `${D.toFixed(1).replace('.', ',')} km`)];
+      void kl; const pBtn = preraceBtnHtml(sess), penteT = sess.type === 'tapis' ? sTile('⛰️', `${String(sess.pente || 0).replace('.', ',')} %`) : sess.route && +sess.route.totalKm > 0 ? sTile('⛰️', `${(Math.round((+sess.route.gainM || 0) / (+sess.route.totalKm * 1000) * 1000) / 10).toFixed(1).replace('.', ',')} %`) : '';
+      { const TGc = sess.kind === 'course' ? sess.race : sess.kind === 'test' && !testIsVma(sess) ? sess.test : null;
+        if (TGc && +TGc.km > 0) { // course / test chrono : temps et vitesse estimés par le coach
+          const P = sess.coachPred && Math.abs(+sess.coachPred.km - +TGc.km) < 0.01 ? sess.coachPred : null, mn = P ? +P.min : +TGc.min || 0;
+          const kmh = P ? +P.kmh : mn ? TGc.km / (mn / 60) : main ? +main.speed : 0, vapC = sess.type === 'tapis' && +sess.pente > 0 && kmh ? fmtV(vapKmh(kmh, treadmillGrade(sess.pente))) : '';
+          let hrC = ''; try { const g = sessHrGoal(sess); if (g) hrC = sTile('❤️', g.kind === 'max' ? `≤ ${g.max}` : `${g.lo}-${g.hi}`, '', '', { tag: g.kind === 'max' ? 'Max' : 'Moy' }); } catch (e) { }
+          let wC = ''; try { if (fuelRemindersOn()) { const m = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (m) wC = sTile('💧', `${m[1]} ml`); } } catch (e) { }
+          return sTiles([whereTile(sess), [sTile(kindIcon(sess), kindLabelShort(sess)), sTile('⏱️', mn ? fmtClock(mn) : '—', '', '', P ? { tag: 'Coach' } : {}), sTile('📏', `${String(Math.round(+TGc.km * 100) / 100).replace('.', ',')} km`)],
+            [kmh ? (vapC ? sTileSplit(fmtV(kmh), P ? '🧠 km/h' : 'km/h', vapC, 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', fmtV(kmh), P ? '🧠 km/h' : 'km/h')) : '', penteT], [hrC, wC]]) + pBtn;
+        } }
+      const r1 = [sTile(kindIcon(sess), kindLabelShort(sess)), sTile('⏱️', `${T} min`), sTile('📏', `${D.toFixed(1).replace('.', ',')} km`)];
       const TG0 = sess.kind === 'course' ? sess.race : sess.test, rCo = sess.type !== 'tapis' && sess.route && sess.coachPred && TG0 && Math.abs(+sess.coachPred.km - +TG0.km) < 0.01;
       const spd = rCo ? '' : k === 'pyramide' ? `${fmtV(G.vmin)} → ${fmtV(G.vmax)}` : G.fast.length ? fmtV(G.vmax) : main ? fmtV(main.speed) : '';
       const ri = sess.type !== 'tapis' ? routeRunInfo(sess) : null;
@@ -21114,7 +21237,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const vap = sess.type === 'tapis' && +sess.pente > 0 && (G.vmax || (main && main.speed)) ? fmtV(vapKmh(G.vmax || main.speed, treadmillGrade(sess.pente))) : '';
       let w = ''; try { if (fuelRemindersOn()) { const m = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (m) w = `${m[1]} ml`; } } catch (e) { }
       void vap; const r4 = [hr ? sTile('❤️', hr, '', '', { tag: hrTag }) : '', w ? sTile('💧', w) : ''];
-      return sTiles([whereTile(sess), r1, r2, r3, r4]);
+      return sTiles([whereTile(sess), r1, r2, r3, r4]) + pBtn;
     }
     function homeSessTilesHtmlOld(sess) {
       if (!sess || sess.free) return '';
