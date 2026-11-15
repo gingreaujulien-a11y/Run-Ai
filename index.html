@@ -6535,7 +6535,9 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
       const H = appData.history || [];
       if (s.doneHistId && H.some(h => h.id === s.doneHistId)) return true;
       const title = `Semaine ${s.semaine} • ${String(s.jour || '').toUpperCase()}`;
-      return H.some(h => !h.cross && h.sessionTitle === title && (h.date === s.date || histISO(h) === s.dateISO));
+      // ancien lien par le titre (semaine • jour) : seulement une séance qui n'est liée à aucune autre séance, et du même type
+      const claimed = new Set((appData.sessions || []).filter(x => x !== s && x.doneHistId).map(x => x.doneHistId));
+      return H.some(h => !h.cross && h.sessionTitle === title && (h.date === s.date || histISO(h) === s.dateISO) && !claimed.has(h.id) && !(h.kind && s.kind && h.kind !== s.kind));
     }
     function stripWarmCool(t) {
       return String(t || '').replace(/^\s*Chauffe\s*[^+]*\+\s*/i, '').replace(/\s*\+\s*(Récup|retour au calme)\s*[\d'",.\s]+$/i, '').trim();
@@ -8577,11 +8579,11 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       ['longue', '🛣️', 'Sortie longue', 'Allure facile, aisance', 'Même allure que l\'endurance mais plus longue, 1 fois par semaine : apprendre à durer.', '1 h 30 facile'],
       ['cotes', '⛰️', 'Côtes', 'Montées et récups', 'Montées courtes et dynamiques, retour en trottinant : force et puissance.', "8 × 1' en côte / retour trot"],
       ['recup', '💤', 'Récupération', 'Très facile', 'Très lent et court, le lendemain d\'une séance dure : faire circuler sans fatiguer.', "30' très lent"],
-      ['vma', '🧪', 'Test VMA', '', '', ''], ['course', '🏁', 'Course', 'Compétition', '', '']];
+      ['chrono', '⏱️', 'Test chrono', 'Une distance à fond', '', ''], ['vma', '📈', 'Test VMA', '', '', ''], ['course', '🏁', 'Course', 'Compétition', '', '']];
     const PG_WHERE = [['tapis', '🏠 Tapis'], ['exterieur', '🌳 Dehors']];
     const PG_ACT = [['run', '🏃 Course'], ['renfo', '💪 Renfo'], ['velo', '🚴 Vélo']];
-    const PG_TYPES = () => RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0]));
-    const PG_KIND = [['', 'Au choix']].concat(RUN_TYPES.filter(t => !['vma', 'course'].includes(t[0])).map(t => [t[0], t[2]]));
+    const PG_TYPES = () => RUN_TYPES.filter(t => !['vma', 'course', 'chrono'].includes(t[0]));
+    const PG_KIND = [['', 'Au choix']].concat(RUN_TYPES.filter(t => !['vma', 'course', 'chrono'].includes(t[0])).map(t => [t[0], t[2]]));
     const PG_KOLD = { vma: 'fc', fractionne: 'fl' };
     const PG_KTXT = { fc: 'fractionné court (répétitions de 30 s à 1 min 30 à 95-100 % VMA, ex. 10×1\')', fl: 'fractionné long (répétitions de 3 à 5 min à ≈ 90 % VMA, ex. 5×3\')', seuil: 'seuil (blocs à ≈ 85 % VMA, ex. 3×8\')', allure: 'allure course (blocs à l\'allure objectif, ex. 3×10\')', endu: 'endurance (footing facile 30 à 60 min)', longue: 'sortie longue (allure facile, la plus longue de la semaine)', cotes: 'côtes (montées courtes dynamiques)', recup: 'récupération (très lent et court)' };
     const PG_DUR = [[0, 'Sans limite'], [30, "30'"], [45, "45'"], [60, '1 h'], [75, '1 h 15'], [90, '1 h 30'], [120, '2 h'], [150, '2 h 30']];
@@ -11281,15 +11283,21 @@ Réponds uniquement avec le JSON.`;
       g.acc = c.accuracy;
       g.err = '';
       if (c.accuracy > 35) { updateLiveMetrics(); return; }
+      // Parcours chargé : on se recale dessus (distance = avancée le long du parcours)
+      const rt0 = runData.route, hasR = !!activeRoute(), pPrev = rt0.progressKm, wasOn = hasR && pPrev !== null && !rt0.offRoute;
+      if (hasR) updateRouteProgress(p);
+      const lock = hasR && routeLockOn() && wasOn && !rt0.offRoute && rt0.progressKm !== null;
+      runData.gpsLocked = lock;
       if (g.last && timerState.isRunning) {
         const d = haversineM(g.last, p);
         const dt = (p.t - g.last.t) / 1000;
-        if (dt > 0 && d / dt < 9) g.distKm += d / 1000;
+        if (lock) { const dr = Math.max(0, rt0.progressKm - pPrev) * 1000; if (dt > 0 && (dr / dt < 9 || dr <= 150)) g.distKm += dr / 1000; /* saut ≤ 150 m = virage coupé par le GPS, recalé sur la route */ runData.lockKm = (runData.lockKm || 0) + dr / 1000; }
+        else if (dt > 0 && d / dt < 9) g.distKm += d / 1000;
       }
       g.last = p;
       if (timerState.isRunning) {
-        const gp = runData.gpsPath || (runData.gpsPath = []), l = gp[gp.length - 1];
-        if (!l || haversineM({ lat: l[0], lon: l[1] }, p) > 6) gp.push([+p.lat.toFixed(6), +p.lon.toFixed(6), Math.round(g.distKm * 1000) / 1000]);
+        const gp = runData.gpsPath || (runData.gpsPath = []), l = gp[gp.length - 1], sp = lock && rt0.snap ? rt0.snap : p;
+        if (!l || haversineM({ lat: l[0], lon: l[1] }, sp) > 6) gp.push([+sp.lat.toFixed(6), +sp.lon.toFixed(6), Math.round(g.distKm * 1000) / 1000]);
         if (gp.length > 20000) gp.splice(0, gp.length - 20000);
         if (activeRoute(true)) { runData.rmTot = (runData.rmTot || 0) + 1; if (runData.noRoute || runData.route.offRoute) runData.rmOff = (runData.rmOff || 0) + 1; }
       }
@@ -11305,9 +11313,12 @@ Réponds uniquement avec le JSON.`;
         const dt = (g.win[g.win.length - 1].t - g.win[0].t) / 1000;
         if (dt >= 5) v = d / dt * 3.6;
       }
+      if (lock) { // vitesse cohérente avec la distance recalée (avancée sur le parcours sur ~30 s)
+        const pb = runData.lockBuf || (runData.lockBuf = []); pb.push({ t: p.t, km: g.distKm }); while (pb.length > 2 && p.t - pb[0].t > 30000) pb.shift();
+        const dtl = (pb[pb.length - 1].t - pb[0].t) / 1000; if (dtl >= 6) v = (pb[pb.length - 1].km - pb[0].km) / dtl * 3600;
+      } else runData.lockBuf = [];
       if (v !== null) g.speedKmh = g.speedKmh === null ? v : g.speedKmh * 0.75 + v * 0.25;
-      if (activeRoute()) {
-        updateRouteProgress(p);
+      if (hasR) {
         const rt = runData.route;
         if (timerState.isRunning && !rt.offRoute && rt.progressKm !== null && isFinite(c.altitude) && c.altitude !== null && (c.altitudeAccuracy == null || c.altitudeAccuracy < 25) && c.accuracy <= 25) {
           (runData.altLog || (runData.altLog = [])).push([+rt.progressKm.toFixed(3), Math.round(c.altitude * 10) / 10]);
@@ -11446,26 +11457,37 @@ Réponds uniquement avec le JSON.`;
       if (!r || !r.gr || !r.gr.length) return null;
       return r.gr[Math.max(0, Math.min(r.gr.length - 1, Math.round(km / 0.05)))];
     }
+    function routeLockOn() { return sensors().routeLock !== false; }
+    // Position sur le parcours : projection sur le tracé (pas seulement le point le plus proche), toujours vers l'avant.
+    // Un point GPS qui coupe un virage en épingle est replacé sur la route : la distance parcourue suit le parcours.
     function updateRouteProgress(p) {
       const r = activeRoute(), st = runData.route;
       if (!r || !r.pts.length) return;
-      const pts = r.pts;
-      const scanRange = (a, b) => {
-        let best = -1, bd = Infinity;
-        for (let i = Math.max(0, a); i < Math.min(pts.length, b); i++) {
-          const d = haversineM(p, { lat: pts[i][0], lon: pts[i][1] });
-          if (d < bd) { bd = d; best = i; }
-        }
-        return [best, bd];
-      };
-      let [i, d] = scanRange(st.idx - 10, st.idx + 200);
-      if (d > 80) [i, d] = scanRange(0, pts.length);
-      st.offRoute = d > 80;
-      if (!st.offRoute) {
-        st.idx = i;
-        st.progressKm = pts[i][2];
-        st.grade = routeGradeAt(st.progressKm);
+      const pts = r.pts, n = pts.length;
+      if (n < 2) { st.idx = 0; st.progressKm = pts[0][2]; st.offRoute = haversineM(p, { lat: pts[0][0], lon: pts[0][1] }) > 80; return; }
+      const proj = k => { const a = pts[k], b = pts[k + 1], kx = 111320 * Math.cos(a[0] * Math.PI / 180), ky = 110540;
+        const bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky, px = (p.lon - a[1]) * kx, py = (p.lat - a[0]) * ky, L2 = bx * bx + by * by;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / L2)) : 0, dx = px - t * bx, dy = py - t * by;
+        return { k, d: Math.sqrt(dx * dx + dy * dy), km: a[2] + t * ((b[2] || a[2]) - a[2]), lat: a[0] + t * (b[0] - a[0]), lon: a[1] + t * (b[1] - a[1]) }; };
+      const prev = st.progressKm; let best = null;
+      if (prev !== null && !st.offRoute) { // suivi : on avance le long du tracé
+        const step = st.lastP ? haversineM(st.lastP, p) / 1000 : 0, lim = 0.15 + 3 * step, base = pts[st.idx][2];
+        for (let k = Math.max(0, st.idx - 3); k < n - 1 && pts[k][2] - base <= lim; k++) { const q = proj(k); if (q.km >= prev - 0.02 && (!best || q.d < best.d)) best = q; }
       }
+      if (!best || best.d > 60) { // (re)calage : tout le tracé, en préférant le premier passage plausible (boucle : départ = arrivée)
+        const all = []; for (let k = 0; k < n - 1; k++) all.push(proj(k));
+        const bd = Math.min(...all.map(q => q.d)), from = prev !== null ? prev - 0.1 : -1;
+        const near = all.filter(q => q.d <= bd + 25);
+        best = near.filter(q => q.km >= from).sort((a, b) => a.km - b.km)[0] || near.sort((a, b) => a.km - b.km)[0];
+      }
+      st.offRoute = !best || best.d > 80;
+      if (!st.offRoute) {
+        st.idx = best.k;
+        st.progressKm = prev !== null && best.km < prev && prev - best.km < 0.02 ? prev : best.km;
+        st.snap = { lat: best.lat, lon: best.lon, d: best.d };
+        st.grade = routeGradeAt(st.progressKm);
+      } else st.snap = null;
+      st.lastP = p;
     }
 
     // ---------- Virages du parcours (déduits du tracé GPX) ----------
@@ -16302,7 +16324,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
     function gpsFixOpen(key) {
       const h = histByKey(key); if (!h || !Array.isArray(h.gps) || h.gps.length < 5) { showToast('Pas de tracé GPS pour cette séance'); return; }
       gfx = { key, busy: false, res: null, err: '', step: '' };
-      let m = document.getElementById('gpsFixModal'); if (!m) { m = document.createElement('div'); m.id = 'gpsFixModal'; m.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(2,6,23,.92);display:flex;align-items:flex-start;justify-content:center'; document.body.appendChild(m); }
+      let m = document.getElementById('gpsFixModal'); if (!m) { m = document.createElement('div'); m.id = 'gpsFixModal'; m.style.cssText = 'position:fixed;inset:0;z-index:3000;isolation:isolate;background:rgba(2,6,23,.92);display:flex;align-items:flex-start;justify-content:center'; document.body.appendChild(m); }
       gpsFixRender();
     }
     function gpsFixClose() { const m = document.getElementById('gpsFixModal'); if (m) { if (m.__map) try { m.__map.remove(); } catch (e) { } m.remove(); } gfx = null; }
@@ -16618,7 +16640,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       ['vap', '⛰️ Vitesse ajustée à la pente (VAP)', () => !!sensors().announceVap, v => { sensors().announceVap = v; }],
       ['pace', '🏃 Conseils d\'allure (GPS)', () => !!sensors().paceAdvice, v => { sensors().paceAdvice = v; }],
       ['tip', '🧠 Conseil du coach au départ', () => appData.audioSettings.coachTip !== false, v => { appData.audioSettings.coachTip = v; }],
-      ['turns', '🧭 Indications de direction GPS (tourner à gauche…)', () => navTurnsOn(), v => { sensors().navTurns = v; }]
+      ['turns', '🧭 Indications de direction GPS (tourner à gauche…)', () => navTurnsOn(), v => { sensors().navTurns = v; }],
+      ['rlock', '📍 Se recaler sur le parcours chargé (distance et vitesses fiables dans les lacets)', () => routeLockOn(), v => { sensors().routeLock = v; }]
     ];
     let scriptDl = null;
     let annTab = 'ann', annDirty = false;
@@ -19007,6 +19030,7 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         cotes: { repet: 8, pente: 5, segs: [{ v: r5(ef + 0.5), d: 1 }, { v: rec, d: 1.5 }] },
         recup: { repet: 1, chauffe: 5, recup: 5, segs: [{ v: r5(ef - 1), d: 30 }] },
         vma: act.type === 'tapis' ? { repet: 1, pente: 1, segs: vmaTapisPyramid(vmaStartDefault()).map(p => ({ v: p.speed, d: 1 })) } : { repet: 1, segs: [{ v: Math.round(vma * 10) / 10, d: 6 }] },
+        chrono: (() => { const v = r5(vma * 0.85) || 12, km = 5; return { repet: 1, chauffe: 0, recup: 0, segs: [{ v, d: Math.round(km / v * 6000) / 100 }] }; })(),
         course: (() => { const g = appData.goal || {}; const km = parseFloat(g.distanceKm) || 10, mn = parseFloat(g.durationMin) || km / (ef + 2.5) * 60; return { repet: 1, segs: [{ v: Math.round(km / mn * 600) / 10, d: Math.round(mn * 10) / 10 }] }; })()
       }[k];
       if (T) { f.repet = T.repet; f.segs = T.segs; if (T.pente !== undefined && act.type === 'tapis') f.pente = T.pente; if (T.chauffe !== undefined) f.chauffe = T.chauffe; if (T.recup !== undefined) f.recup = T.recup; }
@@ -19118,11 +19142,12 @@ Réponds uniquement en JSON ("chrono_aujourdhui_min" = chrono possible si la cou
         type: act.type, pente: act.type === 'tapis' ? (f.pente || 0) : 0, chauffe: Math.max(0, f.chauffe), recup: Math.max(0, f.recup),
         repet: f.repet, nbBlocs: 1, recupBloc: 0, vitRecupBloc: runnerEF(),
         pyramide: f.segs.filter(sg => sg.v > 0 && sg.d > 0).map(sg => ({ speed: sg.v, duration: round2(sg.d), unit: 'min' })),
-        notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : act.runType === 'vma' ? (act.type === 'tapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)') : ''),
-        kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', allure: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test' }[act.runType] || undefined,
+        notes: act.prop && act.prop.titre ? String(act.prop.titre) : (act.runType === 'course' ? 'Course' : act.runType === 'chrono' ? (() => { const sg = f.segs[0] || {}; return `Test chrono ${String(Math.round((sg.v || 0) * (sg.d || 0) / 60 * 100) / 100).replace('.', ',')} km`; })() : act.runType === 'vma' ? (act.type === 'tapis' ? 'Test VMA sur tapis (paliers progressifs jusqu\'à épuisement)' : 'Test VMA 6 minutes (demi-Cooper)') : ''),
+        kind: { fc: 'fractionne', fl: 'fractionne', seuil: 'seuil', allure: 'seuil', endu: 'endu', longue: 'longue', cotes: 'cotes', recup: 'recup', course: 'course', vma: 'test', chrono: 'test' }[act.runType] || undefined,
         wcIn: act.runType === 'longue' || act.runType === 'endu' || act.runType === 'recup' ? true : undefined,
         route: act.type === 'exterieur' && act.route ? act.route : undefined,
-        test: act.runType === 'vma' ? { proto: act.type === 'tapis' ? 'vmaTapis' : 'vma6', start: (f.segs[0] || {}).v } : undefined
+        test: act.runType === 'vma' ? { proto: act.type === 'tapis' ? 'vmaTapis' : 'vma6', start: (f.segs[0] || {}).v } : act.runType === 'chrono' ? (() => { const sg = f.segs[0] || {}; return { km: Math.round((sg.v || 0) * (sg.d || 0) / 60 * 100) / 100, min: round2(sg.d || 0) }; })() : undefined,
+        race: act.runType === 'course' ? (() => { const sg = f.segs[0] || {}; return { km: Math.round((sg.v || 0) * (sg.d || 0) / 60 * 100) / 100, min: round2(sg.d || 0) }; })() : undefined
       };
     }
     function actFormText() {
