@@ -80,7 +80,7 @@
     #gHeader .gh-in { max-width: 28rem; margin: 0 auto; height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 6px; }
     body.gh-on #gHeader { display: block; }
     body.gh-on #historyModal, body.gh-on #plOv, body.gh-on #configModal, body.gh-on #goalModal, body.gh-on #audioModal, body.gh-on #chkModal { top: calc(60px + env(safe-area-inset-top)) !important; }
-    #homeScreen { padding-top: calc(70px + env(safe-area-inset-top)) !important; }
+    #homeScreen { padding-top: calc(70px + var(--hfix, 0px) + env(safe-area-inset-top)) !important; }
     .hd-btn.gh-cur { background: rgba(56,189,248,.16); }
     .hm-ic { width: 32px; height: 34px !important; min-height: 0 !important; padding: 0 !important; flex-shrink: 0; border-radius: 10px; border: none !important; background: none !important; color: #bae6fd; display: flex; align-items: center; justify-content: center; }
     .hm-ic svg, .hm-ic .icon { width: 17px !important; height: 17px !important; }
@@ -98,7 +98,7 @@
     body.home-wait #homeScreen > :not(#homeDayWaitFull) { display: none !important; }
     #homeDayWaitFull { display: none; }
     body.home-wait #homeDayWaitFull { display: flex !important; }
-    #homeDateBar { position: sticky; top: calc(60px + env(safe-area-inset-top)); z-index: 26; text-align: center; box-shadow: 0 -12px 0 12px #020617; }
+    #homeDateBar { position: fixed; left: 0; right: 0; top: calc(60px + env(safe-area-inset-top)); z-index: 54; text-align: center; background: #020617 !important; padding: 4px 16px 6px !important; }
     #configModal { align-items: flex-start !important; padding: 0 !important; }
     #cfgPanel { width: 100%; max-width: 480px !important; height: min(780px, 94dvh); max-height: none !important; border-top: 0 !important; border-radius: 0 0 22px 22px !important; padding: calc(12px + env(safe-area-inset-top)) 14px 14px !important; gap: 0; }
     #cfgScroll { flex: 1; min-height: 0; overscroll-behavior: contain; padding-bottom: 10px; }
@@ -111,7 +111,7 @@
     #configModal #cfgTestProto button, #configModal #cfgTestChrono > div:first-child button { min-height: 42px; font-size: 13px !important; padding: 0 12px !important; border-radius: 12px !important; }
     #configModal #cfgDateRow { background: #0b1324 !important; border: 1px solid #1e293b !important; border-radius: 18px !important; padding: 10px 14px !important; }
     #cfgKindChips { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; }
-    #homeTabs { position: sticky; top: calc(94px + env(safe-area-inset-top)); z-index: 25; box-shadow: 0 -8px 0 8px #020617; }
+    #homeTabs { position: fixed; left: 0; right: 0; top: calc(60px + var(--hdate, 34px) + env(safe-area-inset-top)); z-index: 54; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; padding: 5px max(8px, calc((100vw - 28rem) / 2 + 8px)) !important; box-shadow: 0 6px 14px rgba(2,6,23,.6); }
     .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
     .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
     .hsub button.on { background: #38bdf8; color: #04121f; }
@@ -580,11 +580,6 @@
     <!-- BOUTONS DE COMMANDE : DÉMARRER/PAUSE puis RECOMMENCER en dessous -->
     <div id="bottomZone" class="w-full flex flex-col items-stretch gap-3 mt-4 px-2">
       <div id="idleRow" class="hidden" style="display:flex;flex-direction:column;gap:.6rem">
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
-          <button type="button" onclick="annOpen()" class="prep-b"><span>📣</span>Annonces</button>
-          <button type="button" onclick="openMediaModal()" class="prep-b"><span>🎧</span>Médias</button>
-          <button type="button" id="soundTestBtn" onclick="soundTest()" class="prep-b"><span>🔊</span>Son</button>
-        </div>
         <button type="button" id="spGoBtn" onclick="spGo()" class="hidden" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-weight:900;font-size:15px">▶ Lancer la playlist</button>
         <span id="spNow" style="display:none;font-size:12.5px;font-weight:700;color:#86efac;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
         <div id="spCtl" class="hidden" style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:.5rem">
@@ -592,6 +587,7 @@
           <button type="button" id="spCtlPlay" onclick="spPrepToggle()" aria-label="Pause ou lecture" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏸</button>
           <button type="button" onclick="spCmd('next').then(()=>{sp.at=0;setTimeout(prepRender,700)})" aria-label="Morceau suivant" style="min-height:50px;border-radius:16px;border:none;background:#1ed760;color:#04140a;font-size:20px;font-weight:900">⏭</button>
         </div>
+        <button type="button" id="soundTestBtn" onclick="soundTest()" style="width:100%;min-height:50px;border-radius:16px;border:1px solid #475569;background:#334155;color:#f8fafc;font-weight:900;font-size:15px">🔊 Tester le son</button>
         <div id="prepWatch"></div>
         <div class="hidden"><button id="chronoScriptBtn"></button><button id="readBtn"></button><button id="spBtn"></button><button id="spPlBtn"></button><button id="ytBtn"></button></div>
       </div>
@@ -1527,7 +1523,7 @@
           <span class="text-[22px] font-extrabold text-white">📣 Annonces du coach</span>
           <button onclick="annClose()" aria-label="Fermer" class="shrink-0 flex items-center justify-center" style="width:44px;height:44px;border-radius:22px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8"><span class="icon-slot" data-icon="x"></span></button>
         </div>
-        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:4px 18px 24px"><div id="scriptOpts"></div></div>
+        <div class="flex-1 overflow-y-auto custom-scroll" style="padding:4px 18px 24px"></div>
       </div>
 
   <div id="installModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[60] flex items-center justify-center p-3 hidden">
@@ -1917,6 +1913,7 @@
     let appData = JSON.parse(JSON.stringify(DEFAULT_APP_DATA));
 
     function sanitizeData() {
+      try { (appData.sessions || []).forEach(x => { if (x && x.coachPred && !x.coachPred.applied) coachPredApply(x); }); } catch (e) { } // estimation du coach = cible de la séance (une fois)
       if (appData && appData.route) {
         const s0 = (appData.sessions || [])[appData.activeSessionIndex || 0];
         if (s0 && !s0.route) s0.route = appData.route;
@@ -2443,6 +2440,7 @@
 
     // Recharge la séance active sur le chrono (arrêt + remise à zéro)
     function reloadChrono() {
+      try { mediaSessSync(); } catch (e) { }
       try { if (yt.active) ytStop(); } catch (e) { }
       const live = timerState.sessionStarted && !timerState.finished;
       if (timerState.isRunning) pauseTimer();
@@ -3113,7 +3111,7 @@
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     }
 
-    const AI_STYLE_LABELS = { coach: 'Coach énergique', warm: 'Chaleureux', calm: 'Calme', none: 'Neutre' };
+    const AI_STYLE_LABELS = { coach: 'Énergique', intense: 'Intense', warm: 'Chaleureux', calm: 'Calme', none: 'Neutre' };
     async function renderAiStoredList() {
       const el = document.getElementById('aiStoredList');
       if (!el) return;
@@ -3633,10 +3631,31 @@
       return segs.map(pcm => ({ sr: res.sr, pcm }));
     }
 
+    // Hors séance : on attend 30 s sur l'accueil (sans fenêtre ouverte) avant de télécharger, pour ne pas payer chaque modification
+    const voiceHome = { pending: false, since: 0 };
+    function voiceHomeReady() {
+      const B = document.body.classList, cm = document.getElementById('configModal'), so = document.getElementById('scriptOptsWrap');
+      if (['historyModal', 'goalModal', 'audioModal', 'plOv', 'chkModal'].some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none'; })) return false;
+      return B.contains('home') && !document.getElementById('mediaModal') && !(cm && !cm.classList.contains('hidden')) && !(so && !so.classList.contains('hidden'));
+    }
+    function voiceHomeLeft() { return voiceHome.pending ? Math.max(0, 30 - Math.floor((Date.now() - (voiceHome.since || Date.now())) / 1000)) : 0; }
+    setInterval(() => {
+      if (!voiceHome.pending) return;
+      if (timerState.sessionStarted && !timerState.finished) { voiceHome.pending = false; return; }
+      const prep = !document.body.classList.contains('home') && !document.body.classList.contains('started');
+      if (prep) { voiceHome.pending = false; prepareAIVoice.go = true; prepareAIVoice().finally(() => { prepareAIVoice.go = false; }); return; } // page avant départ : tout de suite
+      if (!voiceHomeReady()) { voiceHome.since = 0; return; }
+      if (!voiceHome.since) voiceHome.since = Date.now();
+      if (Date.now() - voiceHome.since >= 30000) { voiceHome.pending = false; voiceHome.since = 0; prepareAIVoice.go = true; prepareAIVoice().finally(() => { prepareAIVoice.go = false; }); }
+    }, 1000);
     async function prepareAIVoice(manual = false) {
       if (!aiVoiceActive()) {
         if (manual) setAiStatus(getGeminiKey() ? "Activez la voix IA ci-dessus" : "Renseignez d'abord votre clé Gemini", true);
         return false;
+      }
+      if (!manual && !prepareAIVoice.go && !(timerState.sessionStarted && !timerState.finished)) {
+        const prep = !document.body.classList.contains('home') && !document.body.classList.contains('started');
+        if (!prep || !document.getElementById('prepWatch')) { if (!voiceHome.pending) { voiceHome.pending = true; voiceHome.since = 0; } return false; }
       }
       if (aiPrep.running) { aiPrep.rerun = true; return false; }
       if (!manual && aiPrep.failedAt && Date.now() - aiPrep.failedAt < 120000) return false;
@@ -3829,6 +3848,12 @@
           "C'est presque fini, accroche-toi !",
           "Encore un petit peu, tu y es presque !"
         ],
+        hillEnd: [
+          "Fin de la côte, pousse jusqu'en haut !",
+          "Le sommet est là, ne lâche rien !",
+          "Dernières foulées de la côte, attaque le haut !",
+          "Allez, on termine la côte fort, jusqu'en haut !"
+        ],
         hill: [
           "Belle côte, garde l'effort régulier !",
           "La montée passe, ne force pas sur la vitesse !",
@@ -3845,6 +3870,7 @@
         ],
         styles: {
           coach: "coach sportif français de France (accent parisien neutre, jamais québécois), énergique et motivant, ton naturel et chaleureux",
+          intense: "coach sportif français de France (accent neutre, jamais québécois), très intense et percutant, voix forte et rythmée, comme au bord de la piste un jour de compétition",
           warm: "français de France (accent neutre, jamais québécois), chaleureux et encourageant, ton naturel",
           calm: "français de France (accent neutre, jamais québécois), calme et posé, ton naturel",
           none: "français de France, accent neutre"
@@ -3954,6 +3980,11 @@
           "Almost there, keep going!",
           "A little bit more, you've nearly got it!"
         ],
+        hillEnd: [
+          "End of the hill, push all the way to the top!",
+          "The top is right there, don't let go!",
+          "Finish the hill strong, all the way up!"
+        ],
         hill: [
           "Nice hill, keep the effort steady!",
           "The climb will pass, don't chase the speed!",
@@ -3970,6 +4001,7 @@
         ],
         styles: {
           coach: "energetic and motivating sports coach, natural and warm tone",
+          intense: "very intense, punchy sports coach, strong rhythmic voice, like trackside on race day",
           warm: "warm and encouraging, natural tone",
           calm: "calm and composed, natural tone",
           none: ""
@@ -4028,7 +4060,7 @@
         const b = VOICE_TEXT.en;
         if (pid !== 'neutre') return b;
         return _vtCache.enNeutre || (_vtCache.enNeutre = Object.assign({}, b, {
-          boost: [], named: () => [], fast: [], mental: [], mentalNamed: () => [], hill: [], tips: [], tipsEnd: [],
+          boost: [], named: () => [], fast: [], mental: [], mentalNamed: () => [], hill: [], hillEnd: [], tips: [], tipsEnd: [],
           praise: () => ['Cool-down.'], praiseNamed: () => [], warm: ['Warm-up in progress.'], easy: ['Recovery.'], push: ['Segment ending in a few seconds.']
         }));
       }
@@ -4127,7 +4159,7 @@
     function phraseUsedCount(txt) { return (phraseUse.get(txt) || []).length; }
     function notePhraseUse(txt) { const at = pickAtSec !== null ? pickAtSec : sessElapsedSec(); const a = phraseUse.get(txt) || []; a.push(at); phraseUse.set(txt, a); }
     function resetPhraseUse() { phraseUse = new Map(); }
-    const PICK_FALLBACK = { push: ['boost', 'mental', 'fast'], boost: ['fast', 'push', 'mental'], mental: ['boost', 'push'], fast: ['boost', 'push'], easy: ['praise'], praise: ['easy'] };
+    const PICK_FALLBACK = { hillEnd: ['push', 'boost'], push: ['boost', 'mental', 'fast'], boost: ['fast', 'push', 'mental'], mental: ['boost', 'push'], fast: ['boost', 'push'], easy: ['praise'], praise: ['easy'] };
     function pickNoRepeat(kind, depth = 0) {
       const all = phraseList(kind);
       if (kind === 'warmEnd') return all[0] || '';
@@ -4199,7 +4231,7 @@
       });
     }
     // Réglages des encouragements : fréquence et moments où insister
- const ENC_FOCUS = [['fastEnd', '🔥 Fin des segments rapides'], ['lastReps', '💪 Dernières séries'], ['recup', '💤 Pendant les récups'], ['longRun', '🌿 Allure régulière (endurance)']];
+ const ENC_FOCUS = [['fastEnd', '🔥 Fin des segments rapides'], ['hillEnd', '⛰️ Fin des côtes'], ['lastReps', '💪 Dernières séries'], ['recup', '💤 Pendant les récups'], ['longRun', '🌿 Allure régulière (endurance)']];
     function encFreq() { const v = appData.audioSettings.encFreq; return v === undefined ? 'auto' : v; }
     function encFocus() { return Array.isArray(appData.audioSettings.encFocus) ? appData.audioSettings.encFocus : []; }
     function computeExtraPointsRaw(st) {
@@ -4216,6 +4248,7 @@
       const add = (t, kind) => { if (t >= (fast ? Math.min(15000, d * 0.4) : 4000) && d - t >= 6500 && !p.some(q => Math.abs(q.t - t) < 5000)) p.push({ t, kind }); };
       // Moments où insister
       if (fc.includes('fastEnd') && fast) { add(d - 25000, late ? 'mental' : 'push'); }
+      { const se = getActiveSession() || {}; if (fc.includes('hillEnd') && fast && (se.kind === 'cotes' || +(st.pente != null ? st.pente : se.pente) >= 3)) add(d - 18000, 'hillEnd'); }
 
       if (fc.includes('lastReps') && fast && late) { add(d * 0.4, 'mental'); add(d * 0.75, 'mental'); }
       if (fc.includes('recup') && isRec && st.type !== 'recup') { add(Math.min(8000, d / 3), 'easy'); if (d > 60000) add(d * 0.6, 'easy'); }
@@ -5874,6 +5907,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
         const min = +j.minutes; if (!(min > 1)) throw new Error('réponse invalide');
         s.coachPred = { km, min, kmh: Math.round(km / (min / 60) * 10) / 10, txt: String(j.explication || '').slice(0, 300), at: todayISO() };
         coachPredApply(s); saveAppData();
+        try { if (getActiveSession() === s && !(timerState.sessionStarted && !timerState.finished)) { Object.keys(_vtCache).forEach(k => delete _vtCache[k]); reloadChrono(); } } catch (e) { }
       } catch (e) { coachPredictFor.err = { id, m: 'Estimation impossible : ' + (e.message || e) }; }
       coachPredictFor.busy = null; sessCoachRefresh(id); try { renderHome(); } catch (e) { }
     }
@@ -5903,8 +5937,9 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
     }
     // Séance course/test avec parcours enregistré : le chrono du coach devient la cible (temps + vitesse)
     function coachPredApply(s) {
-      const P = s && s.coachPred, k = s && s.kind; if (!P || !s.route || !(k === 'course' || k === 'test')) return;
-      if (Math.abs(+P.km - +s.route.totalKm) > 0.05) return;
+      const P = s && s.coachPred, k = s && s.kind; if (!P || !(k === 'course' || k === 'test') || testIsVma(s) || isSessionDone(s)) return;
+      const TG0 = k === 'course' ? s.race : s.test; if (s.route && +s.route.totalKm > 0 ? Math.abs(+P.km - +s.route.totalKm) > 0.05 : !(TG0 && Math.abs(+P.km - +TG0.km) < 0.01)) return;
+      P.applied = true;
       const T = k === 'course' ? (s.race = s.race || {}) : (s.test = s.test || {}); T.km = P.km; T.min = P.min;
       const p0 = (s.pyramide || [])[0]; if (p0) { p0.distance = P.km; p0.duration = P.min; p0.speed = P.kmh; }
     }
@@ -7366,9 +7401,9 @@ Donne 2 ou 3 axes de travail.`;
       return `<div class="pl-card ${past ? 'past' : ''}" data-plsid="${s.id}"><div class="flex items-center gap-3">${plDateChip(item.iso)}${body}${more}</div>${actions}</div>`;
     }
     // Détail d'une séance du planning : onglets Récap / Objectif / Adapter comme sur l'accueil
-    function plSessViewHtml(s, idx) {
+    function plSessViewHtml(s, idx, pre) {
       if (!s || s.free) return guideHtml(s, idx);
-      const id = 'plv_' + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
+      const id = (pre || 'plv_') + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
       return `<div id="${id}" style="display:flex;flex-direction:column;gap:8px">
         <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
         <div data-pv="recap">${homeSessTilesHtml(s)}</div>
@@ -9714,6 +9749,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
     }
     function closeAudioModal() {
       saveAudioSettingsFromUI();
+      try { const s = getActiveSession(); if (s && s.mediaOv) s.mediaOv = mediaSnapTake(); else appData.mediaDefaults = mediaSnapTake(); } catch (e) { }
       if (document.getElementById('gpsModeSelect')) saveSensorsFromUI();
       document.getElementById('audioModal').classList.add('hidden');
       if (aiVoiceActive()) prepareAIVoice();
@@ -12108,6 +12144,7 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           const f = rt.flags[i] || (rt.flags[i] = {});
           if (!f.ahead && rt.progressKm >= c.startKm - 0.27 && rt.progressKm < c.startKm) { f.ahead = true; if (!slopeAnnouncements(activeRoute()).some(z => Math.abs(z.km - c.startKm) < 0.3)) { speakOptP([climbAheadText(c)]); return; } }
           if (!f.start && rt.progressKm >= c.startKm && rt.progressKm < c.startKm + 0.2) { f.start = f.ahead = true; speakOptP([c.type === 'up' ? t.climbStart : t.descentStart]); return; }
+          if (c.type === 'up' && !f.end && c.lenKm >= 0.3 && encFocus().includes('hillEnd') && rt.progressKm >= c.startKm + c.lenKm - 0.15 && rt.progressKm < c.startKm + c.lenKm - 0.02) { f.end = true; speakOptP([pickRandom(VT().hillEnd || ['Fin de la côte, pousse jusqu\'en haut !'])]); return; }
           if (c.type === 'up' && !f.top && rt.progressKm >= c.startKm + c.lenKm && rt.progressKm < c.startKm + c.lenKm + 0.2) { f.top = true; speakOptP([t.climbTop]); return; }
           // Dans la montée : VAP moyenne des 500 derniers mètres, tous les 500 m
           if (c.type === 'up' && rt.progressKm >= c.startKm + 0.5 && rt.progressKm < c.startKm + c.lenKm + 0.05) {
@@ -12147,8 +12184,9 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           if (hrNow >= s.fcMax * lim) { runData.lastHrAt = now; speak([t.hrHigh]); return; }
         }
       }
+      if (paceCheckTick(cur, now, elapsedMs)) return;
       // Allure et VAP : seulement sans cardio, et seulement sur les fractions rapides (la VAP prévue d'un footing peut être mal estimée)
-      if (!hrFresh() && cur.intensity === 'fast' && gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000 && !((getActiveSession() || {}).test || {}).proto) {
+      if (!paceChkMin() && !hrFresh() && cur.intensity === 'fast' && gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000 && !((getActiveSession() || {}).test || {}).proto) {
         const v30 = gpsSpeedAvg(30);
         if (v30 && v30 > 3) {
           const gr = liveGrade();
@@ -12173,6 +12211,39 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       }
     }
 
+    function paceChkMin() { return +appData.audioSettings.paceChk || 0; }
+    // Facteur d'effort de la pente réellement courue sur la fenêtre (parcours, sinon altitude GPS)
+    function paceCostFactor(sec) {
+      const r = activeRoute(), rt = runData.route, tr = runData.track || [], c0 = minettiCost(0);
+      const last = tr[tr.length - 1]; if (!last) return 1;
+      let j = tr.length - 1; while (j > 0 && last[0] - tr[j - 1][0] <= sec) j--;
+      const dk = (last[5] || 0) - (tr[j][5] || 0);
+      if (r && r.gr && r.gr.length && rt && rt.progressKm !== null && !rt.offRoute && dk > 0.05) {
+        let sum = 0, n = 0; for (let k = Math.max(0, Math.round((rt.progressKm - dk) / 0.05)); k <= Math.round(rt.progressKm / 0.05) && k < r.gr.length; k++) { sum += minettiCost(r.gr[k] / 100); n++; }
+        return n ? sum / n / c0 : 1;
+      }
+      if (dk < 0.15 || last[4] == null || tr[j][4] == null || !((runData.gps || {}).acc < 25)) return 1;
+      const g = Math.max(-10, Math.min(12, (last[4] - tr[j][4]) / (dk * 1000) * 100));
+      return Math.abs(g) < 1 ? 1 : minettiCost(g / 100) / c0;
+    }
+    // Annonce courte et régulière : « 9,8 pour 10,3, accélère » (moyenne sur la fenêtre choisie, pente réelle, VAP visée)
+    function paceCheckTick(cur, now, elapsedMs) {
+      const m = paceChkMin(); if (!m || !cur || cur.type !== 'palier' || cur.isFree) return false;
+      const s = getActiveSession(); if (!s || s.type === 'tapis' || !gpsWanted()) return false;
+      const win = m * 60, avail = elapsedMs / 1000 - 10; if (avail < Math.min(win, 60)) return false;
+      if (now - (runData.paceChkAt || 0) < win * 1000 - 500) return false;
+      const w = Math.min(win, avail), v = gpsSpeedAvg(w); if (!v || v < 3) return false;
+      const tgtVap = (s.kind === 'course' || s.kind === 'test') && s.route ? sessVapKmh(s, +cur.speed) : +cur.speed; if (!(tgtVap > 0)) return false;
+      const need = tgtVap / paceCostFactor(w), diff = v - need, en = appData.audioSettings.voiceLang === 'en';
+      runData.paceChkAt = now;
+      const head = `${spF(v)} ${en ? 'for' : 'pour'} ${spF(need)}`;
+      let txt;
+      if (Math.abs(diff) <= 0.3) txt = en ? `${head}, good.` : `${head}, c'est bon.`;
+      else if (diff < 0) { const h = hrFresh() ? hrAvg(20) : null, red = h && zoneNum(h) >= 5;
+        txt = red ? (en ? `${head}. Heart rate in the red zone: try to hold this pace, or ease off.` : `${head}. Cardio en zone rouge : essaie de maintenir ce rythme, ou ralentis.`) : (en ? `${head}, speed up.` : `${head}, accélère.`); }
+      else txt = en ? `${head}, ease off a little.` : `${head}, ralentis un peu.`;
+      speakLive(txt); return true;
+    }
     function hrFresh() { return !!(runData.hr && Date.now() - runData.hrAt < 8000); }
     function hrAvg(sec) { const t0 = Date.now() - sec * 1000, a = runData.hrSamples.filter(x => x.t >= t0).map(x => x.hr); return a.length >= Math.min(5, sec / 3) ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null; }
     function zoneNum(hr) { const z = zoneOf(hr); return z ? +z.slice(1) : 0; }
@@ -16396,6 +16467,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
           const lm = String(sensors().lapM || 1000), he = String(hrEveryMin()), de = String(drinkEvery());
           return `<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">📍 Bilan vitesse (distance)</span>
           <div class="grid grid-cols-5 gap-1.5 mt-1">${[['off', 'Jamais'], ['500', '500 m'], ['1000', '1 km'], ['2000', '2 km'], ['5000', '5 km']].map(([v, l]) => ch(lm === v, l, `sensors().lapM='${v}'`)).join('')}</div>
+          <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">🎯 Contrôle de l'allure (dehors, GPS)</span>
+          <div class="grid grid-cols-5 gap-1.5 mt-1">${[['0', 'Jamais'], ['1', '1 min'], ['2', '2 min'], ['3', '3 min'], ['5', '5 min']].map(([v, l]) => ch(String(paceChkMin()) === v, l, `appData.audioSettings.paceChk=${v}`)).join('')}</div>
+          <span class="text-[11px] text-slate-500 block mt-1">Moyenne sur la période choisie, comparée à ta vitesse cible ajustée à la pente réelle (VAP visée). Ex. : « 9,8 pour 10,3, accélère ». Si ton cardio est en zone rouge, le coach te dit plutôt de maintenir ou de ralentir.</span>
           <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">❤️ Info cardio (valeur et zone)</span>
           <div class="grid grid-cols-4 gap-1.5 mt-1">${[['0', 'Jamais'], ['2', '2 min'], ['5', '5 min'], ['10', '10 min']].map(([v, l]) => ch(he === v, l, `appData.audioSettings.hrEvery=${v}`)).join('')}</div>
           <span class="text-[11px] text-slate-500 block mt-1">En plus, le coach te dit de ralentir si ton cardio dépasse la cible de plus de 5 pendant 30 s, ou d'accélérer s'il reste 8 sous la cible pendant 1 min (pas sur les fractions courtes).</span>
@@ -16406,13 +16480,17 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
         <span class="text-[11px] text-slate-500 block mt-1">« Moins » garde seulement les moments clés. Les annonces trop rapprochées sont décalées ou sautées automatiquement.</span>
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Insister sur</span>
         <div class="flex flex-wrap gap-1.5 mt-1">${ENC_FOCUS.map(([k, l]) => `<button type="button" data-encfocus="${k}" onclick="scriptToggleFocus('${k}')" class="rounded-full border px-3 py-1.5 text-[12px] font-bold ${fc.includes(k) ? 'bg-amber-500/25 border-amber-400 text-amber-100' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>`
-        : annTab === 'ton' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Ton du coach</span>
+        : annTab === 'ton' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">🎙️ Ton de la voix (manière de dire)</span>
+        <div class="grid grid-cols-3 gap-1.5 mt-1">${Object.keys(AI_STYLE_LABELS).map(k => { const on = (appData.audioSettings.aiStyle || 'coach') === k; return `<button type="button" onclick="annPickVoiceStyle('${k}')" class="rounded-xl border py-2 text-[12px] font-bold ${on ? 'bg-purple-500/30 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${AI_STYLE_LABELS[k]}</button>`; }).join('')}</div>
+        <span class="text-[11px] text-slate-500 block mt-1">${aiVoiceActive() ? 'Voix IA : changer le ton re-télécharge les annonces (pour toutes les séances).' : 'Le ton de la voix s\'applique à la voix IA (Réglages › Voix).'}</span>
+        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">🧠 Type de coach (ce qu'il dit)</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
-        <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>`
+        <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
+        <button type="button" id="annPrevBtn" onclick="annPreview()" style="width:100%;margin-top:8px;min-height:48px;border-radius:14px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:14.5px">🔊 Écouter un extrait</button>`
         : `<div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>`;
       box.innerHTML = tabs + body.replace(/onclick="applyScriptToggles\(\); /g, 'onclick="applyScriptToggles(); annDirty=true; ')
         + `<span style="display:block;font-size:12px;color:#64748b;text-align:center;margin-top:14px">✓ Enregistré automatiquement · le script se met à jour à la fermeture</span>
-        <button type="button" onclick="annClose(); openScriptModal()" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#c4b5fd;font-weight:800;font-size:13px">📜 Voir le script complet</button>`;
+        <button type="button" onclick="closeMediaModal(); openScriptModal()" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#c4b5fd;font-weight:800;font-size:13px">📜 Voir le script complet</button>`;
       box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); }; });
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
     }
@@ -16432,7 +16510,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
         <span style="font-size:11.5px;color:#64748b">Sortie longue : tout du long. Jamais pendant un effort rapide.</span>
       </div>`;
     }
-    function annOpen() { annDirty = false; const w = document.getElementById('scriptOptsWrap'); if (!w) return; w.classList.remove('hidden'); renderScriptOptions(); refreshAllIcons(); }
+    function annOpen() { annDirty = false; openMediaModal('ann'); }
     function annClose() {
       applyScriptToggles(); saveAppData(); const w = document.getElementById('scriptOptsWrap'); if (w) w.classList.add('hidden');
       if (annDirty) { annDirty = false; Object.keys(_vtCache).forEach(k => delete _vtCache[k]); if (!(timerState.sessionStarted && !timerState.finished)) reloadChrono(); showToast('✓ Script mis à jour'); }
@@ -16441,6 +16519,20 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
     function applyScriptToggles() { document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); }); }
     function scriptPickFreq(v) { annDirty = true; applyScriptToggles(); appData.audioSettings.encFreq = v; if (v !== 'moins') appData.audioSettings.encouragements = true; saveAppData(); renderScriptOptions(); }
     function scriptToggleFocus(k) { annDirty = true; applyScriptToggles(); const f = encFocus().slice(); const i = f.indexOf(k); if (i >= 0) f.splice(i, 1); else f.push(k); appData.audioSettings.encFocus = f; saveAppData(); renderScriptOptions(); }
+    function annPickVoiceStyle(k) {
+      applyScriptToggles(); appData.audioSettings.aiStyle = k; { const sel = document.getElementById('aiStyleSelect'); if (sel) sel.value = k; } try { renderStyleChips(); } catch (e) { }
+      annDirty = true; aiPrep.failedAt = 0; saveAppData(); renderScriptOptions();
+    }
+    // Extrait : phrase type du coach choisi, dite avec la voix et le ton choisis
+    async function annPreview() {
+      const txt = coachProfileSample(), b = document.getElementById('annPrevBtn');
+      aiUnlock(); getAudioContext();
+      if (!aiVoiceActive()) { cancelSpeech(); speakLive(txt); return; }
+      if (b) { b.disabled = true; b.textContent = '⏳ Préparation de l\'extrait…'; }
+      try { const clip = await ttsEnqueue(() => aiRequestAudio(txt, { profile: aiProfile(), style: aiStyleText() }), 'hi'); if (clip) { cancelSpeech(); aiPlayClips([clip], 'annprev_' + Date.now()); } }
+      catch (e) { showToast('Extrait impossible : ' + ((e && (e.msg || e.message)) || e)); }
+      if (b) { b.disabled = false; b.textContent = '🔊 Écouter un extrait'; }
+    }
     function scriptPickTone(id) {
       if (!COACH_PROFILES[id]) return;
       if (id === 'competition' && coachProfileId() !== 'competition' && !confirm(COMPETITION_WARNING)) return;
@@ -20234,7 +20326,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function mediaStatusHtml() {
       const line = (ic, t, sub, col) => `<div style="display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:12px;background:#0b1324;border:1px solid #1e293b"><span style="font-size:16px">${ic}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:800;color:${col || '#e2e8f0'}">${t}</span>${sub ? `<span style="font-size:11.5px;color:#94a3b8">${sub}</span>` : ''}</div></div>`;
       const out = []; let fr = false; try { fr = !!freeSession || !!(getActiveSession() || {}).free; } catch (e) { }
-      if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74')); }
+      if (!fr) { const v = scriptVoiceState(); out.push(line(v.ok ? '✅' : v.busy ? '⏳' : '⚠️', `Script ${v.ok ? 'OK' : v.busy ? 'en préparation' : 'incomplet'}`, v.txt, v.ok ? '#a7f3d0' : v.busy ? '#fde68a' : '#fdba74'));
+        if (!v.ok && !v.busy && voiceHome.pending && aiVoiceActive()) out.push(line('⏳', voiceHome.since ? `Voix : téléchargement dans ${voiceHomeLeft()} s` : 'Voix : téléchargement au retour sur l\'accueil', 'après 30 s sur l\'accueil, pour ne payer qu\'une fois les réglages finis', '#fde68a')); }
       const rc = readCfg();
       if (rc) { if (readIsAi(rc)) { const n = (rc.sections || []).length, k = readSecsReady(rc); if (k < n && !prepRender.rd) { prepRender.rd = 1; readPrepareAll().finally(() => { prepRender.rd = 0; }); }
           out.push(line(k >= n ? '✅' : '⏳', `Livre audio ${k >= n ? 'chargé' : 'en chargement'}`, `${k}/${n} partie${n > 1 ? 's' : ''} prête${k > 1 ? 's' : ''} · voix IA`, k >= n ? '#a7f3d0' : '#fde68a')); }
@@ -20263,17 +20356,57 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${loadRing(pct, 96, ok ? '#34d399' : x.col, `<span style="font-size:${ok ? 28 : 22}px;font-weight:900;color:#fff">${ok ? '✓' : Math.floor(pct * 100) + '%'}</span><span style="font-size:15px;margin-top:2px">${x.ic}</span>`)}<span style="font-size:13px;font-weight:800;color:#e2e8f0">${x.l}</span><span style="font-size:11.5px;color:#94a3b8">${ok ? 'prêt' : `${x.d}/${x.t}`}</span></div>`; }).join('')}</div>`;
     }
     function homeMediaPaneHtml() {
-      return `<div style="display:flex;flex-direction:column;gap:8px">${mediaLoadHtml()}${mediaStatusHtml()}
-        <button type="button" onclick="openMediaModal()" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14px">🎧 Gérer les médias</button></div>`;
+      return `<div style="display:flex;flex-direction:column;gap:8px;width:100%">
+        <button type="button" onclick="openMediaModal()" style="width:100%;min-height:50px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">🎧 Gérer les médias et les annonces</button>
+        ${mediaLoadHtml()}${mediaStatusHtml()}</div>`;
     }
     setInterval(() => { try { if (document.body.classList.contains('home') && homeSessSub === 'media') { const e = document.getElementById('homeMediaPane'); if (e) e.innerHTML = homeMediaPaneHtml(); } } catch (e) { } }, 2000);
-    function openMediaModal() {
+    // Réglages médias & annonces : propres à la séance, ou par défaut pour toutes
+    const MEDIA_AS_KEYS = ['encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk'];
+    const MEDIA_SE_KEYS = ['kmAnnounce', 'announceVap', 'paceAdvice', 'navTurns', 'lapM'], MEDIA_SP_KEYS = ['off', 'pl', 'plStart'];
+    function mediaSnapTake() {
+      const pk = (o, K) => { const r = {}; K.forEach(k => { if (o && o[k] !== undefined) r[k] = JSON.parse(JSON.stringify(o[k])); }); return r; };
+      return { as: pk(appData.audioSettings, MEDIA_AS_KEYS), se: pk(sensors(), MEDIA_SE_KEYS), sp: pk(spCfg(), MEDIA_SP_KEYS) };
+    }
+    function mediaSnapApply(sn) {
+      const put = (o, K, v) => K.forEach(k => { if (v && v[k] !== undefined) o[k] = JSON.parse(JSON.stringify(v[k])); else delete o[k]; });
+      put(appData.audioSettings, MEDIA_AS_KEYS, sn.as); put(sensors(), MEDIA_SE_KEYS, sn.se); put(spCfg(), MEDIA_SP_KEYS, sn.sp);
+    }
+    const mediaSnapEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    function mediaSessSync() {
+      if (timerState.sessionStarted && !timerState.finished) return;
+      if (!appData.mediaDefaults) appData.mediaDefaults = mediaSnapTake();
+      const s = getActiveSession(), id = s ? s.id : '';
+      if (mediaSessSync.cur === id) return; mediaSessSync.cur = id;
+      const sn = s && s.mediaOv ? s.mediaOv : appData.mediaDefaults;
+      if (!mediaSnapEq(sn, mediaSnapTake())) { mediaSnapApply(sn); try { Object.keys(_vtCache).forEach(k => delete _vtCache[k]); } catch (e) { } }
+    }
+    function mediaSessCommit() {
+      if (!appData.mediaDefaults) appData.mediaDefaults = mediaSnapTake();
+      const s = getActiveSession(); if (!s) { appData.mediaDefaults = mediaSnapTake(); saveAppData(); return; }
+      const sn = mediaSnapTake(); if (mediaSnapEq(sn, appData.mediaDefaults)) delete s.mediaOv; else s.mediaOv = sn; saveAppData();
+    }
+    function mediaIsDefault() { return !!appData.mediaDefaults && mediaSnapEq(mediaSnapTake(), appData.mediaDefaults); }
+    function mediaSaveDefault() {
+      try { applyScriptToggles(); } catch (e) { }
+      appData.mediaDefaults = mediaSnapTake(); (appData.sessions || []).forEach(x => { delete x.mediaOv; }); saveAppData();
+      mediaRender(); showToast('💾 Réglages appliqués à toutes les séances');
+    }
+    function mediaTabGo(k) { if (mediaTab === 'ann') { try { applyScriptToggles(); saveAppData(); } catch (e) { } } mediaTab = k; mediaRender(); }
+    function annCommit() {
+      if (!document.querySelector('#mediaModal #scriptOpts')) return;
+      applyScriptToggles(); saveAppData();
+      if (annDirty) { annDirty = false; Object.keys(_vtCache).forEach(k => delete _vtCache[k]); if (!(timerState.sessionStarted && !timerState.finished)) reloadChrono(); showToast('✓ Script mis à jour'); }
+    }
+    function openMediaModal(tab) {
+      if (tab) mediaTab = tab; try { mediaSessSync(); } catch (e) { }
       let m = document.getElementById('mediaModal');
       if (!m) { m = document.createElement('div'); m.id = 'mediaModal'; m.style.cssText = 'position:fixed;inset:0;z-index:88;background:rgba(2,6,23,.85);display:flex;align-items:flex-start;justify-content:center'; m.onclick = e => { if (e.target === m) closeMediaModal(); }; document.body.appendChild(m); }
       mediaRender();
     }
-    function closeMediaModal() { const m = document.getElementById('mediaModal'); if (m) m.remove(); try { prepRender(); } catch (e) { } }
+    function closeMediaModal() { try { annCommit(); } catch (e) { } try { mediaSessCommit(); } catch (e) { } const m = document.getElementById('mediaModal'); if (m) m.remove(); try { prepRender(); } catch (e) { } try { renderHome(); } catch (e) { } }
     function mediaOn(k) {
+      if (k === 'ann') return true;
       if (k === 'sp') { const c = spCfg(); return spConnected() && !!c.pl && !c.off; }
       if (k === 'rd') return !!readCfg();
       if (k === 'yt') return !!ytCfg().on;
@@ -20290,8 +20423,8 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     function mediaRender() {
       const m = document.getElementById('mediaModal'); if (!m) return;
       const c = spCfg(), rc = appData.audioSettings.readText, yc = appData.audioSettings.youtube || {}, tap = (getActiveSession() || {}).type === 'tapis';
-      const T = [['sp', '🎵', 'Spotify', '#1ed760'], ['rd', '📖', 'Livre audio', '#38bdf8']].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444']] : []).concat([['an', '📰', 'News', '#a78bfa']]);
-      if (!T.some(t => t[0] === mediaTab)) mediaTab = 'sp';
+      const T = [['ann', '📣', 'Annonces', '#fbbf24'], ['sp', '🎵', 'Spotify', '#1ed760'], ['rd', '📖', 'Livre audio', '#38bdf8']].concat(tap ? [['yt', '▶️', 'YouTube', '#ef4444']] : []).concat([['an', '📰', 'News', '#a78bfa']]);
+      if (!T.some(t => t[0] === mediaTab)) mediaTab = 'ann';
       const cur = T.find(t => t[0] === mediaTab), on = mediaOn(mediaTab), col = cur[3];
       const big = (js, l, bg, fg) => `<button type="button" onclick="${js}" style="min-height:50px;border-radius:14px;border:${bg ? 'none' : '1px solid #475569'};background:${bg || '#1e293b'};color:${fg || '#e2e8f0'};font-weight:900;font-size:14px">${l}</button>`;
       const seg = (o, js, l) => `<button type="button" onclick="${js}" style="min-height:46px;border-radius:12px;font-size:13px;font-weight:800;${o ? `background:${col};color:#04121f;border:none` : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${l}</button>`;
@@ -20313,13 +20446,19 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         const P = yc.url ? ytParse(yc.url) : null, vid = P && P.vid;
         body = `${yc.url ? `<div style="position:relative;border-radius:16px;overflow:hidden;border:1px solid #1e293b;background:#000;aspect-ratio:16/9">${vid ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(vid)}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.85">` : '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px">📃</span>'}<span style="position:absolute;left:8px;bottom:8px;padding:3px 8px;border-radius:8px;background:rgba(0,0,0,.7);font-size:12px;font-weight:800">${vid ? '▶️ Vidéo' : '📃 Playlist'}</span></div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${big('ytOpenSite()', '↗ YouTube', '#ef4444', '#fff')}${big('mediaYtPaste()', '📋 Coller le lien')}</div>`;
+      } else if (mediaTab === 'ann') {
+        body = '<div id="scriptOpts"></div>';
       } else body = radioOptsHtml();
       m.innerHTML = `<div style="width:100%;max-width:480px;height:min(640px,90vh);overflow-y:auto;background:#0f172a;border:1px solid #334155;border-top:0;border-radius:0 0 20px 20px;padding:calc(14px + env(safe-area-inset-top)) 14px 18px;display:flex;flex-direction:column;gap:10px;color:#f1f5f9">
         <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900">🎧 Médias</span><button type="button" onclick="closeMediaModal()" aria-label="Fermer" style="width:44px;height:44px;border-radius:22px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:17px;font-weight:900">✕</button></div>
-        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTab='${k}';mediaRender()" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
-        ${sw}
+        <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTabGo('${k}')" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
+        ${mediaTab === 'ann' ? '' : sw}
         <div style="display:flex;flex-direction:column;gap:8px;${on || mediaTab === 'sp' || mediaTab === 'yt' || mediaTab === 'rd' ? '' : 'opacity:.55'}">${body}</div>
+        <div style="position:sticky;bottom:-18px;margin:auto -14px -18px;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:#0f172a;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;z-index:3">
+          <span style="font-size:12px;font-weight:700;color:${mediaIsDefault() ? '#6ee7b7' : '#fde68a'};text-align:center">${mediaIsDefault() ? '✓ Réglages par défaut (toutes les séances)' : '✏️ Réglages enregistrés pour cette séance seulement'}</span>
+          <button type="button" onclick="mediaSaveDefault()" style="width:100%;min-height:48px;border-radius:14px;border:none;background:#fbbf24;color:#1c1303;font-weight:900;font-size:14.5px">💾 Sauver par défaut (toutes les séances)</button></div>
       </div>`;
+      if (mediaTab === 'ann') { try { renderScriptOptions(); } catch (e) { } }
       if (mediaTab === 'rd') { try { readEstimate(); readStateRender(); } catch (e) { } }
       { const sc = m.firstElementChild; if (sc && mediaRender.tab === mediaTab) sc.scrollTop = mediaRender.top || 0; mediaRender.tab = mediaTab; if (sc) sc.onscroll = () => { mediaRender.top = sc.scrollTop; }; }
     }
@@ -20367,7 +20506,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (aiVoiceActive() && !aiClips.has(aiClipKey(soundTestText()))) {
         if (b) { b.disabled = true; b.textContent = '⏳'; }
         await getSoundTestClip(true);
-        if (b) { b.disabled = false; b.textContent = '🔊 Son'; }
+        if (b) { b.disabled = false; b.textContent = '🔊 Tester le son'; }
       }
       const ms = playSoundTest();
       setTimeout(() => showSoundTestModal('ask'), ms);
@@ -21036,8 +21175,8 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     }
     function homeCrossBlock(c, active) {
       const T = ACT_TYPES[c.type] || {}, col = T.color || '#f472b6';
-      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-radius:24px;background:${col}14;border:${active ? `2px solid ${col};box-shadow:0 0 0 3px ${col}33` : `1px solid ${col}66`}">
-        ${active ? '<div style="display:flex;justify-content:center"><div style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;background:rgba(16,185,129,.16);border:1.5px solid #34d399;color:#a7f3d0;font-weight:900;font-size:13.5px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div></div>' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="min-height:48px;border-radius:14px;border:none;background:${col};color:#04121f;font-weight:900;font-size:15px">▶ Activer</button>`}
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-radius:24px;background:${col}14;border:${active ? '2px solid #34d399;box-shadow:0 0 22px rgba(52,211,153,.3)' : `1px solid ${col}66`}">
+        ${active ? '<div style="display:flex;justify-content:center"><div style="display:inline-flex;align-items:center;gap:7px;color:#6ee7b7;font-weight:900;font-size:14px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div></div>' : `<button type="button" onclick="homeActivateCross('${c.id}')" style="align-self:center;min-height:44px;padding:0 24px;border-radius:999px;border:none;background:${col};color:#04121f;font-weight:900;font-size:14.5px">▶ Activer</button>`}
         ${crossActsHtml(c.id)}
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${sTile(T.icon || '🏋️', T.label || 'Activité', '', '', { small: true })}${sTile('⏱️', `${c.dur || '?'} min`)}${sTile('🔥', ({ facile: 'Facile', moderee: 'Modérée', soutenue: 'Soutenue' })[c.intensite] || 'Modérée', '', '', { small: true })}</div>
         ${c.titre ? `<b style="font-size:15px;color:#fff;text-align:center">${plEsc(c.titre)}</b>` : ''}
@@ -21076,20 +21215,20 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       const box = document.getElementById('homeTodayMore'), top = document.getElementById('homeTodayTop'), card = document.getElementById('homeSessCard'); if (!box) return;
       if (busy) { box.innerHTML = ''; if (top) { top.innerHTML = ''; top.style.display = 'none'; } return; }
       const t = todayISO(), act = getActiveSession(), ac = homeActiveCross();
-      { const db = document.getElementById('homeDateBar'); if (db) db.textContent = capFirst(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); }
+      { const db = document.getElementById('homeDateBar'); if (db) { db.textContent = capFirst(new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })); homeFixMeasure(); } }
       const runToday = act && act.dateISO === t && !isSessionDone(act) && card && !card.classList.contains('hidden');
       const todo = appData.sessions.map((s, i) => [s, i]).filter(([s]) => s.dateISO === t && !isSessionDone(s) && s !== act);
       const crosses = runToday ? (appData.crossPlan || []).filter(c => c.dateISO === t) : [];
       const n = (runToday ? 1 : 0) + todo.length + crosses.length;
       if (top) { top.innerHTML = ac && runToday ? homeCrossBlock(ac, true) : ''; top.style.display = ac && runToday ? 'flex' : 'none'; }
-      const ACTB = '<div class="hm-active-badge" style="align-self:center;display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;background:rgba(16,185,129,.16);border:1.5px solid #34d399;color:#a7f3d0;font-weight:900;font-size:13.5px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div>';
+      const ACTB = '<div class="hm-active-badge" style="align-self:center;display:inline-flex;align-items:center;gap:7px;color:#6ee7b7;font-weight:900;font-size:14px"><span style="width:20px;height:20px;border-radius:10px;background:#10b981;color:#04121f;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span>Séance active</div>';
       if (card) { let bd = document.getElementById('homeActBadge'); if (!bd) { bd = document.createElement('div'); bd.id = 'homeActBadge'; bd.style.cssText = 'display:flex;justify-content:center;margin-bottom:8px'; card.insertBefore(bd, card.firstChild); } bd.innerHTML = runToday && n > 1 && !ac ? ACTB : ''; bd.style.display = runToday && n > 1 && !ac ? 'flex' : 'none'; }
-      if (card) { const hl = runToday && n > 1 && !ac; card.style.boxShadow = hl ? '0 0 0 2px #38bdf8, 0 0 24px rgba(56,189,248,.35)' : ''; const ab = document.getElementById('homeActBtn'); if (ab) ab.style.display = runToday && ac ? 'block' : 'none'; card.style.opacity = runToday && ac ? '.9' : ''; }
+      if (card) { const hl = runToday && n > 1 && !ac; card.style.boxShadow = hl ? '0 0 0 2px #34d399, 0 0 22px rgba(52,211,153,.3)' : ''; const ab = document.getElementById('homeActBtn'); if (ab) ab.style.display = runToday && ac ? 'block' : 'none'; card.style.opacity = runToday && ac ? '.9' : ''; }
       const actRow = (i, id) => `<div class="hm-acts"><button type="button" class="hm-act" onclick="homeMoveSession('${id}')">${PL_ICON_MOVE}<span>Déplacer</span></button><button type="button" class="hm-act" onclick="openConfigModal(${i})">${PL_ICON_EDIT}<span>Modifier</span></button><button type="button" class="hm-act hm-del" onclick="if(confirm('Supprimer cette séance ?'))homeDeleteSessionIdx(${i})">${PL_ICON_DEL}<span>Supprimer</span></button></div>`;
       let h = todo.map(([s, i]) => `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:24px;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(79,70,229,.1));border:1px solid rgba(56,189,248,.35)">
-          <button type="button" onclick="homeChooseToday(${i})" style="min-height:48px;border-radius:14px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:15px">▶ Activer cette séance</button>
+          <button type="button" onclick="homeChooseToday(${i})" style="align-self:center;min-height:44px;padding:0 24px;border-radius:999px;border:none;background:#38bdf8;color:#04121f;font-weight:900;font-size:14.5px">▶ Activer cette séance</button>
           ${actRow(i, s.id)}
-          ${homeSessTilesHtml(s)}</div>`).join('');
+          ${plSessViewHtml(s, i, 'hmv_')}</div>`).join('');
       h += crosses.filter(c => !ac || c.id !== ac.id).map(c => homeCrossBlock(c, false)).join('');
       const lastH = (appData.history || []).find(x => x && !x.cross && x.endAt);
       const done = (appData.history || []).filter(x => x && !x.cross && x.endAt && toISODateLocal(new Date(x.endAt)) === t && x !== lastH);
@@ -21220,6 +21359,14 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
         try { askCoachAddSession(); } catch (e) { }
       }, 3500);
     }
+    // Hauteur de la date + du bandeau fixés : réserve l'espace en haut de l'accueil
+    function homeFixMeasure() {
+      const db = document.getElementById('homeDateBar'), bar = document.getElementById('homeTabs'), hs = document.getElementById('homeScreen'); if (!db || !bar || !hs) return;
+      if (getComputedStyle(hs).display === 'none') return;
+      const hd = Math.round(db.getBoundingClientRect().height), ht = bar.style.display !== 'none' ? Math.round(bar.getBoundingClientRect().height) : 0; if (!hd) return;
+      const R = document.documentElement.style; R.setProperty('--hdate', hd + 'px'); R.setProperty('--hfix', (hd + (ht ? ht + 4 : 0)) + 'px');
+    }
+    window.addEventListener('resize', () => { try { homeFixMeasure(); } catch (e) { } });
     function homeTabsSync() {
       try { homeAutoSugg(); } catch (e) { }
       try { const sh = document.getElementById('homeSleepHost'); if (sh && (!sh.children.length || sh.dataset.d !== todayISO())) { sh.dataset.d = todayISO(); sleepPanelRender(); } } catch (e) { }
@@ -21235,6 +21382,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       if (!av.some(t => t[0] === homeTab)) homeTab = av.some(t => t[0] === 'sess') ? 'sess' : av.length ? av[0][0] : 'sess';
       TABS.forEach(([k, , ids]) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.classList.toggle('htab-off', k !== homeTab); }));
       bar.style.display = av.length > 1 ? 'flex' : 'none';
+      homeFixMeasure();
       { const lb = document.getElementById('homeLaunchBtn'), card = document.getElementById('homeSessCard'); if (lb && card) lb.style.display = !card.classList.contains('hidden') ? 'flex' : 'none';
         const bar2 = document.getElementById('homeActBar'); if (bar2) bar2.classList.toggle('hab-off', homeTab !== 'sess'); }
       const html = av.map(([k, l]) => `<button type="button" onclick="homeTab='${k}';homeTabsSync()" style="min-width:0;flex:1 1 auto;white-space:nowrap;min-height:50px;padding:2px 3px 6px;border-radius:10px;border:none;font-size:10.5px;font-weight:800;line-height:1.15;letter-spacing:-.2px;${homeTab === k ? 'background:#38bdf8;color:#04121f' : 'background:none;color:#94a3b8'}"><span style="display:block;font-size:17px;line-height:1.1;margin-bottom:6px">${l.split(' ')[0]}</span>${l.split(' ').slice(1).join(' ')}</button>`).join('');
