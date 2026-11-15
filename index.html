@@ -98,7 +98,7 @@
     body.home-wait #homeScreen > :not(#homeDayWaitFull) { display: none !important; }
     #homeDayWaitFull { display: none; }
     body.home-wait #homeDayWaitFull { display: flex !important; }
-    #homeDateBar { position: fixed; left: 0; right: 0; top: calc(60px + env(safe-area-inset-top)); z-index: 54; text-align: center; background: #020617 !important; padding: 4px 16px 6px !important; }
+    #homeDateBar { position: fixed; left: 0; right: 0; top: calc(60px + env(safe-area-inset-top)); z-index: 45; text-align: center; background: #020617 !important; padding: 4px 16px 6px !important; }
     #configModal { align-items: flex-start !important; padding: 0 !important; }
     #cfgPanel { width: 100%; max-width: 480px !important; height: min(780px, 94dvh); max-height: none !important; border-top: 0 !important; border-radius: 0 0 22px 22px !important; padding: calc(12px + env(safe-area-inset-top)) 14px 14px !important; gap: 0; }
     #cfgScroll { flex: 1; min-height: 0; overscroll-behavior: contain; padding-bottom: 10px; }
@@ -111,7 +111,7 @@
     #configModal #cfgTestProto button, #configModal #cfgTestChrono > div:first-child button { min-height: 42px; font-size: 13px !important; padding: 0 12px !important; border-radius: 12px !important; }
     #configModal #cfgDateRow { background: #0b1324 !important; border: 1px solid #1e293b !important; border-radius: 18px !important; padding: 10px 14px !important; }
     #cfgKindChips { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; }
-    #homeTabs { position: fixed; left: 0; right: 0; top: calc(60px + var(--hdate, 34px) + env(safe-area-inset-top)); z-index: 54; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; padding: 5px max(8px, calc((100vw - 28rem) / 2 + 8px)) !important; box-shadow: 0 6px 14px rgba(2,6,23,.6); }
+    #homeTabs { position: fixed; left: 0; right: 0; top: calc(60px + var(--hdate, 34px) + env(safe-area-inset-top)); z-index: 45; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; padding: 5px max(8px, calc((100vw - 28rem) / 2 + 8px)) !important; box-shadow: 0 6px 14px rgba(2,6,23,.6); }
     .hsub { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(2,6,23,.55); border: 1px solid #1e293b; }
     .hsub button { flex: 1 1 0; min-height: 38px; border-radius: 9px; border: none; background: none; color: #94a3b8; font-size: 12.5px; font-weight: 800; }
     .hsub button.on { background: #38bdf8; color: #04121f; }
@@ -205,7 +205,7 @@
     .sw:checked { background: var(--acc, #38bdf8); }
     .sw:checked::after { left: 21px; }
     .leaflet-container img { max-width: none !important; max-height: none !important; }
-    .leaflet-container { font-family: inherit; }
+    .leaflet-container { font-family: inherit; position: relative; z-index: 0; isolation: isolate; }
     .wheel-box { position: relative; height: 176px; }
     .wheel-box::before { content: ''; position: absolute; left: 0; right: 0; top: 66px; height: 44px; border-radius: 12px; background: rgba(52,211,153,.14); border: 1px solid rgba(52,211,153,.5); pointer-events: none; }
     .wheel { position: relative; height: 176px; overflow-y: scroll; scroll-snap-type: y mandatory; padding: 66px 0; box-sizing: border-box; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
@@ -7433,11 +7433,11 @@ Donne 2 ou 3 axes de travail.`;
       if (!s || s.free) return guideHtml(s, idx);
       const id = (pre || 'plv_') + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
       return `<div id="${id}" style="display:flex;flex-direction:column;gap:8px">
-        <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
+        <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter' + (sessPropValid(s) ? PROP_BADGE : '')]]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
         <div data-pv="recap">${homeSessTilesHtml(s)}</div>
         ${isSessionDone(s) ? '' : `<div data-pv="coach" style="display:none;flex-direction:column;gap:8px">${sessCoachPaneHtml(s)}</div>`}
         <div data-pv="obj" style="display:none;flex-direction:column;gap:8px">${part('obj')}</div>
-        <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${part('adapt')}</div></div>`;
+        <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${sessPropHtml(s)}${part('adapt')}</div></div>`;
     }
     function plSessSub(id, k, btn) { const b = document.getElementById(id); if (!b) return; b.querySelectorAll('[data-pv]').forEach(e => { e.style.display = e.dataset.pv === k ? (k === 'recap' ? '' : 'flex') : 'none'; }); b.querySelectorAll('.hsub button').forEach(x => x.classList.toggle('on', x === btn)); }
     function plRaceCard(i) {
@@ -14075,6 +14075,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
         j.aid = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
         const up = upcomingPlanSessions();
         j.modifications = (Array.isArray(j.modifications) ? j.modifications : []).filter(m => m && m.seance && Array.isArray(m.seance.segments) && m.seance.segments.length && up.some(x => x.dateISO === m.date)).slice(0, 6);
+        j.modifications.forEach((m, i) => { const t = appData.sessions.find(x => x.dateISO === m.date && !isSessionDone(x) && !x.free); if (t) t.coachProp = { aid: j.aid, i, m: JSON.parse(JSON.stringify(m)), at: todayISO(), titre: String(j.titre || '') }; });
         return JSON.stringify(j);
       } catch (e) { return raw; }
     }
@@ -14088,11 +14089,45 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
           <span style="font-size:12px;font-weight:800;color:#7dd3fc">${d ? capFirst(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) : esc(m.date)}</span>
           ${t ? `<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">${esc(capFirst(describeSessionHuman(Object.assign({}, t, { chauffe: 0, recup: 0 }))))}</span>` : ''}
           ${nw ? `<span style="font-size:13px;font-weight:800;color:#f1f5f9">→ ${esc(nw)}</span>` : ''}
-          ${m.resume ? `<span style="font-size:12px;color:#cbd5e1">${esc(m.resume)}</span>` : ''}</div>`; }).join('');
+          ${m.resume ? `<span style="font-size:12px;color:#cbd5e1">${esc(m.resume)}</span>` : ''}${m.done ? `<span style="font-size:12px;font-weight:800;color:${m.done === 'ok' ? '#34d399' : '#94a3b8'}">${m.done === 'ok' ? '✓ appliquée' : 'refusée'}</span>` : ''}</div>`; }).join('');
       const st = j.modsDone === 'ok' ? `<div style="font-size:13px;font-weight:800;color:#34d399">✓ Modifications appliquées au planning</div>` : j.modsDone === 'no' ? `<div style="font-size:13px;font-weight:800;color:#94a3b8">Propositions refusées : le plan reste inchangé</div>`
         : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="anaModsDecide('${j.aid}', false)" style="min-height:44px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:14px">✕ Refuser</button><button type="button" onclick="anaModsDecide('${j.aid}', true)" style="min-height:44px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:800;font-size:14px">✅ Accepter</button></div>`;
       return `<div data-anamods="${j.aid}" style="margin-top:10px;padding:11px;border-radius:14px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.45);display:flex;flex-direction:column;gap:8px">
         <span style="font-size:14px;font-weight:800;color:#bae6fd">🛠️ Le coach propose d'adapter ${mods.length > 1 ? `${mods.length} séances` : 'une séance'}</span>${items}${st}</div>`;
+    }
+    const PROP_BADGE = '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;margin-left:4px;vertical-align:top;line-height:1">1</span>';
+    function sessPropValid(s) { const P = s && s.coachProp; if (!P) return false; if (isSessionDone(s) || (s.dateISO && s.dateISO < todayISO())) { delete s.coachProp; return false; } return true; }
+    function sessPropHtml(s) {
+      if (!sessPropValid(s)) return ''; const P = s.coachProp, m = P.m; let pr = null; try { pr = proposalToSession(s, m.seance); if (m.seance.type === 'exterieur' || m.seance.type === 'tapis') pr.type = m.seance.type; } catch (e) { }
+      const esc = x => plEsc(String(x || ''));
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(239,68,68,.08);border:1.5px solid rgba(248,113,113,.6)">
+        <span style="font-size:12px;font-weight:900;color:#fca5a5;letter-spacing:.5px">🔴 PROPOSITION DU COACH${P.at ? ` · ${esc(fmtDayLong(P.at))}` : ''}</span>
+        ${m.resume ? `<span style="font-size:14px;font-weight:800;color:#f1f5f9;line-height:1.4">${esc(m.resume)}</span>` : ''}
+        <span style="font-size:12.5px;color:#94a3b8;text-decoration:line-through">${esc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span>
+        ${pr ? `<span style="font-size:11.5px;font-weight:900;color:#93c5fd">DEVIENT</span>${homeSessTilesHtml(Object.assign({}, pr, { free: false, coachPred: null }))}` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" onclick="event.stopPropagation();sessPropDecide('${s.id}',false)" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:14px">✕ Refuser</button><button type="button" onclick="event.stopPropagation();sessPropDecide('${s.id}',true)" style="min-height:46px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:14px">✓ Appliquer</button></div></div>`;
+    }
+    // applique une proposition (format « modifications » de l'analyse) à une séance
+    function applyCoachMod(t, m) {
+      const pr = proposalToSession(t, m.seance);
+      if (m.seance.type === 'exterieur' || m.seance.type === 'tapis') pr.type = m.seance.type;
+      const c = parseCardio(m.cardio); if (c) pr.cardio = c;
+      if (!t.planOriginal) { const b = JSON.parse(JSON.stringify(t)); delete b.planOriginal; delete b.adapted; delete b.coachProp; t.planOriginal = b; }
+      ['type', 'chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio'].forEach(k => { if (pr[k] !== undefined) t[k] = JSON.parse(JSON.stringify(pr[k])); });
+      if (t.type === 'exterieur') t.pente = 0;
+      t.adapted = { at: todayISO(), resume: String(m.resume || "Adaptée après l'analyse du coach") };
+    }
+    function sessPropDecide(id, ok) {
+      const t = (appData.sessions || []).find(x => x.id === id); if (!t || !t.coachProp) return; const P = t.coachProp;
+      if (ok) { try { applyCoachMod(t, P.m); } catch (e) { showToast('Proposition impossible à appliquer'); return; } }
+      delete t.coachProp;
+      // l'analyse d'origine garde la trace de la décision
+      (appData.history || []).forEach(h => { if (!h.analysis || !String(h.analysis).includes(P.aid)) return; const j = parseJsonLoose(h.analysis); if (!j || !Array.isArray(j.modifications)) return;
+        if (j.modifications[P.i]) j.modifications[P.i].done = ok ? 'ok' : 'no';
+        if (j.modifications.every(x => x.done)) j.modsDone = j.modifications.some(x => x.done === 'ok') ? 'ok' : 'no'; h.analysis = JSON.stringify(j); });
+      rememberChat('analyse', 'analyse de séance', 'user', ok ? `J'accepte la modification proposée pour ma séance du ${t.dateISO}.` : `Je refuse la modification proposée pour ma séance du ${t.dateISO}.`);
+      saveAppData(); try { reloadChrono(); } catch (e) { } try { renderHome(); } catch (e) { } try { updateHistoryTable(); } catch (e) { }
+      showToast(ok ? '✓ Séance adaptée' : 'Proposition refusée : séance inchangée');
     }
     function anaModsDecide(aid, ok) {
       const srcs = [];
@@ -14102,18 +14137,15 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       if (!srcs.length) return;
       const j = parseJsonLoose(srcs[0].get()); if (!j || j.modsDone) return;
       let n = 0;
-      if (ok) (j.modifications || []).forEach(m => {
+      (j.modifications || []).forEach(m => {
         const t = appData.sessions.find(x => x.dateISO === m.date && !isSessionDone(x)); if (!t) return;
-        const pr = proposalToSession(t, m.seance);
-        if (m.seance.type === 'exterieur' || m.seance.type === 'tapis') pr.type = m.seance.type;
-        const c = parseCardio(m.cardio); if (c) pr.cardio = c;
-        if (!t.planOriginal) { const b = JSON.parse(JSON.stringify(t)); delete b.planOriginal; delete b.adapted; t.planOriginal = b; }
-        ['type', 'chauffe', 'recup', 'repet', 'nbBlocs', 'recupBloc', 'vitRecupBloc', 'pente', 'pyramide', 'cardio'].forEach(k => { if (pr[k] !== undefined) t[k] = JSON.parse(JSON.stringify(pr[k])); });
-        if (t.type === 'exterieur') t.pente = 0;
-        t.adapted = { at: todayISO(), resume: String(m.resume || "Adaptée après l'analyse du coach") };
+        const mine = t.coachProp && t.coachProp.aid === aid; if (mine) delete t.coachProp;
+        if (!ok || m.done) return;
+        applyCoachMod(t, m); m.done = 'ok';
         n++;
       });
-      j.modsDone = ok ? 'ok' : 'no';
+      (j.modifications || []).forEach(m => { if (!m.done) m.done = ok ? 'ok' : 'no'; });
+      j.modsDone = ok || (j.modifications || []).some(m => m.done === 'ok') ? 'ok' : 'no';
       const v = JSON.stringify(j); srcs.forEach(x => x.set(v));
       rememberChat('analyse', 'analyse de séance', 'user', ok ? `J'accepte les ${n} modification(s) proposées pour mon plan.` : 'Je refuse les modifications proposées pour mon plan.');
       saveAppData();
@@ -21928,11 +21960,11 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         document.body.classList.remove('home-wait');
         const inProg = timerState.sessionStarted && !timerState.finished;
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
-        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
+        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = sessPropValid(sess) ? PROP_BADGE : '';
         bar.style.display = inProg ? 'none' : 'flex';
         bar.innerHTML = [['recap', '📊', 'Récap'], ['coach', '🧠', 'Coach'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 0"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
-        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="coach">${sessCoachPaneHtml(sess)}</div><div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
+        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="coach">${sessCoachPaneHtml(sess)}</div><div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${sessPropHtml(sess)}${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
         d.style.display = sub === 'recap' ? '' : 'none';
         if (hg) { hg.classList.toggle('hidden', !!(sub === 'recap' || sess.free)); }
