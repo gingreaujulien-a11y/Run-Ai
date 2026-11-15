@@ -5065,7 +5065,8 @@
         seuil: { repet: 3, segs: [{ speed: r5(vma * 0.85), duration: 8, unit: 'min' }, { speed: rec, duration: 2, unit: 'min' }] },
         cotes: { repet: 8, segs: [{ speed: r5(ef + 0.5), duration: 1, unit: 'min' }, { speed: rec, duration: 1.5, unit: 'min' }] },
         // Échauffement d'avant course : footing progressif puis quelques accélérations à l'allure course
-        prerace: (() => { const g = appData.goal || {}, vr = +g.speedKmh > 5 ? +g.speedKmh : r5(vma * 0.85); return { repet: 3, segs: [{ speed: r5(ef - 0.5), duration: 8, unit: 'min' }, { speed: r5(ef + 0.5), duration: 4, unit: 'min' }, { speed: r5(vr), duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: rec, duration: 0.67, unit: 'min' }] }; })()
+        prerace: (() => { const g = appData.goal || {}, R = preraceTarget((document.getElementById('cfgDate') || {}).value), vap = (R && preraceVap(R)) || (+g.speedKmh > 5 ? +g.speedKmh : r5(vma * 0.85));
+          const gr = cfgTypeIsExt() ? 0 : treadmillGrade((document.getElementById('cfgPente') || {}).value); return { repet: 1, segs: preracePyr(vap, gr) }; })()
       }[k];
       return T;
     }
@@ -5374,8 +5375,8 @@ Réponds uniquement en JSON : {"verdict":"ok|adapter|deconseille","avis":"2 ou 3
     function askSessHead(s) {
       return `<div class="pm-card"><span class="pm-cap">${sessionKind(s).label} · ${plEsc(fmtDayLong(s.dateISO))}</span><span style="font-size:16px;font-weight:800">${plEsc(capFirst(describeSessionHuman(Object.assign({}, s, { chauffe: 0, recup: 0 }))))}</span><span class="text-[13px] text-slate-400">${Math.round(computeSessionTotalMin(s))} min · ${computeSessionDistanceKm(s).toFixed(1).replace('.', ',')} km · ${s.type === 'exterieur' ? 'extérieur' : `tapis ${String(s.pente || 0).replace('.', ',')} %`}</span></div>`;
     }
-    function openAskCoachSess() {
-      const s = askSessDraft(); if (!s) return;
+    function openAskCoachSess(id) {
+      const s = id ? JSON.parse(JSON.stringify((appData.sessions || []).find(x => x.id === id) || null)) : askSessDraft(); if (!s) return;
       const real = appData.sessions.find(x => x.id === s.id) || {};
       askSess = { id: s.id, draft: s, chat: Array.isArray(real.coachChat) ? real.coachChat.slice(-20) : [], busy: false };
       document.getElementById('chkModal').querySelector('.pm-title').textContent = 'Conseil du coach';
@@ -5827,6 +5828,55 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
         ${P ? `<button type="button" onclick="cfgCoachPredict()" style="min-height:40px;border-radius:12px;border:1px solid #a78bfa;background:transparent;color:#ddd6fe;font-weight:800;font-size:13px">🔄 Refaire l'estimation</button>` : km ? '<span style="font-size:13px;color:#c4b5fd">⏳ Le coach estime ton chrono…</span>' : ''}
         <span id="cfgCoachMsg" style="font-size:12px;color:#94a3b8"></span></div>`;
     }
+    // Onglet Coach d'une séance à faire : prédiction de chrono (auto), avis sur le parcours, question au coach
+    function sessCoachPaneHtml(s) {
+      if (!s) return '';
+      const chr = s.kind === 'course' || (s.kind === 'test' && !testIsVma(s)), TG = s.kind === 'course' ? s.race : s.test, km = chr && TG ? +TG.km || 0 : 0;
+      const P = km && s.coachPred && Math.abs(+s.coachPred.km - km) < 0.01 ? s.coachPred : null, busy = coachPredictFor.busy === s.id;
+      if (km && !P && !busy && getGeminiKey() && !isSessionDone(s) && coachPredictFor.tried !== s.id + km) { coachPredictFor.tried = s.id + km; setTimeout(() => coachPredictFor(s.id), 300); }
+      const pred = km ? `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.45)">
+        <span style="font-size:12px;font-weight:900;color:#c4b5fd;letter-spacing:.5px">🧠 PRÉDICTION DU COACH · ${String(km).replace('.', ',')} KM</span>
+        ${P ? `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:34px;color:#fff;font-variant-numeric:tabular-nums">${fmtTime(Math.round(P.min * 60))}</b><span style="font-size:15px;font-weight:800;color:#c4b5fd">${formatSpeed(P.kmh).replace('.', ',')} km/h</span><span style="font-size:13px;font-weight:800;color:#a5b4fc">VAP ${formatSpeed(sessVapKmh(s, P.kmh)).replace('.', ',')}</span></div>${P.txt ? `<span style="font-size:13.5px;color:#e2e8f0;line-height:1.45">${plEsc(P.txt)}</span>` : ''}` : ''}
+        ${busy ? '<span style="font-size:13px;color:#c4b5fd">⏳ Le coach estime ton chrono…</span>' : P ? `<button type="button" onclick="coachPredictFor('${s.id}',true)" style="min-height:42px;border-radius:12px;border:1px solid #a78bfa;background:transparent;color:#ddd6fe;font-weight:800;font-size:13px">🔄 Refaire l'estimation</button>` : getGeminiKey() ? `<button type="button" onclick="coachPredictFor('${s.id}',true)" style="min-height:44px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:14px">🧠 Estimer mon chrono</button>` : '<span style="font-size:13px;color:#94a3b8">Ajoute ta clé Gemini (Réglages) pour l\'estimation du coach.</span>'}
+        ${coachPredictFor.err && coachPredictFor.err.id === s.id ? `<span style="font-size:12px;color:#fca5a5">${plEsc(coachPredictFor.err.m)}</span>` : ''}</div>` : '';
+      const rt = s.type !== 'tapis' && s.route ? `<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(16,185,129,.07);border:1px solid rgba(52,211,153,.4)"><span style="font-size:12px;font-weight:900;color:#6ee7b7;letter-spacing:.5px">🗺️ AVIS SUR LE PARCOURS « ${plEsc(s.route.name || '')} »</span>${s.route.review ? routeReviewHtml(s.route) : '<span style="font-size:13px;color:#94a3b8">Pas encore d\'avis : ouvre le parcours dans Modifier › Parcours.</span>'}</div>` : '';
+      return `<div data-scp="${s.id}" style="display:flex;flex-direction:column;gap:10px">${pred}${rt}
+        <button type="button" onclick="openAskCoachSess('${s.id}')" style="width:100%;min-height:50px;border-radius:14px;font-weight:900;font-size:14.5px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.55);color:#ddd6fe">💬 Demander conseil au coach</button></div>`;
+    }
+    function sessCoachRefresh(id) {
+      const s = (appData.sessions || []).find(x => x.id === id); if (!s) return;
+      document.querySelectorAll(`[data-scp="${id}"]`).forEach(e => { e.outerHTML = sessCoachPaneHtml(s); });
+      document.querySelectorAll(`[data-plsid="${id}"] [data-pv="recap"]`).forEach(e => { e.innerHTML = homeSessTilesHtml(s); });
+    }
+    // Prédiction du coach à partir de la séance enregistrée (sans la fenêtre de paramétrage)
+    async function coachPredictFor(id, manual) {
+      const s = (appData.sessions || []).find(x => x.id === id); if (!s) return;
+      if (testIsVma(s) || !(s.kind === 'course' || s.kind === 'test')) return;
+      const TG = s.kind === 'course' ? s.race : s.test, km = TG ? +TG.km || 0 : 0; if (!km) return;
+      if (!getGeminiKey()) { if (manual) showToast('Clé Gemini nécessaire (Réglages)'); return; }
+      if (coachPredictFor.busy === id) return;
+      if (!manual && s.coachPred && Math.abs(+s.coachPred.km - km) < 0.01) return; // déjà estimé : pas d'appel IA inutile
+      if (!manual && isSessionDone(s)) return;
+      coachPredictFor.busy = id; coachPredictFor.err = null; sessCoachRefresh(id);
+      const ext = s.type !== 'tapis', pente = ext ? 0 : +s.pente || 0;
+      const hist = runHistory().slice(0, 15).map(h => `- ${h._iso} · ${sessionKind(h.kind ? h : (histLinkedSession(h) || h)).label} · ${Math.round(+h.durationMin || 0)} min · ${(histKm(h) || 0).toFixed(1)} km${h.feeling ? ' · ressenti ' + feelTxt(h.feeling) : ''}`).join('\n') || '- aucune';
+      let app = ''; try { const e = estimateVma(); if (e && e.vma) app = `VMA estimée par l'app : ${formatSpeed(e.vma)} km/h.`; } catch (e) { }
+      const route = ext && s.route ? `Parcours « ${s.route.name || ''} » : ${(+s.route.totalKm || 0).toFixed(2)} km, D+ ${Math.round(s.route.gainM || 0)} m, D- ${Math.round(s.route.lossM || 0)} m.` : '';
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Il va faire ${s.kind === 'course' ? 'une COURSE (compétition)' : 'un TEST chrono'} de ${km} km, ${ext ? 'en extérieur' : `sur tapis à ${pente} % de pente`}, le ${s.dateISO}. ${route}
+${app} FC max ${runnerFcMax() || '?'}. Endurance fondamentale ${formatSpeed(runnerEF())} km/h.
+Séances récentes :
+${hist}
+Prédis son chrono le plus probable (réaliste, ni prudent ni optimiste), en t'appuyant sur les chiffres.
+Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes en tutoyant : sur quoi tu te bases et la stratégie d'allure"}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, model: 'flash', maxTokens: 600 })) || {};
+        const min = +j.minutes; if (!(min > 1)) throw new Error('réponse invalide');
+        s.coachPred = { km, min, kmh: Math.round(km / (min / 60) * 10) / 10, txt: String(j.explication || '').slice(0, 300), at: todayISO() };
+        coachPredApply(s); saveAppData();
+      } catch (e) { coachPredictFor.err = { id, m: 'Estimation impossible : ' + (e.message || e) }; }
+      coachPredictFor.busy = null; sessCoachRefresh(id); try { renderHome(); } catch (e) { }
+    }
     function cfgRouteCoachRender() {
       const b = document.getElementById('cfgRouteCoach'); if (!b) return;
       b.innerHTML = cfgTypeIsExt() && modalRoute ? `<span style="font-size:12px;font-weight:900;color:#6ee7b7;letter-spacing:.5px">🗺️ AVIS SUR LE PARCOURS « ${plEsc(modalRoute.name || '')} »</span>${routeReviewHtml(modalRoute)}` : '';
@@ -5847,7 +5897,7 @@ Réponds uniquement en JSON : {"analyse":"ton raisonnement semaine par semaine (
         const kmh = P ? P.kmh : (modalRoute.review && parseFloat(modalRoute.review.kmh)) || runnerEF();
         if (vI) vI.value = (Math.round(kmh * 10) / 10).toFixed(1); if (tI) tI.value = fmtClock(km / kmh * 60);
         if (!note) { note = document.createElement('span'); note.id = 'cfgTestRouteNote'; note.style.cssText = 'display:block;font-size:12.5px;font-weight:700;color:#6ee7b7'; kmI.closest('#cfgTestChrono').appendChild(note); }
-        note.textContent = `📏 Distance du parcours « ${modalRoute.name || ''} ». Temps et vitesse : estimation du coach (onglet Coach, affichée sur le récap).`;
+        note.textContent = `📏 Distance du parcours « ${modalRoute.name || ''} ». Temps et vitesse : estimation automatique du coach, visible sur le récap et dans son onglet Coach.`;
         if (!P && getGeminiKey() && cfgCoachPredict.busyKm !== km) { cfgCoachPredict.busyKm = km; setTimeout(() => cfgCoachPredict(), 400); }
       } else if (note) note.remove();
     }
@@ -5882,7 +5932,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
       } catch (e) { cfgCoachPredict.busyKm = 0; if (msg) msg.textContent = 'Estimation impossible : ' + (e.message || e); }
     }
     function cfgTabsRender() {
-      const T = [['recap', '📋', 'Récap'], ['seance', '🏃', 'Séance']].concat(cfgTypeIsExt() ? [['route', '🗺️', 'Parcours']] : []).concat([['coach', '🧠', 'Coach']]);
+      const T = [['recap', '📋', 'Récap'], ['seance', '🏃', 'Séance']].concat(cfgTypeIsExt() ? [['route', '🗺️', 'Parcours']] : []);
       if (!T.some(t => t[0] === cfgTab)) cfgTab = 'recap';
       try { cfgCoachRender(); } catch (e) { } try { cfgTestRouteSync(); cfgRouteCoachRender(); } catch (e) { }
       const bar = document.getElementById('cfgTabs');
@@ -5895,7 +5945,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
       if (!force && !m.classList.contains('hidden') && cfgSessId) {
         let ok = false; try { ok = saveActiveSessionConfig({ keepOpen: true }); } catch (e) { console.warn(e); }
         if (!ok) { if (Date.now() - (closeConfigModal.warn || 0) < 5000) { closeConfigModal.warn = 0; } else { closeConfigModal.warn = Date.now(); showToast('Séance non enregistrée : corrige-la, ou touche ✕ encore pour fermer sans enregistrer'); return; } }
-        else { showToast('✓ Séance enregistrée'); try { renderHome(); } catch (e) { } }
+        else { showToast('✓ Séance enregistrée'); try { renderHome(); } catch (e) { } { const id = cfgSessId; setTimeout(() => { try { coachPredictFor(id); } catch (e) { } }, 500); } }
       }
       document.getElementById('configModal').classList.add('hidden');
       if (cfgFrom === 'planning') { cfgFrom = null; openHistoryModal(true); }
@@ -7320,8 +7370,9 @@ Donne 2 ou 3 axes de travail.`;
       if (!s || s.free) return guideHtml(s, idx);
       const id = 'plv_' + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
       return `<div id="${id}" style="display:flex;flex-direction:column;gap:8px">
-        <div class="hsub" style="margin:0">${[['recap', '📊 Récap'], ['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']].map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
+        <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter']]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
         <div data-pv="recap">${homeSessTilesHtml(s)}</div>
+        ${isSessionDone(s) ? '' : `<div data-pv="coach" style="display:none;flex-direction:column;gap:8px">${sessCoachPaneHtml(s)}</div>`}
         <div data-pv="obj" style="display:none;flex-direction:column;gap:8px">${part('obj')}</div>
         <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${part('adapt')}</div></div>`;
     }
@@ -10937,6 +10988,34 @@ Réponds uniquement avec le JSON.`;
       return speed * minettiCost((gradePct || 0) / 100) / 3.6;
     }
     function roundHalf(v) { return Math.round(v * 2) / 2; }
+    // Vitesse à tenir sur une pente donnée pour produire une VAP (même effort qu'à plat)
+    function speedForVap(vap, gradePct) { return vap * 3.6 / minettiCost((gradePct || 0) / 100); }
+    // VAP d'une séance : tapis = pente du tapis, dehors = profil du parcours (moitié montée, moitié descente), sinon plat
+    function sessVapKmh(sess, kmh) {
+      if (!sess || !(kmh > 0)) return kmh || 0;
+      if (sess.type === 'tapis') return vapKmh(kmh, treadmillGrade(sess.pente));
+      const r = sess.route; if (r && +r.totalKm > 0) { const half = +r.totalKm * 500, gu = (+r.gainM || 0) / half * 100, gd = (+r.lossM || +r.gainM || 0) / half * 100;
+        return kmh * (0.5 * minettiCost(gu / 100) + 0.5 * minettiCost(-gd / 100)) / minettiCost(0); }
+      return kmh;
+    }
+    // Course / test chrono de référence pour un échauffement : même jour, sinon la prochaine
+    function preraceTarget(iso) {
+      const L = (appData.sessions || []).filter(x => (x.kind === 'course' || (x.kind === 'test' && !testIsVma(x))) && !isSessionDone(x) && x.dateISO && x.dateISO >= (iso || todayISO()));
+      return L.find(x => x.dateISO === iso) || L.sort((a, b) => a.dateISO < b.dateISO ? -1 : 1)[0] || null;
+    }
+    function preraceVap(s) {
+      const TG = s && (s.kind === 'course' ? s.race : s.test); if (!TG) return 0;
+      const P = s.coachPred && Math.abs(+s.coachPred.km - +TG.km) < 0.01 ? s.coachPred : null;
+      const kmh = P ? +P.kmh : +TG.min > 0 ? TG.km / (TG.min / 60) : +((s.pyramide || [])[0] || {}).speed || 0;
+      return sessVapKmh(s, kmh);
+    }
+    // Échauffement : footing, accélération, 3 lignes droites au MÊME EFFORT que la course (VAP convertie à la pente de l'échauffement)
+    function preracePyr(vap, gradePct) {
+      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, rec = Math.max(6, r5(ef - 1)), vr = r5(speedForVap(vap || ef + 2.5, gradePct || 0)), st = v => r5(speedForVap(v, gradePct || 0));
+      const pyr = [{ speed: st(ef - 0.5), duration: 10, unit: 'min' }, { speed: st(ef + 0.5), duration: 4, unit: 'min' }];
+      for (let k = 0; k < 3; k++) pyr.push({ speed: vr, duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: st(rec), duration: 0.67, unit: 'min' });
+      return pyr;
+    }
 
     // ---------- Cardio Bluetooth (montre en diffusion FC, ceinture) ----------
     let btDevice = null, btRetries = 0, btChar = null, btFixCount = 0, btFixWindow = 0;
@@ -21196,13 +21275,10 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     function preraceCreate(id) {
       const s = (appData.sessions || []).find(x => x.id === id); if (!s) return;
       if ((appData.sessions || []).some(x => x.kind === 'prerace' && x.dateISO === s.dateISO)) { showToast('Échauffement déjà prévu ce jour-là'); return; }
-      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, TG = s.kind === 'course' ? s.race : s.test;
-      const P = s.coachPred && TG && Math.abs(+s.coachPred.km - +TG.km) < 0.01 ? s.coachPred : null;
-      const vr = r5(P ? +P.kmh : TG && +TG.min > 0 ? TG.km / (TG.min / 60) : ((s.pyramide || [])[0] || {}).speed || ef + 2.5), rec = Math.max(6, r5(ef - 1));
-      const pyr = [{ speed: r5(ef - 0.5), duration: 10, unit: 'min' }, { speed: r5(ef + 0.5), duration: 4, unit: 'min' }];
-      for (let k = 0; k < 3; k++) pyr.push({ speed: vr, duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: rec, duration: 0.67, unit: 'min' });
+      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, vap = preraceVap(s) || ef + 2.5, rec = Math.max(6, r5(ef - 1));
+      const pw = s.type === 'tapis' ? 1 : 0, pyr = preracePyr(vap, treadmillGrade(pw)), vr = pyr[2].speed; // échauffement sur le plat (tapis à 1 %) : même effort que la course
       const d = parseISODateLocal(s.dateISO);
-      const n = { id: `sess_${Date.now()}`, dateISO: s.dateISO, date: s.date || toDDMM(d), jour: s.jour || weekdayName(d), semaine: s.semaine, type: s.type, kind: 'prerace', pente: s.type === 'tapis' ? 1 : 0, chauffe: 0, recup: 0, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: rec, pyramide: pyr, notes: `Échauffement avant ${s.kind === 'course' ? 'la course' : 'le test'} : footing, accélérations, 3 lignes droites à l'allure cible.` };
+      const n = { id: `sess_${Date.now()}`, dateISO: s.dateISO, date: s.date || toDDMM(d), jour: s.jour || weekdayName(d), semaine: s.semaine, type: s.type, kind: 'prerace', pente: pw, vapCible: Math.round(vap * 10) / 10, chauffe: 0, recup: 0, repet: 1, nbBlocs: 1, recupBloc: 0, vitRecupBloc: rec, pyramide: pyr, notes: `Échauffement avant ${s.kind === 'course' ? 'la course' : 'le test'} : footing, accélération, puis 3 lignes droites à ${String(vr).replace('.', ',')} km/h = même effort que la course (VAP ${(Math.round(vap * 10) / 10).toFixed(1).replace('.', ',')} km/h), quel que soit le profil.` };
       appData.sessions.splice(appData.sessions.indexOf(s), 0, n);
       saveAppData(); try { updateHistoryTable(); } catch (e) { } try { renderHome(); } catch (e) { }
       showToast("🔥 Échauffement course ajouté (avant la séance)");
@@ -21214,7 +21290,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
       { const TGc = sess.kind === 'course' ? sess.race : sess.kind === 'test' && !testIsVma(sess) ? sess.test : null;
         if (TGc && +TGc.km > 0) { // course / test chrono : temps et vitesse estimés par le coach
           const P = sess.coachPred && Math.abs(+sess.coachPred.km - +TGc.km) < 0.01 ? sess.coachPred : null, mn = P ? +P.min : +TGc.min || 0;
-          const kmh = P ? +P.kmh : mn ? TGc.km / (mn / 60) : main ? +main.speed : 0, vapC = sess.type === 'tapis' && +sess.pente > 0 && kmh ? fmtV(vapKmh(kmh, treadmillGrade(sess.pente))) : '';
+          const kmh = P ? +P.kmh : mn ? TGc.km / (mn / 60) : main ? +main.speed : 0, vapC = kmh ? fmtV(sessVapKmh(sess, kmh)) : '';
           let hrC = ''; try { const g = sessHrGoal(sess); if (g) hrC = sTile('❤️', g.kind === 'max' ? `≤ ${g.max}` : `${g.lo}-${g.hi}`, '', '', { tag: g.kind === 'max' ? 'Max' : 'Moy' }); } catch (e) { }
           let wC = ''; try { if (fuelRemindersOn()) { const m = String(waterText(sess) || '').match(/(\d+)\s*ml/); if (m) wC = sTile('💧', `${m[1]} ml`); } } catch (e) { }
           return sTiles([whereTile(sess), [sTile(kindIcon(sess), kindLabelShort(sess)), sTile('⏱️', mn ? fmtClock(mn) : '—', '', '', P ? { tag: 'Coach' } : {}), sTile('📏', `${String(Math.round(+TGc.km * 100) / 100).replace('.', ',')} km`)],
@@ -21469,9 +21545,9 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
         const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = '';
         bar.style.display = inProg ? 'none' : 'flex';
-        bar.innerHTML = [['recap', '📊', 'Récap'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 0"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
+        bar.innerHTML = [['recap', '📊', 'Récap'], ['coach', '🧠', 'Coach'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 0"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
-        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
+        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="coach">${sessCoachPaneHtml(sess)}</div><div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
         d.style.display = sub === 'recap' ? '' : 'none';
         if (hg) { hg.classList.toggle('hidden', !!(sub === 'recap' || sess.free)); }
