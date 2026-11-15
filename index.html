@@ -1913,6 +1913,7 @@
     let appData = JSON.parse(JSON.stringify(DEFAULT_APP_DATA));
 
     function sanitizeData() {
+      try { (appData.history || []).slice(0, 30).forEach(h => { if (h && (h.kind === 'test' || h.kind === 'course') && !h.target) histLinkPlanned(h); }); } catch (e) { }
       try { (appData.sessions || []).forEach(x => { if (x && x.coachPred && !x.coachPred.applied) coachPredApply(x); }); } catch (e) { } // estimation du coach = cible de la séance (une fois)
       if (appData && appData.route) {
         const s0 = (appData.sessions || [])[appData.activeSessionIndex || 0];
@@ -6434,6 +6435,7 @@ Réponds uniquement en JSON : {"minutes":27.5,"explication":"2 phrases courtes e
         speedChanges: (runData.speedLog || []).slice(0, 60),
         human: sess.free ? '' : capFirst(describeSessionHuman(Object.assign({}, sess, { chauffe: 0, recup: 0 }))),
         vmaTest: timerState.finished ? (vmaTestResult(sess, runData.track, timerState.stages) || undefined) : undefined,
+        target: chronoTargetOf(sess) || undefined,
         routeName: sess.route ? sess.route.name : undefined, routeId: sess.route ? (sess.route.myId || undefined) : undefined,
         analysis: lastAnalysis || '',
         hrShot: hrShotFrom(lastAnalysis) || undefined,
@@ -6793,9 +6795,33 @@ Réponds uniquement en JSON : {"ecart_bpm": 10, "explication": "une ou deux phra
       if (seg.length === 1 || /sortie longue|endurance|footing|ef\b/.test(t)) return 'longue';
       return '';
     }
+    // Cible d'une course / d'un test chrono : estimation du coach si elle existe, sinon temps visé
+    function chronoTargetOf(s) {
+      if (!s || !(s.kind === 'course' || (s.kind === 'test' && !testIsVma(s)))) return null;
+      const TG = s.kind === 'course' ? s.race : s.test; if (!TG || !(+TG.km > 0)) return null;
+      const P = s.coachPred && Math.abs(+s.coachPred.km - +TG.km) < 0.01 ? s.coachPred : null;
+      const min = P ? +P.min : +TG.min || 0; if (!(min > 0)) return null;
+      return { km: +TG.km, min, kmh: Math.round(+TG.km / (min / 60) * 10) / 10, coach: !!P };
+    }
+    function histChronoTarget(h) {
+      if (!h) return null; if (h.target && +h.target.kmh > 0) return h.target;
+      let lk = null; try { lk = histLinkedSession(h); } catch (e) { } return chronoTargetOf(lk);
+    }
+    function histIsChrono(h) { const k = h && (h.kind || ((histLinkedSession(h) || {}).kind)); return k === 'course' || (k === 'test' && !(h.test && h.test.proto && h.test.proto !== 'chrono') && !testIsVma(histLinkedSession(h) || {})); }
+    // Séance libre passée après coup en test / course : rattachée à la séance prévue le même jour (cible, parcours)
+    function histLinkPlanned(h) {
+      const k = h && h.kind; if (!(k === 'test' || k === 'course') || h.cross) return false;
+      const S = appData.sessions || [], iso = histISO(h), cur = S.find(x => x.doneHistId === h.id);
+      if (cur && !cur.free) return false;
+      const pl = S.find(x => x.dateISO === iso && x.kind === k && !x.free && !isSessionDone(x)); if (!pl) return false;
+      S.forEach(x => { if (x.doneHistId === h.id) delete x.doneHistId; }); pl.doneHistId = h.id; h.sessionTitle = `Semaine ${pl.semaine} • ${String(pl.jour || '').toUpperCase()}`;
+      const tg = chronoTargetOf(pl); if (tg) h.target = tg; if (pl.test && pl.test.proto) h.test = { proto: pl.test.proto };
+      if (pl.route && !h.routeName && (h.type || pl.type) !== 'tapis') { h.routeName = pl.route.name; h.routeId = pl.route.myId || undefined; } if (!h.type) h.type = pl.type;
+      return true;
+    }
     function histLinkedSession(h) {
       const S = appData.sessions || [];
-      return S.find(x => x.doneHistId && x.doneHistId === h.id) || S.find(x => `Semaine ${x.semaine} • ${String(x.jour || '').toUpperCase()}` === h.sessionTitle && (x.date === h.date || x.dateISO === histISO(h))) || null;
+      return S.find(x => x.doneHistId && x.doneHistId === h.id) || S.find(x => !x.doneHistId && `Semaine ${x.semaine} • ${String(x.jour || '').toUpperCase()}` === h.sessionTitle && (x.date === h.date || x.dateISO === histISO(h)) && !(h.kind && x.kind && h.kind !== x.kind)) || null;
     }
     function histKm(h) {
       if (!h || h.cross) return 0;
@@ -8034,7 +8060,8 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const box = document.getElementById(uid); if (!box) return; const h = histByKey(box.dataset.hikey); if (!h) return;
       const v = f => { const e = box.querySelector(`[data-f="${f}"]`); return e ? (e.dataset.v !== undefined && e.tagName === 'DIV' ? e.dataset.v : e.value) : null; };
       const t = String(v('title') || '').trim(); if (t) h.sessionTitle = t;
-      const k = v('kind'); if (k !== null && !h.cross) { if (k) h.kind = k; else delete h.kind; }
+      const k = v('kind'); if (k !== null && !h.cross) { if (k) h.kind = k; else delete h.kind;
+        histLinkPlanned(h); }
       const d = v('date'); if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d !== histISO(h)) { const [y, m, dd] = d.split('-'); h.date = `${dd}/${m}${y !== String(new Date().getFullYear()) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(String(h.date || '').trim()) ? '/' + y : ''}`; }
       const du = parseFloat(String(v('dur') || '').replace(',', '.')); if (du > 0) h.durationMin = du;
       const pe = v('pente'); if (pe !== null && pe !== '') { const p = parseFloat(String(pe).replace(',', '.')); if (isFinite(p)) h.pente = p; }
@@ -14455,6 +14482,19 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
       out.classList.toggle('hidden', !text);
       out.innerHTML = text ? analysisHtml(text) : '';
     }
+    function histKindPromptText(h) {
+      let lk = null; try { lk = histLinkedSession(h); } catch (e) { }
+      const k = h.kind || (lk && lk.kind); if (!k) return '';
+      if (histIsChrono(h)) {
+        const tg = histChronoTarget(h), km = histKm(h), sec = (+h.durationMin || 0) * 60, v = km > 0 && sec > 0 ? km / (sec / 3600) : 0, vap = h.summary && h.summary.vapKmh;
+        return `TYPE DE SÉANCE : ${k === 'course' ? 'COURSE (compétition)' : 'TEST CHRONO'} = un effort MAXIMAL sur une distance. Juge-la comme telle : cardio très haut (Z5), intensité maximale et fatigue sont NORMAUX et attendus, ne les reproche pas (intensité = « juste » si l'effort est maximal), ne parle pas d'aisance.
+Cible : ${tg ? `${String(tg.km).replace('.', ',')} km en ${fmtClock(tg.min)} soit ${formatSpeed(tg.kmh)} km/h${tg.coach ? ' (estimation du coach)' : ''}` : 'pas de cible chiffrée'}. Réalisé : ${km.toFixed(2)} km en ${fmtClock(sec / 60)} soit ${formatSpeed(v)} km/h${vap ? ` (VAP ${formatSpeed(vap)} km/h)` : ''}.
+La note /10 dépend d'abord du chrono par rapport à la cible : plus rapide que la cible = 9 ou 10, dans la cible (±1,5 %) = 8, un peu plus lent = 6 à 7, nettement plus lent = moins. Mets en avant la performance réalisée et ce qu'elle dit de la forme (VMA, allure objectif).
+`;
+      }
+      return `TYPE DE SÉANCE : ${sessionKind(lk || h).label.toLowerCase()}.
+`;
+    }
     function histAnaPrompt(h, feelVal, note, nShots) {
       const others = (appData.history || []).filter(x => x.id !== h.id).slice(0, 6).map(x => `- ${x.date} ${x.sessionTitle} : ${x.details || ''} ; ${(+x.durationMin || 0).toFixed(0)} min ; ressenti ${feelTxt(x.feeling)}${x.note ? ` ; note « ${x.note} »` : ''}`).join('\n') || '- aucune';
       const next = appData.sessions.slice(0, 4).map(s => `- ${formatSessTitle(s)} : ${describeSessionProgram(s)}`).join('\n') || '- aucune';
@@ -14462,7 +14502,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(valShots.length)}`;
       const feelLbl = { green: 'facile', yellow: 'équilibré', orange: 'exigeant', red: 'trop dur' }[feelVal] || feelVal;
       return `Tu es un coach de course à pied expert. ${coachToneText()}
 Analyse cette séance déjà réalisée${nShots ? ' à partir des captures d\'écran de ma montre GPS ci-jointes et' : ''} des informations ci-dessous.
-Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
+${histKindPromptText(h)}Séance : ${h.sessionTitle} le ${h.date} ; ${h.details || 'détail non précisé'} ; durée ${(+h.durationMin || 0).toFixed(0)} min${h.plannedMin ? ` (prévue ${h.plannedMin} min)` : ''}${h.endedEarly ? ' — arrêtée avant la fin' : ''} ; pente ${h.pente} % ; vitesses en km/h ; ressenti ${feelLbl}${note ? ` ; note : « ${note} »` : ''}${h.summary && summaryText(h.summary) ? ` ; capteurs : ${summaryText(h.summary)}` : ''}.
 ${speedLogText(h.speedChanges)}
 ${zonesText()}
 ${h.seg && h.seg.length ? `Moyennes par segment (mesurées par l'app, avec la zone) :\n${segStatsTextZ(h.seg)}\n` : ''}${(() => { const hs = h.hrShot, sp = h.spShot; if (!hs && !sp) return ''; const z = hs && Array.isArray(hs.zones_min) && hs.zones_min.some(x => x > 0) ? ` ; minutes par zone Z1→Z5 : ${hs.zones_min.join(', ')}` : ''; return `Données lues sur la capture de la montre (fiables, à utiliser) :${hs && hs.fc_moy ? ` FC moyenne ${hs.fc_moy}` : ''}${hs && hs.fc_max ? ` ; FC max ${hs.fc_max}` : ''}${z}${sp && sp.moy ? ` ; vitesse moyenne ${sp.moy} km/h` : ''}${sp && sp.km ? ` ; distance ${sp.km} km` : ''}${sp && sp.dur ? ` ; durée ${sp.dur} min` : ''}.\n`; })()}${(() => { const tk = trackWithShot(h.track, h.hrShot); return `${trackInsights(tk) ? `Courbes : ${trackInsights(tk)}.\n` : ''}${trackSlicesText(tk) ? trackSlicesText(tk) + '\n' : ''}`; })()}${recentCapacityText(histISO(h))}
@@ -15855,6 +15895,13 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
             if (ratio < 0.9) why += ` · séance écourtée (${Math.round(done)} min sur ${Math.round(plan)})`;
           } else score = null;
         }
+        { const tgC = histIsChrono(hh) ? histChronoTarget(hh) : null, secC = W.sec || (+hh.durationMin || 0) * 60;
+          if (tgC && km > 0 && secC > 0) { // test chrono / course : vitesse réalisée par rapport à la cible (estimation du coach)
+            const vK = km / (secC / 3600), ratio = vK / tgC.kmh;
+            score = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, 1 - ratio) * 400)));
+            goal = `${String(tgC.km).replace('.', ',')} km en ${fmtClock(tgC.min)}${tgC.coach ? ' (estimation du coach)' : ''}`;
+            why = `${f1(vK)} km/h pour ${f1(tgC.kmh)} prévu${ratio >= 1.005 ? ' : mieux que prévu 🎉' : ratio >= 0.985 ? ' : dans la cible' : ''}`;
+          } else if (histIsChrono(hh)) { score = null; why = ''; } }
         const col2 = score == null ? '' : score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb923c';
         const ring2 = score != null ? `<svg width="84" height="84" viewBox="0 0 104 104" role="img" aria-label="Réussite ${score} %" style="flex-shrink:0"><circle cx="52" cy="52" r="44" fill="none" stroke="#1e293b" stroke-width="10"/><circle cx="52" cy="52" r="44" fill="none" stroke="${col2}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(276.5 * score / 100).toFixed(0)} 277" transform="rotate(-90 52 52)"/><text x="52" y="57" text-anchor="middle" font-size="${score >= 100 ? 20 : 25}" font-weight="800" fill="#f1f5f9">${score}%</text><text x="52" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">RÉUSSITE</text></svg>` : '';
         void ring;
@@ -15882,11 +15929,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
           if (hh.type === 'exterieur') { const cs = trackChunkStats(trk, { pente: 0 }) || {}; if ((synth || hh.eleShot) && hh.summary && hh.summary.dplus) { dp = Math.round(hh.summary.dplus); dm = Math.round(hh.summary.dminus || 0); } else if (cs.hasEle || P.hasEle) { dp = Math.round(cs.dplus || 0); dm = Math.round(cs.dminus || 0); } else if (hh.summary && hh.summary.dplus != null) { dp = hh.summary.dplus; dm = hh.summary.dminus || 0; } }
           else { dp = Math.round(km * 1000 * (pente || 0) / 100); dm = 0; }
           return { dp, dm, g: dp != null && km > 0 ? dp / (km * 1000) * 100 : null }; })();
-        const kS = item.linked || { kind: hh.kind || '' }, kLab = capFirst(String((kind && kind.label) || sessionKind(kS).label || '').toLowerCase());
+        const kS = item.linked || { kind: hh.kind || '' }, kLab = (kS.kind || hh.kind) === 'test' ? (histIsChrono(hh) ? 'Test chrono' : 'Test VMA') : capFirst(String((kind && kind.label) || sessionKind(kS).label || '').toLowerCase());
         const fe = feel ? feel[0].split(' ') : null, nOkR = reps.filter(okRep).length;
         const tilesR = sTiles([
-          [whereTile(hh), !item.live ? sTileWide(fe ? fe[0] : '🙂', `<span style="color:${feel ? feel[1] : '#94a3b8'}">${fe ? fe.slice(1).join(' ') : 'Ressenti ?'}</span>`, fe ? '' : 'non renseigné') : ''],
-          [sTile(kindIcon(kS), kLab), sTile('⏱️', totTxt), sTile('📏', `${f1(km)} km`)],
+          [whereTile(hh, hh), !item.live ? sTileWide(fe ? fe[0] : '🙂', `<span style="color:${feel ? feel[1] : '#94a3b8'}">${fe ? fe.slice(1).join(' ') : 'Ressenti ?'}</span>`, fe ? '' : 'non renseigné') : ''],
+          [sTile(kindIcon(kS), kLab), sTile('⏱️', fmtClock(totSec / 60)), sTile('📏', `${f2(km)} km`)],
           [fracMode && reps.length ? sTile('🔁', `${reps.length} × ${(() => { const d = reps.map(g => g.sec).sort((a, b) => a - b)[Math.floor(reps.length / 2)]; return d >= 90 ? `${Math.round(d / 60)}'` : `${Math.round(d)}"`; })()}`, '', '', { small: true }) : '', showVap ? sTileSplit(f1(bKmh), 'km/h', f1(bVap), 'VAP', '#7dd3fc', '#c4b5fd') : sTile('', f1(bKmh), 'km/h', '#7dd3fc'), sTile('⛰️', hh.type === 'tapis' ? `${String(pente || 0).replace('.', ',')} %` : dpm.g != null ? `${(Math.round(dpm.g * 10) / 10).toFixed(1).replace('.', ',')} %` : '–')],
           (() => { void hg; void hrMaxB; // échauffement, récup entre séries, retour au calme (mesurés)
             const fi = G.findIndex(g => !isWarm(g)), li = G.length - 1 - G.slice().reverse().findIndex(g => !isWarm(g));
@@ -21601,7 +21648,7 @@ Réponds uniquement en JSON : {"reponse":"…","action":{"type":"aucune","cible"
     function whereTile(x, h) {
       const tap = (x || {}).type === 'tapis';
       const rt = !tap && x && x.route ? `🗺️ ${x.route.name || 'parcours'}` : '';
-      return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (h && h.routeName) || '');
+      return sTileWide(tap ? '🏠' : '🌳', tap ? 'Tapis' : 'Extérieur', rt || (!tap && h && h.routeName ? `🗺️ ${h.routeName}` : ''));
     }
     function sTiles(rows) { return `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r => typeof r === 'string' ? [r] : r.filter(Boolean)).filter(r => r.length).map(r => r.length === 1 && String(r[0]).startsWith('<div data-wide') ? r[0] : r.length === 2 && r.some(x => String(x).startsWith('<div data-wide')) ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">${r.join('')}</div>` : `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${r.join('')}</div>`).join('')}</div>`; }
     function preraceBtnHtml(sess) {
