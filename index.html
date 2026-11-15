@@ -14200,6 +14200,54 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
         <label style="min-height:46px;border-radius:12px;border:1px solid rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fda4af;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">📷 ${hs ? 'Remplacer la capture du cardio' : 'Ajouter une capture du cardio'}<input type="file" accept="image/*" multiple style="display:none" onchange="histHrShotAdd('${key}', this)"></label>
         <span style="font-size:11px;color:#64748b;line-height:1.35">Capture de ta montre (courbe cardio, zones, moyenne/max) : le cardio, les zones et l'analyse seront recalculés.</span></div>`;
     }
+    function histDataShotHtml(hh, item) {
+      const key = hh.id || '#' + item.rawIdx, sp = hh.spShot, es = hh.eleShot;
+      const read = [sp && sp.km ? `${String(sp.km).replace('.', ',')} km` : '', sp && sp.dur ? `${Math.floor(sp.dur)}'${String(Math.round((sp.dur % 1) * 60)).padStart(2, '0')}` : '', sp && sp.moy ? `${String(sp.moy).replace('.', ',')} km/h` : '', sp && sp.courbe ? 'courbe de vitesse' : '', es && es.dplus ? `D+ ${es.dplus} m` : '', es && es.pts ? 'profil' : ''].filter(Boolean);
+      return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;padding:12px;border-radius:16px;background:#0f172a;border:1px solid #1e293b">
+        <span style="font-size:12px;font-weight:900;color:#94a3b8;letter-spacing:.5px">📷 DONNÉES DE TA MONTRE</span>
+        ${read.length ? `<span style="font-size:12.5px;font-weight:700;color:#7dd3fc">Capture lue : ${read.join(' · ')}${hh.watchKm ? ' · distance de la séance recalée sur la montre' : ''}</span>` : ''}
+        <label style="min-height:48px;border-radius:12px;border:1px solid rgba(56,189,248,.55);background:rgba(56,189,248,.12);color:#bae6fd;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-align:center;padding:0 10px">📷 Ajouter une capture (vitesse, profil, infos)<input type="file" accept="image/*" multiple style="display:none" onchange="histDataShotAdd('${key}', this)"></label>
+        <span style="font-size:11.5px;color:#64748b;line-height:1.4">Graphique de vitesse ou d'allure, profil d'altitude, ou écran de résumé (distance, durée, D+) : la distance, la vitesse, le profil et l'analyse de la séance sont mis à jour avec les valeurs de la montre.</span>
+        ${hh.orig ? `<button type="button" onclick="histRestoreOrig('${key}')" style="min-height:40px;border-radius:12px;border:1px solid #475569;background:transparent;color:#cbd5e1;font-weight:800;font-size:13px">↩️ Revenir aux mesures d'origine de l'app</button>` : ''}</div>`;
+    }
+    async function histDataShotAdd(key, input) {
+      const h = histByKey(key), files = Array.from(input.files || []).slice(0, 6); input.value = '';
+      if (!h || !files.length) return;
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire pour lire la capture'); return; }
+      const shots = []; for (const f of files) { try { shots.push(await resizeImageFile(f)); } catch (e) { showToast(e.message); } }
+      if (shots.length) { await attachHrShot(h, shots, { watch: true }); if (h.id && getGeminiKey()) histReanalyze(h.id); }
+    }
+    // Sauvegarde des mesures d'origine (avant capture ou correction du tracé) : retour arrière possible
+    function histSaveOrig(h) { if (!h.orig) h.orig = JSON.parse(JSON.stringify({ track: h.track || null, gps: h.gps || null, km: h.km, summary: h.summary || null, seg: h.seg || null })); }
+    function histRestoreOrig(key) {
+      const h = histByKey(key); if (!h || !h.orig) return; const o = h.orig;
+      h.track = o.track || []; h.gps = o.gps || undefined; h.km = o.km; h.summary = o.summary || {}; h.seg = o.seg || []; delete h.orig; delete h.watchKm; delete h.gpsFixed;
+      saveAppData(); histRefreshOpen(h); showToast("↩️ Mesures d'origine restaurées");
+    }
+    function histRefreshOpen(h) {
+      try { const open = !document.getElementById('historyModal').classList.contains('hidden'); updateHistoryTable(); if (open && h.id) { const d = document.getElementById('detail_' + h.id); if (d) d.classList.remove('hidden'); } } catch (e) { }
+      try { renderHome(); } catch (e) { }
+    }
+    // Recalcule distance et vitesses à partir d'une correspondance « ancien km → nouveau km »
+    function histRemapKm(h, map, gpsToo) {
+      const old = histKm(h), tr = h.track || [];
+      if (tr.length) {
+        const nt = tr.map(r => r.slice());
+        nt.forEach((r, i) => { if (tr[i][5] != null) r[5] = Math.round(map(+tr[i][5]) * 1000) / 1000; });
+        for (let i = 0; i < nt.length; i++) {
+          const r = tr[i]; if (!(r[2] > 0) || r[5] == null) continue;
+          let a = i, b = i; while (a > 0 && r[0] - tr[a - 1][0] <= 30 && tr[a - 1][5] != null) a--; while (b < tr.length - 1 && tr[b + 1][0] - r[0] <= 30 && tr[b + 1][5] != null) b++;
+          const dO = tr[b][5] - tr[a][5], dN = nt[b][5] - nt[a][5], k = dO > 0.005 ? Math.max(0.6, Math.min(1.6, dN / dO)) : 1;
+          nt[i][2] = Math.round(r[2] * k * 100) / 100;
+        }
+        h.track = nt;
+        (h.seg || []).forEach(sg => { const rr = nt.filter(r => r[3] === sg.i && r[2] > 0); if (rr.length) sg.avgKmh = Math.round(rr.reduce((x, r) => x + r[2], 0) / rr.length * 10) / 10; });
+      }
+      if (gpsToo && Array.isArray(h.gps)) h.gps = h.gps.map(p => [p[0], p[1], p[2] != null ? Math.round(map(+p[2]) * 1000) / 1000 : p[2]]);
+      const nk = Math.round(map(old) * 100) / 100, dur = +h.durationMin;
+      h.km = nk; h.summary = Object.assign({}, h.summary || {}, { distKm: nk }); if (dur > 1) h.summary.avgKmh = Math.round(nk / (dur / 60) * 10) / 10;
+      return { old, nk };
+    }
     async function histHrShotAdd(key, input) {
       const h = histByKey(key), files = Array.from(input.files || []).slice(0, 6); input.value = '';
       if (!h || !files.length) return;
@@ -14207,7 +14255,7 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
       const shots = []; for (const f of files) { try { shots.push(await resizeImageFile(f)); } catch (e) { showToast(e.message); } }
       if (shots.length) { try { delete h.hrFix; } catch (e) { } await attachHrShot(h, shots); if ((h.hrShot || h.spShot) && h.id && getGeminiKey()) histReanalyze(h.id); }
     }
-    async function attachHrShot(h, shots) {
+    async function attachHrShot(h, shots, opts) {
       if (!h || !shots || !shots.length) return;
       showToast('📷 Lecture de ta capture (cardio, altitude)… les résultats se mettront à jour dans quelques secondes');
       extractHrFromShots.lastEle = null; extractHrFromShots.lastSp = null;
@@ -14219,6 +14267,9 @@ Si aucune capture ne montre le cardio, mets "fc_moy":0. Si aucune ne montre l'al
           const dur = sp.dur || (hs && hs.duree_min) || null, km = sp.km || null;
           if (dur) h.durationMin = Math.round(dur * 10) / 10;
           if (km) { h.km = km; h.summary = Object.assign({}, h.summary || {}, { distKm: km }); }
+        } else if (opts && opts.watch && sp.km > 0) { // mesures de l'app : distance et vitesses recalées sur la montre
+          const k = sp.km / Math.max(0.01, histKm(h));
+          if (Math.abs(k - 1) > 0.004 && k > 0.6 && k < 1.6) { histSaveOrig(h); histRemapKm(h, x => x * k, true); h.watchKm = sp.km; }
         }
       }
       const es = extractHrFromShots.lastEle; let eleMsg = '';
@@ -15901,6 +15952,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       const gpsPts = item.live ? (runData.gpsPath || []) : (hh.gps || []);
       const mapTab = gpsPts.length > 5 && hh.type !== 'tapis' ? `<div data-hmap="${item.live ? 'live' : item.id}" style="display:flex;flex-direction:column;gap:8px">
           ${!item.live && !hh.routeId && !(appData.myRoutes || []).some(r => r.fromHist === item.id) ? `<button type="button" onclick="saveGpsAsRoute('${item.id}')" style="min-height:42px;border-radius:12px;border:none;background:#34d399;color:#04140d;font-weight:900;font-size:14px">💾 Enregistrer ce tracé dans mes parcours</button>` : ''}
+          ${!item.live ? `<button type="button" onclick="gpsFixOpen('${hh.id || '#' + item.rawIdx}')" style="min-height:44px;border-radius:12px;border:1px solid rgba(251,191,36,.55);background:rgba(251,191,36,.1);color:#fde68a;font-weight:900;font-size:14px">🛠️ Corriger le tracé GPS${hh.gpsFixed ? ' (déjà corrigé)' : ''}</button>` : ''}
           <div data-hmmodes style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px"></div>
           <div data-hmbox style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324"></div>
           <div data-hmleg style="font-size:12px;color:#94a3b8"></div></div>` : '';
@@ -15912,6 +15964,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
         ? `<div style="padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);font-size:13px;color:#fde68a;line-height:1.45">${hh.dbg ? `<span style="font-size:11px;color:#94a3b8">diag : ${plEsc(JSON.stringify(hh.dbg))}</span><br>` : ''}⚠ Aucune mesure de l'app pour cette séance${hh.noTimer ? " : elle a été validée sans passer par le chrono de l'app" : hh.diag ? ` (erreur pendant la séance : ${plEsc(hh.diag[0])})` : ''}. D'où l'absence de résumé, segments et graphique. Ajoute une capture de ta montre (onglet ❤️ Cardio, ou ✏️ Modifier pour l'altitude) pour avoir le cardio et le profil.</div>` : '';
       void top; void spokenTab;
       if (!hrTab && !item.live && (hh.id || item.rawIdx >= 0)) hrTab = '<span style="font-size:13px;color:#94a3b8">Pas de cardio enregistré par l\'app pour cette séance.</span>' + histHrShotHtml(hh, item);
+      if (!item.live && (hh.id || item.rawIdx >= 0)) graphTab = (graphTab || '') + histDataShotHtml(hh, item);
       const infoEd = item.live ? '' : (stats ? '' : histNoteFeelHtml(hh, item)) + histInfoHtml(hh, item);
       const tabs = [['recap', '📊', `${noData}${recLine}${stats}${infoEd}` || '<span style="color:#94a3b8">Pas de données</span>', 'Récap'], ['coach', '🧠', item.live ? '' : coachTab, 'Analyse'], ['hr', '❤️', hrTab, 'Cardio'], ['seg', '📋', segTab, 'Segments'], ['graph', '📈', graphTab, 'Graph.'], ['map', '🗺️', mapTab, 'Carte']].filter(t => t[2]);
       if (mapTab && cur0() === 'map') setTimeout(() => histMapInitAll(), 60);
@@ -16166,6 +16219,118 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       L.marker(ll[ll.length - 1], { icon: L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9], html: '<div style="width:18px;height:18px;border-radius:9px;background:#fb7185;border:3px solid #fff"></div>' }), interactive: false }).addTo(m);
       m.fitBounds(L.latLngBounds(ll), { padding: [16, 16] });
       setTimeout(() => { try { m.invalidateSize(); m.fitBounds(L.latLngBounds(ll), { padding: [16, 16] }); } catch (e) { } }, 200);
+    }
+    // ===== Correction du tracé GPS après la séance (virages en épingle coupés…) =====
+    let gfx = null;
+    function gpsFixRouteCoords(h) {
+      const it = h.routeId && (appData.myRoutes || []).find(x => x.id === h.routeId);
+      if (it && Array.isArray(it.segs)) { const c = [].concat(...it.segs).filter(p => p && isFinite(p[0])); if (c.length > 1) return { name: it.name, c }; }
+      let lk = null; try { lk = histLinkedSession(h); } catch (e) { }
+      if (lk && lk.route && Array.isArray(lk.route.pts) && lk.route.pts.length > 1) return { name: lk.route.name, c: lk.route.pts.map(p => [p[0], p[1]]) };
+      return null;
+    }
+    const gfxD = (a, b) => haversineM({ lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] });
+    // Recalage sur les routes : « map matching » OpenStreetMap, sinon itinéraire à pied entre des points de passage
+    async function gpsMatchRoads(pts, onStep) {
+      const thin = []; pts.forEach(p => { if (!thin.length || gfxD(thin[thin.length - 1], p) >= 20) thin.push(p); });
+      const last = pts[pts.length - 1]; if (thin[thin.length - 1] !== last) thin.push(last);
+      const out = [], N = 80, push = c => { (c || []).forEach(q => { if (!out.length || gfxD(out[out.length - 1], q) > 0.5) out.push(q); }); };
+      const nCh = Math.ceil((thin.length - 1) / (N - 1));
+      for (let i = 0, k = 0; i < thin.length - 1; i += N - 1, k++) {
+        const ch = thin.slice(i, i + N); if (onStep) onStep(k + 1, nCh);
+        let geo = null;
+        try {
+          const u = `https://routing.openstreetmap.de/routed-foot/match/v1/foot/${ch.map(p => `${(+p[1]).toFixed(6)},${(+p[0]).toFixed(6)}`).join(';')}?overview=full&geometries=geojson&gaps=ignore&tidy=true&radiuses=${ch.map(() => 35).join(';')}`;
+          const r = await Promise.race([fetch(u), sleep(15000).then(() => { throw new Error('délai'); })]);
+          const j = await r.json();
+          if (j && j.code === 'Ok' && Array.isArray(j.matchings) && j.matchings.length) { geo = []; j.matchings.forEach(m => (m.geometry.coordinates || []).forEach(q => geo.push([q[1], q[0]]))); if (geo.length < 2) geo = null; }
+        } catch (e) { geo = null; }
+        if (!geo) { // itinéraire piéton qui passe par des points espacés d'environ 80 m
+          const anc = []; ch.forEach(p => { if (!anc.length || gfxD(anc[anc.length - 1], p) >= 80) anc.push(p); }); if (anc[anc.length - 1] !== ch[ch.length - 1]) anc.push(ch[ch.length - 1]);
+          geo = [];
+          for (let a = 0; a < anc.length - 1; a += 19) { const sub = anc.slice(a, a + 20).map(p => ({ lat: +p[0], lon: +p[1] })); if (sub.length < 2) break; const c = await routeVia(sub, 'foot', 16000); if (!c) throw new Error('service de cartes injoignable'); c.forEach(q => geo.push(q)); }
+        }
+        push(geo); await sleep(250);
+      }
+      return out;
+    }
+    // Position de chaque point GPS le long du tracé corrigé (toujours vers l'avant : boucles et allers-retours respectés)
+    function gpsFixProject(pts, poly) {
+      const cum = [0]; for (let i = 1; i < poly.length; i++) cum.push(cum[i - 1] + gfxD(poly[i - 1], poly[i]) / 1000);
+      const proj = (p, k) => { const a = poly[k], b = poly[k + 1], la = (+a[0]) * Math.PI / 180, kx = 111320 * Math.cos(la), ky = 110540;
+        const bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky, px = (p[1] - a[1]) * kx, py = (p[0] - a[0]) * ky, L2 = bx * bx + by * by;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / L2)) : 0, dx = px - t * bx, dy = py - t * by;
+        return { d: Math.sqrt(dx * dx + dy * dy), km: cum[k] + t * Math.sqrt(L2) / 1000 }; };
+      const prog = []; let j = 0, prev = 0;
+      pts.forEach((p, i) => {
+        const step = i ? gfxD(pts[i - 1], p) / 1000 : 0, lim = i ? 0.25 + 3 * step : Math.min(cum[cum.length - 1], 0.6);
+        let best = null; for (let k = j; k < poly.length - 1 && cum[k] - cum[j] <= lim; k++) { const q = proj(p, k); if (q.km + 1e-9 >= prev && (!best || q.d < best.d)) best = Object.assign(q, { k }); }
+        if (best && best.d <= 90) { prev = best.km; j = best.k; } prog.push(prev);
+      });
+      return { cum, prog };
+    }
+    async function gpsFixCompute(mode) {
+      const h = histByKey(gfx.key), pts = (h.gps || []).map(p => [+p[0], +p[1], p[2]]);
+      gfx.busy = true; gfx.err = ''; gfx.res = null; gpsFixRender();
+      try {
+        const poly = mode === 'route' ? gpsFixRouteCoords(h).c : await gpsMatchRoads(pts, (a, b) => { gfx.step = `Recalage sur les routes… ${a}/${b}`; gpsFixRender(); });
+        if (!poly || poly.length < 2) throw new Error('aucun tracé de référence');
+        const { cum, prog } = gpsFixProject(pts, poly), p0 = prog[0], pN = prog[prog.length - 1];
+        if (!(pN - p0 > 0.2)) throw new Error('le tracé ne correspond pas à ta sortie');
+        // nouveau tracé = sommets du tracé corrigé entre le départ et l'arrivée
+        const ng = [[poly[0][0], poly[0][1], 0]]; ng.length = 0;
+        let k0 = 0; while (k0 < cum.length - 1 && cum[k0 + 1] <= p0) k0++;
+        for (let k = k0; k < poly.length && cum[k] <= pN + 1e-6; k++) { const km = Math.max(0, cum[k] - p0); if (!ng.length || gfxD(ng[ng.length - 1], poly[k]) >= 8) ng.push([+(+poly[k][0]).toFixed(5), +(+poly[k][1]).toFixed(5), Math.round(km * 1000) / 1000]); }
+        const lp = pts[pts.length - 1]; void lp;
+        // ancien km → nouveau km
+        let oldK = pts.map((p, i) => p[2] != null ? +p[2] : (i ? null : 0)); const pairs = [];
+        if (oldK.filter(x => x != null).length < pts.length * 0.8) { let c = 0; const raw = pts.map((p, i) => { if (i) c += gfxD(pts[i - 1], p) / 1000; return c; }), T = histKm(h); oldK = raw.map(x => c > 0 && T > 0 ? x * T / c : x); } // anciennes séances : km cumulés recalés sur la distance enregistrée
+        oldK.forEach((o, i) => { if (o != null && (!pairs.length || o > pairs[pairs.length - 1][0])) pairs.push([o, Math.max(pairs.length ? pairs[pairs.length - 1][1] : 0, prog[i] - p0)]); });
+        const map = x => { if (!pairs.length) return x; if (x <= pairs[0][0]) return pairs[0][1]; for (let i = 1; i < pairs.length; i++) if (x <= pairs[i][0]) { const a = pairs[i - 1], b = pairs[i]; return a[1] + (b[1] - a[1]) * (x - a[0]) / Math.max(1e-9, b[0] - a[0]); } const l = pairs[pairs.length - 1]; return l[1] + (x - l[0]); };
+        gfx.res = { ng, map, oldKm: histKm(h), newKm: Math.round((pN - p0) * 100) / 100, poly: ng.map(p => [p[0], p[1]]), mode };
+      } catch (e) { gfx.err = 'Correction impossible : ' + (e.message || e) + (mode === 'roads' ? ' (réseau ou service de cartes)' : ''); }
+      gfx.busy = false; gfx.step = ''; gpsFixRender();
+    }
+    function gpsFixApply() {
+      const h = histByKey(gfx.key), R = gfx.res; if (!h || !R) return;
+      histSaveOrig(h); const { old, nk } = histRemapKm(h, R.map, false);
+      h.gps = R.ng; h.gpsFixed = R.mode; delete h.watchKm; saveAppData();
+      const id = h.id; gpsFixClose(); histRefreshOpen(h);
+      showToast(`✓ Tracé corrigé : ${String(Math.round(old * 100) / 100).replace('.', ',')} → ${String(nk).replace('.', ',')} km`);
+      if (id && getGeminiKey()) histReanalyze(id);
+    }
+    function gpsFixOpen(key) {
+      const h = histByKey(key); if (!h || !Array.isArray(h.gps) || h.gps.length < 5) { showToast('Pas de tracé GPS pour cette séance'); return; }
+      gfx = { key, busy: false, res: null, err: '', step: '' };
+      let m = document.getElementById('gpsFixModal'); if (!m) { m = document.createElement('div'); m.id = 'gpsFixModal'; m.style.cssText = 'position:fixed;inset:0;z-index:95;background:rgba(2,6,23,.92);display:flex;align-items:flex-start;justify-content:center'; document.body.appendChild(m); }
+      gpsFixRender();
+    }
+    function gpsFixClose() { const m = document.getElementById('gpsFixModal'); if (m) { if (m.__map) try { m.__map.remove(); } catch (e) { } m.remove(); } gfx = null; }
+    async function gpsFixRender() {
+      const m = document.getElementById('gpsFixModal'); if (!m || !gfx) return; const h = histByKey(gfx.key); if (!h) return;
+      const rt = gpsFixRouteCoords(h), R = gfx.res, f = x => String(Math.round(x * 100) / 100).replace('.', ',');
+      const wk = (h.spShot && h.spShot.km) || h.watchKm;
+      const btn = (js, txt, bg, col, dis) => `<button type="button" onclick="${js}" ${dis ? 'disabled' : ''} style="width:100%;min-height:50px;border-radius:14px;border:${bg === 'transparent' ? '1px solid #475569' : 'none'};background:${bg};color:${col};font-weight:900;font-size:14.5px;${dis ? 'opacity:.5' : ''}">${txt}</button>`;
+      m.innerHTML = `<div style="width:100%;max-width:480px;height:min(820px,96dvh);background:#0f172a;border-radius:0 0 22px 22px;padding:calc(12px + env(safe-area-inset-top)) 14px 14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:19px;font-weight:900;color:#fff">🛠️ Corriger le tracé</span><button type="button" onclick="gpsFixClose()" style="width:42px;height:42px;border-radius:21px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:18px">✕</button></div>
+        <span style="font-size:13px;color:#cbd5e1;line-height:1.45">Le GPS du téléphone coupe parfois les virages serrés (lacets, épingles). La correction replace ta trace sur la route, puis recalcule la distance, les vitesses et l'analyse.</span>
+        <div id="gfxMap" style="height:300px;border-radius:14px;overflow:hidden;background:#0b1324;flex:none"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#94a3b8"><span><b style="color:#f87171">━</b> trace du téléphone</span>${R ? '<span><b style="color:#34d399">━</b> trace corrigée</span>' : ''}</div>
+        <div style="display:grid;grid-template-columns:repeat(${wk ? 3 : 2},minmax(0,1fr));gap:6px">
+          ${sTile('📱', `${f(R ? R.oldKm : histKm(h))} km`, '', '', { tag: 'Avant' })}${sTile('✅', R ? `${f(R.newKm)} km` : '—', '', '', { tag: 'Corrigé' })}${wk ? sTile('⌚', `${f(wk)} km`, '', '', { tag: 'Montre' }) : ''}</div>
+        ${gfx.err ? `<span style="font-size:13px;color:#fca5a5">${plEsc(gfx.err)}</span>` : ''}
+        ${gfx.busy ? `<span style="font-size:13.5px;font-weight:800;color:#fde68a;text-align:center">⏳ ${plEsc(gfx.step || 'Calcul…')}</span>` : ''}
+        ${R ? btn('gpsFixApply()', '✓ Appliquer la correction', '#34d399', '#04140d') + btn('gfx.res=null;gpsFixRender()', 'Annuler', 'transparent', '#e2e8f0')
+          : btn("gpsFixCompute('roads')", '🛣️ Recaler sur les routes', '#38bdf8', '#04121f', gfx.busy) + (rt ? btn("gpsFixCompute('route')", `🗺️ Recaler sur mon parcours « ${plEsc(rt.name || '')} »`, '#a78bfa', '#160b2e', gfx.busy) : '')}
+        ${h.orig ? btn(`gpsFixClose();histRestoreOrig('${gfx.key}')`, "↩️ Revenir aux mesures d'origine", 'transparent', '#cbd5e1') : ''}
+        <span style="font-size:11.5px;color:#64748b;line-height:1.4">« Routes » utilise les cartes OpenStreetMap (connexion nécessaire). « Mon parcours » utilise le tracé que tu avais chargé : c'est le plus précis si tu l'as bien suivi.</span></div>`;
+      try { await loadLeaflet(); } catch (e) { const b = document.getElementById('gfxMap'); if (b) b.innerHTML = '<div style="padding:16px;color:#fda4af">Carte indisponible (réseau ?)</div>'; return; }
+      const box = document.getElementById('gfxMap'); if (!box || typeof L === 'undefined') return;
+      const map = L.map(box, { zoomControl: true, attributionControl: true }); if (m.__map) try { m.__map.remove(); } catch (e) { } m.__map = map; map.__noMe = true; baseTiles(map);
+      const ll = h.gps.map(p => [p[0], p[1]]);
+      L.polyline(ll, { color: '#f87171', weight: 4, opacity: 0.9, dashArray: R ? '6 6' : null }).addTo(map);
+      if (R) L.polyline(R.poly, { color: '#34d399', weight: 5, opacity: 0.95 }).addTo(map);
+      map.fitBounds(L.latLngBounds(ll), { padding: [14, 14] }); setTimeout(() => { try { map.invalidateSize(); } catch (e) { } }, 150);
     }
     function setHistTab(tid, k) {
       if (k === 'map') setTimeout(() => histMapInitAll(), 30);
