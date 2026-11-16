@@ -1660,9 +1660,8 @@
             <span class="pm-cap" style="padding-bottom:6px">GPS du téléphone</span>
             <div class="pm-row"><div class="pm-rt">Utiliser le GPS</div>
               <select id="gpsModeSelect" class="pm-in" style="width:auto"><option value="auto">Séances extérieur</option><option value="on">Toujours</option><option value="off">Jamais</option></select></div>
-            <div class="pm-row"><div class="pm-rt">Conseils d'allure<small>Accélère / ralentis</small></div><input type="checkbox" id="chkPaceAdvice" class="sw"></div>
-            <div class="pm-row"><div class="pm-rt">Annoncer la VAP<small>Vitesse ajustée à la pente</small></div><input type="checkbox" id="chkAnnounceVap" class="sw"></div>
-            <div class="pm-row"><div class="pm-rt">Bilan à chaque km<small>Vitesse, cardio, rythme, forme</small></div><input type="checkbox" id="chkKmAnnounce" class="sw"></div>
+            <div style="display:none"><input type="checkbox" id="chkPaceAdvice"><input type="checkbox" id="chkAnnounceVap"><input type="checkbox" id="chkKmAnnounce"></div>
+            <p class="text-[12px] text-slate-400 mt-2">Allure, VAP et bilans : Accueil › Médias › Gérer les médias › Annonces › Bilans.</p>
             <button type="button" onclick="testGps()" class="pm-btn mt-2" style="border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc">Tester le GPS</button>
             <div id="gpsStatus" class="text-[12px] font-semibold text-slate-400 mt-1"></div>
             <p class="text-[11px] text-slate-500 mt-1">Le GPS ne fonctionne qu'écran allumé : utilise le mode poche plutôt que de verrouiller.</p>
@@ -4944,13 +4943,12 @@
       try { radioTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { coolFeelTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { readTick(curStage, elapsedMs, remMs); } catch (e) { }
-      try { checkKmSummary(remMs); } catch (e) { tickErr('km', e); }
+      try { bilanTick(curStage, remMs); } catch (e) { tickErr('bilan', e); }
       try { debriefAnnouncements(curStage, remMs); } catch (e) { }
       try { recoveryHrCheck(curStage, remMs); } catch (e) { }
       try { oneMoreCheck(curStage, curStage ? curStage.durationSec * 1000 - remMs : 0, remMs); } catch (e) { }
       try { cdAddCheck(curStage, curStage ? curStage.durationSec * 1000 - remMs : 0); } catch (e) { }
       try { sensorAnnouncements(curStage, elapsedMs, remMs); } catch (e) { tickErr('capteurs', e); }
-      try { hrInfoTick(curStage, elapsedMs, remMs); } catch (e) { tickErr('cardio', e); }
 
       try { fuelAnnouncements(remMs, elapsedMs); } catch (e) { tickErr('ravitaillement', e); }
 
@@ -9757,7 +9755,17 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       showToast("Plan 3+1 complet généré et intégré !");
     }
 
+    // Réglages : on y règle les valeurs PAR DÉFAUT (la séance active peut avoir les siennes, gérées dans « Gérer les médias »)
+    function audioDefaultsIn() {
+      if (timerState.sessionStarted && !timerState.finished) return;
+      try { if (!appData.mediaDefaults) appData.mediaDefaults = mediaSnapTake(); const s = getActiveSession(); if (s && s.mediaOv) { mediaSnapApply(appData.mediaDefaults); mediaSessSync.cur = '__defaults'; } } catch (e) { }
+    }
+    function audioDefaultsOut() {
+      if (timerState.sessionStarted && !timerState.finished) return;
+      try { appData.mediaDefaults = mediaSnapTake(); mediaSessSync.cur = null; mediaSessSync(); } catch (e) { }
+    }
     function openAudioModal() {
+      audioDefaultsIn();
       pmAutoSave('audioModal', () => { saveAudioSettingsFromUI(); if (document.getElementById('gpsModeSelect')) saveSensorsFromUI(); });
       loadVoices();
       updateAudioModalUI();
@@ -9778,8 +9786,8 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
     }
     function closeAudioModal() {
       saveAudioSettingsFromUI();
-      try { const s = getActiveSession(); if (s && s.mediaOv) s.mediaOv = mediaSnapTake(); else appData.mediaDefaults = mediaSnapTake(); } catch (e) { }
       if (document.getElementById('gpsModeSelect')) saveSensorsFromUI();
+      audioDefaultsOut(); saveAppData();
       document.getElementById('audioModal').classList.add('hidden');
       if (aiVoiceActive()) prepareAIVoice();
     }
@@ -10951,7 +10959,7 @@ Réponds uniquement avec le JSON.`;
       runData.route.tflags = {};
       runData.route.offSince = 0;
       runData.route.offWarned = false;
-      runData.kmAnnounced = 0;
+      runData.kmAnnounced = 0; runData.bilAt = 0; runData.bilN = 0; runData.lastDrinkMs = 0; runData.kmPending = null;
       runData.distBuf = [];
       runData.dbStageIdx = undefined; runData.dbPending = null; runData.dbProfDone = {}; runData.dbProfAt = 0; runData.hrHighSince = 0;
       runData.speedLog = []; runData.oneMoreAsked = false; runData.oneMoreAt = -1; runData.recChk = {};
@@ -12233,9 +12241,8 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
           if (hrNow >= s.fcMax * lim) { runData.lastHrAt = now; speak([t.hrHigh]); return; }
         }
       }
-      if (paceCheckTick(cur, now, elapsedMs)) return;
       // Allure et VAP : seulement sans cardio, et seulement sur les fractions rapides (la VAP prévue d'un footing peut être mal estimée)
-      if (!paceChkMin() && !hrFresh() && cur.intensity === 'fast' && gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000 && !((getActiveSession() || {}).test || {}).proto) {
+      if (false && !hrFresh() && cur.intensity === 'fast' && gpsWanted() && (s.paceAdvice || s.announceVap) && cur.type === 'palier' && !cur.isFree && elapsedMs > 30000 && !((getActiveSession() || {}).test || {}).proto) {
         const v30 = gpsSpeedAvg(30);
         if (v30 && v30 > 3) {
           const gr = liveGrade();
@@ -12320,6 +12327,88 @@ Réponds uniquement en JSON : {"choix":"stop|un|deux","vitesse":0 (vitesse conse
       return true;
     }
     // Info cardio régulière (fréquence choisie) : valeur, zone et position par rapport à la cible
+    const BILAN_ITEMS = [['dist', '📏 Distance', 'kilomètre atteint ou distance totale'], ['temps', '⏱️ Temps écoulé', 'depuis le départ'], ['vit', '🏃 Vitesse moyenne', 'depuis le bilan précédent'],
+      ['vap', '⛰️ VAP', 'vitesse ajustée à la pente, si elle diffère'], ['cible', '🎯 Allure par rapport à la cible', 'dehors avec GPS : « 9,8 pour 10,3, accélère »'], ['cardio', '❤️ Cardio', 'moyenne, zone et position par rapport à ta cible'],
+      ['reste', '⏳ Temps restant', 'jusqu\'à la fin de la séance'], ['boire', '💧 Rappel boire', 'avec la quantité conseillée']];
+    function bilanCfg() {
+      const a = appData.audioSettings;
+      if (!a.bilan || typeof a.bilan !== 'object') { // reprise des anciens réglages
+        const se = sensors(), lm = String(se.lapM || 1000), on = se.kmAnnounce !== false && lm !== 'off';
+        a.bilan = { mode: 'dist', m: on ? (parseInt(lm) || 1000) : 0, min: +a.paceChk || (a.hrEvery === 0 || a.hrEvery === '0' ? 5 : +a.hrEvery || 5), it: { dist: true, temps: false, vit: true, vap: true, cible: true, cardio: true, reste: false, boire: fuelRemindersOn() } };
+      }
+      const b = a.bilan; b.it = Object.assign({ dist: true, temps: false, vit: true, vap: true, cible: true, cardio: true, reste: false, boire: true }, b.it || {}); return b;
+    }
+    function bilanEveryOn() { const b = bilanCfg(); return b.mode === 'time' ? +b.min > 0 : +b.m > 0; }
+    function annShort() { return appData.audioSettings.annLen !== 'long'; }
+    function bilanDrinkGap() { const v = appData.audioSettings.drinkEvery; return v === undefined || v === 'km' || v === 'bilan' ? 0 : (parseFloat(v) || 0); }
+    // Texte du bilan : uniquement les éléments choisis, en version courte ou détaillée
+    function bilanText(p) {
+      const it = bilanCfg().it, short = annShort(), en = appData.audioSettings.voiceLang === 'en';
+      const sp = v => formatSpeed(Math.round(v * 10) / 10).replace('.', en ? '.' : ',');
+      const km2 = v => String(Math.round(v * 100) / 100).replace('.', en ? '.' : ',');
+      const mins = sec => { const m = Math.floor(sec / 60), r = Math.round(sec % 60); return en ? `${m} min${r ? ` ${r}` : ''}` : `${m} minute${m > 1 ? 's' : ''}${r ? ` ${r}` : ''}`; };
+      let head = ''; const parts = [];
+      if (it.dist) {
+        if (p.mode === 'dist') head = p.L >= 1 && Number.isInteger(p.n) ? (en ? `Kilometre ${p.n}` : `Kilomètre ${p.n}`) : p.n < 1 ? (en ? `${Math.round(p.n * 1000)} metres` : `${Math.round(p.n * 1000)} mètres`) : (en ? `${km2(p.n)} kilometres` : `${km2(p.n)} kilomètres`);
+        else head = short ? (en ? `${km2(p.totKm)} km` : `${km2(p.totKm)} km`) : (en ? `Distance ${km2(p.totKm)} kilometres` : `Distance ${km2(p.totKm)} kilomètres`);
+      }
+      if (it.temps) { const t = mins(p.sessSec); if (head) parts.push(short ? t : (en ? `elapsed time ${t}` : `temps écoulé ${t}`)); else head = short ? t : (en ? `Elapsed time ${t}` : `Temps écoulé ${t}`); }
+      if (it.vit && p.avgKmh > 0) parts.push(short ? (en ? `average ${sp(p.avgKmh)}` : `moyenne ${sp(p.avgKmh)}`) : (en ? `average speed ${sp(p.avgKmh)} km per hour` : `vitesse moyenne ${sp(p.avgKmh)} kilomètres heure`));
+      if (it.vap && p.vap && Math.abs(p.vap - p.avgKmh) >= 0.3) parts.push(short ? `VAP ${sp(p.vap)}` : (en ? `grade adjusted speed ${sp(p.vap)}` : `vitesse ajustée à la pente ${sp(p.vap)}`));
+      if (it.cible && p.need > 0 && p.avgKmh > 0) {
+        const d = p.avgKmh - p.need, red = p.hr && zoneNum(p.hr) >= 5;
+        const tg = short ? (en ? `for ${sp(p.need)}` : `pour ${sp(p.need)}`) : (en ? `your target here is ${sp(p.need)}` : `ta cible ici est ${sp(p.need)}`);
+        if (Math.abs(d) <= 0.3) parts.push(short ? (en ? `${tg}, good` : `${tg}, c'est bon`) : (en ? `${tg}: right on target` : `${tg} : tu es pile dans la cible`));
+        else if (d < 0) parts.push(red ? (en ? `${tg}, heart rate in the red zone: hold this pace or ease off` : `${tg}, cardio en zone rouge : maintiens ce rythme ou ralentis`) : short ? (en ? `${tg}, speed up` : `${tg}, accélère`) : (en ? `${tg}: speed up a little` : `${tg} : accélère un peu`));
+        else parts.push(short ? (en ? `${tg}, ease off` : `${tg}, ralentis un peu`) : (en ? `${tg}: ease off a little, keep some energy` : `${tg} : ralentis un peu, garde de l'énergie`));
+      }
+      if (it.cardio && p.hr) {
+        const T = p.hrT, z = zoneNum(p.hr);
+        const pos = T ? (p.hr > T.hi + 2 ? (short ? (en ? ', too high' : ', trop haut') : (en ? `, too high: it should be around ${T.mid}` : `, trop haut : il devrait être autour de ${T.mid}`)) : p.hr < T.lo - 4 ? (short ? (en ? ', low' : ', un peu bas') : (en ? `, a bit low: you can go up to about ${T.mid}` : `, un peu bas : tu peux monter vers ${T.mid}`)) : (short ? '' : (en ? ', in the right zone' : ', dans la bonne zone'))) : '';
+        const zt = z > 0 ? (short ? ` zone ${z}` : `, zone ${z}`) : '';
+        parts.push(short ? (en ? `heart rate ${p.hr}${zt}${pos}` : `cardio ${p.hr}${zt}${pos}`) : (en ? `average heart rate ${p.hr}${zt}${pos}` : `cardio moyen ${p.hr}${zt}${pos}`));
+      }
+      if (it.reste && p.remSec > 60) parts.push(short ? (en ? `${mins(p.remSec)} left` : `reste ${mins(p.remSec)}`) : (en ? `${mins(p.remSec)} of the session left` : `il reste ${mins(p.remSec)} de séance`));
+      if (p.drink) parts.push(short ? (en ? 'drink' : 'pense à boire') : drinkText().replace(/\.$/, ''));
+      if (!head && !parts.length) return '';
+      const body = short ? parts.join(', ') : parts.map(capFirst).join('. ');
+      return head ? `${head}${body ? (short ? ' : ' : '. ') + (short ? body : capFirst(body)) : ''}.` : `${capFirst(body)}.`;
+    }
+    function bilanTick(cur, remMs) {
+      const now = Date.now();
+      if (bilanEveryOn() && timerState.isRunning && cur) {
+        const B = bilanCfg(), dist = kmDistanceNow(), sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
+        if (!runData.bilAt) { runData.bilAt = now; runData.bilEl = sessEl; runData.bilIdx = runData.track.length; runData.bilKm = dist; runData.bilN = 0; }
+        let due = false, n = 0, L = 1;
+        if (B.mode === 'dist') { L = (+B.m || 1000) / 1000; const k = Math.floor(dist / L + 1e-6); if (k > runData.bilN && k >= 1) { due = true; runData.bilN = k; n = Math.round(k * L * 1000) / 1000; } }
+        else { const P = (+B.min || 5) * 60000, k = Math.floor(sessEl / P); if (k > runData.bilN && k >= 1) { due = true; runData.bilN = k; } }
+        if (due) {
+          const secs = Math.max(20, (sessEl - (runData.bilEl || 0)) / 1000), km = dist - (runData.bilKm || 0);
+          const avgKmh = km > 0.02 ? km / (secs / 3600) : (parseFloat(cur.speed) || 0);
+          const hrs = (runData.hrSamples || []).filter(x => x.t >= runData.bilAt).map(x => x.hr), hr = hrs.length >= 5 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null;
+          const ss = getActiveSession() || {}, samples = runData.track.slice(runData.bilIdx);
+          const lapSt = trackChunkStats(samples.length >= 2 ? samples : runData.track.slice(-3), { pente: gpsWanted() ? 0 : (parseFloat(ss.pente) || 0) });
+          let need = 0;
+          if (gpsWanted() && ss.type !== 'tapis' && !ss.free && cur.type === 'palier' && !cur.isFree) {
+            const tg = samples.map(r => parseFloat((timerState.stages[r[3]] || {}).speed) || 0).filter(Boolean), tgt = tg.length ? tg.reduce((a, b) => a + b, 0) / tg.length : (parseFloat(cur.speed) || 0);
+            const tgtVap = (ss.kind === 'course' || ss.kind === 'test') && ss.route ? sessVapKmh(ss, tgt) : tgt; if (tgtVap > 0) need = tgtVap / paceCostFactor(secs);
+          }
+          let drink = false; if (B.it.boire) { const gap = bilanDrinkGap() * 60000; if (sessEl - (runData.lastDrinkMs || 0) >= gap) { drink = true; runData.lastDrinkMs = sessEl; } }
+          const p = { mode: B.mode, n, L, totKm: dist, sessSec: sessEl / 1000, avgKmh, vap: lapSt ? lapSt.vap : null, hr, hrT: hrTargetFor(cur), need, remSec: timerState.totalRemainingMs / 1000, drink };
+          runData.bilAt = now; runData.bilEl = sessEl; runData.bilIdx = runData.track.length; runData.bilKm = dist;
+          const txt = bilanText(p);
+          if (txt) { const kp = runData.kmPending = { text: txt, at: now }; if (aiVoiceActive()) { kp.wait = true; aiFetchWithRetry(txt, now + 60000).then(ok => { kp.wait = false; kp.ai = ok; }); } }
+        }
+      }
+      const pd = runData.kmPending; if (!pd || pd.wait) return;
+      // jamais pendant le compte à rebours ni une fraction rapide courte ; on abandonne au bout de 90 s
+      const shortFast = cur && cur.intensity === 'fast' && cur.durationSec < 180;
+      if (now - pd.at > 90000) { runData.kmPending = null; return; }
+      if (remMs > 8500 && !isSpeaking() && !tl.active && !preCd && !shortFast) {
+        runData.kmPending = null; if (readMute()) return;
+        if (aiVoiceActive() && aiClips.has(aiClipKey(pd.text))) speak([pd.text]); else if (!tl.active) systemSpeak(pd.text);
+      }
+    }
     function hrEveryMin() { const v = appData.audioSettings.hrEvery; return v === 0 || v === '0' ? 0 : (parseFloat(v) || 5); }
     // Sans cardio (montre absente ou en panne) : vitesse moyenne, VAP et écart à l'allure prévue, à la même fréquence
     function paceInfoTick(cur, elapsedMs, remMs, every) {
@@ -15250,8 +15339,8 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       const plan = timerState.fuelPlan || [];
       const sessEl = timerState.totalSessionMs - timerState.totalRemainingMs;
       // Boire : toutes les N minutes si choisi (sinon après chaque bilan km)
-      { const de = drinkEvery(); if (fuelRemindersOn() && de !== 'km' && sessEl >= (runData.nextDrinkMs || de * 60000)) { runData.nextDrinkMs = (runData.nextDrinkMs || de * 60000) + de * 60000; runData.drinkDueAt = runData.drinkDueAt || Date.now(); } }
-      if (runData.drinkDueAt && fuelRemindersOn() && isCalmMoment(remMs, elapsedMs)) {
+      { const de = bilanDrinkGap() || 15; if (bilanCfg().it.boire && !bilanEveryOn() && sessEl >= (runData.nextDrinkMs || de * 60000)) { runData.nextDrinkMs = (runData.nextDrinkMs || de * 60000) + de * 60000; runData.drinkDueAt = runData.drinkDueAt || Date.now(); } }
+      if (runData.drinkDueAt && isCalmMoment(remMs, elapsedMs)) {
         runData.drinkDueAt = 0;
         speakOpt(drinkText());
         return;
@@ -16570,16 +16659,12 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       const r = activeRoute();
       const t = VT();
       // Bilan de chaque km (calculé en direct pendant la course)
-      const LP = (parseFloat(sensors().lapM) || 1000) / 1000;
-      if (lapAnnounceOn() || (fuelRemindersOn() && drinkEvery() === 'km')) for (let n = LP; n <= totalKm + 1e-9; n = Math.round((n + LP) * 1000) / 1000) {
-        const tm = timeAtKm(n);
-        if (tm === null) continue;
-        const bits = [];
-        if (lapAnnounceOn()) bits.push(`${LP >= 1 ? `Kilomètre ${n}` : `${String(n).replace('.', ',')} km`} : moyenne, VAP${sensors().btId || runData.hr ? ', cardio et zone' : ''} (chiffres réels annoncés en direct).`);
-        if (fuelRemindersOn() && drinkEvery() === 'km') bits.push(pickNoRepeat('drink'));
-        if (bits.length) rows.push({ t: tm, pieces: [bits.join(' ')], gps: true, live: true });
+      { const B = bilanCfg(), what = BILAN_ITEMS.filter(([k]) => B.it[k]).map(x => x[1].replace(/^\S+\s/, '').toLowerCase()).join(', ');
+        if (bilanEveryOn()) {
+          if (B.mode === 'dist') { const LP = (+B.m || 1000) / 1000; for (let n = LP; n <= totalKm + 1e-9; n = Math.round((n + LP) * 1000) / 1000) { const tm = timeAtKm(n); if (tm !== null) rows.push({ t: tm, pieces: [`Bilan ${LP >= 1 ? `kilomètre ${n}` : `${String(n).replace('.', ',')} km`} : ${what} (chiffres réels annoncés en direct).`], gps: true, live: true }); } }
+          else for (let m = +B.min; m * 60 < totalT - 30; m += +B.min) rows.push({ t: m * 60, pieces: [`Bilan ${m} min : ${what} (chiffres réels annoncés en direct).`], gps: true, live: true });
+        } else if (B.it.boire) { const de = bilanDrinkGap() || 15; for (let m = de; m * 60 < totalT - 60; m += de) rows.push({ t: m * 60, pieces: [pickNoRepeat('drink')], gps: true, live: true }); }
       }
-      if (fuelRemindersOn() && drinkEvery() !== 'km') for (let m = drinkEvery(); m * 60 < totalT - 60; m += drinkEvery()) rows.push({ t: m * 60, pieces: [pickNoRepeat('drink')], gps: true, live: true });
       // Animations (actualité / sujet) : moments où elles passeront et texte lu par la voix
       { const rc = radioCfg();
         if (rc.mode !== 'off' && (rc.mode !== 'topic' || rc.topic)) {
@@ -16594,7 +16679,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
             rows.push({ t: t0, pieces: [txt], radio: true }); k++; last = t0;
           }
         } }
-      if (hrEveryMin() && (sensors().btId || runData.hr)) for (let m = hrEveryMin(); m * 60 < totalT - 30; m += hrEveryMin()) rows.push({ t: m * 60, pieces: ['Cardio : valeur, zone et position par rapport à ta cible (annoncé en direct).'], gps: true, live: true });
+      if (false) for (let m = hrEveryMin(); m * 60 < totalT - 30; m += hrEveryMin()) rows.push({ t: m * 60, pieces: ['Cardio : valeur, zone et position par rapport à ta cible (annoncé en direct).'], gps: true, live: true });
       if (outdoor && sensors().gpsMode !== 'off') {
         if (r) {
           (navTurnsOn() ? r.turns || [] : []).forEach(tu => {
@@ -16713,11 +16798,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
 
     // ==================== SCRIPT DE LA SÉANCE AVANT LE DÉPART ====================
     const SCRIPT_OPTS = [
-      ['encouragements', '💬 Encouragements et conseils', () => appData.audioSettings.encouragements !== false, v => { appData.audioSettings.encouragements = v; }],
-      ['fuel', '💧 Rappels boire / manger', () => fuelRemindersOn(), v => { appData.audioSettings.fuelReminders = v; }],
-      ['km', '📍 Bilan régulier (temps, VAP, cardio)', () => !!sensors().kmAnnounce, v => { sensors().kmAnnounce = v; }],
-      ['vap', '⛰️ Vitesse ajustée à la pente (VAP)', () => !!sensors().announceVap, v => { sensors().announceVap = v; }],
-      ['pace', '🏃 Conseils d\'allure (GPS)', () => !!sensors().paceAdvice, v => { sensors().paceAdvice = v; }],
+      ['fuel', '🍌 Rappels pour manger (gels, longues sorties)', () => fuelRemindersOn(), v => { appData.audioSettings.fuelReminders = v; }],
       ['tip', '🧠 Conseil du coach au départ', () => appData.audioSettings.coachTip !== false, v => { appData.audioSettings.coachTip = v; }],
       ['turns', '🧭 Indications de direction GPS (tourner à gauche…)', () => navTurnsOn(), v => { sensors().navTurns = v; }],
       ['rlock', '📍 Se recaler sur le parcours chargé (distance et vitesses fiables dans les lacets)', () => routeLockOn(), v => { sensors().routeLock = v; }]
@@ -16728,9 +16809,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
     function renderScriptOptions() {
       const box = document.getElementById('scriptOpts');
       if (!box) return;
-      const fq = String(encFreq()), fc = encFocus();
+      const fq = appData.audioSettings.encouragements === false ? 'off' : String(encFreq()), fc = encFocus();
       const tabs = `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b;margin-bottom:10px;position:sticky;top:0;z-index:2">${ANN_TABS.map(([k, ic, l]) => `<button type="button" onclick="annTab='${k}';renderScriptOptions()" style="min-height:52px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11.5px;font-weight:800;${annTab === k ? 'background:#38bdf8;color:#04121f' : 'background:transparent;color:#94a3b8'}"><span style="font-size:18px;line-height:1">${ic}</span>${l}</button>`).join('')}</div>`;
-      const body = annTab === 'bilan' ? `        ${(() => { const ch = (on, l, js) => `<button type="button" onclick="applyScriptToggles(); ${js}; saveAppData(); renderScriptOptions()" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`;
+      const body = annTab === 'bilan' ? bilanOptsHtml() : annTab === 'bilanOld' ? `        ${(() => { const ch = (on, l, js) => `<button type="button" onclick="applyScriptToggles(); ${js}; saveAppData(); renderScriptOptions()" class="rounded-lg border py-2 text-[12px] font-bold ${on ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`;
           const lm = String(sensors().lapM || 1000), he = String(hrEveryMin()), de = String(drinkEvery());
           return `<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">📍 Bilan vitesse (distance)</span>
           <div class="grid grid-cols-5 gap-1.5 mt-1">${[['off', 'Jamais'], ['500', '500 m'], ['1000', '1 km'], ['2000', '2 km'], ['5000', '5 km']].map(([v, l]) => ch(lm === v, l, `sensors().lapM='${v}'`)).join('')}</div>
@@ -16743,18 +16824,18 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
           <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">💧 Rappel boire</span>
           <div class="grid grid-cols-5 gap-1.5 mt-1">${[['km', 'Au bilan'], ['10', '10 min'], ['15', '15 min'], ['20', '20 min'], ['30', '30 min']].map(([v, l]) => ch(de === v, l, `appData.audioSettings.drinkEvery=${v === 'km' ? "'km'" : v}`)).join('')}</div>`; })()}`
         : annTab === 'enc' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Fréquence des encouragements</span>
-        <div class="grid grid-cols-4 gap-1.5 mt-1">${[['moins', 'Moins'], ['auto', 'Auto'], ['15', '15 s'], ['30', '30 s'], ['45', '45 s'], ['60', '1 min'], ['90', '1 min 30'], ['120', '2 min']].map(([v, l]) => `<button type="button" data-encf="${v}" onclick="scriptPickFreq('${v}')" class="rounded-lg border py-2 text-[12px] font-bold ${fq === v ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
+        <div class="grid grid-cols-4 gap-1.5 mt-1">${[['off', 'Aucun'], ['moins', 'Moins'], ['auto', 'Auto'], ['15', '15 s'], ['30', '30 s'], ['45', '45 s'], ['60', '1 min'], ['90', '1 min 30'], ['120', '2 min']].map(([v, l]) => `<button type="button" data-encf="${v}" onclick="scriptPickFreq('${v}')" class="rounded-lg border py-2 text-[12px] font-bold ${fq === v ? 'bg-sky-500/25 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>
         <span class="text-[11px] text-slate-500 block mt-1">« Moins » garde seulement les moments clés. Les annonces trop rapprochées sont décalées ou sautées automatiquement.</span>
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">Insister sur</span>
         <div class="flex flex-wrap gap-1.5 mt-1">${ENC_FOCUS.map(([k, l]) => `<button type="button" data-encfocus="${k}" onclick="scriptToggleFocus('${k}')" class="rounded-full border px-3 py-1.5 text-[12px] font-bold ${fc.includes(k) ? 'bg-amber-500/25 border-amber-400 text-amber-100' : 'bg-slate-900 border-slate-700 text-slate-300'}">${l}</button>`).join('')}</div>`
         : annTab === 'ton' ? `        <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-2 block">🎙️ Ton de la voix (manière de dire)</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${Object.keys(AI_STYLE_LABELS).map(k => { const on = (appData.audioSettings.aiStyle || 'coach') === k; return `<button type="button" onclick="annPickVoiceStyle('${k}')" class="rounded-xl border py-2 text-[12px] font-bold ${on ? 'bg-purple-500/30 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}">${AI_STYLE_LABELS[k]}</button>`; }).join('')}</div>
-        <span class="text-[11px] text-slate-500 block mt-1">${aiVoiceActive() ? 'Voix IA : changer le ton re-télécharge les annonces (pour toutes les séances).' : 'Le ton de la voix s\'applique à la voix IA (Réglages › Voix).'}</span>
+        <span class="text-[11px] text-slate-500 block mt-1">${aiVoiceActive() ? 'Pour cette séance seulement (« Sauver par défaut » pour toutes). Changer le ton re-télécharge les annonces de la séance.' : 'Le ton de la voix s\'applique à la voix IA (Réglages › Voix).'}</span>
         <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">🧠 Type de coach (ce qu'il dit)</span>
         <div class="grid grid-cols-3 gap-1.5 mt-1">${COACH_PROFILE_ORDER.map(id => { const p = COACH_PROFILES[id], on = id === coachProfileId(); return `<button type="button" onclick="scriptPickTone('${id}')" class="rounded-xl border px-1 py-2 text-[11px] font-bold leading-tight ${on ? 'bg-purple-500/25 border-purple-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}"><span class="block text-base leading-none mb-0.5">${p.emoji}</span>${p.label}</button>`; }).join('')}</div>
         <div id="scriptToneSample" class="text-[12px] text-purple-200 italic mt-1.5"></div>
         <button type="button" id="annPrevBtn" onclick="annPreview()" style="width:100%;margin-top:8px;min-height:48px;border-radius:14px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:14.5px">🔊 Écouter un extrait</button>`
-        : `<div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>`;
+        : `${annLenHtml()}<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">Autres annonces</span><div class="flex flex-col gap-1.5">${SCRIPT_OPTS.map(([k, l, get]) => `<label class="flex items-center justify-between gap-2 text-[13px] text-slate-200 font-semibold py-1">${l}<input type="checkbox" class="sw" data-sopt="${k}" ${get() ? 'checked' : ''}></label>`).join('')}</div>`;
       box.innerHTML = tabs + body.replace(/onclick="applyScriptToggles\(\); /g, 'onclick="applyScriptToggles(); annDirty=true; ')
         + `<span style="display:block;font-size:12px;color:#64748b;text-align:center;margin-top:14px">✓ Enregistré automatiquement · le script se met à jour à la fermeture</span>
         <button type="button" onclick="closeMediaModal(); openScriptModal()" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#c4b5fd;font-weight:800;font-size:13px">📜 Voir le script complet</button>`;
@@ -16778,16 +16859,40 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       </div>`;
     }
     function annOpen() { annDirty = false; openMediaModal('ann'); }
+    function annSet(js) { applyScriptToggles(); annDirty = true; js(); saveAppData(); renderScriptOptions(); }
+    const annSeg = (on, txt, js) => `<button type="button" onclick="annSet(()=>{${js}})" style="min-height:44px;border-radius:12px;font-size:13px;font-weight:800;${on ? 'background:#38bdf8;color:#04121f;border:none' : 'background:#0f172a;color:#cbd5e1;border:1px solid #334155'}">${txt}</button>`;
+    const annLab = t => `<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">${t}</span>`;
+    function annLenHtml() {
+      const sh = annShort(), ex = bilanText({ mode: 'dist', n: 3, L: 1, totKm: 3, sessSec: 1110, avgKmh: 9.8, vap: 10.6, hr: 165, hrT: { lo: 150, hi: 162, mid: 156 }, need: 10.3, remSec: 900, drink: false });
+      return `${annLab('🗣️ Longueur des annonces')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">${annSeg(sh, '⚡ Courtes', "appData.audioSettings.annLen='short'")}${annSeg(!sh, '📖 Détaillées', "appData.audioSettings.annLen='long'")}</div>
+        <span class="text-[11.5px] text-slate-400 block mt-1.5" style="font-style:italic">Ex. : « ${plEsc(ex)} »</span>`;
+    }
+    function bilanOptsHtml() {
+      const B = bilanCfg(), tm = B.mode === 'time', de = String(appData.audioSettings.drinkEvery === undefined || appData.audioSettings.drinkEvery === 'km' ? 'bilan' : appData.audioSettings.drinkEvery);
+      const ch = (on, l, js) => annSeg(on, l, js);
+      const freq = tm ? [['0', 'Jamais'], ['1', '1 min'], ['2', '2 min'], ['3', '3 min'], ['5', '5 min'], ['10', '10 min']].map(([v, l]) => ch(String(+B.min) === v || (v === '0' && !+B.min), l, `bilanCfg().min=${v}`))
+        : [['0', 'Jamais'], ['500', '500 m'], ['1000', '1 km'], ['2000', '2 km'], ['5000', '5 km']].map(([v, l]) => ch(String(+B.m) === v || (v === '0' && !+B.m), l, `bilanCfg().m=${v}`));
+      const ex = bilanText({ mode: B.mode, n: tm ? 0 : 3, L: tm ? 1 : (+B.m || 1000) / 1000, totKm: 3.05, sessSec: 1110, avgKmh: 9.8, vap: 10.6, hr: 165, hrT: { lo: 150, hi: 162, mid: 156 }, need: 10.3, remSec: 900, drink: !!B.it.boire });
+      return `${annLab('🗓️ Rythme des bilans')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">${ch(tm, '⏱️ Au temps', "bilanCfg().mode='time'")}${ch(!tm, '📏 À la distance', "bilanCfg().mode='dist'")}</div>
+        <div style="display:grid;grid-template-columns:repeat(${freq.length},minmax(0,1fr));gap:5px;margin-top:6px">${freq.join('')}</div>
+        <span class="text-[11.5px] text-slate-500 block mt-1.5">Un seul rendez-vous : tout ce que tu coches est dit ensemble, en moyenne depuis le bilan précédent. Jamais pendant une fraction rapide courte ni un compte à rebours.</span>
+        ${annLab('📋 Contenu du bilan')}
+        <div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">${BILAN_ITEMS.map(([k, l, d]) => `<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;border-bottom:1px solid #1e293b"><span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:800;color:#e2e8f0">${l}</span><span style="font-size:11.5px;color:#64748b">${d}</span></span><input type="checkbox" class="sw" ${B.it[k] ? 'checked' : ''} onchange="annSet(()=>{bilanCfg().it['${k}']=this.checked})"></label>`).join('')}</div>
+        ${B.it.boire ? `<span class="text-[11.5px] text-slate-400 block mt-2">💧 Boire</span><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:4px">${[['bilan', 'À chaque bilan'], ['15', '15 min'], ['20', '20 min'], ['30', '30 min']].map(([v, l]) => ch(de === v, l, `appData.audioSettings.drinkEvery=${v === 'bilan' ? "'bilan'" : v}`)).join('')}</div>` : ''}
+        <span class="text-[11.5px] text-slate-400 block mt-2" style="font-style:italic">Ex. : « ${plEsc(ex || 'aucun élément choisi')} »</span>
+        ${annLab('❤️ Alertes cardio')}<span class="text-[11.5px] text-slate-500 block mt-1">Toujours actives, en dehors des bilans : le coach te dit de ralentir si ton cardio dépasse nettement ta cible.</span>`;
+    }
     function annClose() {
       applyScriptToggles(); saveAppData(); const w = document.getElementById('scriptOptsWrap'); if (w) w.classList.add('hidden');
       if (annDirty) { annDirty = false; Object.keys(_vtCache).forEach(k => delete _vtCache[k]); if (!(timerState.sessionStarted && !timerState.finished)) reloadChrono(); showToast('✓ Script mis à jour'); }
       try { prepRender(); } catch (e) { }
     }
     function applyScriptToggles() { document.querySelectorAll('#scriptOpts [data-sopt]').forEach(el => { const o = SCRIPT_OPTS.find(x => x[0] === el.dataset.sopt); if (o) o[3](el.checked); }); }
-    function scriptPickFreq(v) { annDirty = true; applyScriptToggles(); appData.audioSettings.encFreq = v; if (v !== 'moins') appData.audioSettings.encouragements = true; saveAppData(); renderScriptOptions(); }
+    function scriptPickFreq(v) { annDirty = true; applyScriptToggles(); if (v === 'off') appData.audioSettings.encouragements = false; else { appData.audioSettings.encFreq = v; appData.audioSettings.encouragements = true; } saveAppData(); renderScriptOptions(); }
     function scriptToggleFocus(k) { annDirty = true; applyScriptToggles(); const f = encFocus().slice(); const i = f.indexOf(k); if (i >= 0) f.splice(i, 1); else f.push(k); appData.audioSettings.encFocus = f; saveAppData(); renderScriptOptions(); }
     function annPickVoiceStyle(k) {
-      applyScriptToggles(); appData.audioSettings.aiStyle = k; { const sel = document.getElementById('aiStyleSelect'); if (sel) sel.value = k; } try { renderStyleChips(); } catch (e) { }
+      applyScriptToggles(); appData.audioSettings.aiStyle = k;
       annDirty = true; aiPrep.failedAt = 0; saveAppData(); renderScriptOptions();
     }
     // Extrait : phrase type du coach choisi, dite avec la voix et le ton choisis
@@ -20631,7 +20736,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     setInterval(() => { try { if (document.body.classList.contains('home') && homeSessSub === 'media') { const e = document.getElementById('homeMediaPane'); if (e) e.innerHTML = homeMediaPaneHtml(); } } catch (e) { } }, 2000);
     // Réglages médias & annonces : propres à la séance, ou par défaut pour toutes
-    const MEDIA_AS_KEYS = ['encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk'];
+    const MEDIA_AS_KEYS = ['encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk', 'aiStyle', 'bilan', 'annLen'];
     const MEDIA_SE_KEYS = ['kmAnnounce', 'announceVap', 'paceAdvice', 'navTurns', 'lapM'], MEDIA_SP_KEYS = ['off', 'pl', 'plStart'];
     function mediaSnapTake() {
       const pk = (o, K) => { const r = {}; K.forEach(k => { if (o && o[k] !== undefined) r[k] = JSON.parse(JSON.stringify(o[k])); }); return r; };
