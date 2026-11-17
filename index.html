@@ -1056,6 +1056,7 @@
             <span id="planSummaryLine" class="text-[13px] text-slate-300 -mt-1"></span>
             <button type="button" onclick="renderBackgroundForm(document.getElementById('planAnaBox'), true)" class="pm-btn" style="height:48px;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:800;font-size:14px">📝 Ma pratique avant l'app</button>
             <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer" style="background:#0b1220;border:1px solid #334155"><input type="checkbox" id="chkCoachExpert" onchange="setCoachExpert(this.checked, this)" class="w-5 h-5 mt-0.5 accent-purple-400 shrink-0"><span class="flex flex-col gap-0.5"><span class="text-[14px] font-extrabold text-white">🧠 Coach expert (Gemini 4 Argon)</span><span class="text-[12px] text-slate-400">Analyse et génération du plan plus poussées. Payant : environ 5 × le prix de Flash.</span></span></label>
+            <p class="text-[11.5px] text-slate-500 mt-1.5">ℹ️ Modèle standard des analyses, de l'estimation de chrono et du plan : Gemini 3.8 Flash, remplacé automatiquement par Gemini 4 Hydrogen (plus rapide et plus fiable) à partir du 1er janvier 2027.</p>
  <div class="flex flex-col gap-2 p-3 rounded-xl" style="background:#0b1220;border:1px solid #334155">
               <span class="text-[11px] uppercase tracking-widest font-bold text-slate-400">Ce que le coach doit analyser</span>
               <div id="planAnaCrit" class="grid grid-cols-2 gap-1.5"></div>
@@ -1754,7 +1755,7 @@
   </audio>
 
   <!-- Notification Toast -->
-  <div id="toastMessage" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white text-xs px-4 py-2 rounded-2xl shadow-xl z-50 pointer-events-none opacity-0 transition-opacity duration-300"></div>
+  <div id="toastMessage" style="z-index:9999" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white text-xs px-4 py-2 rounded-2xl shadow-xl z-50 pointer-events-none opacity-0 transition-opacity duration-300"></div>
 
   <!-- ==================== SCRIPT JAVASCRIPT COMPLET & AUTONOME ==================== -->
   <script>
@@ -2967,6 +2968,35 @@
       const p = profile || aiProfile();
       return `${p.voice}|${p.style}${p.lang === 'en' ? '' : '|frFR'}|${text}`; // |frFR : voix régénérées avec l'accent de France
     }
+    // Rappel parlé de la séance et de son objectif, quelques secondes après le départ
+    function sessIntroText() {
+      const s = getActiveSession(); if (!s || s.free || appData.audioSettings.introRecap === false) return '';
+      const en = appData.audioSettings.voiceLang === 'en'; if (en) return '';
+      const sp = v => formatSpeed(Math.round(v * 10) / 10).replace('.', ',');
+      const dur = m => { const sec = Math.round(m * 60), mm = Math.floor(sec / 60), ss = sec % 60; return mm ? `${mm} minute${mm > 1 ? 's' : ''}${ss ? ` ${ss}` : ''}` : `${ss} secondes`; };
+      const seg = p => p.unit === 'km' ? `${String(round2(p.distance)).replace('.', ',')} kilomètre${p.distance >= 2 ? 's' : ''}` : dur(+p.duration || 0);
+      const tg = chronoTargetOf(s);
+      if (tg) return `Rappel : ${s.kind === 'course' ? 'course' : 'test chrono'} de ${String(tg.km).replace('.', ',')} kilomètres. Objectif : ${dur(tg.min)}, soit ${sp(tg.kmh)} kilomètres heure${tg.coach ? ', selon l\'estimation du coach' : ''}. Pars régulier, et garde de l'énergie pour la fin.`;
+      if (s.kind === 'test') return 'Rappel : test VMA. Objectif : tenir chaque palier le plus longtemps possible, jusqu\'à ne plus pouvoir suivre.';
+      const P = s.pyramide || [], fast = P.filter(p => p.intensity === 'fast'), reps = Math.max(1, parseInt(s.repet) || 1);
+      let what = '';
+      if (fast.length && (reps > 1 || P.length > 1)) { const f = fast[0], r = P.find(p => p.intensity !== 'fast');
+        what = `${reps > 1 ? `${reps} fois ` : ''}${seg(f)} à ${sp(+f.speed)} kilomètres heure${r ? `, récupération ${seg(r)} à ${sp(+r.speed)}` : ''}`; }
+      else if (P.length) { const tot = P.reduce((a, p) => a + (+p.duration || 0), 0) * reps; what = `${dur(tot)} à ${sp(+P[0].speed)} kilomètres heure`; }
+      let k = ''; try { k = guideKind(s); } catch (e) { }
+      const OBJ = { endu: 'rester en aisance, tu dois pouvoir parler', longue: 'tenir la durée sans forcer', recup: 'récupérer, tout en douceur', fractionne: 'des fractions régulières, la dernière aussi rapide que la première', pyramide: 'respecter chaque vitesse, sans partir trop vite', seuil: 'un effort soutenu mais contrôlé', cotes: 'pousser dans les montées, redescendre tranquille', prerace: 'te préparer : les lignes droites au rythme de la course, sans te fatiguer' };
+      let hr = ''; try { const g = sessHrGoal(s); if (g) hr = g.kind === 'max' ? ` Cardio : reste sous ${g.max}.` : ` Cardio : entre ${g.lo} et ${g.hi}.`; } catch (e) { }
+      const o = OBJ[k] || OBJ[s.kind] || '';
+      return `Rappel de ta séance${what ? ` : ${what}` : ''}.${o ? ` Objectif : ${o}.` : ''}${hr}`;
+    }
+    function introRecapTick(remMs) {
+      if (!timerState.sessionStarted || runData.introDone) return;
+      const el = timerState.totalSessionMs - timerState.totalRemainingMs; if (el < 12000) return;
+      if (el > 45000) { runData.introDone = true; return; }
+      if (isSpeaking() || remMs < 9000 || preCd || tl.active) return;
+      runData.introDone = true; const txt = sessIntroText(); if (!txt || readMute()) return;
+      if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]); else systemSpeak(txt);
+    }
     function aiAllPiecesForSession(profile) {
       const p = profile || aiProfile();
       const prevLang = appData.audioSettings.voiceLang;
@@ -2980,6 +3010,7 @@
           if (runnerFirstName()) t.praiseNamed(runnerFirstName(), f).forEach(x => set.add(x));
         }
         if (runnerFirstName()) set.add(t.startNamed(runnerFirstName()));
+        try { const it = sessIntroText(); if (it) set.add(it); } catch (e) { }
         testPieces().forEach(x => set.add(x));
         t.half.forEach(x => set.add(x));
         timerState.stages.forEach(st => { if (halfAlertApplies(st)) halfPhraseList(st).forEach(x => set.add(x)); });
@@ -4940,6 +4971,7 @@
       try { routeNavAnnouncements(); } catch (e) { tickErr('guidage', e); }
       try { checkExtensionOffer(remMs); } catch (e) { tickErr('prolongation', e); }
       try { checkMidSessionCheckin(remMs); } catch (e) { tickErr('mi-séance', e); }
+      try { introRecapTick(remMs); } catch (e) { }
       try { radioTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { coolFeelTick(curStage, elapsedMs, remMs); } catch (e) { }
       try { readTick(curStage, elapsedMs, remMs); } catch (e) { }
@@ -9939,7 +9971,12 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
     // ==================== GEMINI TEXTE (conseil coach, import PDF) ====================
     // Conseils, transcription : modèle léger (économique). Analyse de séance, import PDF : modèle complet.
     const GEMINI_TEXT_MODELS_LITE = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
-    const GEMINI_TEXT_MODELS_FULL = ['gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
+    const GEMINI_TEXT_MODELS_FULL0 = ['gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
+    // Gemini 4 Hydrogen : remplace Gemini 3.8 Flash pour les tâches « complètes » (analyses, estimation de chrono, plan) à partir de cette date.
+    // Avant : 2 fois plus cher que 3.8 Flash (1,50 $ / 7,50 $ contre 0,75 $ / 3,75 $ par million de tokens).
+    const GEMINI_HYDROGEN_MODEL = 'gemini-4-hydrogen', GEMINI_HYDROGEN_FROM = '2027-01-01';
+    function geminiHydrogenOn() { return todayISO() >= GEMINI_HYDROGEN_FROM; }
+    const GEMINI_TEXT_MODELS_FULL = { slice: () => (geminiHydrogenOn() ? [GEMINI_HYDROGEN_MODEL] : []).concat(GEMINI_TEXT_MODELS_FULL0) };
     const geminiTextBad = new Set();
     const GEMINI_EXPERT_MODEL = 'gemini-4-argon';
     function setCoachExpert(on, el) {
@@ -9957,7 +9994,7 @@ Règles : vitesses en km/h ; "segments" = la partie principale répétée "repet
       try { saved = localStorage.getItem(`tapis_ai_text_model_${tier}`) || ''; } catch (e) {}
       const models = (tier === 'full' ? GEMINI_TEXT_MODELS_FULL : GEMINI_TEXT_MODELS_LITE).slice();
       const si = models.indexOf(saved);
-      if (si > 0) models.unshift(models.splice(si, 1)[0]);
+      if (si > 0 && !(tier === 'full' && geminiHydrogenOn() && !geminiTextBad.has(GEMINI_HYDROGEN_MODEL))) models.unshift(models.splice(si, 1)[0]);
       const wantExpert = opts.model === 'argon' ? true : opts.model === 'flash' ? false : !!(opts.expert && appData.coachExpert);
       if (wantExpert && !geminiTextBad.has(GEMINI_EXPERT_MODEL)) models.unshift(GEMINI_EXPERT_MODEL);
       let lastErr = "Aucun modèle Gemini disponible";
@@ -10959,7 +10996,7 @@ Réponds uniquement avec le JSON.`;
       runData.route.tflags = {};
       runData.route.offSince = 0;
       runData.route.offWarned = false;
-      runData.kmAnnounced = 0; runData.bilAt = 0; runData.bilN = 0; runData.lastDrinkMs = 0; runData.kmPending = null;
+      runData.kmAnnounced = 0; runData.introDone = false; runData.bilAt = 0; runData.bilN = 0; runData.lastDrinkMs = 0; runData.kmPending = null;
       runData.distBuf = [];
       runData.dbStageIdx = undefined; runData.dbPending = null; runData.dbProfDone = {}; runData.dbProfAt = 0; runData.hrHighSince = 0;
       runData.speedLog = []; runData.oneMoreAsked = false; runData.oneMoreAt = -1; runData.recChk = {};
@@ -13990,7 +14027,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       requestFullscreenSafe(); aiUnlock(); getAudioContext();
       btAutoReconnect();
       try { ytStart(); } catch (e) { }
-      try { const c = spCfg(); if (spConnected() && c.pl && c.pl.uri && !c.off && c.plStart === 'go' && !sp.playing) spPlayPl(c.pl.uri); } catch (e) { }
+      try { spEnsurePl(); } catch (e) { }
       if (moveStartWanted()) { moveArm(); return; }
       if (appData.audioSettings.startCountdown === false) { startTimer({ skipCountdown: true, afterCountdown: true }); return; }
       const viaAi = aiPlayCountdown(3);
@@ -16799,6 +16836,7 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
     // ==================== SCRIPT DE LA SÉANCE AVANT LE DÉPART ====================
     const SCRIPT_OPTS = [
       ['fuel', '🍌 Rappels pour manger (gels, longues sorties)', () => fuelRemindersOn(), v => { appData.audioSettings.fuelReminders = v; }],
+      ['intro', '🎯 Rappel de la séance et de l\'objectif (12 s après le départ)', () => appData.audioSettings.introRecap !== false, v => { appData.audioSettings.introRecap = v; }],
       ['tip', '🧠 Conseil du coach au départ', () => appData.audioSettings.coachTip !== false, v => { appData.audioSettings.coachTip = v; }],
       ['turns', '🧭 Indications de direction GPS (tourner à gauche…)', () => navTurnsOn(), v => { sensors().navTurns = v; }],
       ['rlock', '📍 Se recaler sur le parcours chargé (distance et vitesses fiables dans les lacets)', () => routeLockOn(), v => { sensors().routeLock = v; }]
@@ -16839,8 +16877,9 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
       box.innerHTML = tabs + body.replace(/onclick="applyScriptToggles\(\); /g, 'onclick="applyScriptToggles(); annDirty=true; ')
         + `<span style="display:block;font-size:12px;color:#64748b;text-align:center;margin-top:14px">✓ Enregistré automatiquement · le script se met à jour à la fermeture</span>
         <button type="button" onclick="closeMediaModal(); openScriptModal()" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#c4b5fd;font-weight:800;font-size:13px">📜 Voir le script complet</button>`;
-      box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); }; });
+      box.querySelectorAll('[data-sopt]').forEach(el => { el.onchange = () => { applyScriptToggles(); annDirty = true; saveAppData(); mediaFootRefresh(); }; });
       const smp = document.getElementById('scriptToneSample'); if (smp) smp.textContent = `« ${coachProfileSample()} »`;
+      mediaFootRefresh();
     }
     function radioWhen(k) { const c = radioCfg(), w = c.when.includes(k) ? c.when.filter(x => x !== k) : c.when.concat(k); if (!w.length) { showToast('Garde au moins un moment'); return; } setRadio({ when: w }); }
     function radioWhenTxt(c) { const L = { warm: 'échauffement', main: 'séance', cool: 'retour au calme' }; return c.when.map(k => L[k]).join(' + '); }
@@ -20514,6 +20553,15 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const c = spCfg();
       if (c.pauseLong && longOne && sp.playing) { sp.pausedByUs = true; spApi('PUT', '/me/player/pause'); }
     }
+    // Départ de séance : si Spotify joue autre chose que la playlist choisie, on la lance à la place
+    async function spEnsurePl() {
+      const c = spCfg(); if (!spConnected() || !c.pl || !c.pl.uri || c.off) return;
+      const id = u => String(u || '').split(':').pop();
+      let j = null; try { j = await spApi('GET', '/me/player'); } catch (e) { }
+      const playing = !!(j && j.is_playing), ctx = j && j.context && j.context.uri;
+      if (playing && id(ctx) === id(c.pl.uri)) return; // déjà la bonne playlist
+      if (playing || c.plStart === 'go') { await spPlayPl(c.pl.uri); if (playing) showToast(`🎵 Playlist « ${c.pl.name} » lancée à la place`); }
+    }
     function spAfterAnnounce() {
       if (!spConnected() || !timerState.sessionStarted || sp.busy || yt.active) return;
       const c = spCfg(); if (!c.resume && !sp.pausedByUs) return;
@@ -20736,7 +20784,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     setInterval(() => { try { if (document.body.classList.contains('home') && homeSessSub === 'media') { const e = document.getElementById('homeMediaPane'); if (e) e.innerHTML = homeMediaPaneHtml(); } } catch (e) { } }, 2000);
     // Réglages médias & annonces : propres à la séance, ou par défaut pour toutes
-    const MEDIA_AS_KEYS = ['encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk', 'aiStyle', 'bilan', 'annLen'];
+    const MEDIA_AS_KEYS = ['introRecap', 'encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk', 'aiStyle', 'bilan', 'annLen'];
     const MEDIA_SE_KEYS = ['kmAnnounce', 'announceVap', 'paceAdvice', 'navTurns', 'lapM'], MEDIA_SP_KEYS = ['off', 'pl', 'plStart'];
     function mediaSnapTake() {
       const pk = (o, K) => { const r = {}; K.forEach(k => { if (o && o[k] !== undefined) r[k] = JSON.parse(JSON.stringify(o[k])); }); return r; };
@@ -20766,6 +20814,12 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       appData.mediaDefaults = mediaSnapTake(); (appData.sessions || []).forEach(x => { delete x.mediaOv; }); saveAppData();
       mediaRender(); showToast('💾 Réglages appliqués à toutes les séances');
     }
+    function mediaFootHtml() {
+      const d = mediaIsDefault();
+      return `<span style="font-size:12px;font-weight:700;color:${d ? '#6ee7b7' : '#fde68a'};text-align:center">${d ? '✓ Réglages par défaut (toutes les séances)' : '✏️ Modifiés pour cette séance seulement'}</span>
+          <button type="button" onclick="mediaSaveDefault()" ${d ? 'disabled' : ''} style="width:100%;min-height:48px;border-radius:14px;border:none;background:#fbbf24;color:#1c1303;font-weight:900;font-size:14.5px;${d ? 'opacity:.45' : ''}">💾 Sauver par défaut (toutes les séances)</button>`;
+    }
+    function mediaFootRefresh() { const f = document.getElementById('mediaFoot'); if (f) f.innerHTML = mediaFootHtml(); }
     function mediaTabGo(k) { if (mediaTab === 'ann') { try { applyScriptToggles(); saveAppData(); } catch (e) { } } mediaTab = k; mediaRender(); }
     function annCommit() {
       if (!document.querySelector('#mediaModal #scriptOpts')) return;
@@ -20828,9 +20882,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         <div style="display:grid;grid-template-columns:repeat(${T.length},minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:#0b1324;border:1px solid #1e293b">${T.map(([k, ic, l, cl]) => { const o = mediaOn(k); return `<button type="button" onclick="mediaTabGo('${k}')" style="position:relative;min-height:58px;border-radius:11px;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:800;${mediaTab === k ? `background:${cl};color:#04121f` : 'background:transparent;color:#94a3b8'}"><span style="font-size:20px;line-height:1">${ic}</span>${l}${o ? `<span style="position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:5px;background:${mediaTab === k ? '#04121f' : cl}"></span>` : ''}</button>`; }).join('')}</div>
         ${mediaTab === 'ann' ? '' : sw}
         <div style="display:flex;flex-direction:column;gap:8px;${on || mediaTab === 'sp' || mediaTab === 'yt' || mediaTab === 'rd' ? '' : 'opacity:.55'}">${body}</div>
-        <div style="position:sticky;bottom:-18px;margin:auto -14px -18px;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:#0f172a;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;z-index:3">
-          <span style="font-size:12px;font-weight:700;color:${mediaIsDefault() ? '#6ee7b7' : '#fde68a'};text-align:center">${mediaIsDefault() ? '✓ Réglages par défaut (toutes les séances)' : '✏️ Réglages enregistrés pour cette séance seulement'}</span>
-          <button type="button" onclick="mediaSaveDefault()" style="width:100%;min-height:48px;border-radius:14px;border:none;background:#fbbf24;color:#1c1303;font-weight:900;font-size:14.5px">💾 Sauver par défaut (toutes les séances)</button></div>
+        <div id="mediaFoot" style="position:sticky;bottom:-18px;margin:auto -14px -18px;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:#0f172a;border-top:1px solid #1e293b;display:flex;flex-direction:column;gap:6px;z-index:3">${mediaFootHtml()}</div>
       </div>`;
       if (mediaTab === 'ann') { try { renderScriptOptions(); } catch (e) { } }
       if (mediaTab === 'rd') { try { readEstimate(); readStateRender(); } catch (e) { } }
@@ -22039,6 +22091,18 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         ${homeSessTilesHtml(Object.assign({}, P, { free: false }))}${btns || ''}</div>`;
     }
     function dcLabel(t, c) { return `<span style="font-size:11.5px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:${c || '#93c5fd'};margin-top:4px">${t}</span>`; }
+    function homeLoadAlertSync() {
+      const d = document.getElementById('homeSessDesc'); if (!d || !d.parentElement) return;
+      let al = document.getElementById('homeLoadAlert');
+      if (!al) { al = document.createElement('div'); al.id = 'homeLoadAlert'; d.parentElement.insertBefore(al, d); }
+      const sess = getActiveSession(), busy = timerState.sessionStarted && !timerState.finished;
+      const v = sess && !sess.free && !busy && homeSessSub === 'recap' && aiVoiceActive() ? scriptVoiceState() : null;
+      if (!v || v.ok) { al.style.display = 'none'; al.innerHTML = ''; return; }
+      const wait = !v.busy && voiceHome.pending ? (voiceHome.since ? `téléchargement dans ${voiceHomeLeft()} s` : "téléchargement au retour sur l'accueil") : '';
+      al.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;border-radius:14px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.55)';
+      al.innerHTML = `<span style="font-size:20px">${v.busy ? '⏳' : '⚠️'}</span><span style="flex:1;display:flex;flex-direction:column;gap:1px"><b style="font-size:13.5px;color:#fed7aa">${v.busy ? 'Annonces en cours de chargement' : 'Annonces pas toutes chargées'}${v.tot ? ` · ${v.done}/${v.tot}` : ''}</b><span style="font-size:12px;color:#fdba74">${v.busy ? 'Reste sur l\'app quelques instants' : wait || 'les manquantes seront dites par la voix du téléphone'}</span></span>${v.busy ? '' : `<button type="button" onclick="prepareAIVoice(true);setTimeout(homeLoadAlertSync,300)" style="min-height:40px;padding:0 12px;border-radius:12px;border:none;background:#fb923c;color:#1c0a02;font-weight:900;font-size:13px">Charger</button>`}`;
+    }
+    setInterval(() => { try { if (document.body.classList.contains('home')) homeLoadAlertSync(); } catch (e) { } }, 2500);
     function homeSessTilesApply() {
       const sess = getActiveSession(), d = document.getElementById('homeSessDesc'); if (!d || !sess) return;
       const h = homeSessTilesHtml(sess); if (!h) return;
