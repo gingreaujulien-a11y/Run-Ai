@@ -158,6 +158,8 @@
     .prep-b span { font-size: 22px; line-height: 1; }
     #topBar, #sessInfoLine { display: none !important; }
     body:not(.started) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
+    body.started:not(.ci-off) #topZone > button[onclick^="toggleDisplayMode"] { display: none; }
+    body.rv-on.started #rvSegRem { display: block !important; }
     .cfg-tabhide { display: none !important; }
     .hm-acts { display: flex; justify-content: center; gap: 6px; }
     .hm-act { flex: 1; max-width: 110px; min-height: 52px; border-radius: 12px; border: 1px solid #334155; background: rgba(2,6,23,.45); color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 800; }
@@ -497,6 +499,7 @@
         </div>
         <div id="displayModeLabel" class="hidden"></div>
       </button>
+      <div id="rvSegRem" style="display:none;font-size:22px;font-weight:900;color:#fcd34d;font-variant-numeric:tabular-nums;margin-top:2px"></div>
       <div id="liveMetrics" class="text-[13px] font-bold mt-2 hidden flex flex-wrap items-center justify-center gap-x-2 gap-y-1"></div>
       <button id="homeHrChip" onclick="quickHeartRate()" class="hidden"></button>
       <div id="sessInfoLine" class="text-[11px] uppercase tracking-widest text-slate-400 font-semibold mt-1">
@@ -521,6 +524,7 @@
           8
         </div>
         <div id="bigSubLabel" class="text-[11px] font-bold text-rose-300 -mt-1 hidden"></div>
+        <button type="button" id="circleInfo" onclick="toggleDisplayMode()" class="pointer-events-auto" style="display:none;flex-direction:column;align-items:center;background:none;border:none;padding:2px 8px;line-height:1"><span id="circleInfoV" style="font-weight:900;font-variant-numeric:tabular-nums"></span><span id="circleInfoL" style="font-weight:800;text-transform:uppercase;letter-spacing:.5px;opacity:.75;margin-top:2px"></span></button>
       </div>
     <div id="readView">
       <div style="display:flex;align-items:center;gap:6px">
@@ -1913,6 +1917,7 @@
     let appData = JSON.parse(JSON.stringify(DEFAULT_APP_DATA));
 
     function sanitizeData() {
+      try { propsMigrate(); } catch (e) { }
       try { (appData.history || []).slice(0, 30).forEach(h => { if (h && (h.kind === 'test' || h.kind === 'course') && !h.target) histLinkPlanned(h); }); } catch (e) { }
       try { (appData.sessions || []).forEach(x => { if (x && x.coachPred && !x.coachPred.applied) coachPredApply(x); }); } catch (e) { } // estimation du coach = cible de la séance (une fois)
       if (appData && appData.route) {
@@ -2129,6 +2134,16 @@
       if (lvl >= 2 && appData.audioSettings && appData.audioSettings.readText) { delete appData.audioSettings.readText.text; }
     }
 
+    // Champs de texte : correction automatique, majuscule en début de phrase et vérification orthographique du clavier
+    function textAssist(root) {
+      (root || document).querySelectorAll('textarea, input[type="text"], input:not([type])').forEach(el => {
+        if (el.dataset.ta || el.id === 'geminiApiKeyInput' || el.getAttribute('autocorrect') === 'off') return; el.dataset.ta = '1';
+        el.setAttribute('autocorrect', 'on'); el.setAttribute('spellcheck', 'true'); if (!el.getAttribute('autocapitalize')) el.setAttribute('autocapitalize', 'sentences');
+        if (!el.getAttribute('autocomplete')) el.setAttribute('autocomplete', 'on'); if (!el.getAttribute('lang')) el.setAttribute('lang', 'fr');
+      });
+    }
+    try { let taT = 0; new MutationObserver(ms => { if (taT || !ms.some(m => m.addedNodes && m.addedNodes.length)) return; taT = setTimeout(() => { taT = 0; try { textAssist(); } catch (e) { } }, 400); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { }
+    document.addEventListener('DOMContentLoaded', () => { try { textAssist(); } catch (e) { } });
     function showToast(msg) {
       const toast = document.getElementById('toastMessage');
       if (!toast) return;
@@ -2459,8 +2474,28 @@
 
     // ==================== AFFICHAGE ====================
     let bigDisplayMode = 'speed';
+    let circleMode = 'main', circleLabUntil = 0;
+    try { circleMode = localStorage.getItem('tapis_circle_mode') || 'main'; } catch (e) { }
+    function circleModes() {
+      const s = getActiveSession() || {}, st = timerState.stages[timerState.currentStageIndex], spRow = s.type === 'tapis' && st && !st.isFree;
+      if (s.free) return ['main', 'elapsed', 'dist', 'clock'];
+      return spRow ? ['main', 'total', 'elapsed', 'dist', 'clock'] : ['main', 'segment', 'total', 'elapsed', 'dist', 'clock'];
+    }
+    function dispInfo(dm) {
+      const hm = ms => ms >= 3600e3 ? `${Math.floor(ms / 3600e3)}:${formatMMSS(Math.floor((ms % 3600e3) / 1000))}` : formatMMSS(Math.floor(ms / 1000));
+      if (dm === 'segment') return { txt: formatMMSS(Math.ceil(timerState.stageRemainingMs / 1000)), col: '#fcd34d', lab: 'reste segment' };
+      if (dm === 'elapsed') return { txt: hm(timerState.totalSessionMs - timerState.totalRemainingMs), col: '#7dd3fc', lab: 'depuis le début' };
+      if (dm === 'dist') { let k = 0; try { k = kmDistanceNow() || 0; } catch (e) { } return { txt: k.toFixed(2).replace('.', ','), col: '#6ee7b7', lab: 'km parcourus' }; }
+      if (dm === 'clock') return { txt: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), col: '#cbd5e1', lab: 'heure' };
+      return { txt: hm(Math.ceil(timerState.totalRemainingMs / 1000) * 1000), col: '#ffffff', lab: 'reste séance' };
+    }
     function toggleBigDisplay() {
-      bigDisplayMode = 'speed'; return; // le cardio est affiché sous le cercle
+      if (!timerState.sessionStarted) return;
+      const L = circleModes(); circleMode = L[(L.indexOf(circleMode) + 1) % L.length]; circleLabUntil = Date.now() + 3000;
+      try { localStorage.setItem('tapis_circle_mode', circleMode); } catch (e) { }
+      if ('vibrate' in navigator) navigator.vibrate(15);
+      updateUIHeaderAndCircle(); setTimeout(() => { try { updateUIHeaderAndCircle(); fitCircle(true); } catch (e) { } }, 3100); fitCircle(true);
+      return;
       const hrFresh = runData.hr && Date.now() - runData.hrAt < 8000;
       if (bigDisplayMode === 'speed' && !hrFresh) {
         showToast("Pas de cardio : connectez votre montre ou ceinture (⌚ Cardio & GPS)");
@@ -2512,6 +2547,8 @@
         else { txt = formatMMSS(Math.ceil(timerState.totalRemainingMs / 1000)); lab = timerState.sessionStarted ? 'reste séance' : ''; }
         totDisplay.textContent = txt; totDisplay.style.color = col;
         totDisplay.classList.remove('text-amber-300', 'text-white');
+        { const ci = document.getElementById('circleInfoV'), cl = document.getElementById('circleInfoL'); if (ci) { ci.textContent = txt; ci.style.color = col; } if (cl) { cl.textContent = lab; cl.style.color = col; } }
+        { const rr = document.getElementById('rvSegRem'); if (rr) rr.textContent = timerState.sessionStarted ? `⏱ reste ${formatMMSS(Math.max(0, Math.ceil((timerState.stageRemainingMs || 0) / 1000)))}` : ''; }
         if (modeLabel) { modeLabel.className = lab ? '' : 'hidden'; modeLabel.textContent = lab; modeLabel.style.cssText = `font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:${col};opacity:.75;margin-top:-2px`; }
       }
       void isSeg;
@@ -2570,16 +2607,19 @@
         const spRow = tapRun && curStage && !curStage.isFree;
         { const l = document.getElementById('lcSpdL'); if (l) { const mod = curStage && curStage.plannedSpeed !== undefined && +curStage.plannedSpeed !== +curStage.speed; const h = `<b${mod ? ' style="color:#fcd34d"' : ''}>${txt}</b>`; if (l.innerHTML !== h) l.innerHTML = h; } }
         if (spRow && !showHr) { const ms = displayMode === 'stage' ? timerState.totalRemainingMs : timerState.stageRemainingMs; txt = formatMMSS(Math.max(0, Math.ceil((ms || 0) / 1000))); }
-        speedBig.dataset.t = spRow && !showHr ? '1' : '';
+        let cInfo = null; if (!circleModes().includes(circleMode)) circleMode = 'main';
+        if (circleMode !== 'main' && timerState.sessionStarted) { cInfo = dispInfo(circleMode); txt = cInfo.txt; }
+        else if (timerState.sessionStarted && Date.now() < circleLabUntil) cInfo = { lab: spRow ? 'reste segment' : (curStage && (curStage.isFree || curStage.type === 'chauffe' || curStage.type === 'recup') && sess.type === 'exterieur' ? 'vitesse actuelle' : 'vitesse cible'), col: '' };
+        speedBig.dataset.t = (spRow && !showHr) || (cInfo && cInfo.txt) ? '1' : '';
         speedBig.textContent = txt;
         speedBig.classList.toggle('text-white', !showHr);
-        speedBig.style.color = showHr ? zoneColor(runData.hr) : '';
+        speedBig.style.color = showHr ? zoneColor(runData.hr) : cInfo && cInfo.col ? cInfo.col : '';
         if (bigSub) {
-          const pv = null; void tapRun;
-          const on = pv !== null;
-          bigSub.textContent = on ? `prévu ${formatSpeed(pv).replace('.', ',')}` : '';
+          void tapRun; const lb = cInfo && Date.now() < circleLabUntil ? cInfo.lab : '';
+          const on = !!lb;
+          bigSub.textContent = lb;
           bigSub.className = on ? 'font-black tracking-tight' : 'hidden';
-          bigSub.style.color = '#fcd34d'; bigSub.style.lineHeight = '1';
+          bigSub.style.color = (cInfo && cInfo.col) || '#cbd5e1'; bigSub.style.lineHeight = '1'; bigSub.style.textTransform = 'uppercase'; bigSub.style.letterSpacing = '.5px';
           if (on !== !!window.__vapOn) { window.__vapOn = on; setTimeout(() => fitCircle(true), 0); }
         }
         speedBig.classList.toggle('text-7xl', txt.length > 2);
@@ -2643,8 +2683,12 @@
       const sub = document.getElementById('bigSubLabel'), subOn = sub && !sub.classList.contains('hidden') && sub.textContent;
       if (big) { const len = (big.textContent || '').trim().length; big.style.fontSize = Math.round(size * (big.dataset.t ? (len > 5 ? 0.2 : 0.25) : subOn ? 0.3 : 0.34)) + 'px'; void len; /* même taille pour 8 et 8.5 */ big.style.lineHeight = '1'; }
       if (sub) { sub.style.fontSize = Math.round(size * 0.09) + 'px'; sub.style.marginTop = Math.round(size * 0.03) + 'px'; }
+      { const ci = document.getElementById('circleInfoV'), cl = document.getElementById('circleInfoL'), ciOn = document.body.classList.contains('started') && !document.body.classList.contains('ci-off');
+        if (ci) ci.style.fontSize = Math.round(size * 0.12) + 'px'; if (cl) cl.style.fontSize = Math.max(10, Math.round(size * 0.045)) + 'px';
+        const bi = document.getElementById('circleInfo'); if (bi) bi.style.marginTop = Math.round(size * 0.02) + 'px';
+        if (false && big && ciOn) big.style.fontSize = Math.round(parseFloat(big.style.fontSize) * 0.86) + 'px'; }
       { const cc = document.getElementById('circleNav'), ccOn = cc && cc.style.display !== 'none';
-        if (cc) cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bsN + 'px'; }); const rvB = document.getElementById('readView'); if (rvB) rvB.style.left = rvB.style.right = (ccOn ? bsN + 6 : 0) + 'px'; }
+        if (cc) cc.querySelectorAll('button').forEach(b => { b.style.width = b.style.height = bsN + 'px'; }); const rvB = document.getElementById('readView'); if (rvB) { const cr = cz.getBoundingClientRect(); rvB.style.left = -Math.max(0, cr.left - 6) + 'px'; rvB.style.right = -Math.max(0, window.innerWidth - cr.right - 6) + 'px'; rvB.style.zIndex = '7'; void ccOn; } }
       const bp = document.getElementById('bigPlayBtn'); if (bp) { const b = Math.round(size * 0.52); bp.style.width = bp.style.height = b + 'px'; }
     }
     window.addEventListener('resize', () => setTimeout(() => fitCircle(true), 50));
@@ -7463,11 +7507,11 @@ Donne 2 ou 3 axes de travail.`;
       if (!s || s.free) return guideHtml(s, idx);
       const id = (pre || 'plv_') + (s.id || idx), part = p => { try { return guideHtml(s, idx, { part: p }); } catch (e) { return ''; } };
       return `<div id="${id}" style="display:flex;flex-direction:column;gap:8px">
-        <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter' + (sessPropValid(s) ? PROP_BADGE : '')]]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
+        <div class="hsub" style="margin:0">${[['recap', '📊 Récap']].concat(isSessionDone(s) ? [] : [['coach', '🧠 Coach']]).concat([['obj', '🎯 Objectif'], ['adapt', '⚖️ Adapter' + (sessPropCount(s) ? PROP_BADGE_N(sessPropCount(s)) : '')]]).map(([k, l], q) => `<button type="button" class="${q ? '' : 'on'}" onclick="plSessSub('${id}','${k}',this)">${l}</button>`).join('')}</div>
         <div data-pv="recap">${homeSessTilesHtml(s)}</div>
         ${isSessionDone(s) ? '' : `<div data-pv="coach" style="display:none;flex-direction:column;gap:8px">${sessCoachPaneHtml(s)}</div>`}
         <div data-pv="obj" style="display:none;flex-direction:column;gap:8px">${part('obj')}</div>
-        <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${sessPropHtml(s)}${part('adapt')}</div></div>`;
+        <div data-pv="adapt" style="display:none;flex-direction:column;gap:8px">${sessPropHtml(s)}${sessAdviceHtml(s)}${part('adapt')}</div></div>`;
     }
     function plSessSub(id, k, btn) { const b = document.getElementById(id); if (!b) return; b.querySelectorAll('[data-pv]').forEach(e => { e.style.display = e.dataset.pv === k ? (k === 'recap' ? '' : 'flex') : 'none'; }); b.querySelectorAll('.hsub button').forEach(x => x.classList.toggle('on', x === btn)); }
     function plRaceCard(i) {
@@ -8108,7 +8152,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function setHistNote(key, txt) {
       const h = histByKey(key); if (!h) return; const before = h.note || ''; h.note = String(txt || '').trim().slice(0, 1500); saveAppData(); histRefreshAll();
       showToast(h.note ? 'Note enregistrée ✓' : 'Note supprimée');
-      if (h.note && h.note !== before && getGeminiKey()) setTimeout(() => coachOnNote(h), 400);
+      if (h.note && h.note !== before && getGeminiKey() && h.id) setTimeout(() => histReanalyze(h.id), 300);
     }
     function coachOnNote(h) {
       try {
@@ -14221,7 +14265,7 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       return `<div data-anamods="${j.aid}" style="margin-top:10px;padding:11px;border-radius:14px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.45);display:flex;flex-direction:column;gap:8px">
         <span style="font-size:14px;font-weight:800;color:#bae6fd">🛠️ Le coach propose d'adapter ${mods.length > 1 ? `${mods.length} séances` : 'une séance'}</span>${items}${st}</div>`;
     }
-    const PROP_BADGE = '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;margin-left:4px;vertical-align:top;line-height:1">1</span>';
+    const PROP_BADGE_N = n => `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:900;margin-left:4px;vertical-align:top;line-height:1">${n}</span>`, PROP_BADGE = PROP_BADGE_N(1);
     function sessPropValid(s) { const P = s && s.coachProp; if (!P) return false; if (isSessionDone(s) || (s.dateISO && s.dateISO < todayISO())) { delete s.coachProp; return false; } return true; }
     function sessPropHtml(s) {
       if (!sessPropValid(s)) return ''; const P = s.coachProp, m = P.m; let pr = null; try { pr = proposalToSession(s, m.seance); if (m.seance.type === 'exterieur' || m.seance.type === 'tapis') pr.type = m.seance.type; } catch (e) { }
@@ -14243,12 +14287,65 @@ Réponds uniquement en JSON : {"choix":[{"i":0,"pourquoi":"8 mots max, en tutoya
       if (t.type === 'exterieur') t.pente = 0;
       t.adapted = { at: todayISO(), resume: String(m.resume || "Adaptée après l'analyse du coach") };
     }
+    // Analyses faites avant la mémorisation : on rattache les propositions encore en attente
+    function propsMigrate() {
+      const t0 = todayISO();
+      (appData.history || []).slice(0, 15).forEach(h => {
+        if (!h || !h.analysis) return; const j = parseJsonLoose(h.analysis); if (!j || j.modsDone || !Array.isArray(j.modifications)) return;
+        j.modifications.forEach((m, i) => { if (!m || m.done || !m.seance || !m.date || m.date < t0) return;
+          const t = (appData.sessions || []).find(x => x.dateISO === m.date && !x.free && !isSessionDone(x)); if (!t || t.coachProp || t.propSeen === (j.aid || h.id) + ':' + i) return;
+          t.coachProp = { aid: j.aid || '', hid: h.id, i, m: JSON.parse(JSON.stringify(m)), at: histISO(h), titre: String(j.titre || '') }; });
+      });
+    }
+    // Conseil « à faire à la prochaine séance » de la dernière analyse (texte) : affiché dans Adapter de cette séance
+    function sessAdviceFor(s) {
+      if (!s || s.free || isSessionDone(s)) return null;
+      const H = (appData.history || []).filter(h => h && h.analysis && !h.cross).slice(0, 6);
+      for (const h of H) {
+        const iso = histISO(h); if (!iso || iso > s.dateISO) continue;
+        const nx = (appData.sessions || []).filter(x => !x.free && !isSessionDone(x) && x.dateISO >= iso && x.dateISO >= todayISO()).sort((a, b) => a.dateISO < b.dateISO ? -1 : 1)[0];
+        if (!nx || nx.id !== s.id) return null;
+        const j = parseJsonLoose(h.analysis); if (!j || !j.action) return null;
+        if (s.adviceSeen === h.id) return null;
+        return { h, j, txt: String(j.action) };
+      }
+      return null;
+    }
+    function sessAdviceHtml(s) {
+      const A = sessAdviceFor(s); if (!A) return ''; const busy = adviceAdapt.busy === s.id;
+      return `<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(239,68,68,.08);border:1.5px solid rgba(248,113,113,.6)">
+        <span style="font-size:12px;font-weight:900;color:#fca5a5;letter-spacing:.5px">🔴 CONSEIL DU COACH · après ta séance du ${plEsc(fmtDayLong(histISO(A.h)))}</span>
+        <span style="font-size:14.5px;font-weight:800;color:#f1f5f9;line-height:1.4">💡 ${plEsc(A.txt)}</span>
+        ${adviceAdapt.err && adviceAdapt.err.id === s.id ? `<span style="font-size:12px;color:#fca5a5">${plEsc(adviceAdapt.err.m)}</span>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px"><button type="button" onclick="event.stopPropagation();adviceSeen('${s.id}')" style="min-height:46px;border-radius:12px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:13.5px">✓ Vu, sans changer</button>
+        <button type="button" ${busy ? 'disabled' : ''} onclick="event.stopPropagation();adviceAdapt('${s.id}')" style="min-height:46px;border-radius:12px;border:none;background:#a78bfa;color:#160b2e;font-weight:900;font-size:13.5px">${busy ? '⏳ Le coach adapte…' : '🧠 Adapter ma séance'}</button></div></div>`;
+    }
+    function adviceSeen(id) { const s = (appData.sessions || []).find(x => x.id === id), A = sessAdviceFor(s); if (!A) return; s.adviceSeen = A.h.id; saveAppData(); try { renderHome(); } catch (e) { } try { updateHistoryTable(); } catch (e) { } }
+    async function adviceAdapt(id) {
+      const s = (appData.sessions || []).find(x => x.id === id), A = sessAdviceFor(s); if (!s || !A) return;
+      if (!getGeminiKey()) { showToast('Clé Gemini nécessaire'); return; }
+      adviceAdapt.busy = id; adviceAdapt.err = null; try { renderHome(); } catch (e) { }
+      const det = `{"type":"${s.type}","chauffe":${s.chauffe},"recup":${s.recup},"repet":${s.repet},"nbBlocs":${s.nbBlocs || 1},"recupBloc":${s.recupBloc || 0},"vitRecupBloc":${s.vitRecupBloc || 6},"pente":${s.pente || 0},"segments":[${(s.pyramide || []).map(q => `{"vitesse":${q.speed},"duree_min":${round2(q.duration)}}`).join(',')}]}`;
+      const prompt = `Tu es le coach de course à pied du coureur. ${coachToneText()}
+Après sa séance du ${histISO(A.h)}, ton analyse disait : « ${A.j.titre || ''} ». Ton conseil pour la prochaine séance : « ${A.txt} ».${(A.j.points || []).length ? ` Constats : ${(A.j.points || []).join(' ; ')}.` : ''}
+Séance prévue le ${s.dateISO} [${sessionKind(s).label}] : ${describeSessionHuman(s)} (${Math.round(computeSessionTotalMin(s))} min)${s.cardio ? ` ; cardio ${cardioText(s.cardio)}` : ''} ; détail : ${det}
+Adapte CETTE séance pour appliquer ton conseil, avec le changement le plus simple possible (garde le même type de séance et à peu près la même durée sauf si le conseil dit le contraire).
+Réponds uniquement en JSON : {"resume":"ce qui change et pourquoi, 15 mots maximum","seance":{"type":"tapis|exterieur","chauffe":10,"recup":5,"repet":1,"nbBlocs":1,"recupBloc":0,"vitRecupBloc":6,"pente":1,"segments":[{"vitesse":10,"duree_min":30}]},"cardio":{"moy_min":0,"moy_max":0,"max":0}}`;
+      try {
+        const j = parseJsonLoose(await geminiText([{ text: prompt }], { json: true, tier: 'full', maxTokens: 900 })) || {};
+        if (!j.seance || !Array.isArray(j.seance.segments) || !j.seance.segments.length) throw new Error('réponse invalide');
+        s.coachProp = { aid: '', hid: A.h.id, i: -1, m: { date: s.dateISO, resume: String(j.resume || A.txt), seance: j.seance, cardio: j.cardio }, at: todayISO(), titre: String(A.j.titre || '') };
+        s.adviceSeen = A.h.id; saveAppData();
+      } catch (e) { adviceAdapt.err = { id, m: 'Adaptation impossible : ' + (e.message || e) }; }
+      adviceAdapt.busy = null; try { renderHome(); } catch (e) { } try { updateHistoryTable(); } catch (e) { }
+    }
+    function sessPropCount(s) { return (sessPropValid(s) ? 1 : 0) + (sessAdviceFor(s) ? 1 : 0); }
     function sessPropDecide(id, ok) {
       const t = (appData.sessions || []).find(x => x.id === id); if (!t || !t.coachProp) return; const P = t.coachProp;
       if (ok) { try { applyCoachMod(t, P.m); } catch (e) { showToast('Proposition impossible à appliquer'); return; } }
-      delete t.coachProp;
+      delete t.coachProp; t.propSeen = (P.aid || P.hid || '') + ':' + P.i;
       // l'analyse d'origine garde la trace de la décision
-      (appData.history || []).forEach(h => { if (!h.analysis || !String(h.analysis).includes(P.aid)) return; const j = parseJsonLoose(h.analysis); if (!j || !Array.isArray(j.modifications)) return;
+      (appData.history || []).forEach(h => { if (!h.analysis || !(P.aid ? String(h.analysis).includes(P.aid) : h.id === P.hid) || P.i < 0) return; const j = parseJsonLoose(h.analysis); if (!j || !Array.isArray(j.modifications)) return;
         if (j.modifications[P.i]) j.modifications[P.i].done = ok ? 'ok' : 'no';
         if (j.modifications.every(x => x.done)) j.modsDone = j.modifications.some(x => x.done === 'ok') ? 'ok' : 'no'; h.analysis = JSON.stringify(j); });
       rememberChat('analyse', 'analyse de séance', 'user', ok ? `J'accepte la modification proposée pour ma séance du ${t.dateISO}.` : `Je refuse la modification proposée pour ma séance du ${t.dateISO}.`);
@@ -19948,7 +20045,13 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       const cl = aiClips.get(k); if (!cl || tl.active) { speakLive(t); return; }
       try { logSpoken(t); } catch (e) { }
       const whole = spConnected() && timerState.sessionStarted;
-      if (whole && sp.playing) { sp.pausedByUs = true; try { await spApi('PUT', '/me/player/pause'); sp.playing = false; } catch (e) { } }
+      if (whole && sp.playing) { // fondu de la musique avant la news, puis pause
+        const v0 = sp.vol != null ? +sp.vol : 70, low = Math.max(0, Math.round(v0 * 0.12));
+        const ok = await spFade(v0, low, 1800);
+        sp.pausedByUs = true; try { await spApi('PUT', '/me/player/pause'); sp.playing = false; } catch (e) { }
+        if (ok) { sp.fadeBack = v0; sp.fadeLow = low; setTimeout(() => { if (sp.fadeBack != null && !sp.playing) { spApi('PUT', `/me/player/volume?volume_percent=${sp.fadeBack}`); sp.fadeBack = null; } }, 6 * 60000); }
+        await sleep(500);
+      }
       aiPlayClips([cl], k, null, whole);
     }
     function radioTick(cur, stageElMs, remMs) {
@@ -19964,7 +20067,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (!radio.lastAt) radio.lastAt = 1;
       if (radio.playing && !radio.fetching && !isSpeaking()) { radio.playing = false; radio.endAt = Date.now(); }
       if (radio.playing) return;
-      if (radio.lastAt !== 1 && (c.every ? el - radio.lastAt < c.every * 60000 : Date.now() - (radio.endAt || 0) < 10000)) return;
+      if (radio.lastAt !== 1 && (c.every ? el - radio.lastAt < c.every * 60000 : Date.now() - (radio.endAt || 0) < 30000)) return;
       if (radio.idx >= radio.items.length) { if (radio.items.length - radio.idx < 2) radioPrepare(); return; }
       if (cur.intensity === 'fast' || (!longRun && (remMs < 50000 || stageElMs < 15000))) return;
       if (isSpeaking() || tl.active || preCd || (typeof vc !== 'undefined' && vc.mode !== 'idle') || (typeof extAsk !== 'undefined' && extAsk)) return;
@@ -20562,6 +20665,10 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       if (playing && id(ctx) === id(c.pl.uri)) return; // déjà la bonne playlist
       if (playing || c.plStart === 'go') { await spPlayPl(c.pl.uri); if (playing) showToast(`🎵 Playlist « ${c.pl.name} » lancée à la place`); }
     }
+    // Fondu du volume Spotify (certains appareils refusent le réglage du volume : on s'arrête alors sans fondu)
+    async function spFade(from, to, ms) {
+      const n = 6; for (let i = 1; i <= n; i++) { const v = Math.round(from + (to - from) * i / n); const r = await spApi('PUT', `/me/player/volume?volume_percent=${Math.max(0, Math.min(100, v))}`); if (r === null) return false; sp.vol = v; await sleep(ms / n); } return true;
+    }
     function spAfterAnnounce() {
       if (!spConnected() || !timerState.sessionStarted || sp.busy || yt.active) return;
       const c = spCfg(); if (!c.resume && !sp.pausedByUs) return;
@@ -20572,7 +20679,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
         try {
           if (isSpeaking()) return;
           const j = await spApi('GET', '/me/player');
-          if (j && !j.is_playing) { const ok = await spApi('PUT', '/me/player/play' + (j.device && j.device.id ? `?device_id=${j.device.id}` : '')); if (ok) { sp.playing = true; sp.at = Date.now(); } }
+          if (j && !j.is_playing) { const ok = await spApi('PUT', '/me/player/play' + (j.device && j.device.id ? `?device_id=${j.device.id}` : '')); if (ok) { sp.playing = true; sp.at = Date.now(); if (sp.fadeBack != null) { const v = sp.fadeBack; sp.fadeBack = null; spFade(sp.fadeLow || 0, v, 2600); } } }
           else if (j) { sp.playing = !!j.is_playing; sp.at = Date.now(); }
           sp.pausedByUs = false;
         } finally { sp.busy = false; }
@@ -20795,29 +20902,40 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
       put(appData.audioSettings, MEDIA_AS_KEYS, sn.as); put(sensors(), MEDIA_SE_KEYS, sn.se); put(spCfg(), MEDIA_SP_KEYS, sn.sp);
     }
     const mediaSnapEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    function mediaKindKey(s) { if (!s) return 'libre'; if (s.free) return 'libre'; if (s.kind === 'test') return testIsVma(s) ? 'testvma' : 'test'; let k = ''; try { k = guideKind(s); } catch (e) { } return k || s.kind || 'libre'; }
+    function mediaKindLabel(s) { try { return s && s.free ? 'Libre' : kindLabelShort(s); } catch (e) { return 'ce type'; } }
+    function mediaBase(s) { const K = appData.mediaDefaultsKind || {}, k = mediaKindKey(s); return (s && K[k]) || appData.mediaDefaults; }
     function mediaSessSync() {
       if (timerState.sessionStarted && !timerState.finished) return;
       if (!appData.mediaDefaults) appData.mediaDefaults = mediaSnapTake();
       const s = getActiveSession(), id = s ? s.id : '';
       if (mediaSessSync.cur === id) return; mediaSessSync.cur = id;
-      const sn = s && s.mediaOv ? s.mediaOv : appData.mediaDefaults;
+      const sn = s && s.mediaOv ? s.mediaOv : mediaBase(s);
       if (!mediaSnapEq(sn, mediaSnapTake())) { mediaSnapApply(sn); try { Object.keys(_vtCache).forEach(k => delete _vtCache[k]); } catch (e) { } }
     }
     function mediaSessCommit() {
       if (!appData.mediaDefaults) appData.mediaDefaults = mediaSnapTake();
       const s = getActiveSession(); if (!s) { appData.mediaDefaults = mediaSnapTake(); saveAppData(); return; }
-      const sn = mediaSnapTake(); if (mediaSnapEq(sn, appData.mediaDefaults)) delete s.mediaOv; else s.mediaOv = sn; saveAppData();
+      const sn = mediaSnapTake(); if (mediaSnapEq(sn, mediaBase(s))) delete s.mediaOv; else s.mediaOv = sn; saveAppData();
     }
-    function mediaIsDefault() { return !!appData.mediaDefaults && mediaSnapEq(mediaSnapTake(), appData.mediaDefaults); }
-    function mediaSaveDefault() {
+    function mediaIsDefault() { const b = mediaBase(getActiveSession()); return !!b && mediaSnapEq(mediaSnapTake(), b); }
+    function mediaDefaultScope() { const s = getActiveSession(), K = appData.mediaDefaultsKind || {}; return s && K[mediaKindKey(s)] ? 'kind' : 'all'; }
+    function mediaSaveDefault(scope) {
       try { applyScriptToggles(); } catch (e) { }
-      appData.mediaDefaults = mediaSnapTake(); (appData.sessions || []).forEach(x => { delete x.mediaOv; }); saveAppData();
+      const s = getActiveSession(), sn = mediaSnapTake();
+      if (scope === 'kind' && s) {
+        const k = mediaKindKey(s); appData.mediaDefaultsKind = appData.mediaDefaultsKind || {}; appData.mediaDefaultsKind[k] = sn;
+        (appData.sessions || []).forEach(x => { if (mediaKindKey(x) === k) delete x.mediaOv; });
+        saveAppData(); mediaRender(); showToast(`💾 Réglages appliqués aux séances « ${mediaKindLabel(s)} »`); return;
+      }
+      appData.mediaDefaults = sn; delete appData.mediaDefaultsKind; (appData.sessions || []).forEach(x => { delete x.mediaOv; }); saveAppData();
       mediaRender(); showToast('💾 Réglages appliqués à toutes les séances');
     }
     function mediaFootHtml() {
-      const d = mediaIsDefault();
-      return `<span style="font-size:12px;font-weight:700;color:${d ? '#6ee7b7' : '#fde68a'};text-align:center">${d ? '✓ Réglages par défaut (toutes les séances)' : '✏️ Modifiés pour cette séance seulement'}</span>
-          <button type="button" onclick="mediaSaveDefault()" ${d ? 'disabled' : ''} style="width:100%;min-height:48px;border-radius:14px;border:none;background:#fbbf24;color:#1c1303;font-weight:900;font-size:14.5px;${d ? 'opacity:.45' : ''}">💾 Sauver par défaut (toutes les séances)</button>`;
+      const d = mediaIsDefault(), s = getActiveSession(), kl = mediaKindLabel(s), sc = mediaDefaultScope();
+      const b = (js, t, bg, col) => `<button type="button" onclick="${js}" style="min-height:48px;border-radius:14px;border:${bg === 'transparent' ? '1.5px solid #fbbf24' : 'none'};background:${bg};color:${col};font-weight:900;font-size:13.5px;line-height:1.15;padding:0 8px">${t}</button>`;
+      return `<span style="font-size:12px;font-weight:700;color:${d ? '#6ee7b7' : '#fde68a'};text-align:center">${d ? (sc === 'kind' ? `✓ Réglages par défaut des séances « ${plEsc(kl)} »` : '✓ Réglages par défaut (toutes les séances)') : '✏️ Modifiés pour cette séance seulement'}</span>
+          ${d ? '' : `<span style="font-size:11.5px;font-weight:800;color:#94a3b8;text-align:center">💾 Sauver par défaut pour…</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${b("mediaSaveDefault('all')", 'Toutes les séances', '#fbbf24', '#1c1303')}${b("mediaSaveDefault('kind')", `Séances « ${plEsc(kl)} »`, 'transparent', '#fde68a')}</div>`}`;
     }
     function mediaFootRefresh() { const f = document.getElementById('mediaFoot'); if (f) f.innerHTML = mediaFootHtml(); }
     function mediaTabGo(k) { if (mediaTab === 'ann') { try { applyScriptToggles(); saveAppData(); } catch (e) { } } mediaTab = k; mediaRender(); }
@@ -22129,11 +22247,11 @@ Réponds uniquement en JSON : {"decision":"garder|adapter|remplacer","avis":"2 �
         document.body.classList.remove('home-wait');
         const inProg = timerState.sessionStarted && !timerState.finished;
         let bar = document.getElementById('homeSessSubs'); if (!bar) { bar = document.createElement('div'); bar.id = 'homeSessSubs'; bar.className = 'hsub'; d.parentNode.insertBefore(bar, d); }
-        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = sessPropValid(sess) ? PROP_BADGE : '';
+        const dc = appData.dayCheck && appData.dayCheck.sid === sess.id && appData.dayCheck.d === todayISO() ? appData.dayCheck : null, badge = sessPropCount(sess) ? PROP_BADGE_N(sessPropCount(sess)) : '';
         bar.style.display = inProg ? 'none' : 'flex';
         bar.innerHTML = [['recap', '📊', 'Récap'], ['coach', '🧠', 'Coach'], ['media', '🎧', 'Médias'], ['obj', '🎯', 'Objectif'], ['adapt', '⚖️', 'Adapter']].map(([k, ic, l]) => `<button type="button" class="${homeSessSub === k ? 'on' : ''}" onclick="homeSessSub='${k}';homeSessTilesApply()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px 0"><span style="font-size:19px;line-height:1">${ic}</span><span>${l}${k === 'adapt' ? badge : ''}</span></button>`).join('');
         const hb = document.getElementById('homeGuideBody'), hg = document.getElementById('homeGuide');
-        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="coach">${sessCoachPaneHtml(sess)}</div><div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${sessPropHtml(sess)}${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
+        if (hb && !sess.free) hb.innerHTML = `<div data-hsp="coach">${sessCoachPaneHtml(sess)}</div><div data-hsp="media" id="homeMediaPane">${homeMediaPaneHtml()}</div><div data-hsp="obj">${guideHtml(sess, appData.activeSessionIndex, { part: 'obj' })}</div><div data-hsp="adapt" style="display:flex;flex-direction:column;gap:8px">${sessPropHtml(sess)}${sessAdviceHtml(sess)}${dayCheckHtml(sess)}${guideHtml(sess, appData.activeSessionIndex, { part: 'adapt' })}</div>`;
         const sub = inProg ? 'recap' : homeSessSub;
         d.style.display = sub === 'recap' ? '' : 'none';
         if (hg) { hg.classList.toggle('hidden', !!(sub === 'recap' || sess.free)); }
