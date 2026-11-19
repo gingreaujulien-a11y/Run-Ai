@@ -1633,7 +1633,7 @@
           <div class="pm-card">
             <div>
               <div class="flex justify-between text-[13px] font-bold mb-1"><span>Vitesse de parole</span><span id="lblAiRate" class="text-sky-300">×0.90</span></div>
-              <input type="range" id="aiRate" min="0.75" max="1.1" step="0.05" value="0.9" class="w-full accent-sky-500"
+              <input type="range" id="aiRate" min="0.8" max="1.35" step="0.05" value="1" class="w-full accent-sky-500"
                 oninput="document.getElementById('lblAiRate').textContent='×'+(+this.value).toFixed(2); saveAudioSettingsFromUI()" onchange="previewAIVoice()">
             </div>
             <div>
@@ -1909,7 +1909,7 @@
         encouragements: true,
         coachTip: true,
         aiModel: "",
-        aiRate: 0.9,
+        aiRate: 1.0,
         coachProfile: "motivant"
       }
     };
@@ -1917,6 +1917,7 @@
     let appData = JSON.parse(JSON.stringify(DEFAULT_APP_DATA));
 
     function sanitizeData() {
+      try { const a = appData.audioSettings; if (a && !a.rateMig) { a.rateMig = 1; if (!a.aiRate || +a.aiRate <= 0.9) a.aiRate = 1.0; } } catch (e) { }
       try { propsMigrate(); } catch (e) { }
       try { (appData.history || []).slice(0, 30).forEach(h => { if (h && (h.kind === 'test' || h.kind === 'course') && !h.target) histLinkPlanned(h); }); } catch (e) { }
       try { (appData.sessions || []).forEach(x => { if (x && x.coachPred && !x.coachPred.applied) coachPredApply(x); }); } catch (e) { } // estimation du coach = cible de la séance (une fois)
@@ -2283,10 +2284,17 @@
     }
     // Pente de l'échauffement / retour au calme sur tapis : 1 % par défaut (ou celle choisie par le coureur), jamais plus que la séance
     function warmPente(sess) { const r = runnerProfile(), wp = r.warmPente != null ? +r.warmPente : 1; return Math.max(0, Math.min(parseFloat(sess && sess.pente) || 0, wp)); }
+    const RUN_MIN_KMH = 8; // en dessous, on ne court plus : on marche
+    // Pente de l'échauffement : baissée si elle obligerait à courir sous 8 km/h pour le même effort
+    function warmPenteFor(which, sess) {
+      let p = warmPente(sess); const v = easyStageVap(which, sess);
+      while (p > 0 && speedOnGrade(v, treadmillGrade(p)) < RUN_MIN_KMH - 0.01) p = Math.max(0, Math.round((p - 0.5) * 2) / 2);
+      return p;
+    }
     function easyStageSpeed(which, sess) {
       const v = easyStageVap(which, sess);
-      if (sess && sess.type === 'tapis') { const g = treadmillGrade(warmPente(sess)); return Math.max(3, Math.round(speedOnGrade(v, g) * 2) / 2); }
-      return v;
+      if (sess && sess.type === 'tapis') { const g = treadmillGrade(warmPenteFor(which, sess)); return Math.max(RUN_MIN_KMH, Math.round(speedOnGrade(v, g) * 2) / 2); }
+      return Math.max(RUN_MIN_KMH, v);
     }
     setInterval(() => {
       try {
@@ -2360,7 +2368,7 @@
       const stages = [];
 
       if (sess.chauffe > 0) {
-        stages.push({ type: 'chauffe', name: "Échauffement", speed: easyStageSpeed('chauffe', sess), vapTarget: easyStageVap('chauffe', sess), durationSec: Math.round(sess.chauffe * 60), pente: sess.type === 'tapis' ? warmPente(sess) : undefined });
+        stages.push({ type: 'chauffe', name: "Échauffement", speed: easyStageSpeed('chauffe', sess), vapTarget: easyStageVap('chauffe', sess), durationSec: Math.round(sess.chauffe * 60), pente: sess.type === 'tapis' ? warmPenteFor('chauffe', sess) : undefined });
       }
 
       const reps = Math.max(1, parseInt(sess.repet) || 1);
@@ -2413,7 +2421,7 @@
         stages.push({ type: 'palier', name: 'Prolongation', speed: sess.extension.speed || runnerEF(), durationSec: Math.round(sess.extension.minutes * 60), isExtension: true });
       }
       if (sess.recup > 0) {
-        stages.push({ type: 'recup', name: "Retour au calme", speed: easyStageSpeed('recup', sess), vapTarget: easyStageVap('recup', sess), durationSec: Math.round(sess.recup * 60), pente: sess.type === 'tapis' ? warmPente(sess) : undefined });
+        stages.push({ type: 'recup', name: "Retour au calme", speed: easyStageSpeed('recup', sess), vapTarget: easyStageVap('recup', sess), durationSec: Math.round(sess.recup * 60), pente: sess.type === 'tapis' ? warmPenteFor('recup', sess) : undefined });
       }
 
       // Intensité : rapide (au-dessus de la vitesse moyenne des paliers) / récup (récups et paliers les plus lents)
@@ -3041,6 +3049,12 @@
       runData.introDone = true; const txt = sessIntroText(); if (!txt || readMute()) return;
       if (aiVoiceActive() && aiClips.has(aiClipKey(txt))) speak([txt]); else systemSpeak(txt);
     }
+    function warmEnd20Text(sess, st, nx) {
+      if (!st || st.type !== 'chauffe' || !nx || !(st.durationSec >= 60)) return '';
+      const sp = v => formatSpeed(v).replace('.', ','), tap = sess && sess.type === 'tapis';
+      const np = nx.pente != null ? +nx.pente : +(sess && sess.pente) || 0, pch = tap && st.pente != null && np !== +st.pente ? ` et ${String(np).replace('.', ',')} % de pente` : '';
+      return tap ? `L'échauffement se termine dans 20 secondes. Prépare-toi à passer à ${sp(+nx.speed)} kilomètres heure${pch}.` : `L'échauffement se termine dans 20 secondes. Prépare-toi : prochain segment à ${sp(+nx.speed)} kilomètres heure.`;
+    }
     function aiAllPiecesForSession(profile) {
       const p = profile || aiProfile();
       const prevLang = appData.audioSettings.voiceLang;
@@ -3055,6 +3069,7 @@
         }
         if (runnerFirstName()) set.add(t.startNamed(runnerFirstName()));
         try { const it = sessIntroText(); if (it) set.add(it); } catch (e) { }
+        try { const S = timerState.stages || [], ss = getActiveSession(); S.forEach((st, i) => { const w = warmEnd20Text(ss, st, S[i + 1]); if (w) set.add(w); }); } catch (e) { }
         testPieces().forEach(x => set.add(x));
         t.half.forEach(x => set.add(x));
         timerState.stages.forEach(st => { if (halfAlertApplies(st)) halfPhraseList(st).forEach(x => set.add(x)); });
@@ -3372,7 +3387,7 @@
       let urls = aiMergedUrls.get(cacheKey);
       if (!urls) {
         const sr = clips[0].sr;
-        const rate = rateOv || Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+        const rate = rateOv || Math.min(1.35, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 1));
         // Durée du fichier ET durée de lecture sous 4,2 s (silence d'attaque compris), même si la voix est accélérée
         const maxSamples = whole ? Infinity : Math.floor((AI_MAX_CHUNK_SEC - 0.5) * sr * Math.min(1, rate));
         const gap = Math.round(sr * 0.12);
@@ -3415,7 +3430,7 @@
         clips.push(c);
       }
       const sr = clips[0].sr;
-      const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+      const rate = Math.min(1.35, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 1));
       const slot = Math.round(sr * rate); // 1 s réelle à la vitesse de lecture
       const parts = clips.map(c => resamplePcm(c.pcm, c.sr, sr));
       const len = slot * (parts.length - 1) + parts[parts.length - 1].length;
@@ -3442,7 +3457,7 @@
       setAudioSessionType('transient');
       const el = getAiAudioEl();
       el.src = url;
-      const rate = rateOv ? Math.min(1.6, Math.max(0.6, rateOv)) : Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.92));
+      const rate = rateOv ? Math.min(1.6, Math.max(0.6, rateOv)) : Math.min(1.35, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 1));
       try {
         el.preservesPitch = true;
         el.webkitPreservesPitch = true;
@@ -7093,7 +7108,7 @@ Donne 2 ou 3 axes de travail.`;
         void cmp; const rb = [...st.children].find(e => e.dataset.sub === 'Records'); if (rb) st.insertBefore(rb, st.firstChild);
         const afterBar = x => { if (x) { x.dataset.sub = 'Records'; st.insertBefore(x, rb ? rb.nextSibling : st.firstChild); } };
         if (statRec === 'chr') afterBar(chr); else afterBar(rec);
-        rest.filter(Boolean).forEach(e => { e.dataset.sub = 'Progrès'; st.appendChild(e); });
+        { const pb = [...st.children].find(e => e.dataset.sub === 'Périodique'); rest.filter(Boolean).forEach(e => { e.dataset.sub = 'VMA'; st.insertBefore(e, pb || null); }); }
         applySubTabs(st);
       }
       try { renderLikes(); } catch (e) { }
@@ -8303,7 +8318,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
       const c = b.querySelector && b.querySelector('.pm-cap'); if (!c) return '';
       const t = c.textContent.trim(); return PM_SUB_LBL[t] || ({ '🏃 Mon matériel': 'Matériel', 'Personnalité du coach': 'Personnalité', 'Pendant la séance': 'Pendant la séance' })[t] || t.replace(/^[^A-Za-zÀ-ÿ]+/, '').slice(0, 18);
     }
-    const PM_SUB_ICONS = { 'Records': '🏆', 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Comparer': '📈', 'Km / semaine': '📏', 'Analyse': '🧭' };
+    const PM_SUB_ICONS = { 'VMA': '🫁', 'Records': '🏆', 'Identité': '🪪', 'Cardio': '❤️', 'Forces/faiblesses': '💪', 'Objectif': '🏁', 'Estimation chrono': '⏱️', 'Échauffement': '🔥', 'Matériel': '👟', 'Périodique': '📅', 'Forme': '🙂', 'Progrès': '📈', 'Mon plan': '📋', 'Analyser': '🔎', 'Générer': '🧠', 'Importer': '📥', 'Après la séance': '🏁', 'Records': '🏆', 'Chronos': '⏱️', 'Comparer': '📈', 'Km / semaine': '📏', 'Analyse': '🧭' };
     function applySubTabs(panel) {
       if (!panel) return;
       let bar = panel.querySelector(':scope > .pm-subtabs');
@@ -8325,7 +8340,7 @@ Réponds uniquement en JSON : {"avis":"2 phrases courtes en tutoyant","resume":"
     function setPmTab(modalId, tab) {
       const m = document.getElementById(modalId);
       if (!m) return;
-      if (tab === 'progres') { tab = 'stats'; pmSubSel.stats = 'Progrès'; }
+      if (tab === 'progres') { tab = 'stats'; pmSubSel.stats = 'VMA'; }
       m.querySelectorAll('.pm-tab').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
       m.querySelectorAll('.pm-panel').forEach(p => p.classList.toggle('pm-off', p.dataset.p !== tab));
       const body = m.querySelector('.pm-body'); if (body) body.scrollTop = 0;
@@ -10723,7 +10738,7 @@ Réponds uniquement avec le JSON.`;
     function tlBufferFor(pieces) {
       const ctx = getAudioContext();
       if (!ctx) return null;
-      const rate = Math.min(1.2, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 0.9));
+      const rate = Math.min(1.35, Math.max(0.75, parseFloat(appData.audioSettings.aiRate) || 1));
       const key = `${aiClipKey(pieces.join(' ¦ '))}|${rate}`;
       if (tl.bufCache.has(key)) return tl.bufCache.get(key);
       const clips = pieces.map(p => aiClips.get(aiClipKey(p)));
@@ -10777,8 +10792,9 @@ Réponds uniquement avec le JSON.`;
           if (ph) ev.push({ t: at, pieces: [ph], fixed: false, kind: p.kind });
         });
         if (!enc) warmupCues(st).forEach(p => ev.push({ t: t0 + p.t / 1000, pieces: [p.text], fixed: true, kind: 'wu', speed: p.speed }));
-        if (!enc && st.type === 'chauffe' && d >= 120) ev.push({ t: t0 + d - 60, pieces: [warmEndText()], fixed: false, kind: 'warmEnd' });
-        if (d >= 10) {
+        const w20 = st.type === 'chauffe' && d >= 60 ? warmEnd20Text(getActiveSession(), st, i + 1 < stages.length ? stages[i + 1] : null) : '';
+        if (w20) ev.push({ t: t0 + d - 20, pieces: [w20], fixed: true, kind: 'warmEnd' });
+        if (d >= 10 && !w20) {
           const nx = i + 1 < stages.length ? stages[i + 1] : null;
           const pp = [nx ? prepPhrase(nx) : t.last15];
           ev.push({ t: t0 + d - (nx && isRecAfterFast(nx) ? 10.5 : prepLeadMs(pp[0]) / 1000), pieces: pp, fixed: true });
@@ -11165,7 +11181,7 @@ Réponds uniquement avec le JSON.`;
     }
     // Échauffement : footing, accélération, 3 lignes droites au MÊME EFFORT que la course (VAP convertie à la pente de l'échauffement)
     function preracePyr(vap, gradePct) {
-      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, rec = Math.max(6, r5(ef - 1)), vr = r5(speedForVap(vap || ef + 2.5, gradePct || 0)), st = v => r5(speedForVap(v, gradePct || 0));
+      const ef = runnerEF(), r5 = v => Math.round(v * 2) / 2, rec = Math.max(RUN_MIN_KMH, r5(ef - 1)), vr = r5(speedForVap(vap || ef + 2.5, gradePct || 0)), st = v => Math.max(RUN_MIN_KMH, r5(speedForVap(v, gradePct || 0)));
       const pyr = [{ speed: st(ef - 0.5), duration: 10, unit: 'min' }, { speed: st(ef + 0.5), duration: 4, unit: 'min' }];
       for (let k = 0; k < 3; k++) pyr.push({ speed: vr, duration: 0.33, unit: 'min', intensity: 'fast' }, { speed: st(rec), duration: 0.67, unit: 'min' });
       return pyr;
@@ -15269,18 +15285,48 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
         ${(() => { const r = runnerProfile(), L = runnerLevels(); return `${r.levelsSrc === 'coach' && r.levelsNote ? `<span class="text-[12px] text-purple-300">🧠 ${plEsc(r.levelsNote)}</span>` : ''}<details class="pm-det"><summary>✏️ Saisir mes temps (si tu as couru ces distances récemment)</summary><div class="grid grid-cols-2 gap-2 mt-2">${CHR_D.map(([d, l]) => `<label class="pm-lbl">${l}<input id="chrLvl${String(d).replace('.', '_')}" class="pm-in c" inputmode="numeric" placeholder="${d >= 21 ? 'h:mm:ss' : 'mm:ss'}" value="${L[d] ? fmtTime(L[d]) : ''}" onchange="saveLevelsFromChronos()"></label>`).join('')}</div><span class="text-[11px] text-slate-500">Si « Mise à jour par le coach » est activé (Moi › Allures), le coach réestime ces temps après chaque séance validée.</span></details>`; })()}
         <span class="text-[11px] text-slate-500 leading-snug">App : d'après ta VMA mesurée sur tes séances (sans tes niveaux déclarés), avec le pourcentage de VMA tenable sur la distance. Coach : ses estimations après chaque séance validée (Moi › Niveau). La moyenne des deux est souvent la plus fiable.</span></div>`;
     }
+    // VMA estimée par le coach : déduite de ses chronos estimés (5 km, 10 km, semi, marathon)
+    function coachVmaSeries() {
+      return levelsHist().filter(x => x.src === 'coach' && x.L).map(x => { const v = CHR_D.map(([d]) => x.L[d] ? (d / (x.L[d] / 3600)) / chrFrac(d) : null).filter(Boolean); return v.length ? { d: x.d, v: Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 } : null; }).filter(Boolean).sort((a, b) => a.d < b.d ? -1 : 1);
+    }
     function vmaCardHtml() {
       const cur = estimateVma();
       if (!cur || !cur.vma) return '';
-      const ser = vmaSeries(120);
-      const vo2 = v => Math.round(v * 3.5);
-      const first = ser[0];
-      const delta = first && ser.length > 1 ? Math.round((cur.vma - first.v) * 10) / 10 : 0;
-      return `<div class="pm-card" data-sub="VMA"><span class="pm-cap">🫁 VMA et VO2max estimées</span>
-        <div class="flex items-baseline gap-4 flex-wrap"><span style="font-size:24px;font-weight:900;color:#a78bfa">${formatSpeed(Math.round(cur.vma * 10) / 10).replace('.', ',')} <span style="font-size:13px;color:#94a3b8">km/h VMA</span></span><span style="font-size:24px;font-weight:900;color:#f472b6">${vo2(cur.vma)} <span style="font-size:13px;color:#94a3b8">ml/kg/min</span></span></div>
-        ${delta ? `<span class="text-[12px] font-bold" style="color:${delta > 0 ? '#34d399' : '#fbbf24'}">${delta > 0 ? '+' : ''}${String(delta).replace('.', ',')} km/h de VMA depuis le ${fmtDateShort(first.d)} (VO2max ${delta > 0 ? '+' : ''}${Math.round(delta * 3.5)})</span>` : ''}
-        ${ser.length >= 2 ? `${valueLineSvg(ser.map(p => ({ d: p.d, v: p.v })), 'vmaChart', 'km/h', '#a78bfa')}<span id="vmaChartCap" class="text-[12px] text-slate-400">Touche un point · VO2max ≈ VMA × 3,5</span>` : '<span class="text-[12px] text-slate-400">La courbe apparaîtra avec quelques semaines de séances. VO2max ≈ VMA × 3,5.</span>'}
-      </div>`;
+      const C = coachVmaSeries(), cLast = C[C.length - 1], vApp = Math.round(cur.vma * 10) / 10, vAvg = cLast ? Math.round((vApp + cLast.v) / 2 * 10) / 10 : null;
+      const ser0 = vmaSeries(120), appAt = d => { const e = ser0.filter(q => q.d <= d).pop() || ser0[0]; return e ? e.v : null; };
+      const pts = {}; ser0.forEach(p => { pts[p.d] = Object.assign(pts[p.d] || {}, { a: p.v }); }); C.forEach(p => { const a = appAt(p.d); pts[p.d] = Object.assign(pts[p.d] || {}, { c: p.v, m: a ? Math.round((a + p.v) / 2 * 10) / 10 : null }); });
+      window._vmaPts = Object.keys(pts).sort().map(d => Object.assign({ d }, pts[d]));
+      const fs = v => v != null ? formatSpeed(v).replace('.', ',') : '–';
+      const tile = (l, v, col, sub) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 4px;border-radius:12px;background:#0f172a;border:1px solid #1e293b"><span style="font-size:11px;font-weight:800;color:#94a3b8">${l}</span><b style="font-size:20px;color:${col}">${fs(v)}</b><span style="font-size:10.5px;color:#64748b">${sub}</span></div>`;
+      const head = `<div style="display:flex;gap:6px">${tile('📱 App', vApp, '#a78bfa', 'tes séances')}${tile('🧠 Coach', cLast ? cLast.v : null, '#f472b6', cLast ? `le ${fmtDateShort(cLast.d)}` : 'pas encore')}${tile('⚖️ Moyenne', vAvg, '#38bdf8', `VO2max ${Math.round((vAvg || vApp) * 3.5)}`)}</div>
+        ${cLast ? '' : '<span class="text-[11.5px] text-slate-500">La VMA du coach vient de ses chronos estimés (Records › Chronos › Demander au coach).</span>'}`;
+      const chart = window._vmaPts.length >= 2 ? vmaTouchChart(window._vmaPts) : '';
+      return `<div class="pm-card" data-sub="VMA"><span class="pm-cap">🫁 VMA estimée (km/h)</span>${head}${chart}</div>`;
+    }
+    // Courbe VMA : glisser le doigt pour lire les valeurs (app, coach, moyenne)
+    function vmaTouchChart(P) {
+      const W = 340, Hh = 170, n = P.length, vals = P.flatMap(p => [p.a, p.c, p.m]).filter(v => v != null);
+      const lo = Math.min(...vals), hi = Math.max(...vals), sp = Math.max(0.6, hi - lo), mn = lo - sp * 0.2, mx = hi + sp * 0.2;
+      const d0 = parseISODateLocal(P[0].d), span = Math.max(1, (parseISODateLocal(P[n - 1].d) - d0) / 864e5);
+      const x = d => 30 + (W - 40) * ((parseISODateLocal(d) - d0) / 864e5) / span, y = v => 10 + (Hh - 34) * (1 - (v - mn) / (mx - mn));
+      const line = (k, col, dash) => { const q = P.filter(p => p[k] != null); return q.length > 1 ? `<path d="${q.map((p, i) => `${i ? 'L' : 'M'}${x(p.d).toFixed(1)},${y(p[k]).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="${k === 'a' ? 2.5 : 2}"${dash ? ' stroke-dasharray="5 4"' : ''}></path>` : q.map(p => `<circle cx="${x(p.d)}" cy="${y(p[k])}" r="4" fill="${col}"></circle>`).join(''); };
+      const dots = P.filter(p => p.c != null).map(p => `<circle cx="${x(p.d)}" cy="${y(p.c)}" r="3.5" fill="#f472b6"></circle>`).join('');
+      const ticks = [lo, (lo + hi) / 2, hi].map(v => `<line x1="28" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#1e293b"></line><text x="0" y="${y(v) + 3}" font-size="9" fill="#64748b">${formatSpeed(Math.round(v * 10) / 10).replace('.', ',')}</text>`).join('');
+      window._vmaX = P.map(p => x(p.d)); window._vmaY = P.map(p => y(p.a != null ? p.a : p.c != null ? p.c : p.m));
+      return `<div style="position:relative;touch-action:pan-y" id="vmaTouch" onpointerdown="vmaTouch(event)" onpointermove="vmaTouch(event)" ontouchmove="vmaTouch(event)">
+        <svg viewBox="0 0 ${W} ${Hh}" width="100%" height="${Hh}">${ticks}${line('a', '#a78bfa')}${line('c', '#f472b6', true)}${line('m', '#38bdf8', true)}${dots}
+          <line id="vmaCur" x1="0" x2="0" y1="6" y2="${Hh - 22}" stroke="#e2e8f0" stroke-width="1" opacity="0"></line>
+          <text x="${x(P[0].d)}" y="${Hh - 6}" font-size="10" fill="#64748b">${fmtDateShort(P[0].d)}</text><text x="${x(P[n - 1].d)}" y="${Hh - 6}" font-size="10" fill="#64748b" text-anchor="end">${fmtDateShort(P[n - 1].d)}</text></svg></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;font-weight:700"><span style="color:#a78bfa">━ App</span><span style="color:#f472b6">┅ Coach</span><span style="color:#38bdf8">┅ Moyenne</span></div>
+        <span id="vmaChartCap" class="text-[12.5px] font-bold text-slate-300">👆 Glisse le doigt sur la courbe pour lire les valeurs</span>`;
+    }
+    function vmaTouch(e) {
+      const box = document.getElementById('vmaTouch'), P = window._vmaPts || [], X = window._vmaX || []; if (!box || !P.length) return;
+      const t = e.touches && e.touches[0] ? e.touches[0] : e, r = box.getBoundingClientRect(), sx = (t.clientX - r.left) / r.width * 340;
+      let i = 0; X.forEach((v, k) => { if (Math.abs(v - sx) < Math.abs(X[i] - sx)) i = k; });
+      const p = P[i], c = document.getElementById('vmaCur'); if (c) { c.setAttribute('x1', X[i]); c.setAttribute('x2', X[i]); c.setAttribute('opacity', '0.6'); }
+      const f = v => v != null ? formatSpeed(v).replace('.', ',') : null;
+      const cap = document.getElementById('vmaChartCap'); if (cap) cap.innerHTML = `📅 ${fmtDateShort(p.d)} · <span style="color:#a78bfa">App ${f(p.a) || '–'}</span>${p.c != null ? ` · <span style="color:#f472b6">Coach ${f(p.c)}</span> · <span style="color:#38bdf8">Moy. ${f(p.m) || '–'}</span>` : ''} km/h`;
     }
 
     function kmDistanceNow() {
@@ -17000,7 +17046,11 @@ ${analysisFormatPrompt()}${captureHrPrompt(nShots)}`;
     const annLab = t => `<span class="text-[11px] uppercase tracking-widest font-bold text-slate-400 mt-3 block">${t}</span>`;
     function annLenHtml() {
       const sh = annShort(), ex = bilanText({ mode: 'dist', n: 3, L: 1, totKm: 3, sessSec: 1110, avgKmh: 9.8, vap: 10.6, hr: 165, hrT: { lo: 150, hi: 162, mid: 156 }, need: 10.3, remSec: 900, drink: false });
-      return `${annLab('🗣️ Longueur des annonces')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">${annSeg(sh, '⚡ Courtes', "appData.audioSettings.annLen='short'")}${annSeg(!sh, '📖 Détaillées', "appData.audioSettings.annLen='long'")}</div>
+      const ar = parseFloat(appData.audioSettings.aiRate) || 1, RT = [['0.9', '🐢 Lente', 0.9, 0.9], ['1', 'Normale', 1, 1], ['1.12', '⚡ Rapide', 1.12, 1.1], ['1.25', '🚀 Très rapide', 1.25, 1.2]];
+      const near = RT.reduce((b, r) => Math.abs(r[2] - ar) < Math.abs(b[2] - ar) ? r : b, RT[1]);
+      const rate = `${annLab('🎙️ Vitesse de parole du coach')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:4px">${RT.map(r => annSeg(near === r, r[1], `appData.audioSettings.aiRate=${r[2]};appData.audioSettings.voiceRate=${r[3]}`)).join('')}</div>
+        <span class="text-[11.5px] text-slate-500 block mt-1">S'applique à toutes les annonces (voix IA et voix du téléphone), sans re-télécharger les voix.</span>`;
+      return `${rate}${annLab('🗣️ Longueur des annonces')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">${annSeg(sh, '⚡ Courtes', "appData.audioSettings.annLen='short'")}${annSeg(!sh, '📖 Détaillées', "appData.audioSettings.annLen='long'")}</div>
         <span class="text-[11.5px] text-slate-400 block mt-1.5" style="font-style:italic">Ex. : « ${plEsc(ex)} »</span>`;
     }
     function bilanOptsHtml() {
@@ -20891,7 +20941,7 @@ Réponds uniquement avec un tableau JSON de chaînes de caractères.`;
     }
     setInterval(() => { try { if (document.body.classList.contains('home') && homeSessSub === 'media') { const e = document.getElementById('homeMediaPane'); if (e) e.innerHTML = homeMediaPaneHtml(); } } catch (e) { } }, 2000);
     // Réglages médias & annonces : propres à la séance, ou par défaut pour toutes
-    const MEDIA_AS_KEYS = ['introRecap', 'encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk', 'aiStyle', 'bilan', 'annLen'];
+    const MEDIA_AS_KEYS = ['aiRate', 'voiceRate', 'introRecap', 'encouragements', 'fuelReminders', 'encFreq', 'encFocus', 'coachProfile', 'coachTip', 'hrEvery', 'drinkEvery', 'radio', 'paceChk', 'aiStyle', 'bilan', 'annLen'];
     const MEDIA_SE_KEYS = ['kmAnnounce', 'announceVap', 'paceAdvice', 'navTurns', 'lapM'], MEDIA_SP_KEYS = ['off', 'pl', 'plStart'];
     function mediaSnapTake() {
       const pk = (o, K) => { const r = {}; K.forEach(k => { if (o && o[k] !== undefined) r[k] = JSON.parse(JSON.stringify(o[k])); }); return r; };
